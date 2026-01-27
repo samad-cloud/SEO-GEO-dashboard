@@ -1,0 +1,46 @@
+/**
+ * GEO Research Run API Route
+ *
+ * POST: Start a new research run
+ */
+
+import { NextRequest, NextResponse } from 'next/server';
+
+const GEO_API_BASE_URL = process.env.GEO_API_URL || 'http://localhost:8000';
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+
+    const response = await fetch(`${GEO_API_BASE_URL}/api/geo/research/run`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return NextResponse.json(
+        { error: 'Failed to start run', details: errorText },
+        { status: response.status }
+      );
+    }
+
+    const data = await response.json();
+
+    // Update stream URL to use our API route
+    if (data.stream_url) {
+      data.stream_url = `/api/geo/research/run/${data.run_id}/stream`;
+    }
+
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('GEO API connection error:', error);
+    return NextResponse.json(
+      { error: 'GEO API unavailable', details: String(error) },
+      { status: 503 }
+    );
+  }
+}
