@@ -13,7 +13,9 @@
       "WebSearch",
       "Bash(yarn add:*)",
       "Bash(yarn build)",
-      "Bash(yarn lint:*)"
+      "Bash(yarn lint:*)",
+      "Bash(yarn install:*)",
+      "Bash(npx next:*)"
     ]
   }
 }

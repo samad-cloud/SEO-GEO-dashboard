@@ -236,6 +236,185 @@ export function usePipelineRun(): UsePipelineRunResult {
 }
 
 // =============================================================================
+// useCrewData
+// =============================================================================
+
+/**
+ * Hook to fetch crew-specific data (blog, forums, wiki, urls)
+ */
+
+interface CrewData {
+  briefs: any[];
+  blogPosts: any[];
+  forumThreads: any[];
+  wikiAssessments: any[];
+  trackedUrls: any[];
+}
+
+interface UseCrewDataResult {
+  data: CrewData;
+  isLoading: boolean;
+  error: Error | null;
+  refetch: () => Promise<void>;
+}
+
+export function useCrewData(): UseCrewDataResult {
+  const [data, setData] = useState<CrewData>({
+    briefs: [],
+    blogPosts: [],
+    forumThreads: [],
+    wikiAssessments: [],
+    trackedUrls: [],
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const [briefs, posts, threads, wiki, urls] = await Promise.all([
+        fetch('/api/geo/blog/briefs').then(r => r.ok ? r.json() : []),
+        fetch('/api/geo/blog/posts').then(r => r.ok ? r.json() : []),
+        fetch('/api/geo/forums/threads').then(r => r.ok ? r.json() : []),
+        fetch('/api/geo/wiki/assessments').then(r => r.ok ? r.json() : []),
+        fetch('/api/geo/technical/urls?limit=50').then(r => r.ok ? r.json() : []),
+      ]);
+
+      setData({
+        briefs: Array.isArray(briefs) ? briefs : [],
+        blogPosts: Array.isArray(posts) ? posts : [],
+        forumThreads: Array.isArray(threads) ? threads : [],
+        wikiAssessments: Array.isArray(wiki) ? wiki : [],
+        trackedUrls: Array.isArray(urls) ? urls : [],
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error(String(err)));
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  return { data, isLoading, error, refetch: fetchData };
+}
+
+// =============================================================================
+// useAuditReports
+// =============================================================================
+
+/**
+ * Hook to fetch audit reports
+ */
+export function useAuditReports() {
+  const [reports, setReports] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/geo/audit/reports');
+      if (!response.ok) throw new Error(`Failed to fetch: ${response.statusText}`);
+      const json = await response.json();
+      setReports(Array.isArray(json) ? json : []);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error(String(err)));
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  return { reports, isLoading, error, refetch: fetchData };
+}
+
+// =============================================================================
+// useAuditResults
+// =============================================================================
+
+/**
+ * Hook to fetch audit results for a specific run
+ */
+export function useAuditResults(runId: string | null) {
+  const [results, setResults] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetchData = useCallback(async () => {
+    if (!runId) {
+      setResults([]);
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/geo/audit/results?run_id=${encodeURIComponent(runId)}`);
+      if (!response.ok) throw new Error(`Failed to fetch: ${response.statusText}`);
+      const json = await response.json();
+      setResults(Array.isArray(json) ? json : []);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error(String(err)));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [runId]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  return { results, isLoading, error, refetch: fetchData };
+}
+
+// =============================================================================
+// useBlogImages
+// =============================================================================
+
+/**
+ * Hook to fetch blog images (all or for a specific post)
+ */
+export function useBlogImages(postId: number | null) {
+  const [images, setImages] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetchData = useCallback(async () => {
+    if (postId === null) {
+      setImages([]);
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    try {
+      // Fetch all images — session linkage handled server-side when post_id endpoint exists
+      const response = await fetch('/api/geo/blog/images');
+      if (!response.ok) throw new Error(`Failed to fetch: ${response.statusText}`);
+      const json = await response.json();
+      setImages(Array.isArray(json) ? json : []);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error(String(err)));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [postId]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  return { images, isLoading, error };
+}
+
+// =============================================================================
 // useGeoHealth
 // =============================================================================
 
