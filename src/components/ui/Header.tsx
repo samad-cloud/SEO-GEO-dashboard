@@ -1,6 +1,6 @@
 'use client';
 
-import { Settings, Bell, ChevronDown } from 'lucide-react';
+import { Settings, Bell, ChevronDown, LogOut } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
 interface HeaderProps {
@@ -95,6 +95,17 @@ export function Header({ selectedDomain, onDomainChange }: HeaderProps) {
             3
           </span>
         </button>
+
+        {/* Sign Out */}
+        <form action="/auth/signout" method="POST">
+          <button
+            type="submit"
+            className="p-2 rounded-lg hover:bg-zinc-800 transition-colors"
+            title="Sign out"
+          >
+            <LogOut className="w-5 h-5 text-zinc-400" />
+          </button>
+        </form>
       </div>
     </header>
   );
