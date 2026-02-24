@@ -376,6 +376,116 @@ export function useAuditResults(runId: string | null) {
 }
 
 // =============================================================================
+// useAuditRun
+// =============================================================================
+
+/**
+ * Hook to start and monitor an audit run with polling-based progress
+ */
+export function useAuditRun() {
+  const [runId, setRunId] = useState<string | null>(null);
+  const [isRunning, setIsRunning] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [step, setStep] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, []);
+
+  const start = useCallback(async (region: string, onComplete?: () => void) => {
+    // Clear any existing polling interval before starting a new run
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+
+    setError(null);
+    setProgress(0);
+    setStep('Starting...');
+    setIsRunning(true);
+
+    try {
+      const res = await fetch('/api/geo/audit/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ region }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Failed to start' }));
+        throw new Error(err.error || err.details || `HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+      const newRunId = data.run_id;
+      setRunId(newRunId);
+
+      // Poll for progress every 3 seconds
+      pollRef.current = setInterval(async () => {
+        try {
+          const pollRes = await fetch(`/api/geo/audit/run/${newRunId}`);
+          if (!pollRes.ok) return;
+
+          const prog = await pollRes.json();
+          setProgress(prog.progress_percent || 0);
+          setStep(prog.current_step || '');
+
+          if (prog.status === 'complete') {
+            if (pollRef.current) clearInterval(pollRef.current);
+            pollRef.current = null;
+            setIsRunning(false);
+            setRunId(null);
+            setProgress(0);
+            setStep('');
+            onComplete?.();
+          } else if (prog.status === 'failed' || prog.status === 'cancelled') {
+            if (pollRef.current) clearInterval(pollRef.current);
+            pollRef.current = null;
+            setError(
+              prog.errors?.length
+                ? prog.errors[0].split('\n')[0]
+                : prog.current_step || 'Audit failed'
+            );
+            setProgress(0);
+            setStep('');
+            setIsRunning(false);
+            setRunId(null);
+          }
+        } catch {
+          // Polling error — keep trying
+        }
+      }, 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start audit');
+      setIsRunning(false);
+    }
+  }, []);
+
+  const cancel = useCallback(async () => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    if (runId) {
+      try {
+        await fetch(`/api/geo/audit/run/${runId}/cancel`, { method: 'POST' });
+      } catch {
+        // Best-effort cancel
+      }
+    }
+    setIsRunning(false);
+    setRunId(null);
+  }, [runId]);
+
+  return { isRunning, progress, step, error, start, cancel, clearError: () => setError(null) };
+}
+
+// =============================================================================
 // useBlogImages
 // =============================================================================
 
@@ -395,8 +505,7 @@ export function useBlogImages(postId: number | null) {
     setIsLoading(true);
     setError(null);
     try {
-      // Fetch all images — session linkage handled server-side when post_id endpoint exists
-      const response = await fetch('/api/geo/blog/images');
+      const response = await fetch(`/api/geo/blog/posts/${postId}/images`);
       if (!response.ok) throw new Error(`Failed to fetch: ${response.statusText}`);
       const json = await response.json();
       setImages(Array.isArray(json) ? json : []);

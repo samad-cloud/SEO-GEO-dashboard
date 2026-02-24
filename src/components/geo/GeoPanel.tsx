@@ -299,6 +299,16 @@ export function GeoPanel() {
           </div>
         )}
 
+        {/* Audit Reports — always visible so users can run audits */}
+        <CollapsibleSection
+          title="Audit Reports"
+          icon={BarChart3}
+          count={auditReports.length}
+          defaultOpen={auditReports.length === 0}
+        >
+          <AuditReportsSection reports={auditReports} onRefresh={refetchAudit} />
+        </CollapsibleSection>
+
         {!hasAnyData ? (
           /* Empty state */
           <div className="text-center py-16">
@@ -388,18 +398,6 @@ export function GeoPanel() {
                     strategySummary={strategySummary}
                     crewsCompleted={crewsCompleted}
                   />
-                </CollapsibleSection>
-              )}
-
-              {/* Audit Reports */}
-              {auditReports.length > 0 && (
-                <CollapsibleSection
-                  title="Audit Reports"
-                  icon={BarChart3}
-                  count={auditReports.length}
-                  defaultOpen={false}
-                >
-                  <AuditReportsSection reports={auditReports} />
                 </CollapsibleSection>
               )}
 

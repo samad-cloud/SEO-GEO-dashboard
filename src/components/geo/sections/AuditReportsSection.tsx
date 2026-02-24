@@ -8,8 +8,12 @@ import {
   Eye,
   Calendar,
   Hash,
+  Play,
+  X,
+  Loader2,
 } from 'lucide-react';
 import { AuditResultsModal } from './AuditResultsModal';
+import { useAuditRun } from '@/hooks/use-geo-research';
 
 interface AuditReport {
   id: string;
@@ -28,7 +32,20 @@ interface AuditReport {
 
 interface AuditReportsSectionProps {
   reports: AuditReport[];
+  onRefresh?: () => void;
 }
+
+const REGIONS = [
+  { value: 'us', label: 'US' },
+  { value: 'uk', label: 'UK' },
+  { value: 'de', label: 'DE' },
+  { value: 'fr', label: 'FR' },
+  { value: 'es', label: 'ES' },
+  { value: 'it', label: 'IT' },
+  { value: 'nl', label: 'NL' },
+  { value: 'ae', label: 'AE' },
+  { value: 'in', label: 'IN' },
+];
 
 function formatDate(iso: string): string {
   try {
@@ -252,16 +269,92 @@ function ReportCard({ report }: { report: AuditReport }) {
   );
 }
 
-export function AuditReportsSection({ reports }: AuditReportsSectionProps) {
-  if (reports.length === 0) {
-    return <p className="p-4 text-center text-sm text-zinc-500">No audit reports available.</p>;
-  }
+export function AuditReportsSection({ reports, onRefresh }: AuditReportsSectionProps) {
+  const [selectedRegion, setSelectedRegion] = useState('us');
+  const { isRunning, progress, step, error, start, cancel, clearError } = useAuditRun();
+
+  const handleRunAudit = () => {
+    start(selectedRegion, () => {
+      onRefresh?.();
+    });
+  };
 
   return (
-    <div className="space-y-2">
-      {reports.map((report) => (
-        <ReportCard key={report.id} report={report} />
-      ))}
+    <div className="space-y-3">
+      {/* Run Audit Controls */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <select
+          value={selectedRegion}
+          onChange={(e) => setSelectedRegion(e.target.value)}
+          disabled={isRunning}
+          className="px-2 py-1 rounded text-xs bg-zinc-800 border border-zinc-700 text-zinc-300 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50"
+        >
+          {REGIONS.map((r) => (
+            <option key={r.value} value={r.value}>
+              {r.label}
+            </option>
+          ))}
+        </select>
+
+        {!isRunning ? (
+          <button
+            onClick={handleRunAudit}
+            className="flex items-center gap-1.5 px-3 py-1 rounded text-xs font-medium bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors"
+          >
+            <Play className="w-3 h-3" />
+            Run Audit
+          </button>
+        ) : (
+          <button
+            onClick={cancel}
+            className="flex items-center gap-1.5 px-3 py-1 rounded text-xs font-medium bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+          >
+            <X className="w-3 h-3" />
+            Cancel
+          </button>
+        )}
+
+        {/* Progress indicator */}
+        {isRunning && (
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <Loader2 className="w-3.5 h-3.5 text-purple-400 animate-spin flex-shrink-0" />
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <div className="w-24 h-1.5 bg-zinc-700 rounded-full overflow-hidden flex-shrink-0">
+                <div
+                  className="h-full bg-purple-500 rounded-full transition-all duration-500"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              <span className="text-[10px] text-zinc-500 flex-shrink-0">{progress}%</span>
+              <span className="text-[11px] text-zinc-400 truncate">{step}</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Error banner */}
+      {error && (
+        <div className="px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400 flex items-center justify-between">
+          <span>{error}</span>
+          <button
+            onClick={clearError}
+            className="text-red-500 hover:text-red-300 ml-2"
+          >
+            dismiss
+          </button>
+        </div>
+      )}
+
+      {/* Report Cards */}
+      {reports.length === 0 ? (
+        <p className="p-4 text-center text-sm text-zinc-500">No audit reports yet. Run an audit to get started.</p>
+      ) : (
+        <div className="space-y-2">
+          {reports.map((report) => (
+            <ReportCard key={report.id} report={report} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

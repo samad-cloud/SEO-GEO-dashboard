@@ -15,7 +15,10 @@
       "Bash(yarn build)",
       "Bash(yarn lint:*)",
       "Bash(yarn install:*)",
-      "Bash(npx next:*)"
+      "Bash(npx next:*)",
+      "Bash(vercel:*)",
+      "mcp__supabase__search_docs",
+      "mcp__supabase__list_projects"
     ]
   }
 }

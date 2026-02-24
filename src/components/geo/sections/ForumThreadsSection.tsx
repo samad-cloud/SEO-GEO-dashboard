@@ -14,6 +14,10 @@ import {
   ArrowUpRight,
   Send,
   Shield,
+  Loader2,
+  RefreshCw,
+  Link,
+  XCircle,
 } from 'lucide-react';
 
 interface ForumComment {
@@ -49,6 +53,10 @@ interface ForumThread {
   comments: ForumComment[];
   threadDate: string;
   createdAt: string;
+  postStatus?: string;
+  postedAt?: string;
+  redditCommentId?: string;
+  postError?: string;
 }
 
 interface ForumThreadsSectionProps {
@@ -162,6 +170,10 @@ function ThreadCard({
 }) {
   const [approvalLoading, setApprovalLoading] = useState(false);
   const [localStatus, setLocalStatus] = useState(thread.approvalStatus);
+  const [postStatus, setPostStatus] = useState(thread.postStatus || 'not_posted');
+  const [postError, setPostError] = useState(thread.postError || '');
+  const [redditCommentId, setRedditCommentId] = useState(thread.redditCommentId || '');
+  const [postLoading, setPostLoading] = useState(false);
   const urgencyInfo = urgencyIcons[thread.urgency] || urgencyIcons.informational;
   const UrgencyIcon = urgencyInfo.icon;
   const comments = thread.comments || [];
@@ -175,12 +187,42 @@ function ThreadCard({
         body: JSON.stringify({ approval_status: status }),
       });
       if (res.ok) {
+        const data = await res.json();
         setLocalStatus(status);
+        if (data.postStatus) setPostStatus(data.postStatus);
+        if (data.postError) setPostError(data.postError);
+        if (data.redditCommentId) setRedditCommentId(data.redditCommentId);
       }
     } catch {
       // silently fail, user can retry
     } finally {
       setApprovalLoading(false);
+    }
+  }
+
+  async function handleRetryPost() {
+    setPostLoading(true);
+    setPostStatus('posting');
+    setPostError('');
+    try {
+      const res = await fetch(`/api/geo/forums/threads/${thread.id}/post`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPostStatus(data.postStatus || 'not_posted');
+        if (data.postError) setPostError(data.postError);
+        if (data.redditCommentId) setRedditCommentId(data.redditCommentId);
+      } else {
+        setPostStatus('failed');
+        setPostError('Request failed');
+      }
+    } catch {
+      setPostStatus('failed');
+      setPostError('Network error');
+    } finally {
+      setPostLoading(false);
     }
   }
 
@@ -382,6 +424,64 @@ function ThreadCard({
                   </span>
                 )}
               </div>
+
+              {/* Reddit Posting Status */}
+              {thread.platform === 'reddit' && localStatus === 'approved' && (
+                <div className="mt-3">
+                  {postStatus === 'posting' && (
+                    <div className="flex items-center gap-2 text-blue-400 text-xs">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Posting to Reddit...</span>
+                    </div>
+                  )}
+
+                  {postStatus === 'posted' && (
+                    <div className="flex items-center gap-2 text-green-400 text-xs">
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      <span>Posted to Reddit</span>
+                      {thread.url && (
+                        <a
+                          href={thread.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-blue-400 hover:text-blue-300 underline"
+                        >
+                          <Link className="w-3 h-3" />
+                          View thread
+                        </a>
+                      )}
+                    </div>
+                  )}
+
+                  {postStatus === 'failed' && (
+                    <div className="flex items-center gap-2 text-xs">
+                      <XCircle className="w-3.5 h-3.5 text-red-400" />
+                      <span className="text-red-400">Post failed{postError ? `: ${postError}` : ''}</span>
+                      <button
+                        onClick={handleRetryPost}
+                        disabled={postLoading}
+                        className="flex items-center gap-1 px-2 py-1 rounded bg-zinc-700 text-zinc-300 hover:bg-zinc-600 transition-colors disabled:opacity-40"
+                      >
+                        <RefreshCw className={`w-3 h-3 ${postLoading ? 'animate-spin' : ''}`} />
+                        Retry
+                      </button>
+                    </div>
+                  )}
+
+                  {postStatus === 'not_posted' && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handleRetryPost}
+                        disabled={postLoading}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 text-xs font-medium hover:bg-blue-500/20 transition-colors disabled:opacity-40"
+                      >
+                        <Send className="w-3 h-3" />
+                        {postLoading ? 'Posting...' : 'Post to Reddit'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

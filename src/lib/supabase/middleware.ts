@@ -48,7 +48,7 @@ export async function updateSession(request: NextRequest) {
   // Redirect authenticated users away from login
   if (user && request.nextUrl.pathname === "/login") {
     const url = request.nextUrl.clone();
-    url.pathname = "/";
+    url.pathname = "/seo";
     return NextResponse.redirect(url);
   }
 
