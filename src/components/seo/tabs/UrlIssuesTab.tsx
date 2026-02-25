@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import { Search, ExternalLink, Globe, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { Search, ExternalLink, Globe, ChevronDown, ChevronRight, Loader2, Download } from 'lucide-react';
 import { getSeverityColor } from '@/lib/utils';
 
 interface UrlIssue {
@@ -82,6 +82,18 @@ export function UrlIssuesTab({ auditId, gcsPath }: UrlIssuesTabProps) {
   const [severityFilter, setSeverityFilter] = useState<string>('all');
   const [expandedUrls, setExpandedUrls] = useState<Set<string>>(new Set());
   const [onlyWithIssues, setOnlyWithIssues] = useState(true);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (exportRef.current && !exportRef.current.contains(e.target as Node)) {
+        setShowExportMenu(false);
+      }
+    };
+    if (showExportMenu) document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showExportMenu]);
 
   // Fetch URL issues on mount (when tab is first shown)
   useEffect(() => {
@@ -164,6 +176,71 @@ export function UrlIssuesTab({ auditId, gcsPath }: UrlIssuesTabProps) {
     );
     return { totalUrls, urlsWithIssues, totalIssues, bySeverity };
   }, [urlData]);
+
+  const exportUrlIssues = (format: 'json' | 'txt') => {
+    const data = filteredUrls.map(([url, entry]) => {
+      const issues =
+        severityFilter === 'all'
+          ? entry.issues
+          : entry.issues.filter((i) => i.severity === severityFilter);
+      return {
+        url,
+        status_code: entry.crawl?.status_code ?? null,
+        title: entry.crawl?.title ?? null,
+        is_indexable: entry.crawl?.is_indexable ?? null,
+        response_time_ms: entry.crawl?.response_time_ms ?? null,
+        issues: issues.map((i) => ({
+          severity: i.severity,
+          category: i.category,
+          issue_type: i.issue_type,
+          description: i.description,
+          recommendation: i.recommendation || '',
+        })),
+      };
+    });
+
+    let content: string;
+    let mimeType: string;
+    let extension: string;
+
+    if (format === 'json') {
+      content = JSON.stringify(data, null, 2);
+      mimeType = 'application/json';
+      extension = 'json';
+    } else {
+      content = data
+        .map((entry) => {
+          const header =
+            `URL: ${entry.url}\n` +
+            `Status: ${entry.status_code ?? 'N/A'}\n` +
+            `Title: ${entry.title ?? 'N/A'}\n` +
+            `Indexable: ${entry.is_indexable ?? 'N/A'}\n` +
+            `Response Time: ${entry.response_time_ms != null ? entry.response_time_ms + 'ms' : 'N/A'}\n` +
+            `Issues (${entry.issues.length}):`;
+          const issueLines = entry.issues
+            .map(
+              (issue, i) =>
+                `  ${i + 1}. [${issue.severity.toUpperCase()}] ${issue.issue_type}\n` +
+                `     ${issue.description}\n` +
+                `     Recommendation: ${issue.recommendation || 'N/A'}`
+            )
+            .join('\n');
+          return header + '\n' + (issueLines || '  No issues');
+        })
+        .join('\n\n---\n\n');
+      mimeType = 'text/plain';
+      extension = 'txt';
+    }
+
+    const blob = new Blob([content], { type: mimeType });
+    const downloadUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = `url_issues_export.${extension}`;
+    a.click();
+    URL.revokeObjectURL(downloadUrl);
+    setShowExportMenu(false);
+  };
 
   // Loading state
   if (isLoading) {
@@ -287,6 +364,34 @@ export function UrlIssuesTab({ auditId, gcsPath }: UrlIssuesTabProps) {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-sm text-zinc-300 placeholder:text-zinc-500 focus:outline-none focus:border-blue-500"
           />
+        </div>
+
+        {/* Export Button */}
+        <div className="relative" ref={exportRef}>
+          <button
+            onClick={() => setShowExportMenu((prev) => !prev)}
+            disabled={filteredUrls.length === 0}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-sm text-zinc-300 hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Download className="w-4 h-4" />
+            Export
+          </button>
+          {showExportMenu && (
+            <div className="absolute right-0 top-full mt-1 z-20 bg-zinc-800 border border-zinc-700 rounded-lg shadow-lg overflow-hidden min-w-[140px]">
+              <button
+                onClick={() => exportUrlIssues('json')}
+                className="w-full text-left px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-700"
+              >
+                Export as JSON
+              </button>
+              <button
+                onClick={() => exportUrlIssues('txt')}
+                className="w-full text-left px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-700"
+              >
+                Export as TXT
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

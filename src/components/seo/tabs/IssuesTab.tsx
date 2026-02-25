@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Search, ExternalLink, Ticket } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Search, ExternalLink, Ticket, Download } from 'lucide-react';
 import { AuditReport, PriorityIssue, AllIssuesSummary } from '@/types/seo';
 import { getSeverityColor } from '@/lib/utils';
 
@@ -14,6 +14,18 @@ export function IssuesTab({ report }: IssuesTabProps) {
   const [severityFilter, setSeverityFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [selectedIssue, setSelectedIssue] = useState<PriorityIssue | null>(null);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (exportRef.current && !exportRef.current.contains(e.target as Node)) {
+        setShowExportMenu(false);
+      }
+    };
+    if (showExportMenu) document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showExportMenu]);
 
   const domainReport = report.reports[0];
   const issues = domainReport?.priority_issues || [];
@@ -32,6 +44,55 @@ export function IssuesTab({ report }: IssuesTabProps) {
     const matchesCategory = categoryFilter === 'all' || issue.category === categoryFilter;
     return matchesSearch && matchesSeverity && matchesCategory;
   });
+
+  const exportIssues = (format: 'json' | 'txt') => {
+    const data = filteredIssues.map((issue) => ({
+      severity: issue.severity,
+      category: issue.category,
+      issue_type: issue.issue_type,
+      url: issue.url,
+      description: issue.description,
+      recommendation: issue.recommendation || '',
+      current_value: issue.current_value || '',
+      expected_value: issue.expected_value || '',
+    }));
+
+    let content: string;
+    let mimeType: string;
+    let extension: string;
+
+    if (format === 'json') {
+      content = JSON.stringify(data, null, 2);
+      mimeType = 'application/json';
+      extension = 'json';
+    } else {
+      content = data
+        .map(
+          (issue, i) =>
+            `Issue #${i + 1}\n` +
+            `Severity: ${issue.severity}\n` +
+            `Category: ${issue.category}\n` +
+            `Type: ${issue.issue_type}\n` +
+            `URL: ${issue.url}\n` +
+            `Description: ${issue.description}\n` +
+            `Recommendation: ${issue.recommendation || 'N/A'}\n` +
+            `Current Value: ${issue.current_value || 'N/A'}\n` +
+            `Expected Value: ${issue.expected_value || 'N/A'}`
+        )
+        .join('\n\n---\n\n');
+      mimeType = 'text/plain';
+      extension = 'txt';
+    }
+
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `issues_export.${extension}`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setShowExportMenu(false);
+  };
 
   return (
     <div className="space-y-4">
@@ -69,6 +130,34 @@ export function IssuesTab({ report }: IssuesTabProps) {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-sm text-zinc-300 placeholder:text-zinc-500 focus:outline-none focus:border-blue-500"
           />
+        </div>
+
+        {/* Export Button */}
+        <div className="relative" ref={exportRef}>
+          <button
+            onClick={() => setShowExportMenu((prev) => !prev)}
+            disabled={filteredIssues.length === 0}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-sm text-zinc-300 hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Download className="w-4 h-4" />
+            Export
+          </button>
+          {showExportMenu && (
+            <div className="absolute right-0 top-full mt-1 z-20 bg-zinc-800 border border-zinc-700 rounded-lg shadow-lg overflow-hidden min-w-[140px]">
+              <button
+                onClick={() => exportIssues('json')}
+                className="w-full text-left px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-700"
+              >
+                Export as JSON
+              </button>
+              <button
+                onClick={() => exportIssues('txt')}
+                className="w-full text-left px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-700"
+              >
+                Export as TXT
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
