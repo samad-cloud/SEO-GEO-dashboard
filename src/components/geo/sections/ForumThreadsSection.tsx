@@ -174,6 +174,7 @@ function ThreadCard({
   const [postError, setPostError] = useState(thread.postError || '');
   const [redditCommentId, setRedditCommentId] = useState(thread.redditCommentId || '');
   const [postLoading, setPostLoading] = useState(false);
+  const [editedResponse, setEditedResponse] = useState(thread.draftResponse || '');
   const urgencyInfo = urgencyIcons[thread.urgency] || urgencyIcons.informational;
   const UrgencyIcon = urgencyInfo.icon;
   const comments = thread.comments || [];
@@ -184,7 +185,7 @@ function ThreadCard({
       const res = await fetch(`/api/geo/forums/threads/${thread.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ approval_status: status }),
+        body: JSON.stringify({ approval_status: status, draft_response: editedResponse }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -208,6 +209,7 @@ function ThreadCard({
       const res = await fetch(`/api/geo/forums/threads/${thread.id}/post`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ draft_response: editedResponse }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -380,9 +382,12 @@ function ThreadCard({
                 )}
               </h5>
               <div className="rounded-lg bg-blue-500/5 border border-blue-500/20 p-3">
-                <p className="text-sm text-zinc-300 whitespace-pre-wrap leading-relaxed">
-                  {thread.draftResponse}
-                </p>
+                <textarea
+                  value={editedResponse}
+                  onChange={(e) => setEditedResponse(e.target.value)}
+                  className="w-full text-sm text-zinc-300 bg-transparent border-none outline-none resize-y leading-relaxed min-h-[80px]"
+                  rows={Math.max(4, editedResponse.split('\n').length + 1)}
+                />
               </div>
 
               {/* Reviewer Notes */}

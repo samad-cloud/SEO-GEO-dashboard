@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 const GEO_API_BASE_URL = process.env.GEO_API_URL || 'http://localhost:8000';
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ threadId: string }> }
 ) {
   const { threadId } = await params;
@@ -17,11 +17,13 @@ export async function POST(
     return NextResponse.json({ error: 'Invalid thread ID' }, { status: 400 });
   }
   try {
+    const body = await request.json().catch(() => ({}));
     const response = await fetch(
       `${GEO_API_BASE_URL}/api/geo/forums/threads/${threadId}/post`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
       }
     );
 
