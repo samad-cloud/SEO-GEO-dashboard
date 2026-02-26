@@ -60,6 +60,10 @@ For each finding, state: what the issue is, how many URLs are affected, 2-3 samp
 Only include sections where you find actual issues. Do not fabricate data.`;
 
 export async function runActionPlanAgent(digest: IssueDigest): Promise<string> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    throw new Error('ANTHROPIC_API_KEY environment variable is not set');
+  }
+
   const model = new ChatAnthropic({
     model: 'claude-sonnet-4-6',
     apiKey: process.env.ANTHROPIC_API_KEY,
@@ -106,10 +110,13 @@ Use your tools to investigate each category and write the full action plan now.
   }
 
   if (Array.isArray(lastMessage.content)) {
-    return lastMessage.content
+    const textBlocks = lastMessage.content
       .filter((block): block is { type: 'text'; text: string } => block.type === 'text')
-      .map((block) => block.text)
-      .join('\n');
+      .map((block) => block.text);
+    if (textBlocks.length === 0) {
+      throw new Error('Agent returned no text content in final message');
+    }
+    return textBlocks.join('\n');
   }
 
   throw new Error('Agent returned unexpected message format');
