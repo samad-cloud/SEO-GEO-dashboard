@@ -1,13 +1,51 @@
 'use client';
 
-import { Brain, AlertTriangle, Zap, Lightbulb, ArrowRight } from 'lucide-react';
+import { useState } from 'react';
+import { Brain, AlertTriangle, Zap, Lightbulb, ArrowRight, FileText, Download, Loader2 } from 'lucide-react';
 import type { AiAnalysis } from '@/types/seo';
 
 interface AiAnalysisTabProps {
   aiAnalysis?: AiAnalysis;
+  auditId?: string | null;
 }
 
-export function AiAnalysisTab({ aiAnalysis }: AiAnalysisTabProps) {
+export function AiAnalysisTab({ aiAnalysis, auditId }: AiAnalysisTabProps) {
+  const [generating, setGenerating] = useState(false);
+  const [actionPlanPath, setActionPlanPath] = useState<string | null>(null);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+
+  async function handleGenerate() {
+    if (!auditId) return;
+    setGenerating(true);
+    setGenerateError(null);
+    try {
+      const res = await fetch(`/api/seo/audits/${encodeURIComponent(auditId)}/action-plan`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.details || data.error || 'Generation failed');
+      setActionPlanPath(data.actionPlanGcsPath);
+    } catch (err) {
+      setGenerateError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  async function handleDownload() {
+    if (!auditId) return;
+    const res = await fetch(`/api/seo/audits/${encodeURIComponent(auditId)}/action-plan/download`);
+    if (!res.ok) return;
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ACTION-PLAN-${auditId}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
   if (!aiAnalysis?.executive_summary) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -129,6 +167,48 @@ export function AiAnalysisTab({ aiAnalysis }: AiAnalysisTabProps) {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Action Plan */}
+      {auditId && (
+        <div className="p-4 rounded-lg bg-zinc-800/50 border border-zinc-700">
+          <div className="flex items-center gap-2 mb-3">
+            <FileText className="w-4 h-4 text-emerald-400" />
+            <h3 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">
+              Action Plan
+            </h3>
+          </div>
+          <p className="text-xs text-zinc-400 mb-3">
+            Generate a prioritised ACTION-PLAN.md from all URL issues in this audit using a LangChain agent.
+          </p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleGenerate}
+              disabled={generating}
+              className="flex items-center gap-2 px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-medium text-white transition-colors"
+            >
+              {generating ? (
+                <><Loader2 className="w-3 h-3 animate-spin" /> Generating…</>
+              ) : (
+                <><FileText className="w-3 h-3" /> Generate Action Plan</>
+              )}
+            </button>
+            {actionPlanPath && (
+              <button
+                onClick={handleDownload}
+                className="flex items-center gap-2 px-3 py-1.5 rounded bg-zinc-700 hover:bg-zinc-600 text-xs font-medium text-zinc-200 transition-colors"
+              >
+                <Download className="w-3 h-3" /> Download .md
+              </button>
+            )}
+          </div>
+          {actionPlanPath && (
+            <p className="mt-2 text-xs text-emerald-400 break-all">{actionPlanPath}</p>
+          )}
+          {generateError && (
+            <p className="mt-2 text-xs text-red-400">{generateError}</p>
+          )}
         </div>
       )}
 

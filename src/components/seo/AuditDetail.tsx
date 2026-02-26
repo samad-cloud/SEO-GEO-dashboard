@@ -179,7 +179,7 @@ export function AuditDetail({ run, report, gcsPath, auditId, isLoading = false, 
             <MetricsTab report={report} />
           </Tabs.Content>
           <Tabs.Content value="ai-analysis" className="p-4">
-            <AiAnalysisTab aiAnalysis={report.reports[0]?.ai_analysis} />
+            <AiAnalysisTab aiAnalysis={report.reports[0]?.ai_analysis} auditId={auditId} />
           </Tabs.Content>
           <Tabs.Content value="raw-json" className="p-4">
             <RawJsonTab
