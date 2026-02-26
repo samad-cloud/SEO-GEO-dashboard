@@ -26,44 +26,44 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: 'Audit ID is required' }, { status: 400 });
   }
 
-  const bq = getBigQueryClient();
-  const tableName = getTableName();
-
-  // 1. Look up the audit row
-  const [rows] = await bq.query({
-    query: `
-      SELECT report_gcs_path, action_plan_gcs_path, domain, audit_date
-      FROM \`${tableName}\`
-      WHERE audit_id = @auditId
-      LIMIT 1
-    `,
-    params: { auditId },
-    location: 'US',
-  });
-
-  if (!rows.length) {
-    return NextResponse.json({ error: 'Audit not found' }, { status: 404 });
-  }
-
-  const row = rows[0] as AuditRow;
-
-  // 2. Return early if already generated
-  if (row.action_plan_gcs_path) {
-    return NextResponse.json({
-      status: 'exists',
-      actionPlanGcsPath: row.action_plan_gcs_path,
-      auditId,
-    });
-  }
-
-  if (!row.report_gcs_path) {
-    return NextResponse.json(
-      { error: 'No GCS report found for this audit — cannot generate action plan' },
-      { status: 422 }
-    );
-  }
-
   try {
+    const bq = getBigQueryClient();
+    const tableName = getTableName();
+
+    // 1. Look up the audit row
+    const [rows] = await bq.query({
+      query: `
+        SELECT report_gcs_path, action_plan_gcs_path, domain, audit_date
+        FROM \`${tableName}\`
+        WHERE audit_id = @auditId
+        LIMIT 1
+      `,
+      params: { auditId },
+      location: 'US',
+    });
+
+    if (!rows.length) {
+      return NextResponse.json({ error: 'Audit not found' }, { status: 404 });
+    }
+
+    const row = rows[0] as AuditRow;
+
+    // 2. Return early if already generated
+    if (row.action_plan_gcs_path) {
+      return NextResponse.json({
+        status: 'exists',
+        actionPlanGcsPath: row.action_plan_gcs_path,
+        auditId,
+      });
+    }
+
+    if (!row.report_gcs_path) {
+      return NextResponse.json(
+        { error: 'No GCS report found for this audit — cannot generate action plan' },
+        { status: 422 }
+      );
+    }
+
     // 3. Download the raw GCS JSON
     const parsed = parseGcsUri(row.report_gcs_path);
     if (!parsed) {
