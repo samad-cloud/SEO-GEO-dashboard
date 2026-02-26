@@ -12,6 +12,7 @@ export interface BigQuerySeoAuditRow {
   medium_count: number | null;
   low_count: number | null;
   report_gcs_path: string | null;
+  action_plan_gcs_path?: string | null;
 }
 
 export interface BigQueryPaginationParams {
