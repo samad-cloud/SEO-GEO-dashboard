@@ -17,6 +17,7 @@ interface AuditDetailProps {
   report: AuditReport | null;
   gcsPath?: string | null;
   auditId?: string | null;
+  actionPlanGcsPath?: string | null;
   isLoading?: boolean;
   error?: string | null;
 }
@@ -66,7 +67,7 @@ function DetailSkeleton() {
   );
 }
 
-export function AuditDetail({ run, report, gcsPath, auditId, isLoading = false, error = null }: AuditDetailProps) {
+export function AuditDetail({ run, report, gcsPath, auditId, actionPlanGcsPath, isLoading = false, error = null }: AuditDetailProps) {
   const [activeTab, setActiveTab] = useState('summary');
 
   // Loading state
@@ -179,7 +180,7 @@ export function AuditDetail({ run, report, gcsPath, auditId, isLoading = false, 
             <MetricsTab report={report} />
           </Tabs.Content>
           <Tabs.Content value="ai-analysis" className="p-4">
-            <AiAnalysisTab aiAnalysis={report.reports[0]?.ai_analysis} auditId={auditId} />
+            <AiAnalysisTab aiAnalysis={report.reports[0]?.ai_analysis} auditId={auditId} existingActionPlanPath={actionPlanGcsPath} />
           </Tabs.Content>
           <Tabs.Content value="raw-json" className="p-4">
             <RawJsonTab

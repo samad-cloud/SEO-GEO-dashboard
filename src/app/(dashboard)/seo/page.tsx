@@ -33,6 +33,7 @@ export default function SeoPage() {
     run: selectedRun,
     report: selectedReport,
     gcsPath,
+    actionPlanGcsPath,
     isLoading: isLoadingDetail,
     error: detailError,
   } = useAuditReport(selectedAuditId);
@@ -59,6 +60,7 @@ export default function SeoPage() {
         report={selectedReport}
         gcsPath={gcsPath}
         auditId={selectedAuditId}
+        actionPlanGcsPath={actionPlanGcsPath}
         isLoading={isLoadingDetail}
         error={detailError}
       />

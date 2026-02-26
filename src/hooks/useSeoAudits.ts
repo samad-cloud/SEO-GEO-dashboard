@@ -88,6 +88,7 @@ interface UseAuditReportResult {
   run: AuditRun | null;
   report: AuditReport | null;
   gcsPath: string | null;
+  actionPlanGcsPath: string | null;
   isLoading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
@@ -101,6 +102,7 @@ export function useAuditReport(auditId: string | null): UseAuditReportResult {
   const [run, setRun] = useState<AuditRun | null>(null);
   const [report, setReport] = useState<AuditReport | null>(null);
   const [gcsPath, setGcsPath] = useState<string | null>(null);
+  const [actionPlanGcsPath, setActionPlanGcsPath] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -109,6 +111,7 @@ export function useAuditReport(auditId: string | null): UseAuditReportResult {
       setRun(null);
       setReport(null);
       setGcsPath(null);
+      setActionPlanGcsPath(null);
       return;
     }
 
@@ -121,11 +124,13 @@ export function useAuditReport(auditId: string | null): UseAuditReportResult {
       setRun(result.run);
       setReport(result.report);
       setGcsPath(result.gcs_path ?? null);
+      setActionPlanGcsPath(result.action_plan_gcs_path ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load audit detail');
       setRun(null);
       setReport(null);
       setGcsPath(null);
+      setActionPlanGcsPath(null);
     } finally {
       setIsLoading(false);
     }
@@ -143,6 +148,7 @@ export function useAuditReport(auditId: string | null): UseAuditReportResult {
     run,
     report,
     gcsPath,
+    actionPlanGcsPath,
     isLoading,
     error,
     refresh,

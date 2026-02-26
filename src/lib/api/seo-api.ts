@@ -16,6 +16,7 @@ export interface AuditDetailResponse {
   run: AuditRun;
   report: AuditReport;
   gcs_path?: string | null;
+  action_plan_gcs_path?: string | null;
 }
 
 export interface ApiError {
