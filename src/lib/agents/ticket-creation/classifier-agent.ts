@@ -1,6 +1,8 @@
 import { ChatAnthropic } from '@langchain/anthropic';
 import { createReactAgent } from '@langchain/langgraph/prebuilt';
 import { HumanMessage } from '@langchain/core/messages';
+import { tool } from '@langchain/core/tools';
+import { z } from 'zod';
 import { buildClassifierTools } from './tools';
 import type {
   IssueGroupForTicket,
@@ -90,33 +92,28 @@ Out of Scope tickets:
 TICKET TEMPLATE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-## Objective
-[One sentence: which SEO element is broken, on which URL/page, what region(s) are affected]
+objective: A specific, actionable Jira ticket title derived from your investigation findings.
+           Use the exact page name (from the spec), the SEO element, and the affected region(s).
+           Format: "Fix [SEO element] on [page name] – [region or 'all regions']"
+           Examples:
+             "Fix missing meta description on Home page – all regions"
+             "Fix H1 tag rendered as H3 on Category pages – GB & US"
+             "Correct og:title field value on Product pages via backoffice – EU regions"
+           MUST be under 200 characters. It becomes the Jira issue title.
 
-## Summary
-[2-3 sentences: what is wrong, how it was discovered, and the SEO/business impact]
+summary: 2-3 sentences — what is wrong, how it was discovered, and the SEO/business impact.
 
-## Proposed Solution
-Classification: [classification]
-Team: [team]
-
-[Team-appropriate instructions]
+proposedSolution: Full text including:
+  Classification: [one of the four classifications]
+  Team: [Tech Team or Data Team]
+  [Team-appropriate instructions]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-OUTPUT INSTRUCTIONS
+FINAL STEP — REQUIRED
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-After completing your investigation and drafting the ticket, output ONLY a valid JSON object
-(no markdown fences, no extra text) matching this exact shape:
-
-{
-  "classification": "Frontend Rendering Issue | API Data Issue - Field Exists | API Data Issue - Field Missing | Out of Scope",
-  "team": "Tech Team | Data Team",
-  "priority": "Highest | High | Medium | Low",
-  "objective": "one sentence",
-  "summary": "2-3 sentences",
-  "proposedSolution": "full proposed solution text including the Classification: and Team: lines"
-}`;
+After completing your investigation, you MUST call the submitTicket tool as your LAST action.
+Do not write the ticket as text — call the tool. The task is not complete until submitTicket is called.`;
 
 const SEVERITY_TO_PRIORITY: Record<string, JiraPriority> = {
   critical: 'Highest',
@@ -125,25 +122,42 @@ const SEVERITY_TO_PRIORITY: Record<string, JiraPriority> = {
   low: 'Low',
 };
 
-/**
- * Extract JSON from the agent's final message.
- * Handles both raw JSON and JSON wrapped in markdown code fences.
- */
-function extractJson(text: string): string {
-  // Try to strip markdown code fences if present
-  const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (fenceMatch) return fenceMatch[1].trim();
-
-  // Find raw JSON object
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (jsonMatch) return jsonMatch[0];
-
-  return text.trim();
-}
+const ticketOutputSchema = z.object({
+  classification: z
+    .enum([
+      'Frontend Rendering Issue',
+      'API Data Issue - Field Exists',
+      'API Data Issue - Field Missing',
+      'Out of Scope',
+    ])
+    .describe('Root cause classification'),
+  team: z
+    .enum(['Tech Team', 'Data Team'])
+    .describe('Team responsible for the fix'),
+  priority: z
+    .enum(['Highest', 'High', 'Medium', 'Low'])
+    .describe('Jira priority level'),
+  objective: z
+    .string()
+    .describe(
+      'Specific Jira ticket title: "Fix [SEO element] on [page name] – [region]". Use exact page name from spec. Under 200 characters.'
+    ),
+  summary: z
+    .string()
+    .describe(
+      '2-3 sentences: what is wrong, how discovered, SEO/business impact'
+    ),
+  proposedSolution: z
+    .string()
+    .describe(
+      'Full proposed solution text including Classification and Team lines'
+    ),
+});
 
 /**
  * Run the classifier agent for one issue group.
- * Returns a DraftedTicket or throws on unrecoverable error.
+ * Uses a submitTicket tool to capture structured output — tool inputs are Zod-validated,
+ * so this guarantees a well-formed response regardless of the agent's prose output.
  */
 export async function runClassifierAgent(
   issueGroup: IssueGroupForTicket
@@ -154,11 +168,27 @@ export async function runClassifierAgent(
     maxTokens: 4096,
   });
 
-  const tools = buildClassifierTools();
+  // Capture structured output from the submitTicket tool call via closure
+  let capturedOutput: z.infer<typeof ticketOutputSchema> | null = null;
+
+  const submitTicketTool = tool(
+    async (input) => {
+      capturedOutput = input;
+      return 'Ticket submitted successfully. Your work is complete.';
+    },
+    {
+      name: 'submitTicket',
+      description:
+        'Submit the final drafted Jira ticket. You MUST call this as your last action after completing your investigation.',
+      schema: ticketOutputSchema,
+    }
+  );
+
+  const allTools = [...buildClassifierTools(), submitTicketTool];
 
   const agent = createReactAgent({
     llm: model,
-    tools,
+    tools: allTools,
     prompt: SYSTEM_PROMPT,
   });
 
@@ -175,84 +205,35 @@ Example recommendation: ${issueGroup.exampleIssue.recommendation ?? 'N/A'}
 Example current value: ${issueGroup.exampleIssue.current_value ?? 'N/A'}
 Example expected value: ${issueGroup.exampleIssue.expected_value ?? 'N/A'}
 
-Follow the classification process in your instructions. After investigating, output your JSON ticket draft.`;
+Follow the classification process in your instructions. After investigating, call submitTicket with your structured ticket data.`;
 
-  const result = await agent.invoke(
-    {
-      messages: [new HumanMessage(userMessage)],
-    },
-    {
-      // Prevent runaway agents — 15 tool calls max per issue
-      recursionLimit: 20,
-    }
+  await agent.invoke(
+    { messages: [new HumanMessage(userMessage)] },
+    { recursionLimit: 25 }
   );
 
-  // Extract the last AI message
-  const messages = result.messages;
-  const lastMessage = messages[messages.length - 1];
-
-  let rawContent: string;
-  if (typeof lastMessage.content === 'string') {
-    rawContent = lastMessage.content;
-  } else if (Array.isArray(lastMessage.content)) {
-    rawContent = lastMessage.content
-      .filter(
-        (block): block is { type: 'text'; text: string } => block.type === 'text'
-      )
-      .map((block) => block.text)
-      .join('\n');
-  } else {
-    throw new Error('Classifier agent returned unexpected message format');
-  }
-
-  // Parse the JSON output
-  let parsed: {
-    classification: string;
-    team: string;
-    priority: string;
-    objective: string;
-    summary: string;
-    proposedSolution: string;
-  };
-
-  try {
-    parsed = JSON.parse(extractJson(rawContent));
-  } catch {
+  if (!capturedOutput) {
     throw new Error(
-      `Classifier agent did not return valid JSON for issue "${issueGroup.issue_type}". ` +
-        `Raw output: ${rawContent.slice(0, 500)}`
+      `Classifier agent did not call submitTicket for issue "${issueGroup.issue_type}". ` +
+        `The agent completed without submitting a structured ticket.`
     );
   }
 
-  // Validate and normalise fields with safe fallbacks
-  const classification = (
-    [
-      'Frontend Rendering Issue',
-      'API Data Issue - Field Exists',
-      'API Data Issue - Field Missing',
-      'Out of Scope',
-    ].includes(parsed.classification)
-      ? parsed.classification
-      : 'Frontend Rendering Issue'
-  ) as Classification;
-
-  const team = (['Tech Team', 'Data Team'].includes(parsed.team)
-    ? parsed.team
-    : 'Tech Team') as TeamAssignment;
+  const output = capturedOutput;
 
   const priority = (
-    ['Highest', 'High', 'Medium', 'Low'].includes(parsed.priority)
-      ? parsed.priority
+    ['Highest', 'High', 'Medium', 'Low'].includes(output.priority)
+      ? output.priority
       : SEVERITY_TO_PRIORITY[issueGroup.severity] ?? 'Medium'
   ) as JiraPriority;
 
   return {
     issueGroup,
-    classification,
-    team,
+    classification: output.classification as Classification,
+    team: output.team as TeamAssignment,
     priority,
-    objective: parsed.objective ?? `Issue with ${issueGroup.issue_type}`,
-    summary: parsed.summary ?? '',
-    proposedSolution: parsed.proposedSolution ?? '',
+    objective: output.objective ?? `Issue with ${issueGroup.issue_type}`,
+    summary: output.summary ?? '',
+    proposedSolution: output.proposedSolution ?? '',
   };
 }

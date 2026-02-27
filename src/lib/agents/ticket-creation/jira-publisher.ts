@@ -143,7 +143,7 @@ async function createJiraIssue(
   const body = {
     fields: {
       project: { key: projectKey },
-      summary: ticket.objective,
+      summary: ticket.objective.slice(0, 255),
       description: buildAdfDescription(ticket, urlCount, sampleUrls),
       issuetype: { name: 'Task' },
       labels: ['SEO', teamToLabel(ticket.team)],
