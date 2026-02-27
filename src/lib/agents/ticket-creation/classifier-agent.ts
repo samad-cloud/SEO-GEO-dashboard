@@ -168,12 +168,13 @@ export async function runClassifierAgent(
     maxTokens: 4096,
   });
 
-  // Capture structured output from the submitTicket tool call via closure
-  let capturedOutput: z.infer<typeof ticketOutputSchema> | null = null;
+  // Capture structured output from the submitTicket tool call via a mutable wrapper.
+  // A wrapper object is required so TypeScript can track the mutation through the async closure.
+  const capture: { output: z.infer<typeof ticketOutputSchema> | null } = { output: null };
 
   const submitTicketTool = tool(
     async (input) => {
-      capturedOutput = input;
+      capture.output = input;
       return 'Ticket submitted successfully. Your work is complete.';
     },
     {
@@ -212,14 +213,14 @@ Follow the classification process in your instructions. After investigating, cal
     { recursionLimit: 25 }
   );
 
-  if (!capturedOutput) {
+  if (!capture.output) {
     throw new Error(
       `Classifier agent did not call submitTicket for issue "${issueGroup.issue_type}". ` +
         `The agent completed without submitting a structured ticket.`
     );
   }
 
-  const output = capturedOutput;
+  const output = capture.output;
 
   const priority = (
     ['Highest', 'High', 'Medium', 'Low'].includes(output.priority)
