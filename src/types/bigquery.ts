@@ -13,6 +13,7 @@ export interface BigQuerySeoAuditRow {
   low_count: number | null;
   report_gcs_path: string | null;
   action_plan_gcs_path?: string | null;
+  jira_tickets_gcs_path?: string | null;
 }
 
 export interface BigQueryPaginationParams {
