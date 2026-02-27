@@ -34,6 +34,7 @@ export default function SeoPage() {
     report: selectedReport,
     gcsPath,
     actionPlanGcsPath,
+    jiraTicketsGcsPath,
     isLoading: isLoadingDetail,
     error: detailError,
   } = useAuditReport(selectedAuditId);
@@ -61,6 +62,7 @@ export default function SeoPage() {
         gcsPath={gcsPath}
         auditId={selectedAuditId}
         actionPlanGcsPath={actionPlanGcsPath}
+        jiraTicketsGcsPath={jiraTicketsGcsPath}
         isLoading={isLoadingDetail}
         error={detailError}
       />

@@ -146,7 +146,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         medium_count,
         low_count,
         report_gcs_path,
-        action_plan_gcs_path
+        action_plan_gcs_path,
+        jira_tickets_gcs_path
       FROM \`${tableName}\`
       WHERE audit_id = @auditId
       ORDER BY domain
@@ -212,12 +213,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const actionPlanGcsPath = typedRows[0]?.action_plan_gcs_path ?? null;
+    const jiraTicketsGcsPath = typedRows[0]?.jira_tickets_gcs_path ?? null;
 
     return NextResponse.json({
       run,
       report,
       gcs_path: gcsPath,
       action_plan_gcs_path: actionPlanGcsPath,
+      jira_tickets_gcs_path: jiraTicketsGcsPath,
     });
   } catch (error) {
     console.error('Error fetching audit:', error);
