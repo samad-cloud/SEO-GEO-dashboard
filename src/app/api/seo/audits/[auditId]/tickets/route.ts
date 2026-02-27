@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBigQueryClient, getTableName } from '@/lib/bigquery';
 import { getStorageClient, parseGcsUri } from '@/lib/gcs';
+import { groupIssuesForTickets } from '@/lib/agents/ticket-creation/grouper';
 import { runTicketCreationPipeline } from '@/lib/agents/ticket-creation/pipeline';
 import type { RawAuditJson } from '@/lib/agents/ticket-creation/types';
 
@@ -52,7 +53,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({
       status: 'exists',
       gcsPath: row.jira_tickets_gcs_path,
-      auditId,
+      runId: auditId,
     });
   }
 
@@ -80,20 +81,11 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
 
     const rawJson = JSON.parse(contents.toString('utf-8')) as RawAuditJson;
 
-    // 4. Resolve audit date string
-    const auditDate =
-      typeof row.audit_date === 'object' && row.audit_date !== null
-        ? row.audit_date.value
-        : row.audit_date;
+    // 4. Group issues for this single domain
+    const issueGroups = groupIssuesForTickets(rawJson);
 
-    // 5. Run the 3-stage pipeline
-    const result = await runTicketCreationPipeline(
-      auditId,
-      rawJson,
-      row.domain,
-      auditDate,
-      parsed.bucket
-    );
+    // 5. Run the pipeline with auditId as the runId
+    const result = await runTicketCreationPipeline(auditId, issueGroups, parsed.bucket);
 
     // 6. Store GCS path back in BigQuery for idempotency
     await bq.query({

@@ -1,10 +1,15 @@
 #!/usr/bin/env node
 /**
- * Cleanup script — deletes all Jira tickets for a given audit ID
- * and clears jira_tickets_gcs_path in BigQuery so you can re-run the pipeline.
+ * Cleanup script — deletes all Jira tickets for a given audit or combined run,
+ * and clears the tracking record so you can re-run the pipeline.
  *
- * Usage:   node scripts/cleanup-test-tickets.mjs <auditId>
- * Example: node scripts/cleanup-test-tickets.mjs printerpix.it_20260225_235101
+ * Usage (per-domain audit):
+ *   node scripts/cleanup-test-tickets.mjs <auditId>
+ *   node scripts/cleanup-test-tickets.mjs printerpix.it_20260225_235101
+ *
+ * Usage (combined cross-domain run):
+ *   node scripts/cleanup-test-tickets.mjs --combined <date>
+ *   node scripts/cleanup-test-tickets.mjs --combined 2026-02-25
  */
 
 import { readFileSync } from 'fs';
@@ -31,12 +36,20 @@ function loadEnv() {
 
 loadEnv();
 
-// ── Validate arguments ────────────────────────────────────────────────────────
+// ── Parse arguments ───────────────────────────────────────────────────────────
 
-const auditId = process.argv[2];
-if (!auditId) {
-  console.error('Usage: node scripts/cleanup-test-tickets.mjs <auditId>');
-  console.error('Example: node scripts/cleanup-test-tickets.mjs printerpix.it_20260225_235101');
+const args = process.argv.slice(2);
+const isCombined = args[0] === '--combined';
+const identifier = isCombined ? args[1] : args[0];
+
+if (!identifier) {
+  console.error('Usage (per-domain audit):');
+  console.error('  node scripts/cleanup-test-tickets.mjs <auditId>');
+  console.error('  node scripts/cleanup-test-tickets.mjs printerpix.it_20260225_235101');
+  console.error('');
+  console.error('Usage (combined cross-domain run):');
+  console.error('  node scripts/cleanup-test-tickets.mjs --combined <date>');
+  console.error('  node scripts/cleanup-test-tickets.mjs --combined 2026-02-25');
   process.exit(1);
 }
 
@@ -50,7 +63,8 @@ const jiraAuth = `Basic ${Buffer.from(`${jiraEmail}:${jiraApiKey}`).toString('ba
 const bqProject = process.env.BIGQUERY_PROJECT_ID;
 const bqDataset = process.env.BIGQUERY_DATASET;
 const bqTable = process.env.BIGQUERY_TABLE;
-const tableName = `\`${bqProject}.${bqDataset}.${bqTable}\``;
+const auditTableName = `\`${bqProject}.${bqDataset}.${bqTable}\``;
+const combinedRunsTable = `\`${bqProject}.${bqDataset}.seo_combined_ticket_runs\``;
 
 const credBase64 = process.env.GOOGLE_CREDENTIALS_BASE64;
 if (!credBase64) throw new Error('GOOGLE_CREDENTIALS_BASE64 not set');
@@ -65,23 +79,44 @@ async function main() {
   const bq = new BigQuery({ projectId: bqProject, credentials: creds });
   const storage = new Storage({ projectId: bqProject, credentials: creds });
 
-  // 1. Get GCS path from BigQuery
-  console.log(`\nFetching ticket data for audit: ${auditId}`);
-  const [rows] = await bq.query({
-    query: `SELECT jira_tickets_gcs_path FROM ${tableName} WHERE audit_id = @auditId LIMIT 1`,
-    params: { auditId },
-    location: 'US',
-  });
+  let gcsUri;
 
-  if (!rows.length || !rows[0].jira_tickets_gcs_path) {
-    console.log('No ticket data found for this audit. Nothing to clean up.');
-    process.exit(0);
+  if (isCombined) {
+    // ── Combined run cleanup ─────────────────────────────────────────────────
+    console.log(`\nFetching combined ticket run for date: ${identifier}`);
+    const [rows] = await bq.query({
+      query: `SELECT gcs_path FROM ${combinedRunsTable} WHERE run_date = @runDate LIMIT 1`,
+      params: { runDate: identifier },
+      location: 'US',
+    });
+
+    if (!rows.length || !rows[0].gcs_path) {
+      console.log('No combined ticket run found for this date. Nothing to clean up.');
+      process.exit(0);
+    }
+
+    gcsUri = rows[0].gcs_path;
+  } else {
+    // ── Per-domain audit cleanup ─────────────────────────────────────────────
+    console.log(`\nFetching ticket data for audit: ${identifier}`);
+    const [rows] = await bq.query({
+      query: `SELECT jira_tickets_gcs_path FROM ${auditTableName} WHERE audit_id = @auditId LIMIT 1`,
+      params: { auditId: identifier },
+      location: 'US',
+    });
+
+    if (!rows.length || !rows[0].jira_tickets_gcs_path) {
+      console.log('No ticket data found for this audit. Nothing to clean up.');
+      process.exit(0);
+    }
+
+    gcsUri = rows[0].jira_tickets_gcs_path;
   }
 
-  const gcsUri = rows[0].jira_tickets_gcs_path;
   console.log(`GCS path: ${gcsUri}`);
 
-  // 2. Download the tickets JSON from GCS
+  // ── Download tickets JSON from GCS ──────────────────────────────────────────
+
   const gcsMatch = gcsUri.match(/^gs:\/\/([^/]+)\/(.+)$/);
   if (!gcsMatch) throw new Error(`Invalid GCS URI: ${gcsUri}`);
   const [, bucket, objectPath] = gcsMatch;
@@ -94,6 +129,8 @@ async function main() {
   for (const t of tickets) {
     console.log(`  ${t.issueKey}  (${t.issueType})`);
   }
+
+  // ── Delete from Jira ─────────────────────────────────────────────────────────
 
   if (tickets.length === 0) {
     console.log('No tickets to delete from Jira.');
@@ -117,14 +154,25 @@ async function main() {
     }
   }
 
-  // 3. Clear jira_tickets_gcs_path in BigQuery
-  console.log('\nClearing jira_tickets_gcs_path in BigQuery...');
-  await bq.query({
-    query: `UPDATE ${tableName} SET jira_tickets_gcs_path = NULL WHERE audit_id = @auditId`,
-    params: { auditId },
-    location: 'US',
-  });
-  console.log('  ✓ BigQuery updated');
+  // ── Clear tracking record ────────────────────────────────────────────────────
+
+  if (isCombined) {
+    console.log('\nRemoving combined run record from BigQuery...');
+    await bq.query({
+      query: `DELETE FROM ${combinedRunsTable} WHERE run_date = @runDate`,
+      params: { runDate: identifier },
+      location: 'US',
+    });
+    console.log('  ✓ Combined run record removed');
+  } else {
+    console.log('\nClearing jira_tickets_gcs_path in BigQuery...');
+    await bq.query({
+      query: `UPDATE ${auditTableName} SET jira_tickets_gcs_path = NULL WHERE audit_id = @auditId`,
+      params: { auditId: identifier },
+      location: 'US',
+    });
+    console.log('  ✓ BigQuery updated');
+  }
 
   console.log('\nDone! Re-run the ticket creation pipeline whenever you are ready.');
 }

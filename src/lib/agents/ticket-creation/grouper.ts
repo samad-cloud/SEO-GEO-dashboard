@@ -16,7 +16,7 @@ export function groupIssuesForTickets(raw: RawAuditJson): IssueGroupForTicket[] 
   // key: `${issue_type}|||${severity}|||${category}`
   const groupMap = new Map<
     string,
-    { allUrls: string[]; exampleIssue: IssueGroupForTicket['exampleIssue'] }
+    { allUrls: string[]; exampleIssue: IssueGroupForTicket['exampleIssue']; domain: string }
   >();
 
   const urls = raw.urls ?? {};
@@ -40,6 +40,7 @@ export function groupIssuesForTickets(raw: RawAuditJson): IssueGroupForTicket[] 
             current_value: issue.current_value,
             expected_value: issue.expected_value,
           },
+          domain: raw.domain,
         });
       }
     }
@@ -54,6 +55,7 @@ export function groupIssuesForTickets(raw: RawAuditJson): IssueGroupForTicket[] 
         category,
         count: val.allUrls.length,
         allUrls: val.allUrls,
+        affectedDomains: [val.domain],
         exampleIssue: val.exampleIssue,
       };
     })

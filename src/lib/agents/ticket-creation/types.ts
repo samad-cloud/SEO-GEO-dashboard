@@ -34,6 +34,7 @@ export interface IssueGroupForTicket {
   category: string;
   count: number;
   allUrls: string[];       // every URL affected (no cap — CSV handles large sets)
+  affectedDomains: string[]; // e.g. ["printerpix.com", "printerpix.co.uk"]
   exampleIssue: {          // one concrete example for the agent to reason from
     url: string;
     description?: string;
@@ -76,7 +77,7 @@ export interface JiraTicketResult {
 
 export interface TicketCreationResult {
   status: 'complete' | 'exists';
-  auditId: string;
+  runId: string;
   ticketsCreated: number;
   tickets: JiraTicketResult[];
   failures: Array<{ issueType: string; error: string }>;

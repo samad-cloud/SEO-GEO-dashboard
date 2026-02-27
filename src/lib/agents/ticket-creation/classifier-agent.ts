@@ -193,13 +193,18 @@ export async function runClassifierAgent(
     prompt: SYSTEM_PROMPT,
   });
 
+  const domainsLine =
+    issueGroup.affectedDomains && issueGroup.affectedDomains.length > 0
+      ? `Affected domains (${issueGroup.affectedDomains.length}): ${issueGroup.affectedDomains.join(', ')}`
+      : '';
+
   const userMessage = `Classify and draft a ticket for this SEO issue group:
 
 Issue Type: ${issueGroup.issue_type}
 Severity: ${issueGroup.severity}
 Category: ${issueGroup.category}
 Affected URL count: ${issueGroup.count}
-
+${domainsLine ? domainsLine + '\n' : ''}
 Example URL: ${issueGroup.exampleIssue.url}
 Example description: ${issueGroup.exampleIssue.description ?? 'N/A'}
 Example recommendation: ${issueGroup.exampleIssue.recommendation ?? 'N/A'}

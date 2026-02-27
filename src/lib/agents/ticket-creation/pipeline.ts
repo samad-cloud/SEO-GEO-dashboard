@@ -1,9 +1,8 @@
 import { getStorageClient } from '@/lib/gcs';
-import { groupIssuesForTickets } from './grouper';
 import { runClassifierAgent } from './classifier-agent';
 import { publishTicketsToJira } from './jira-publisher';
 import type {
-  RawAuditJson,
+  IssueGroupForTicket,
   DraftedTicket,
   TicketCreationResult,
 } from './types';
@@ -13,26 +12,20 @@ const CLASSIFIER_BATCH_SIZE = 3; // max concurrent classifier agents
 /**
  * Run the full 3-stage ticket-creation pipeline.
  *
- * @param auditId   - The audit ID (used for idempotency record)
- * @param rawJson   - The full raw audit JSON downloaded from GCS
- * @param domain    - e.g. "printerpix.com"
- * @param auditDate - e.g. "2026-02-16"
- * @param bucket    - GCS bucket name (parsed from report_gcs_path)
+ * @param runId       - Identifier for this run (date string for combined runs, auditId for per-domain)
+ * @param issueGroups - Pre-grouped issues (cross-domain or single-domain)
+ * @param bucket      - GCS bucket name
  */
 export async function runTicketCreationPipeline(
-  auditId: string,
-  rawJson: RawAuditJson,
-  domain: string,
-  auditDate: string,
+  runId: string,
+  issueGroups: IssueGroupForTicket[],
   bucket: string
 ): Promise<TicketCreationResult> {
-  // ── Stage 1: Issue Grouper ───────────────────────────────────────────────
-  const issueGroups = groupIssuesForTickets(rawJson);
   console.log(
-    `[ticket-pipeline] Grouped ${issueGroups.length} issue types from audit ${auditId}`
+    `[ticket-pipeline] Starting pipeline for run "${runId}" with ${issueGroups.length} issue groups`
   );
 
-  // ── Stage 2: Classifier + Drafter (batched parallel) ────────────────────
+  // ── Stage 1: Classifier + Drafter (batched parallel) ────────────────────
   const draftedTickets: DraftedTicket[] = [];
   const classifierFailures: Array<{ issueType: string; error: string }> = [];
 
@@ -73,7 +66,7 @@ export async function runTicketCreationPipeline(
       `${classifierFailures.length} classifier failures.`
   );
 
-  // ── Stage 3: Jira Publisher (sequential) ────────────────────────────────
+  // ── Stage 2: Jira Publisher (sequential) ────────────────────────────────
   const publishResults = await publishTicketsToJira(draftedTickets);
 
   const successfulTickets = publishResults
@@ -95,14 +88,12 @@ export async function runTicketCreationPipeline(
   );
 
   // ── Store results in GCS ────────────────────────────────────────────────
-  const gcsObjectPath = `tickets/${domain}/${auditDate}/tickets.json`;
+  const gcsObjectPath = `tickets/combined/${runId}/tickets.json`;
   const storage = getStorageClient();
 
   const ticketsJson = JSON.stringify(
     {
-      auditId,
-      domain,
-      auditDate,
+      runId,
       createdAt: new Date().toISOString(),
       ticketsCreated: successfulTickets.length,
       tickets: successfulTickets,
@@ -121,7 +112,7 @@ export async function runTicketCreationPipeline(
 
   return {
     status: 'complete',
-    auditId,
+    runId,
     ticketsCreated: successfulTickets.length,
     tickets: successfulTickets,
     failures: allFailures,

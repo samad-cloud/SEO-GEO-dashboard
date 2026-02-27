@@ -17,7 +17,6 @@ export interface AuditDetailResponse {
   report: AuditReport;
   gcs_path?: string | null;
   action_plan_gcs_path?: string | null;
-  jira_tickets_gcs_path?: string | null;
 }
 
 export interface ApiError {
