@@ -147,6 +147,7 @@ async function createJiraIssue(
       description: buildAdfDescription(ticket, urlCount, sampleUrls),
       issuetype: { name: 'Task' },
       labels: ['SEO', teamToLabel(ticket.team)],
+      assignee: { accountId: '70121:0205e0a0-7507-4a40-9a91-3167116851d0' },
       priority: { name: ticket.priority },
     },
   };
