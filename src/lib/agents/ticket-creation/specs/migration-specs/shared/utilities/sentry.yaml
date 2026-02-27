@@ -1,0 +1,348 @@
+name: SentryUtility
+source: utility/sentry.ts
+description: >
+  Centralized Sentry error logging and monitoring utility for the Printerpix e-commerce
+  storefront. Provides structured error reporting with automatic context enrichment
+  (user GUID, URL, region, timestamps). Supports HTTP error logging, logic exception
+  logging, memory usage tracking, and a generic logError function. Captures the last 5
+  GTM dataLayer actions as context when running in the browser.
+
+exports:
+  - name: ESentryEvent
+    type: enum
+    description: Enumeration of known Sentry event categories
+  - name: ESentryType
+    type: enum
+    description: Enumeration of severity levels (info, error, warn, debug)
+  - name: SENTRY_ENABLED
+    type: constant
+    value: true
+    description: Feature flag for enabling/disabling all Sentry logging (currently always true)
+  - name: MemoryUsageData
+    type: interface
+    description: Shape for memory usage tracking data
+  - name: HttpLogData
+    type: interface
+    description: Shape for HTTP error log entries
+  - name: ExceptionLogicSentry
+    type: interface
+    description: Shape for logic exception log entries
+  - name: gerServerInformation
+    type: server_function
+    description: >
+      Server-side function that retrieves MACHINE_TOKEN cookie and current URL
+      from the request context. Note the function name has a typo (ger instead of get).
+  - name: trackMemoryUsage
+    type: function
+    description: >
+      Starts memory tracking for a named function. Returns object with end() method
+      that logs the delta to Sentry.
+  - name: logHTTPDataToSentry
+    type: function
+    description: >
+      Primary function for logging HTTP-related events (API errors, network errors)
+      to Sentry with full context enrichment.
+  - name: logExceptionLogicIntoSentry
+    type: function
+    description: Logs business logic exceptions to Sentry
+  - name: logError
+    type: function
+    description: >
+      Generic error logging function intended as a replacement for console.error
+      throughout the application. Includes console output in debug mode.
+
+data_structure:
+  ESentryEvent:
+    values:
+      MEMORY_SNAPSHOT: MEMORY_SNAPSHOT
+      API_ERROR_RESPONSE: API_ERROR_RESPONSE
+      NETWORK_ERROR: NETWORK_ERROR
+      PRODUCT_PAGE_ERROR: PRODUCT_PAGE_ERROR
+      THEME_PAGE_ERROR: THEME_PAGE_ERROR
+      UPSELL_ERROR: UPSELL_ERROR
+      ADDON_ERROR: ADDON_ERROR
+      RYZAN_INVALID_ASPECT_RATIO: RYZAN_INVALID_ASPECT_RATIO
+
+  ESentryType:
+    values:
+      INFO: info
+      ERROR: error
+      WARN: warn
+      DEBUG: debug
+
+  MemoryUsageData:
+    fields:
+      - name: functionName
+        type: string
+        description: Name of the function being tracked
+      - name: heapUsed
+        type: string
+        description: Heap used delta formatted as X MB
+      - name: heapTotal
+        type: string
+        description: Heap total delta formatted as X MB
+      - name: external
+        type: string
+        description: External memory delta formatted as X MB
+      - name: duration
+        type: string
+        description: Execution duration formatted as Xms
+
+  HttpLogData:
+    fields:
+      - name: event
+        type: ESentryEvent
+        description: The event category
+      - name: type
+        type: ESentryType
+        description: Severity level
+      - name: data
+        type: string
+        description: Raw data string (often JSON stringified response/request body)
+      - name: url
+        type: string
+        description: The API endpoint URL
+      - name: errorCode
+        type: string | undefined
+        description: Optional HTTP error code
+      - name: errorMessage
+        type: string | undefined
+        description: Optional error message
+
+  ExceptionLogicSentry:
+    fields:
+      - name: event
+        type: ESentryEvent
+        description: The event category
+      - name: data
+        type: string
+        description: Raw data string describing the exception
+
+behavior:
+  sentry_initialization:
+    dsn: settings().SENTRY_DSN
+    traces_sample_rate: 1.0
+    environment: production
+    integrations:
+      kept: [InboundFilters, FunctionToString, LinkedErrors, HttpContext]
+      removed: All others (replay, breadcrumbs, performance, etc.)
+    description: >
+      Sentry is initialized at module load time with production environment.
+      Only essential integrations are kept to minimize bundle size and overhead.
+
+  gerServerInformation:
+    inputs: none (server context)
+    output: "{ machineToken: string, url: string }"
+    steps:
+      - Reads MACHINE_TOKEN cookie from request via this.cookie.get()
+      - Reads current URL from this.url.href
+      - Returns both values
+
+  logHTTPDataToSentry:
+    inputs:
+      - name: input
+        type: HttpLogData
+    output: void
+    steps:
+      - Checks SENTRY_ENABLED flag (currently always true)
+      - Creates a Sentry scope via withScope (async)
+      - Fetches server information (MACHINE_TOKEN, URL) via gerServerInformation()
+      - Sets tags for event_type (from input.type), application=storefront, region (from settings), endpoint (from input.url)
+      - Sets extras for user_guid (MACHINE_TOKEN), timestamp (ISO string), url (current page), raw_data (input.data)
+      - Conditionally sets error_message and error_code extras if provided
+      - Attempts to JSON.parse input.data and sets parsed_data extra if valid JSON
+      - If type is ERROR, captures last 5 window.dataLayer actions (browser only) as last5Actions extra
+      - Calls Sentry.captureException with Error containing event and url
+      - If type is NOT ERROR (info, debug, warn), maps type to Sentry severity (info->info, debug->debug, warn->warning)
+      - Calls Sentry.captureMessage with event, url, and severity level
+
+  logExceptionLogicIntoSentry:
+    inputs:
+      - name: input
+        type: ExceptionLogicSentry
+    output: void
+    steps:
+      - Checks SENTRY_ENABLED flag
+      - Creates Sentry scope, fetches server information
+      - Sets tags for event_type=ERROR, application=storefront, region
+      - Sets extras for user_guid, timestamp, url, raw_data
+      - Attempts to JSON.parse input.data for parsed_data extra
+      - Captures last 5 dataLayer actions (browser only)
+      - Calls Sentry.captureException with Error containing event name
+
+  trackMemoryUsage:
+    inputs:
+      - name: functionName
+        type: string
+        description: Name of the function to track
+    output: "{ end: () => void } | undefined"
+    steps:
+      - Checks SENTRY_ENABLED flag
+      - Records starting memory (process.memoryUsage()) and time (performance.now())
+      - Returns object with end() method
+      - When end() is called, records ending memory and time
+      - Calculates deltas (in MB for memory, ms for time)
+      - Calls logMemoryUsageToSentry with formatted MemoryUsageData
+    notes: >
+      Uses process.memoryUsage() which is Node.js only. This function is intended
+      for server-side performance monitoring, not browser use.
+
+  logError:
+    inputs:
+      - name: message
+        type: string
+        description: Error description
+      - name: error
+        type: unknown (optional)
+        description: Error object or additional error context
+      - name: context
+        type: "Record<string, any> (optional)"
+        description: Additional metadata key-value pairs
+    output: void
+    steps:
+      - Checks SENTRY_ENABLED flag
+      - Creates Sentry scope, fetches server information
+      - Sets standard tags (event_type=ERROR, application, region)
+      - Sets standard extras (user_guid, timestamp, url)
+      - If context provided, iterates entries and sets each as extra
+      - If error is an Error instance, sets error_message and error_stack extras
+      - If error is not an Error but truthy, sets error_data extra (JSON.stringify of error)
+      - Captures last 5 dataLayer actions (browser only)
+      - If error is Error instance, calls captureException
+      - Otherwise calls captureMessage with error severity
+      - In debug mode (settings().enableDebug), also logs to console.error
+
+dependencies:
+  internal:
+    - module: ~/config/settings
+      imports: [settings]
+      description: >
+        Provides application configuration including SENTRY_DSN, website (region name),
+        and enableDebug flag.
+  external:
+    - package: "@sentry/browser"
+      imports: [Sentry (namespace), SeverityLevel (type)]
+      description: Sentry browser SDK for error tracking and monitoring
+    - package: "@builder.io/qwik-city"
+      imports: [server$]
+      description: Qwik server function for gerServerInformation
+    - package: "@builder.io/qwik/build"
+      imports: [isBrowser]
+      description: Build-time constant to check if code is running in browser context
+
+used_by:
+  - module: API service layer
+    usage: logHTTPDataToSentry for all API error responses and network failures
+  - module: Product page
+    usage: PRODUCT_PAGE_ERROR event for page load failures
+  - module: Theme page
+    usage: THEME_PAGE_ERROR event for theme loading failures
+  - module: Upsell components
+    usage: UPSELL_ERROR event for upsell loading/processing failures
+  - module: Addon components
+    usage: ADDON_ERROR event for addon loading/processing failures
+  - module: Ryzan editor integration
+    usage: RYZAN_INVALID_ASPECT_RATIO for image aspect ratio validation failures
+  - module: Server-side route handlers
+    usage: trackMemoryUsage for performance monitoring of heavy operations
+  - module: Throughout application
+    usage: logError as general-purpose console.error replacement
+
+types:
+  ESentryEvent:
+    description: Enum of known Sentry event categories used across the application
+    values:
+      - MEMORY_SNAPSHOT: "MEMORY_SNAPSHOT"
+      - API_ERROR_RESPONSE: "API_ERROR_RESPONSE"
+      - NETWORK_ERROR: "NETWORK_ERROR"
+      - PRODUCT_PAGE_ERROR: "PRODUCT_PAGE_ERROR"
+      - THEME_PAGE_ERROR: "THEME_PAGE_ERROR"
+      - UPSELL_ERROR: "UPSELL_ERROR"
+      - ADDON_ERROR: "ADDON_ERROR"
+      - RYZAN_INVALID_ASPECT_RATIO: "RYZAN_INVALID_ASPECT_RATIO"
+
+  ESentryType:
+    description: Enum of severity levels for Sentry events
+    values:
+      - INFO: "info"
+      - ERROR: "error"
+      - WARN: "warn"
+      - DEBUG: "debug"
+
+  MemoryUsageData:
+    description: Shape for memory usage tracking data passed to Sentry
+    fields:
+      - name: functionName
+        type: string
+        description: Name of the function being tracked
+      - name: heapUsed
+        type: string
+        description: Heap used delta formatted as "X MB"
+      - name: heapTotal
+        type: string
+        description: Heap total delta formatted as "X MB"
+      - name: external
+        type: string
+        description: External memory delta formatted as "X MB"
+      - name: duration
+        type: string
+        description: Execution duration formatted as "Xms"
+
+  HttpLogData:
+    description: Shape for HTTP error log entries passed to logHTTPDataToSentry
+    fields:
+      - name: event
+        type: ESentryEvent
+        description: The event category
+      - name: type
+        type: ESentryType
+        description: Severity level
+      - name: data
+        type: string
+        description: Raw data string (often JSON-stringified response or request body)
+      - name: url
+        type: string
+        description: The API endpoint URL
+      - name: errorCode
+        type: "string | undefined"
+        optional: true
+        description: Optional HTTP error code
+      - name: errorMessage
+        type: "string | undefined"
+        optional: true
+        description: Optional error message
+
+  ExceptionLogicSentry:
+    description: Shape for business logic exception log entries passed to logExceptionLogicIntoSentry
+    fields:
+      - name: event
+        type: ESentryEvent
+        description: The event category
+      - name: data
+        type: string
+        description: Raw data string describing the exception
+
+security:
+  - MACHINE_TOKEN (user session identifier) is attached to every Sentry event as user_guid
+  - Current page URL is attached to every event
+  - Raw API response data may contain sensitive information and is sent to Sentry as extras
+  - Customer email may be present in dataLayer actions captured as last5Actions
+  - SENTRY_DSN is loaded from settings (should be in environment variables, not hardcoded)
+  - No PII scrubbing is performed before sending to Sentry
+
+notes:
+  - The function gerServerInformation has a typo in its name (ger instead of get).
+    Consider fixing during migration.
+  - Sentry is initialized at module import time, which means the DSN must be available
+    at module load. In Next.js, Sentry initialization should use the official @sentry/nextjs
+    package with sentry.client.config.ts and sentry.server.config.ts files.
+  - The trackMemoryUsage function uses process.memoryUsage() which is Node.js only.
+    It will not work in the browser. The isBrowser guard is not applied to this function.
+  - All logging functions are async inside withScope but the outer functions are synchronous
+    (fire-and-forget pattern). Errors in gerServerInformation or Sentry operations are
+    not caught.
+  - The severity mapping maps ESentryType.WARN (warn) to Sentry warning level.
+  - SENTRY_ENABLED is a compile-time constant (true). Consider making this
+    configurable via environment variable.
+  - The last 5 dataLayer actions capture provides useful debugging context but may include
+    sensitive data (customer email from enhanced conversions, etc.).

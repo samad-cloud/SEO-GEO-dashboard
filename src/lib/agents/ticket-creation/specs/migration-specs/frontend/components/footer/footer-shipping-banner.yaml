@@ -1,0 +1,196 @@
+name: FooterShippingBanner
+source:
+  path: src/components/footer/footer-shipping-banner.tsx
+  lines: 1-56
+  type: component
+
+description: |
+  Displays a responsive shipping/delivery banner in the footer. Shows different
+  images for mobile and desktop. Can be wrapped in a link or standalone div.
+  Returns null if data is incomplete or display is false.
+
+exports:
+  - type: default
+    name: FooterShippingBanner
+    kind: component
+
+props:
+  - name: data
+    type: ShippingFooterBanner
+    required: true
+    description: Banner configuration data
+    fields:
+      - display: boolean (show/hide banner)
+      - desktopShippingFooterBanner: string (desktop image URL)
+      - mobileShippingFooterBanner: string (mobile image URL)
+      - background: string (background color/gradient)
+      - href: string | undefined (optional link URL)
+
+component_structure:
+  root: fragment
+  children:
+    - conditional:
+        condition: data.display && data.desktopShippingFooterBanner && data.mobileShippingFooterBanner
+        trueBranch:
+          - conditional:
+              condition: data.href exists
+              trueBranch:
+                - element: a
+                  href: data.href
+                  className: "flex justify-center"
+                  style: "background: data.background"
+                  children:
+                    - component: Image (desktop)
+                      className: "hidden md:block"
+                      src: data.desktopShippingFooterBanner
+                      alt: "Shipping and delivery information"
+                    - component: Image (mobile)
+                      className: "block md:hidden"
+                      src: data.mobileShippingFooterBanner
+                      alt: "Shipping and delivery information"
+              falseBranch:
+                - element: div
+                  className: "flex justify-center"
+                  style: "background: data.background"
+                  children:
+                    - component: Image (desktop)
+                      className: "hidden md:block"
+                    - component: Image (mobile)
+                      className: "block md:hidden"
+        falseBranch: null
+
+child_components:
+  - name: Image
+    path: "@unpic/qwik"
+    props:
+      - src: string
+      - class: string
+      - alt: string
+
+context_consumed: []
+
+state_management: []
+
+event_handlers: []
+
+responsive_behavior:
+  mobile:
+    - Shows mobileShippingFooterBanner image
+    - Desktop image hidden
+  desktop:
+    - Shows desktopShippingFooterBanner image
+    - Mobile image hidden
+
+rendering_logic:
+  early_return:
+    condition: "!(data.display && data.desktopShippingFooterBanner && data.mobileShippingFooterBanner)"
+    result: null
+
+  wrapper_type:
+    - If data.href exists: wrapped in <a> tag
+    - If data.href missing: wrapped in <div> tag
+
+styling:
+  - Background applied via inline style from data.background
+  - Flexbox centering (justify-center)
+  - Responsive image visibility via Tailwind classes
+
+dependencies:
+  qwik:
+    - component$
+  unpic:
+    - Image
+  types:
+    - "~/services/json-service" (ShippingFooterBanner)
+
+data_validation:
+  required_fields:
+    - data.display must be true
+    - data.desktopShippingFooterBanner must be truthy
+    - data.mobileShippingFooterBanner must be truthy
+  optional_fields:
+    - data.href (determines wrapper type)
+    - data.background (styling)
+
+edge_cases:
+  - Returns null if any required field missing
+  - Returns null if display=false
+  - href optional: shows as div if missing, link if present
+  - Background color/gradient applied dynamically
+
+accessibility:
+  - Alt text: "Shipping and delivery information"
+  - Link semantics when href present
+
+behavior:
+  - step: 1
+    action: "Receive ShippingFooterBanner data as prop containing display flag, desktop image URL, mobile image URL, background style, and optional href"
+  - step: 2
+    action: "Validate required fields: if display is false OR desktopShippingFooterBanner is falsy OR mobileShippingFooterBanner is falsy, return null (render nothing)"
+  - step: 3
+    action: "If data.href exists, wrap the banner images in an <a> tag linking to the specified URL"
+  - step: 4
+    action: "If data.href does not exist, wrap the banner images in a <div> tag (non-clickable)"
+  - step: 5
+    action: "Apply data.background as inline background style (supports colors and gradients) on the wrapper element"
+  - step: 6
+    action: "Render desktop image (hidden on mobile via 'hidden md:block') using data.desktopShippingFooterBanner as source"
+  - step: 7
+    action: "Render mobile image (hidden on desktop via 'block md:hidden') using data.mobileShippingFooterBanner as source"
+  - step: 8
+    action: "Center both images horizontally within the wrapper using flexbox justify-center"
+
+used_by:
+  - Footer component
+  - FooterProductCategory component
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  ShippingFooterBannerProps:
+    description: Props interface for the FooterShippingBanner component
+    fields:
+      - name: data
+        type: ShippingFooterBanner
+
+  ShippingFooterBanner:
+    description: Banner configuration data (from ~/services/json-service)
+    fields:
+      - name: display
+        type: boolean
+      - name: desktopShippingFooterBanner
+        type: string
+      - name: mobileShippingFooterBanner
+        type: string
+      - name: background
+        type: string
+      - name: href
+        type: string
+        optional: true
+
+field_consumption:
+  ShippingFooterBannerProps:
+    consumed:
+      - data.display: Guard condition — if false the entire component returns null
+      - data.desktopShippingFooterBanner: Guard condition AND src for the desktop Image element
+      - data.mobileShippingFooterBanner: Guard condition AND src for the mobile Image element
+      - data.background: Applied as inline background style on the wrapper element
+      - data.href: Determines wrapper type — truthy renders an <a> tag; absent renders a <div>
+
+visibility_map:
+  entire_component:
+    condition: "data.display && data.desktopShippingFooterBanner && data.mobileShippingFooterBanner are all truthy"
+    default: hidden (returns null when any required field is missing or display=false)
+
+  desktop_image:
+    condition: "always rendered when component shows; CSS class 'hidden md:block'"
+    default: hidden on mobile, visible on desktop
+
+  mobile_image:
+    condition: "always rendered when component shows; CSS class 'block md:hidden'"
+    default: visible on mobile, hidden on desktop
+
+  clickable_link_wrapper:
+    condition: "data.href is truthy"
+    default: hidden
+    notes: When absent, images are wrapped in a <div> instead; no fallback link behavior

@@ -1,0 +1,253 @@
+name: GtmDataLayerBase
+source: services/cart-services/gtm/data-layer-base.ts
+description: |
+  Google Tag Manager data layer management service. Handles pushing structured
+  e-commerce events to window.dataLayer for GTM tracking. Supports addToCart,
+  checkout, removeFromCart, purchase, enhancedConversion, login, cross-selling,
+  and productConfiguration events. Also provides cookie-based step tracking
+  and price parsing utilities.
+
+exports:
+  - name: default
+    type: object
+    description: |
+      Default export containing all GTM data layer functions and constants:
+        DataLayerPush, GetPriceValue, GetStepInfoCookie, SetStepInfoCookie,
+        stepType, eventType, loginType
+
+  - name: extractGCLCookieData
+    type: function
+    signature: "(input?: string) => string"
+    description: |
+      Extracts Google Click ID from _gcl_aw cookie value.
+      Cookie format: "GCL.timestamp.clickid" - returns everything after second dot.
+      Returns empty string if input is undefined or has fewer than 3 segments.
+
+data_structure:
+  stepType:
+    login: "login"
+  eventType:
+    addToCart: "addToCart"
+    checkout: "checkout"
+    removeFromCart: "removeFromCart"
+    purchase: "purchase"
+    enhancedConversion: "enhancedConversion"
+  loginType:
+    login: "login"
+    guest: "guest"
+    register: "register"
+    google: "google"
+    facebook: "facebook"
+
+behavior:
+  DataLayerPush:
+    - Validates event data before pushing (returns early if required fields missing)
+    - addToCart: requires non-empty addToCartProducts with name field
+    - checkout: requires non-empty checkoutProducts with name, includes checkoutMetaData
+    - removeFromCart: requires non-empty removeFromCartProducts with name
+    - purchase: requires non-empty orderProducts with name, includes orderMetaData
+    - enhancedConversion: requires customerData.email
+    - login: requires loginMeta.stepInfo
+    - cross-selling: requires productMetaData.productRefCode
+    - productConfiguration: pushes configurationStepMeta and configuredProductMeta
+    - All events include currencyCode where applicable
+    - Initializes window.dataLayer as empty array if not present
+
+  GetPriceValue:
+    - Strips currency symbols (pound, dollar, euro) and replaces comma with dot
+    - Returns "0" if price is undefined
+
+  StepInfoCookie:
+    - Uses pipe-delimited format: "eventType|stepType|value"
+    - Cookie name: "dataLayerInfo" with 1-day expiry
+    - GetStepInfoCookie validates both eventType and stepType match before returning value
+
+  extractGCLCookieData:
+    - Splits input by "." and returns segments from index 2 onward joined by "."
+    - Used by home page route loader to extract GCL ID for API calls
+
+dependencies:
+  internal:
+    - writeConsoleLog from ../console-log
+
+used_by:
+  - home-page route (extractGCLCookieData for GCL cookie parsing)
+  - cart components (addToCart, removeFromCart events)
+  - checkout flow (checkout, purchase events)
+  - authentication flow (login events)
+  - product configuration (productConfiguration events)
+
+security:
+  - Validate event data types before pushing to dataLayer
+  - Price parsing is naive - ensure input is sanitized
+  - Cookie-based step tracking uses 1-day expiry (low risk)
+
+notes:
+  - Uses custom WindowWithDataLayer type for TypeScript compliance
+  - Console logging via writeConsoleLog (not console.log directly)
+  - All events follow GTM Enhanced E-commerce data structure
+  - In Next.js migration, this becomes a client-side utility (no server$ needed)
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  WindowWithDataLayer:
+    description: Extended Window type for TypeScript compliance with GTM dataLayer
+    fields:
+      - name: dataLayer
+        type: "Record<string, any>[]"
+
+  stepType:
+    description: Constant object for step type values (not an enum)
+    kind: const_object
+    fields:
+      - name: login
+        type: string
+        notes: "Value: \"login\""
+
+  eventType:
+    description: Constant object for GTM event type values
+    kind: const_object
+    fields:
+      - name: addToCart
+        type: string
+        notes: "Value: \"addToCart\""
+      - name: checkout
+        type: string
+        notes: "Value: \"checkout\""
+      - name: removeFromCart
+        type: string
+        notes: "Value: \"removeFromCart\""
+      - name: purchase
+        type: string
+        notes: "Value: \"purchase\""
+      - name: enhancedConversion
+        type: string
+        notes: "Value: \"enhancedConversion\""
+
+  loginType:
+    description: Constant object for login method type values
+    kind: const_object
+    fields:
+      - name: login
+        type: string
+        notes: "Value: \"login\""
+      - name: guest
+        type: string
+        notes: "Value: \"guest\""
+      - name: register
+        type: string
+        notes: "Value: \"register\""
+      - name: google
+        type: string
+        notes: "Value: \"google\""
+      - name: facebook
+        type: string
+        notes: "Value: \"facebook\""
+
+  DataLayerPushPayload:
+    description: Input shape accepted by DataLayerPush (discriminated by event field)
+    fields:
+      - name: event
+        type: string
+        notes: One of addToCart | checkout | removeFromCart | purchase | enhancedConversion | login | cross-selling | productConfiguration
+      - name: currencyCode
+        type: string
+        optional: true
+        notes: Required for addToCart, checkout, removeFromCart, purchase
+      - name: addToCartProducts
+        type: "any[]"
+        optional: true
+        notes: Required (non-empty) when event === "addToCart"; first item must have name field
+      - name: checkoutProducts
+        type: "any[]"
+        optional: true
+        notes: Required (non-empty) when event === "checkout"; includes checkoutMetaData
+      - name: checkoutMetaData
+        type: any
+        optional: true
+      - name: removeFromCartProducts
+        type: "any[]"
+        optional: true
+        notes: Required (non-empty) when event === "removeFromCart"
+      - name: orderProducts
+        type: "any[]"
+        optional: true
+        notes: Required (non-empty) when event === "purchase"
+      - name: orderMetaData
+        type: any
+        optional: true
+      - name: customerData
+        type: "{email: string}"
+        optional: true
+        notes: Required with non-empty email when event === "enhancedConversion"
+      - name: loginMeta
+        type: "{stepInfo: string}"
+        optional: true
+        notes: Required with non-empty stepInfo when event === "login"
+      - name: productMetaData
+        type: "{productRefCode: string}"
+        optional: true
+        notes: Required with productRefCode when event === "cross-selling"
+      - name: section
+        type: any
+        optional: true
+        notes: Used with cross-selling event
+      - name: configurationStepMeta
+        type: any
+        optional: true
+        notes: Used with productConfiguration event
+      - name: configuredProductMeta
+        type: any
+        optional: true
+        notes: Used with productConfiguration event
+
+  StepInfoCookieValue:
+    description: Pipe-delimited string stored in "dataLayerInfo" cookie (format eventType|stepType|value)
+    fields:
+      - name: "(encoded as string)"
+        type: string
+        notes: "Format: \"{eventType}|{stepType}|{value}\", e.g. \"checkout|login|1\""
+
+implementation_logic:
+  data_layer_push_validation_guards:
+    rule: |
+      DataLayerPush validates event data before pushing to window.dataLayer. Each event type
+      has a specific early-return condition:
+        addToCart: returns if addToCartProducts.length === 0 OR addToCartProducts[0].name is falsy
+        checkout: returns if checkoutProducts.length === 0 OR checkoutProducts[0].name is falsy
+        removeFromCart: returns if removeFromCartProducts.length === 0 OR removeFromCartProducts[0].name is falsy
+        purchase: returns if orderProducts.length === 0 OR orderProducts[0].name is falsy
+        enhancedConversion: returns if customerData.email is falsy
+        login: returns if loginMeta.stepInfo is falsy
+        cross-selling: returns if productMetaData.productRefCode is falsy
+        productConfiguration: no guard (always pushes)
+      window.dataLayer is initialized as empty array if not already present.
+    critical: true
+
+  get_price_value_currency_stripping:
+    rule: |
+      GetPriceValue removes currency symbols (£, $, €) and replaces comma with dot
+      before returning the string. Returns "0" if price is undefined.
+      Note: there is a latent bug — the second return value "0" is on a new line after
+      a +"" expression that is never reached; the function always falls through to return "0"
+      only when price is undefined.
+    critical: false
+
+  step_info_cookie_format:
+    rule: |
+      SetStepInfoCookie stores a pipe-delimited string as "dataLayerInfo" cookie with 1-day expiry:
+        format: "{eventType}|{stepType}|{value}"
+        e.g.: "checkout|login|1"
+      GetStepInfoCookie reads the cookie, splits by pipe, and validates that
+      both stepInfos[0] === eventType AND stepInfos[1] === stepType before returning stepInfos[2].
+      Returns empty string if cookie absent or fields don't match.
+    critical: false
+
+  extract_gcl_cookie_data_format:
+    rule: |
+      The _gcl_aw Google Click ID cookie has format "GCL.{timestamp}.{clickid}".
+      extractGCLCookieData splits on "." and returns everything from index 2 onward
+      joined by ".". This handles click IDs that may contain dots.
+      Returns empty string if input is undefined or has fewer than 3 dot-separated segments.
+    critical: false

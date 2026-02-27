@@ -1,0 +1,246 @@
+name: Layout Containerless
+source:
+  path: routes/layout-containerless.tsx
+  lines: 1-55
+  type: qwik-layout
+
+description: |
+  Containerless layout variant that renders pages without the product-category sidebar.
+  Used by routes with the @containerless suffix (e.g., homepage, standalone info pages).
+  Handles the middleware for cookies and redirections, loads banner data, detects user
+  country from Cloudflare headers, and renders the global header/footer shell.
+  The footer can be conditionally hidden via the ?showFooter=0 query parameter.
+
+exports:
+  - name: onRequest
+    type: RequestHandler
+    description: |
+      Middleware that runs on every request. Delegates to cookieAndRedirectionMiddleware
+      which handles: URL-based redirections from CMS, MACHINE_TOKEN cookie creation for
+      new visitors, UTM parameter cookie persistence, pixId/GCL cookie management, and
+      coupon code cookie persistence.
+
+  - name: useLoadBanner
+    type: routeLoader
+    description: |
+      Loads strip banner, promo banner, and shipping footer banner data for the current page.
+      Extracts the friendly URL from pathname (strips leading/trailing slashes) and calls
+      getBanner(friendlyUrl) from common-service.
+
+  - name: useDetectCountry
+    type: routeLoader
+    description: |
+      Detects user's country from the CF-IPCountry header (Cloudflare) and checks the
+      showCrossDomainNotification cookie to determine if the cross-domain notification
+      should be displayed.
+
+  - name: default
+    type: component
+    description: |
+      Layout component that renders the global page shell without a category sidebar.
+      Renders CrossDomainNotification, StripBanner, HeaderWrapper, main content slot,
+      and FooterContainerLess.
+
+component_structure:
+  root_element: Fragment (<>)
+  children:
+    - CrossDomainNotification (conditional)
+    - StripBanner (conditional)
+    - HeaderWrapper (always)
+    - main.relative > Slot (always, child route content)
+    - FooterContainerLess (conditional)
+
+child_components:
+  - name: CrossDomainNotification
+    source: "~/components/cross-domain-notification/cross-domain-notification"
+    condition: country is truthy AND shouldShowCrossDomainNotification is true
+    props:
+      country: string (country code from CF-IPCountry header)
+    description: |
+      Shows notification when user's detected country doesn't match the current domain's region.
+      Allows user to switch to the correct regional domain.
+
+  - name: StripBanner
+    source: "~/components/banner/strip-banner"
+    condition: stripBanner data exists (not null/undefined)
+    props:
+      data: stripBanner object from useLoadBanner
+
+  - name: HeaderWrapper
+    source: "~/components/header/header-wrapper"
+    condition: always rendered
+    props: none
+    description: Global site header with navigation, search, cart icon, account menu
+
+  - name: Slot
+    source: "@builder.io/qwik"
+    condition: always rendered
+    wrapper: main.relative
+    description: Child route content is rendered here
+
+  - name: FooterContainerLess
+    source: "~/components/footer/footer-containerless"
+    condition: URL search param showFooter is NOT "0"
+    props: none
+    description: |
+      Simplified footer variant without product category navigation. Used for pages
+      that don't need the full category footer (homepage, standalone pages).
+
+data_structure:
+  useLoadBanner_output:
+    description: Banner data returned from getBanner API
+    fields:
+      - stripBanner: "{ banners: string[], bgColor: string, textColor: string } | null"
+      - promoBanner: object | null (not destructured in this layout but available)
+      - shippingFooterBanner: object | null (not destructured in this layout but available)
+
+  useDetectCountry_output:
+    description: Country detection result
+    fields:
+      - country: string (2-letter country code from CF-IPCountry header, empty string if not available)
+      - shouldShowCrossDomainNotification: boolean (true unless cookie "showCrossDomainNotification" is "false")
+
+behavior:
+  request_lifecycle:
+    - onRequest middleware runs FIRST on every request
+    - cookieAndRedirectionMiddleware performs in order:
+      1. Checks CMS redirection rules (loadWebContent REDIRECTION) and throws redirect if match found
+      2. Creates MACHINE_TOKEN cookie if not present (calls getNewMachineToken, 90-day expiry)
+      3. Persists UTM query parameters as cookies (90-day expiry)
+      4. Handles pixId cookie and GCL cookie creation
+      5. Persists couponcode query param as MODI_COUPON cookie (90-day expiry)
+    - Bot detection: skips MACHINE_TOKEN generation for user agents containing "bot"
+    - Undefined URL check: skips token generation if URL contains "undefined"
+
+  routeLoaders:
+    - useLoadBanner:
+        input: url.pathname
+        process: |
+          Extracts friendlyUrl by slicing pathname: url.pathname.slice(1, -1)
+          (removes leading and trailing slashes)
+          Calls getBanner(friendlyUrl)
+        output: Banner object (stripBanner, promoBanner, shippingFooterBanner)
+        fallback: getBannersBackup() if API fails
+
+    - useDetectCountry:
+        input: request headers, cookies
+        process: |
+          Calls detectCountryFromHeader(request) which reads CF-IPCountry header
+          Checks cookie "showCrossDomainNotification" value
+        output: "{ country: string, shouldShowCrossDomainNotification: boolean }"
+
+  rendering:
+    order:
+      1. CrossDomainNotification - if country detected and notification not dismissed
+      2. StripBanner - if strip banner data available from API
+      3. HeaderWrapper - always rendered
+      4. main > Slot - child route content
+      5. FooterContainerLess - unless showFooter=0 in query params
+
+  footer_visibility:
+    - Uses useLocation() to access current URL
+    - Checks location.url.searchParams.get("showFooter")
+    - Footer hidden when value is exactly "0"
+    - This is used when embedding pages in iframes or modal contexts
+
+styling:
+  main_element: "relative" (positioned relative for potential absolute children)
+
+dependencies:
+  internal:
+    - "~/components/footer/footer-containerless": FooterContainerLess
+    - "~/components/banner/strip-banner": StripBanner
+    - "~/components/cross-domain-notification/cross-domain-notification": CrossDomainNotification
+    - "~/components/header/header-wrapper": HeaderWrapper
+    - "~/services/middle-ware-service": cookieAndRedirectionMiddleware
+    - "~/services/common-service": getBanner
+    - "~/utility/country-region": detectCountryFromHeader
+  external:
+    - "@builder.io/qwik": component$, Slot
+    - "@builder.io/qwik-city": RequestHandler, routeLoader$, useLocation
+
+used_by:
+  - routes/index@containerless.tsx (homepage)
+  - Any route file using @containerless suffix in its filename
+
+security:
+  - MACHINE_TOKEN cookie created for all non-bot visitors (90-day expiry)
+  - Cookie domain set to base domain via getBaseDomainName
+  - CMS-driven redirections checked on every request (potential open redirect if CMS compromised)
+  - Country detection relies on Cloudflare CF-IPCountry header (trusted proxy)
+
+notes:
+  - This is the CONTAINERLESS variant - the key difference from layout.tsx (default) is:
+    - No useLoadPromoBanners loader (no MainBanner in layout)
+    - No useAddToCart / useAddToCartProductBundle global actions
+    - Uses FooterContainerLess instead of full Footer
+    - No category sidebar
+  - The homepage (index@containerless.tsx) handles its own MainBanner/FloatingBanner rendering
+  - detectCountryFromHeader reads CF-IPCountry from Cloudflare (returns empty string if missing)
+  - cookieAndRedirectionMiddleware is shared with the default layout (layout.tsx)
+  - The layout-containerless.tsx does NOT render MainBanner - that is left to the child route
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  LoadBannerResult:
+    description: Output of useLoadBanner routeLoader — returned by getBanner(friendlyUrl)
+    source: ~/services/json-service (Banner interface)
+    fields:
+      - name: stripBanner
+        type: "StripBanner | null"
+      - name: promoBanner
+        type: "PromoBanner | null"
+      - name: shippingFooterBanner
+        type: "ShippingFooterBanner | null"
+
+  StripBanner:
+    description: Strip banner content displayed across the top of the page
+    source: ~/services/json-service
+    fields:
+      - name: banners
+        type: "string[]"
+      - name: bgColor
+        type: string
+      - name: textColor
+        type: string
+
+  DetectCountryResult:
+    description: Output of useDetectCountry routeLoader
+    fields:
+      - name: country
+        type: string
+        notes: 2-letter code from CF-IPCountry header; empty string if header absent
+      - name: shouldShowCrossDomainNotification
+        type: boolean
+        notes: True unless cookie "showCrossDomainNotification" equals "false"
+
+field_consumption:
+  LoadBannerResult:
+    consumed:
+      - stripBanner: Passed as `data` prop to StripBanner component; truthy check gates rendering
+    ignored:
+      - promoBanner: Present in loader result but not destructured or used by this layout
+      - shippingFooterBanner: Present in loader result but not destructured or used by this layout
+
+  DetectCountryResult:
+    consumed:
+      - country: Passed as prop to CrossDomainNotification; truthy check used as render gate
+      - shouldShowCrossDomainNotification: Combined with country in AND condition to gate render
+
+visibility_map:
+  cross_domain_notification:
+    condition: "country is truthy AND shouldShowCrossDomainNotification is true"
+    default: hidden
+
+  strip_banner:
+    condition: "stripBanner data is truthy (not null/undefined)"
+    default: hidden
+
+  header_wrapper:
+    condition: always rendered
+    default: visible
+
+  footer_containerless:
+    condition: 'location.url.searchParams.get("showFooter") !== "0"'
+    default: visible (hidden only when showFooter=0 query param is present)

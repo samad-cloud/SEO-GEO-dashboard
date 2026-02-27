@@ -1,0 +1,453 @@
+# Behavioral Spec: settings.ts
+# Source: C:\Users\JawadSaad\source\repos\ecommerce-frontend-qwik\src\config\settings.ts
+# Lines: 1-65
+# Type: Configuration Module
+
+name: Settings
+description: |
+  Environment configuration manager for the Qwik e-commerce frontend.
+  Provides different settings for development and production environments,
+  with support for both server-side (process.env) and client-side (window.__ENV__)
+  environment variable access. Handles timeout values, debug flags, region/website
+  settings, and third-party service credentials.
+
+source:
+  path: src/config/settings.ts
+  lines: 1-65
+  type: configuration
+
+exports:
+  functions:
+    - name: getServerConfig
+      type: server$
+      description: |
+        Qwik server$ function that reads environment variables server-side only.
+        Returns a subset of environment variables that can be safely exposed to the client.
+      signature: "() => Promise<ServerEnvConfig>"
+      behavior: |
+        - Only executes on server (Qwik RPC)
+        - Reads from process.env
+        - Returns env object with ENABLE_DEBUG, WEBSITE, NODE_ENV, API_ENV
+      parameters: []
+      returns:
+        type: Promise<ServerEnvConfig>
+        structure:
+          ENABLE_DEBUG: string | undefined
+          WEBSITE: string | undefined
+          NODE_ENV: string | undefined
+          API_ENV: string | undefined
+
+    - name: settings
+      type: regular function
+      description: |
+        Returns configuration object based on NODE_ENV.
+        Checks NODE_ENV from window.__ENV__ (client) or process.env (server).
+        Returns prodSettings() if NODE_ENV === "production", otherwise devSettings.
+      signature: "() => Settings"
+      behavior: |
+        - Checks execution context (window !== undefined = client)
+        - Reads NODE_ENV from window.__ENV__ or process.env
+        - Returns prodSettings() for production, devSettings for development
+        - All values are resolved at call time (not cached)
+      parameters: []
+      returns:
+        type: Settings
+        structure:
+          enableDebug: boolean
+          website: string
+          API_ENV: string
+          MATOMO_SITE_ID: string
+          SENTRY_DSN: string
+          READ_API_TIMEOUT: number
+          WRITE_API_TIMEOUT: number
+
+types:
+  Settings:
+    description: Configuration object shape
+    fields:
+      enableDebug:
+        type: boolean
+        description: Enable debug logging
+      website:
+        type: string
+        description: Region code (e.g., "GB", "US", "DE")
+      API_ENV:
+        type: string
+        description: API environment (e.g., "LIVE", "DEV", "QA")
+      MATOMO_SITE_ID:
+        type: string
+        description: Matomo analytics site identifier
+      SENTRY_DSN:
+        type: string
+        description: Sentry DSN for error tracking
+      READ_API_TIMEOUT:
+        type: number
+        description: Timeout in milliseconds for read API calls
+      WRITE_API_TIMEOUT:
+        type: number
+        description: Timeout in milliseconds for write API calls
+
+  ServerEnvConfig:
+    description: Server-only environment variables
+    fields:
+      ENABLE_DEBUG:
+        type: string | undefined
+        description: Debug flag from server environment
+      WEBSITE:
+        type: string | undefined
+        description: Website/region code from server environment
+      NODE_ENV:
+        type: string | undefined
+        description: Node environment (development, production, etc.)
+      API_ENV:
+        type: string | undefined
+        description: API environment from server environment
+
+constants:
+  devSettings:
+    type: Settings
+    description: Hardcoded development environment settings
+    value:
+      enableDebug: true
+      website: "GB"
+      API_ENV: "LIVE"
+      MATOMO_SITE_ID: "1"
+      READ_API_TIMEOUT: 5000
+      WRITE_API_TIMEOUT: 15000
+      SENTRY_DSN: ""
+
+  prodSettings:
+    type: "() => Settings"
+    description: |
+      Function that reads production settings from environment variables.
+      Prioritizes client-side window.__ENV__ over server-side process.env.
+      Falls back to constants from ./constants for timeout values.
+    behavior:
+      enableDebug:
+        source: ENABLE_DEBUG
+        client: window.__ENV__.ENABLE_DEBUG
+        server: process.env.ENABLE_DEBUG
+        type: boolean (parsed from string "true")
+        default: false (implicit - string comparison fails)
+      website:
+        source: WEBSITE
+        client: window.__ENV__.WEBSITE
+        server: process.env.WEBSITE
+        type: string
+        default: "GB"
+      API_ENV:
+        source: API_ENV
+        client: window.__ENV__.API_ENV
+        server: process.env.API_ENV
+        type: string
+        default: undefined (no fallback)
+      MATOMO_SITE_ID:
+        source: MATOMO_SITE_ID
+        client: window.__ENV__.MATOMO_SITE_ID
+        server: process.env.MATOMO_SITE_ID
+        type: string
+        default: undefined (no fallback)
+      SENTRY_DSN:
+        source: SENTRY_DSN
+        client: window.__ENV__.SENTRY_DSN
+        server: process.env.SENTRY_DSN
+        type: string
+        default: undefined (no fallback)
+      READ_API_TIMEOUT:
+        source: READ_API_TIMEOUT
+        client: window.__ENV__.READ_API_TIMEOUT
+        server: process.env.READ_API_TIMEOUT
+        type: number
+        default: READ_API_TIMEOUT (from ./constants)
+      WRITE_API_TIMEOUT:
+        source: WRITE_API_TIMEOUT
+        client: window.__ENV__.WRITE_API_TIMEOUT
+        server: process.env.WRITE_API_TIMEOUT
+        type: number
+        default: WRITE_API_TIMEOUT (from ./constants)
+
+dependencies:
+  internal:
+    - path: ./constants
+      imports:
+        - READ_API_TIMEOUT
+        - WRITE_API_TIMEOUT
+      usage: Fallback values for timeout settings in production
+
+  external:
+    - package: "@builder.io/qwik-city"
+      imports:
+        - server$
+      usage: Server-side RPC function wrapper for getServerConfig
+
+environment_variables:
+  ENABLE_DEBUG:
+    type: string ("true" | "false")
+    required: false
+    default: "false" (implicit)
+    description: Enable debug logging and verbose output
+    access: client (window.__ENV__), server (process.env)
+
+  WEBSITE:
+    type: string
+    required: false
+    default: "GB"
+    description: Region/website code (GB, US, DE, FR, IT, NL, ES)
+    access: client (window.__ENV__), server (process.env)
+
+  NODE_ENV:
+    type: string ("development" | "production" | "test")
+    required: true
+    default: "development" (implicit)
+    description: Node environment mode
+    access: client (window.__ENV__), server (process.env)
+    usage: Determines which settings object to return
+
+  API_ENV:
+    type: string ("LIVE" | "DEV" | "QA")
+    required: false
+    default: none
+    description: API environment target
+    access: client (window.__ENV__), server (process.env)
+
+  MATOMO_SITE_ID:
+    type: string
+    required: false
+    default: none
+    description: Matomo analytics site identifier
+    access: client (window.__ENV__), server (process.env)
+
+  SENTRY_DSN:
+    type: string
+    required: false
+    default: none (empty string in dev)
+    description: Sentry error tracking DSN
+    access: client (window.__ENV__), server (process.env)
+
+  READ_API_TIMEOUT:
+    type: number
+    required: false
+    default: 5000 (from constants.ts)
+    description: Read API request timeout in milliseconds
+    access: client (window.__ENV__), server (process.env)
+
+  WRITE_API_TIMEOUT:
+    type: number
+    required: false
+    default: 15000 (from constants.ts)
+    description: Write API request timeout in milliseconds
+    access: client (window.__ENV__), server (process.env)
+
+behavior:
+  settings_function:
+    execution_context:
+      client:
+        - Checks: typeof window !== "undefined"
+        - Reads NODE_ENV from: window.__ENV__.NODE_ENV
+        - All config values from: window.__ENV__
+      server:
+        - Checks: typeof window === "undefined"
+        - Reads NODE_ENV from: process.env.NODE_ENV
+        - All config values from: process.env
+
+    environment_detection:
+      production:
+        - Trigger: NODE_ENV === "production"
+        - Returns: prodSettings() (function call, dynamic)
+      development:
+        - Trigger: NODE_ENV !== "production"
+        - Returns: devSettings (constant object)
+
+    prodSettings_resolution:
+      - All values read at call time (not cached)
+      - Client-side values prioritized over server-side
+      - Timeouts fall back to constants if env var missing
+      - website defaults to "GB" if WEBSITE env var missing
+      - enableDebug requires exact string "true" to be true
+
+  getServerConfig_function:
+    qwik_rpc:
+      - Wrapped in server$() - only executes on server
+      - Can be called from client components
+      - Returns Promise (RPC call)
+
+    returned_values:
+      - ENABLE_DEBUG: process.env.ENABLE_DEBUG
+      - WEBSITE: process.env.WEBSITE
+      - NODE_ENV: process.env.NODE_ENV
+      - API_ENV: process.env.API_ENV
+      - All values may be undefined if env var not set
+
+used_by:
+  - "~/config/http.ts"
+  - "~/config/klaviyo.ts"
+  - "~/services/server.ts"
+  - "~/services/product-page-service.ts"
+  - "~/services/product-category-service.ts"
+  - "~/services/category-service.ts"
+  - "~/services/home-service.ts"
+  - "~/services/json-service.ts"
+  - "~/services/klaviyo-service.ts"
+  - "~/services/single-designer-service.ts"
+  - "~/services/bundle-designer-service.ts"
+  - "~/services/status-service.ts"
+  - "~/services/orama-service.ts"
+  - "~/services/go-quick-service.ts"
+  - "~/services/sitemap-service.ts"
+  - "~/services/navigation-v3-service.ts"
+  - "~/services/cart-services/console-log.ts"
+  - "~/utility/sentry.ts"
+  - "~/utility/http.ts"
+  - "~/utility/storage.ts"
+  - "~/utility/format.ts"
+  - "~/utility/date.ts"
+  - "~/utility/google-tag-manager-extension.ts"
+  - "~/utility/image-resolution/image-resolution.ts"
+  - "~/utility/footer/footer-content.ts"
+  - "~/utility/homepage-contents.ts"
+  - "~/utility/productpage-contents.ts"
+  - "~/utility/canvaspage-contents.ts"
+  - "~/utility/category-contents.ts"
+  - "~/utility/mothersday-contents.ts"
+  - "~/utility/login/login-contents.ts"
+  - "~/utility/about-us/about-us-content.ts"
+  - "~/utility/share-content/share-contents.ts"
+  - "~/utility/terms-and-conditions/terms-and-conditions.ts"
+  - "~/utility/privacy-policy/privacy-policy-content.ts"
+  - "~/utility/shipping-policy/shipping-policy-content.ts"
+  - "~/utility/backup-json/backup-json-utilities.ts"
+  - "~/routes/layout-shop.tsx"
+  - "~/routes/index@containerless.tsx"
+  - "~/routes/go-quick/index.tsx"
+  - "~/routes/about-us/index.tsx"
+  - "~/routes/shipping-policy/index.tsx"
+  - "~/routes/returns-policy/index.tsx"
+  - "~/routes/satisfaction-guarantee/index.tsx"
+  - "~/routes/redemption/index.tsx"
+  - "~/routes/account/[type]/index.tsx"
+  - "~/routes/editor/designer-q/index@multicanvas.tsx"
+  - "~/routes/editor/create-q/index@canvas.tsx"
+  - "~/routes/editor/createnewexp-q/index@canvas.tsx"
+  - "~/routes/sitemap.xml/index.tsx"
+  - "~/routes/sitemap-index.xml/index.tsx"
+  - "~/routes/sitemap-products.xml/index.tsx"
+  - "~/routes/sitemap-pages.xml/index.tsx"
+  - "~/routes/sitemap-categories.xml/index.tsx"
+  - "~/routes/robots.txt/index.tsx"
+  - "~/components/header/header.tsx"
+  - "~/components/header/contact-us.tsx"
+  - "~/components/footer/footer.tsx"
+  - "~/components/footer/footer-auth.tsx"
+  - "~/components/footer/footer-canvas.tsx"
+  - "~/components/footer/footer-containerless.tsx"
+  - "~/components/footer/footer-product-category.tsx"
+  - "~/components/footer/footer-upsells.tsx"
+  - "~/components/product-page/option-panel.tsx"
+  - "~/components/product-page/option-panel-v2.tsx"
+  - "~/components/product-page/option-panel-v3.tsx"
+  - "~/components/product-page/option-panel-v4.tsx"
+  - "~/components/product-page/option-panel-v5.tsx"
+  - "~/components/product-page/option-canvas-prints-panel.tsx"
+  - "~/components/product-page/option-canvas-prints-panel-hub.tsx"
+  - "~/components/product-page/option-fixed-theme-cards-panel.tsx"
+  - "~/components/product-page/option-photo-cards-panel.tsx"
+  - "~/components/product-page/instant-product-option-panel.tsx"
+  - "~/components/product-page/single-canvas-option-panel.tsx"
+  - "~/components/product-page/product-shop-design.tsx"
+  - "~/components/product-page/product-trust-indicator.tsx"
+  - "~/components/product-page/product-trust-indicator-v2.tsx"
+  - "~/components/product-page/product-trust-indicator-v3.tsx"
+  - "~/components/product-page/product-trust-indicator-v4.tsx"
+  - "~/components/product-page/product-trust-indicator-v5.tsx"
+  - "~/components/product-page/product-trust-indicator-v6.tsx"
+  - "~/components/product-page/payment-trust-indicator.tsx"
+  - "~/components/product-page/payment-trust-indicator-v2.tsx"
+  - "~/components/product-page/payment-trust-indicator-v3.tsx"
+  - "~/components/product-page/product-countdown-timer/product-flip-clock-v2.tsx"
+  - "~/components/product-page/banner-flip-clock/banner-flip-clock.tsx"
+  - "~/components/product-page/banner-countdown-timer/banner-countdown-timer.tsx"
+  - "~/components/product-page/canvas-size-table/canvas-size-table.tsx"
+  - "~/components/product-page/canvas-size-table/canvas-size-table2.tsx"
+  - "~/components/product-page/canvas-size-table/canvas-size-table3.tsx"
+  - "~/components/product-page/containers/templates/product-page-fixed-template.tsx"
+  - "~/components/product-page/containers/templates/product-page-fixed-theme-template.tsx"
+  - "~/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-template-v2.tsx"
+  - "~/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-new-template.tsx"
+  - "~/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-new-template-v3.tsx"
+  - "~/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-hub-bundled-template.tsx"
+  - "~/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-bundled-template.tsx"
+  - "~/components/shop-page/containers/collection-container.tsx"
+  - "~/components/shop-page/components/shop-page-cards.tsx"
+  - "~/components/canvas-prints/canvas-product-bundle.tsx"
+  - "~/components/canvas-prints/canvas-product-bundle-section.tsx"
+  - "~/components/homepage/home-bottom-banner.tsx"
+  - "~/components/navigation-v3/navigation-list-item.tsx"
+  - "~/components/navigation-v3/navigation-dropdown-products.tsx"
+  - "~/components/navigation-v3/navigation-dropdown-subcategory.tsx"
+  - "~/components/login/register-form.tsx"
+  - "~/components/login/terms-conditions.tsx"
+  - "~/components/account/shipping-billing-form.tsx"
+  - "~/components/account/shipping-billing-form-v2.tsx"
+  - "~/components/account/container/vouchers-container.tsx"
+  - "~/components/account/container/redeem-voucher-container.tsx"
+  - "~/components/account/container/user-details-container.tsx"
+  - "~/components/account-detail/customer-project.tsx"
+  - "~/components/account-detail/customer-order.tsx"
+  - "~/components/extras/addons-container.tsx"
+  - "~/components/bulk-order/bulk-order-page.tsx"
+  - "~/components/bulk-order/bulk-order-page-v1.tsx"
+  - "~/components/payment-methods-page/containers/payment-methods-container.tsx"
+  - "~/components/go-quick/go-quick-measurement-preview.tsx"
+  - "~/components/go-quick/go-quick-product-cards.tsx"
+  - "~/components/reminders/reminder-product-recommendation.tsx"
+  - "~/components/reminders/product-card.tsx"
+  - "~/components/media/video-popup.tsx"
+  - "~/components/web-component/shopping-guide.tsx"
+  - "~/components/customer-service-components/fresh-desk-widget.tsx"
+  - "~/components/customer-service-components/botpress-widget.tsx"
+  - "~/components/uploadcare/uploadcareDesigner.tsx"
+  - "~/components/csr/CSR-service.ts"
+  - "~/components/csr/SLA-service.ts"
+  - "~/components/editor/designers/single/single-designer.tsx"
+  - "~/components/editor/designers/single/products/canvas/canvas-add-to-cart.tsx"
+  - "~/components/editor/designers/single/products/canvas/single-canvas-option-panel.tsx"
+  - "~/components/editor/designers/single/products/paint/single-paint-add-to-cart.tsx"
+  - "~/components/editor/designers/single/products/paint/single-paint-option-panel.tsx"
+  - "~/components/editor/designers/single/products/framed-canvas/framed-canvas-non-default-sorting.tsx"
+  - "~/components/editor/designers/single/products/framed/single-framed-option-panel.tsx"
+  - "~/components/editor/designers/single/products/framed/framed-size-panel.tsx"
+  - "~/components/editor/designers/single/products/framed/framed-proportional-preview.tsx"
+  - "~/components/editor/designers/single/products/photo-tile/photo-tile-size-panel.tsx"
+  - "~/components/editor/designers/single/products/photo-tile/photo-tile-proportional-preview.tsx"
+  - "~/components/editor/designers/single/products/metals/metal-proportional-preview.tsx"
+  - "~/components/editor/designers/single/products/coasters/coasters-size-panel.tsx"
+  - "~/components/editor/designers/single/products/coasters/coaster-proportional-preview.tsx"
+  - "~/components/editor/designers/single/products/puzzle/puzzle-proportional-preview.tsx"
+  - "~/components/editor/designers/single/products/place-mat/place-mat-proportional-preview.tsx"
+  - "~/components/editor/designers/single/products/mouse-pad/mouse-pad-proportional-preview.tsx"
+  - "~/components/editor/designers/single/common-components/proportional-preview.tsx"
+  - "~/components/editor/designers/single/common-components/non-default-sorting-size-component.tsx"
+  - "~/components/editor/designers/single/common-components/default-sorting-size-component.tsx"
+  - "~/components/editor/designers/single/common-components/pack/non-default-sorting-pack.tsx"
+  - "~/components/editor/designers/single/common-components/general/single-general-add-to-cart.tsx"
+  - "~/components/editor/designers/single/common-components/general/single-general-proportional-preview.tsx"
+  - "~/components/editor/designers/single/common-components/general/general-size-panel.tsx"
+  - "~/components/editor/designers/multi/products/cushions/multi-cushion-template-panel.tsx"
+  - "~/components/editor/designers-shared/data/designer-data.ts"
+  - "~/components/editor/designers-shared/bundle/bundle-general-add-to-cart.tsx"
+  - "~/components/editor/designers-shared/bundle/bundle-proportional-preview.tsx"
+  - "~/components/editor/designers-shared/bundle/bundle-table-view-proportion-preview.tsx"
+  - "~/components/designer/canvas/canvas-add-to-cart.tsx"
+  - "~/hooks/useOpenMotherDaysPopup.tsx"
+
+security:
+  sensitive_data:
+    - SENTRY_DSN contains service credentials
+    - MATOMO_SITE_ID is low-sensitivity
+    - API_ENV exposes infrastructure details
+
+  safe_exposure:
+    - getServerConfig returns subset safe for client
+    - No secrets/tokens in these configs
+    - Region/debug flags are public-safe
+

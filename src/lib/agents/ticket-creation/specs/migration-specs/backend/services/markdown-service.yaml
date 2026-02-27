@@ -1,0 +1,85 @@
+name: MarkdownService
+source:
+  path: services/markdown-service.ts
+  lines: 1-7
+  type: service
+
+description: |
+  Utility service for converting Markdown text to HTML using the Showdown library.
+  Provides a single function to transform markdown strings into rendered HTML.
+
+exports:
+  functions:
+    - name: convertMarkdownToHtml
+      signature: "(markdown: string): string"
+      description: "Converts markdown text to HTML using Showdown converter"
+      params:
+        - name: markdown
+          type: string
+          description: "Markdown-formatted text to convert"
+      returns:
+        type: string
+        description: "HTML-formatted output"
+      example: |
+        const html = convertMarkdownToHtml("# Hello\n\nThis is **bold**");
+        // Returns: "<h1>Hello</h1><p>This is <strong>bold</strong></p>"
+
+  types: []
+  interfaces: []
+  constants: []
+
+api_contracts: []
+
+types:
+  notes: "No locally-defined types. Function accepts and returns primitive string. No interfaces, enums, or type aliases defined in this file. Uses the showdown external library for conversion."
+
+dependencies:
+  external:
+    - name: showdown
+      purpose: "Markdown to HTML conversion library"
+      version: "Not specified in source"
+  internal: []
+
+data_flow:
+  inputs:
+    - Markdown string from caller
+  processing:
+    - Initialize Showdown Converter instance (singleton)
+    - Pass markdown to converter.makeHtml()
+  outputs:
+    - HTML string
+
+business_logic:
+  - Uses Showdown library default configuration
+  - Converter instance is created once at module load (singleton pattern)
+  - No validation or sanitization of input/output
+
+error_handling:
+  - No explicit error handling
+  - Relies on Showdown library error behavior
+  - May throw if showdown converter encounters invalid state
+
+security:
+  - No XSS protection applied to output HTML
+  - Caller must sanitize if displaying user-generated markdown
+  - No input validation
+
+performance:
+  - Converter instance created once (efficient)
+  - Synchronous operation
+  - Performance depends on Showdown library
+
+behavior:
+  - name: convertMarkdownToHtml
+    steps:
+      - Uses a module-level singleton Showdown Converter instance (created once at import time)
+      - Passes the input markdown string to converter.makeHtml()
+      - Returns the resulting HTML string
+      - No input validation or output sanitization is performed
+
+used_by:
+  - frontend/components/banner/strip-banner.yaml # Uses convertMarkdownToHtml to render banner text
+  - frontend/components/web-component/faq-v2.yaml # Uses convertMarkdownToHtml for FAQ answer rendering
+  - frontend/components/web-component/seo-content.yaml # Uses convertMarkdownToHtml for SEO content HTML
+  - frontend/components/web-component/trust-signals.yaml # Uses convertMarkdownToHtml for trust signal text
+  - frontend/components/web-component/ugc-section.yaml # Uses convertMarkdownToHtml for UGC section content

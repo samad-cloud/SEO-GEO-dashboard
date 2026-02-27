@@ -1,0 +1,318 @@
+name: ImageResolutionContainer
+source: src/components/image-resolution-page/containers/image-resolution-container.tsx
+description: Information page displaying recommended image resolution requirements for different product types in a table format with region-specific data
+
+exports:
+  default:
+    type: component
+    signature: "component$(() => JSX.Element)"
+    description: Main container wrapper that renders PhotoTips child component
+  Head:
+    type: function
+    signature: "() => DocumentHead"
+    description: Document head configuration with SEO metadata including description
+
+component_structure:
+  PhotoTips_component:
+    element: div
+    classes: "mt-[50px] mb-[50px] px-[15px] md:px-0"
+    children:
+      - section: header
+        children:
+          - element: h1
+            classes: "text-center mb-6"
+            text: t("image_resolution.recommend_resolution_guide")
+          - element: p
+            classes: "text-center mb-6 px-0 lg:px-[180px]"
+            text: t("image_resolution.recommend_detail")
+          - element: p
+            classes: "text-center mb-6 px-0 lg:px-[180px] italic"
+            text: t("image_resolution.table_title")
+
+      - section: resolution_table
+        element: table
+        classes: "w-full border-separate border-spacing-2"
+        structure:
+          colgroup:
+            dynamic_columns:
+              count: 4
+              width: "25%" (calculated as 100 / columns.length)
+
+          thead:
+            element: tr
+            columns:
+              - th: t("image_resolution.product")
+                classes: "text-[#1A1A1A] text-sm py-[10px] bg-[#F0F0F0] rounded border border-[#1A1A1A] dark:border-base-mainBorder"
+              - th: t("image_resolution.good_quality")
+                classes: "text-[#1A1A1A] text-sm py-[10px] bg-[#F0F0F0] rounded border border-[#1A1A1A] dark:border-base-mainBorder"
+              - th: t("image_resolution.better_quality")
+                classes: "text-[#1A1A1A] text-sm py-[10px] bg-[#F0F0F0] rounded border border-[#1A1A1A] dark:border-base-mainBorder"
+              - th: t("image_resolution.best_quality")
+                classes: "text-[#1A1A1A] text-sm py-[10px] bg-[#F0F0F0] rounded border border-[#1A1A1A] dark:border-base-mainBorder"
+
+          tbody:
+            iterate_over: data.imageResolution
+            key: item.productName
+            row_structure:
+              element: tr
+              classes: "min-h-[50px]"
+              cells:
+                - td: item.productName
+                  classes: "py-[10px] text-center border border-base-mainBorder rounded bg-[#F0F0F0] dark:bg-transparent text-sm"
+                - td: item.goodQuality
+                  classes: "py-[10px] text-center border border-base-mainBorder rounded bg-[#F0F0F0] dark:bg-transparent text-sm"
+                - td: item.betterQuality
+                  classes: "py-[10px] text-center border border-base-mainBorder rounded bg-[#F0F0F0] dark:bg-transparent text-sm"
+                - td: item.bestQuality
+                  classes: "py-[10px] text-center border border-base-mainBorder rounded bg-[#F0F0F0] dark:bg-transparent text-sm"
+
+  default_export:
+    element: div
+    children:
+      - component: PhotoTips
+
+behavior:
+  data_source:
+    function: getResolutionImageData()
+    returns: JSON object with imageResolution array
+    region_variants:
+      - US: ~/utility/image-resolution/US.json
+      - GB: ~/utility/image-resolution/UK.json
+      - FR: ~/utility/image-resolution/FR.json
+      - DE: ~/utility/image-resolution/DE.json
+      - IT: ~/utility/image-resolution/IT.json
+      - ES: ~/utility/image-resolution/ES.json
+      - NL: ~/utility/image-resolution/NL.json
+      - default: US.json
+
+  data_structure:
+    imageResolution:
+      type: array
+      items:
+        productName: string
+        goodQuality: string | null (e.g., "300 pixels", "600 pixels")
+        betterQuality: string | null (e.g., "600 pixels", "900 pixels")
+        bestQuality: string | null (e.g., "800+ pixels", "1200+ pixels")
+      example_items:
+        - productName: "Photo Keychains"
+          goodQuality: "300 pixels"
+          betterQuality: "600 pixels"
+          bestQuality: "800+ pixels"
+        - productName: "Photo Teddies"
+          goodQuality: null
+          betterQuality: null
+          bestQuality: null
+        - productName: "Coasters, Mugs, Mouse Pads"
+          goodQuality: "600 pixels"
+          betterQuality: "900 pixels"
+          bestQuality: "1200+ pixels"
+        - productName: "Photo Calendars"
+          goodQuality: "800 pixels"
+          betterQuality: "1200 pixels"
+          bestQuality: "1600+ pixels"
+        - productName: "16 x 20 Photo Canvas"
+          goodQuality: "1500 pixels"
+          betterQuality: "2300 pixels"
+          bestQuality: "3000+ pixels"
+
+  table_rendering:
+    column_count: 4 (Product, Good Quality, Better Quality, Best Quality)
+    column_width: Equal (25% each)
+    row_generation: Dynamic based on region-specific JSON data
+    null_handling: Display empty cells when quality values are null
+
+  styling:
+    table_style: border-separate with border-spacing-2
+    header_bg: "#F0F0F0" (light gray)
+    header_text: "#1A1A1A" (dark)
+    cell_bg: "#F0F0F0" light mode, transparent dark mode
+    border_color: "#1A1A1A" light mode, base-mainBorder dark mode
+    rounded_corners: All cells have rounded borders
+
+child_components:
+  - name: PhotoTips
+    type: internal
+    description: Inner component containing table structure
+
+i18n:
+  translation_keys:
+    headers:
+      - image_resolution.recommend_resolution_guide
+      - image_resolution.recommend_detail
+      - image_resolution.table_title
+    table_columns:
+      - image_resolution.product
+      - image_resolution.good_quality
+      - image_resolution.better_quality
+      - image_resolution.best_quality
+    meta:
+      - image_resolution.meta.title
+      - image_resolution.meta.description
+      - image_quality.image_quality_title (NOTE: Used in meta title, not image_resolution.*)
+  library: qwik-speak
+  method: inlineTranslate()
+
+static_content:
+  data_files:
+    location: ~/utility/image-resolution/
+    files:
+      - US.json
+      - UK.json
+      - FR.json
+      - DE.json
+      - IT.json
+      - ES.json
+      - NL.json
+    format: JSON
+    structure: "{ imageResolution: [...] }"
+
+  products_included:
+    - Photo Keychains
+    - Photo Teddies
+    - Coasters, Mugs, Mouse Pads
+    - Photo Puzzles
+    - Phone Cases
+    - Photo Calendars
+    - Stone Slates (8x6, 12x12)
+    - Photo Cushions
+    - Metal Prints (10x7, 11x14, 16x20)
+    - Photo Canvas (various sizes from 8x10 to 40x12)
+
+  note: Some products have null values for all quality levels in source data
+
+images: []
+
+used_by:
+  - "~/routes/image-resolution/index.tsx"
+
+dependencies:
+  framework:
+    - "@builder.io/qwik": [component$]
+  i18n:
+    - "qwik-speak": [inlineTranslate]
+  utilities:
+    - "~/utility/image-resolution/image-resolution": [getResolutionImageData]
+  json_imports:
+    - "~/utility/image-resolution/US.json"
+    - "~/utility/image-resolution/UK.json"
+    - "~/utility/image-resolution/FR.json"
+    - "~/utility/image-resolution/DE.json"
+    - "~/utility/image-resolution/IT.json"
+    - "~/utility/image-resolution/ES.json"
+    - "~/utility/image-resolution/NL.json"
+
+data_dependencies:
+  settings:
+    - field: website
+      values: ["US", "GB", "FR", "DE", "IT", "ES", "NL"]
+      purpose: Determine which JSON file to load via getResolutionImageData()
+
+  json_data:
+    source: Region-specific JSON files
+    fields:
+      - imageResolution: array of product resolution requirements
+    validation: Must handle null values in quality fields
+
+seo:
+  head_config:
+    title: t("image_resolution.meta.title")
+    meta_tags:
+      - name: title
+        content: t("image_quality.image_quality_title")
+        note: Uses image_quality key, not image_resolution
+      - name: description
+        content: t("image_resolution.meta.description")
+      - name: google
+        content: notranslate
+      - name: theme-color
+        content: "#ffffff"
+      - name: distribution
+        content: Global
+      - name: rating
+        content: Safe For Kids
+      - name: author
+        content: printerpix
+      - name: copyright
+        content: printerpix
+      - name: google-signin-scope
+        content: profile email
+      - name: robots
+        content: none
+
+  note: Meta title uses different translation namespace (image_quality vs image_resolution)
+
+responsive_design:
+  mobile:
+    padding: px-[15px]
+    header_padding: px-0
+  desktop:
+    padding: md:px-0
+    header_padding: lg:px-[180px]
+  table:
+    responsive: Full width on all devices
+    text_size: text-sm
+    cell_padding: py-[10px]
+
+edge_cases:
+  - Unknown website setting: Falls back to US.json
+  - Missing JSON file: Should throw error or fallback to US
+  - Null quality values: Render empty table cells
+  - Very long product names: May cause text wrapping
+  - Empty imageResolution array: Would render table with only headers
+
+security:
+  no_user_input: true
+  no_authentication_required: true
+  content_type: Static reference data from JSON files
+  data_source: Trusted internal JSON files only
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  ImageResolutionItem:
+    description: A single row in the resolution table (one product type)
+    fields:
+      - name: productName
+        type: string
+      - name: goodQuality
+        type: "string | null"
+      - name: betterQuality
+        type: "string | null"
+      - name: bestQuality
+        type: "string | null"
+
+  ImageResolutionData:
+    description: Shape of the JSON files returned by getResolutionImageData
+    fields:
+      - name: imageResolution
+        type: "ImageResolutionItem[]"
+
+field_consumption:
+  ImageResolutionData:
+    consumed:
+      - imageResolution: Iterated to render one table row per item
+    ignored: []
+
+  ImageResolutionItem:
+    consumed:
+      - productName: Used as row key and rendered in first table cell
+      - goodQuality: Rendered in second table cell (empty cell if null)
+      - betterQuality: Rendered in third table cell (empty cell if null)
+      - bestQuality: Rendered in fourth table cell (empty cell if null)
+    ignored: []
+
+visibility_map:
+  table_header_columns:
+    condition: columns array always has 4 elements
+    default: visible
+    notes: Headers are always rendered; no conditional hiding
+
+  table_rows:
+    condition: data.imageResolution.length > 0
+    default: visible
+    notes: If array is empty, tbody renders no rows but header remains
+
+  quality_cell_value:
+    condition: item.goodQuality / betterQuality / bestQuality is not null
+    default: visible
+    notes: Null values render as empty td elements (no text shown)

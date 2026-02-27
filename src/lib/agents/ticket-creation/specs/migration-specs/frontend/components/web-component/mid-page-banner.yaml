@@ -1,0 +1,206 @@
+name: MidPageBanner
+source: components/web-component/mid-page-banner.tsx
+description: >
+  Displays a mid-page promotional banner with responsive images (desktop/mobile).
+  When a URL is provided, the banner is wrapped in a clickable link with Matomo
+  analytics tracking. When no URL is present, the banner displays as a static
+  (non-clickable) image. Both modes show different images for desktop and mobile
+  viewports. Contains commented-out VideoPopup functionality for future use.
+
+exports:
+  default:
+    type: component
+    name: MidPageBanner
+    export_type: default
+
+props:
+  data:
+    type: MidPageBanner
+    required: true
+    description: Contains image URLs, alt text, link URL, and optional video data
+
+component_structure:
+  root:
+    conditional_rendering:
+      - condition: data.url is truthy
+        element: Link (client-side navigation)
+        classes: "link_mid_page_banner"
+        href: data.url
+        on_click: pushMatomoEvent with CLICK_MID_PAGE_BANNER and data.url
+        children:
+          - element: Image (optimized)
+            src: data.desktopImageUrl
+            classes: "hidden md:block w-full h-auto"
+            loading: lazy
+            alt: data.imageAlt
+          - element: Image (optimized)
+            src: data.mobileImageUrl
+            classes: "block md:hidden w-full h-auto"
+            loading: lazy
+            alt: data.imageAlt
+      - condition: data.url is falsy
+        element: fragment wrapper with div
+        children:
+          - element: Image (optimized)
+            src: data.desktopImageUrl
+            classes: "hidden md:block w-full h-auto"
+            loading: lazy
+            alt: data.imageAlt
+          - element: Image (optimized)
+            src: data.mobileImageUrl
+            classes: "block md:hidden w-full h-auto"
+            loading: lazy
+            alt: data.imageAlt
+
+child_components: []
+
+data_structure:
+  MidPageBanner:
+    desktopImageUrl:
+      type: string
+      description: URL for the desktop banner image (shown at md breakpoint and above)
+    mobileImageUrl:
+      type: string
+      description: URL for the mobile banner image (shown below md breakpoint)
+    imageAlt:
+      type: string
+      description: Alt text shared by both desktop and mobile images
+    url:
+      type: string
+      description: Link destination URL; when empty/falsy, banner is non-clickable
+    textContent:
+      type: string
+      description: Text content (defined in type but not rendered by this component)
+    videoCtaText:
+      type: string
+      description: Video call-to-action text (defined in type, currently unused - commented out)
+    ctaVideoUrl:
+      type: string
+      description: Video URL for popup (defined in type, currently unused - commented out)
+    order:
+      type: number
+      description: Display order within the page (used by parent component)
+
+behavior:
+  rendering:
+    - Two rendering modes based on data.url truthiness
+    - Clickable mode wraps images in a Link component for client-side navigation
+    - Static mode wraps images in a plain div with fragment wrapper
+    - Both modes render identical image pairs (desktop + mobile)
+  responsive_images:
+    - Desktop image hidden below md breakpoint (hidden, md:block)
+    - Mobile image visible below md breakpoint (block, md:hidden)
+    - Both images are full width (w-full) with auto height
+    - Both images use lazy loading
+  analytics:
+    - Clickable banner fires Matomo trackEvent with category COMMON, action CLICK_MID_PAGE_BANNER, label data.url
+    - Non-clickable banner has no analytics tracking
+  navigation:
+    - Uses framework Link component for client-side navigation (not standard anchor tag)
+  commented_out_features:
+    - VideoPopup component is commented out in both rendering paths
+    - Would display a video popup button using ctaVideoUrl and videoCtaText
+
+styling:
+  approach: Tailwind CSS utility classes
+  responsive_breakpoints:
+    - md: toggles between mobile and desktop images
+  custom_classes:
+    - "link_mid_page_banner": CSS class on the clickable wrapper for targeting
+  parent_wrapper_note: >
+    Parent in web-contents-component applies conditional width:
+    "Contained Width" componentType gets "container mx-auto", otherwise "w-full"
+
+dependencies:
+  - name: "@unpic/qwik"
+    purpose: Optimized image component with lazy loading
+    import: "Image"
+  - name: "@builder.io/qwik-city"
+    purpose: Client-side navigation Link component
+    import: "Link"
+  - name: category-service
+    purpose: MidPageBanner type definition
+    import: "type MidPageBanner"
+  - name: matomo utility
+    purpose: Analytics event tracking
+    imports:
+      - MatomoCategory
+      - MatomoEvent
+      - pushMatomoEvent
+
+used_by:
+  - components/web-component/web-contents-component.tsx
+  - components/web-component/web-contents-component-v3.tsx
+  - components/marketing-page/generateMComponents.tsx
+
+security:
+  - data.url is used as href; should be validated against allowed domains to prevent open redirect
+  - Image URLs from CMS should be validated against allowed image hosting domains
+  - imageAlt comes from CMS; should be sanitized to prevent XSS in alt attributes
+
+notes:
+  - The MidPageBanner type is defined in category-service, not web-component-service
+  - VideoPopup functionality is commented out in source - may need to be implemented in future
+  - The parent component applies different container widths based on componentType ("Contained Width" vs full width)
+  - The component uses the same alt text for both desktop and mobile images
+  - The non-clickable variant has a redundant fragment wrapper (<> and </>) around a single div
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  MidPageBannerProps:
+    description: Component props (anonymous inline type in source)
+    fields:
+      - name: data
+        type: MidPageBanner
+
+  MidPageBanner:
+    description: Mid-page banner data from category-service
+    source: ~/services/category-service
+    fields:
+      - name: desktopImageUrl
+        type: string
+      - name: mobileImageUrl
+        type: string
+      - name: imageAlt
+        type: string
+      - name: url
+        type: string
+      - name: textContent
+        type: string
+      - name: videoCtaText
+        type: string
+      - name: ctaVideoUrl
+        type: string
+      - name: order
+        type: number
+
+field_consumption:
+  MidPageBanner:
+    consumed:
+      - url: Determines rendering mode; used as href on Link when truthy; also passed to Matomo event
+      - desktopImageUrl: Passed as src to desktop Image (hidden md:block)
+      - mobileImageUrl: Passed as src to mobile Image (block md:hidden)
+      - imageAlt: Shared alt text for both desktop and mobile Image components
+    ignored:
+      - textContent: Present in type but not rendered by this component
+      - videoCtaText: Present in type but not rendered (VideoPopup is commented out)
+      - ctaVideoUrl: Present in type but not rendered (VideoPopup is commented out)
+      - order: Present in type but used by parent (web-contents-component) for CSS order, not by this component
+
+visibility_map:
+  clickable_link_variant:
+    condition: "data.url is truthy"
+    default: hidden
+
+  static_div_variant:
+    condition: "data.url is falsy"
+    default: visible
+
+  desktop_image:
+    condition: "always rendered in both variants"
+    default: "visible on md+ screens (Tailwind: hidden md:block)"
+
+  mobile_image:
+    condition: "always rendered in both variants"
+    default: "visible below md breakpoint (Tailwind: block md:hidden)"

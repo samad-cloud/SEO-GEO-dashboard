@@ -1,0 +1,250 @@
+name: ShopByBudget
+source: src/components/web-component/shop-by-budget.tsx
+description: |
+  Budget-based shopping guide section that renders product/category cards grouped
+  into two rows: the first row shows the first 3 items displayed in a horizontally
+  scrollable row on mobile; the second row shows remaining items in a flex column
+  (mobile) / row (desktop) layout. Each card has an image, title heading, and a
+  themed CTA button link. All clicks fire Matomo analytics events.
+
+exports:
+  - name: default
+    type: component$<{ data: ShopByBudget }>
+    description: Default Qwik component export
+
+props:
+  - name: data
+    type: ShopByBudget
+    required: true
+    description: Budget shopping guide data including heading, CTA colors, and product/category items array
+
+component_structure:
+  root:
+    element: div
+    id: shop-by-budget
+    class: "container mx-auto my-[25px]"
+    children:
+      - element: h2
+        class: "text-2xl md:text-4xl font-bold text-center mb-2 mt-4 px-3 lg:px-0"
+        content: "{data.heading}"
+      - element: div (outer flex column)
+        class: "flex flex-col justify-center px-4 lg:px-0 gap-8"
+        children:
+          - element: div (first row — items 0..2)
+            class: "flex justify-start lg:justify-center gap-4 lg:gap-8 overflow-auto pt-4 pb-8"
+            children:
+              - element: div (budget card, per item)
+                id: "budget-item-{index}"
+                class: "flex flex-col gap-3 items-center justify-center min-w-[65vw] lg:w-auto lg:min-w-0"
+                children:
+                  - element: Link (image link)
+                    href: "{budget.link}"
+                    class: "link_shop_by_budget--{index}"
+                    child: Image (budget.imgSrc, aspectRatio=budget.imageAspectRatio, alt="")
+                  - element: h2
+                    class: "font-bold"
+                    content: "{budget.title}"
+                  - element: Link (CTA button)
+                    href: "{budget.link}"
+                    class: "font-bold rounded py-2 px-4 lg:px-6 cta_shop_by_budget--{index}"
+                    style: "backgroundColor: data.ctaBackgroundColor; color: data.ctaTextColor"
+                    content: "{budget.ctaText}"
+          - element: div (second row — items 3..end)
+            class: "flex flex-col lg:flex-row justify-center gap-8 w-full"
+            children:
+              - element: div (budget card, per item)
+                id: "budget-item-{index + 3}"
+                class: "flex flex-col flex-grow gap-3 items-center justify-center"
+                children:
+                  - element: Link (image link)
+                    href: "{budget.link}"
+                    class: "link_shop_by_budget--{index + 3}"
+                    child: Image (budget.imgSrc, aspectRatio=budget.imageAspectRatio, alt="")
+                  - element: h2
+                    class: "font-bold"
+                    content: "{budget.title}"
+                  - element: Link (CTA button)
+                    href: "{budget.link}"
+                    class: "rounded font-bold py-2 px-4 lg:px-6 cta_shop_by_budget--{index + 3}"
+                    style: "backgroundColor: data.ctaBackgroundColor; color: data.ctaTextColor"
+                    content: "{budget.ctaText}"
+
+child_components:
+  - name: Image
+    source: "@unpic/qwik"
+    purpose: Renders budget item images with aspect ratio
+    props:
+      - src: budget.imgSrc
+      - aspectRatio: budget.imageAspectRatio
+      - alt: "" (intentionally empty)
+  - name: Link
+    source: "@builder.io/qwik-city"
+    purpose: Navigation links for image and CTA button
+
+data_structure:
+  ShopByBudget:
+    display:
+      type: boolean
+      description: Whether to show this section (checked by parent, not component itself)
+    order:
+      type: number
+      description: Display order on page
+    heading:
+      type: string
+      description: Section h2 heading text
+    headingPosition:
+      type: string
+      description: Heading alignment (present in type but not read by this component)
+    ctaTextColor:
+      type: string
+      description: CSS color for all CTA button text
+    ctaBackgroundColor:
+      type: string
+      description: CSS background color for all CTA buttons
+    productOrCategories:
+      type: "ProductOrCategory[]"
+      description: Array of budget items; first 3 in top row, rest in bottom row
+
+  ProductOrCategory:
+    title:
+      type: string
+      description: Item title shown as h2 below image
+    imgSrc:
+      type: string
+      description: Image URL
+    link:
+      type: string
+      description: Navigation href for both image and CTA links
+    imageAspectRatio:
+      type: string
+      description: Aspect ratio string passed to Image component (e.g. "4/3")
+    ctaText:
+      type: string
+      description: CTA button label text
+
+behavior:
+  - action: "Split items into two rows"
+    details: >
+      First row: data.productOrCategories.slice(0, 3) — rendered as horizontally scrollable on mobile.
+      Second row: data.productOrCategories.slice(3) — rendered as stacked on mobile, horizontal on desktop.
+  - action: "Render each budget card"
+    details: >
+      Each item has: (1) a Link wrapping an Image (href=budget.link),
+      (2) an h2 with budget.title,
+      (3) a CTA Link styled with data.ctaBackgroundColor and data.ctaTextColor.
+      Both the image Link and the CTA Link navigate to budget.link.
+  - action: "Fire Matomo analytics on click"
+    details: >
+      Both the image Link's onClick$ and the CTA Link's onClick$ fire:
+      pushMatomoEvent(["trackEvent", MatomoCategory.COMMON, MatomoEvent.CLICK_SHOP_BY_BUDGET, budget.link])
+      The Matomo event fires on BOTH image click and CTA click for every item.
+
+styling:
+  outer_wrapper: "container mx-auto my-[25px]"
+  heading: "text-2xl md:text-4xl font-bold text-center mb-2 mt-4 px-3 lg:px-0"
+  first_row: "flex justify-start lg:justify-center gap-4 lg:gap-8 overflow-auto pt-4 pb-8"
+  card_first_row: "flex flex-col gap-3 items-center justify-center min-w-[65vw] lg:w-auto lg:min-w-0"
+  second_row: "flex flex-col lg:flex-row justify-center gap-8 w-full"
+  card_second_row: "flex flex-col flex-grow gap-3 items-center justify-center"
+  cta_button_first_row: "font-bold rounded py-2 px-4 lg:px-6 cta_shop_by_budget--{index}"
+  cta_button_second_row: "rounded font-bold py-2 px-4 lg:px-6 cta_shop_by_budget--{index + 3}"
+  cta_button_style: "backgroundColor: data.ctaBackgroundColor; color: data.ctaTextColor (inline styles)"
+
+dependencies:
+  qwik:
+    - component$ from @builder.io/qwik
+  routing:
+    - Link from @builder.io/qwik-city
+  components:
+    - Image from @unpic/qwik
+  analytics:
+    - MatomoCategory, MatomoEvent, pushMatomoEvent from ~/utility/matomo
+  types:
+    - ShopByBudget from ~/services/shop-by-budget-service
+
+used_by:
+  - ShoppingGuide
+
+security:
+  - Item links (budget.link) come from CMS — validate to prevent open redirect or javascript: URIs
+  - Image src values from CMS — ensure CDN is whitelisted in CSP
+
+edge_cases:
+  - If productOrCategories has fewer than 3 items, the first row renders all available items; second row renders nothing
+  - If productOrCategories is empty, both rows render nothing
+  - If ctaBackgroundColor or ctaTextColor are empty strings, buttons will use browser defaults
+
+notes:
+  - The component uses `data.headingPosition` in the type definition but does NOT read it in the render (only heading text is rendered, not aligned via headingPosition)
+  - Image alt is intentionally empty string (decorative images)
+  - First row has horizontal overflow scroll on all screen sizes (overflow-auto), not hidden on desktop
+  - Analytics class on image link uses `link_shop_by_budget--{index}` and on CTA uses `cta_shop_by_budget--{index}`
+
+types:
+  ShopByBudgetProps:
+    description: Component props interface
+    fields:
+      - name: data
+        type: ShopByBudget
+
+  ShopByBudget:
+    description: Budget shopping guide section data
+    source: ~/services/shop-by-budget-service
+    fields:
+      - name: display
+        type: boolean
+      - name: order
+        type: number
+      - name: heading
+        type: string
+      - name: headingPosition
+        type: string
+      - name: ctaTextColor
+        type: string
+      - name: ctaBackgroundColor
+        type: string
+      - name: productOrCategories
+        type: "ProductOrCategory[]"
+
+  ProductOrCategory:
+    description: Individual budget/category item
+    fields:
+      - name: title
+        type: string
+      - name: imgSrc
+        type: string
+      - name: link
+        type: string
+      - name: imageAspectRatio
+        type: string
+      - name: ctaText
+        type: string
+
+field_consumption:
+  ShopByBudget:
+    consumed:
+      - heading: Rendered as section h2
+      - ctaTextColor: Applied as inline color style on all CTA Links
+      - ctaBackgroundColor: Applied as inline backgroundColor style on all CTA Links
+      - productOrCategories: Iterated; first 3 in row 1, rest in row 2
+    ignored:
+      - display: Checked by parent (WebContentsComponent), not by this component
+      - order: Checked by parent for sorting, not used internally
+      - headingPosition: Present in ShopByBudget type but not read in render
+
+  ProductOrCategory:
+    consumed:
+      - title: Rendered as h2 below image
+      - imgSrc: Passed to Image as src
+      - link: Used as href for both image Link and CTA Link; also as Matomo event label
+      - imageAspectRatio: Passed to Image as aspectRatio
+      - ctaText: Rendered as CTA button label
+
+visibility_map:
+  first_row_items:
+    condition: data.productOrCategories.slice(0, 3) has length > 0
+    default: visible if any of the first 3 items exist
+
+  second_row_items:
+    condition: data.productOrCategories.length > 3
+    default: hidden if 3 or fewer items total

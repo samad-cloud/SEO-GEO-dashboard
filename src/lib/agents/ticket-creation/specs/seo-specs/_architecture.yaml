@@ -1,0 +1,345 @@
+purpose: |
+  Global system architecture knowledge for AI agents.
+  Covers middleware, region config, hreflang, API infrastructure, cookies, and layouts.
+
+middleware_pipeline:
+  description: |
+    Every request passes through middleware before reaching route loaders.
+    Execution order matters — redirects happen first, then cookie setup.
+  source_spec: "../migration-specs/backend/services/middle-ware-service.yaml"
+  source_file: "src/services/middle-ware-service.ts"
+
+  execution_order:
+    1_redirections:
+      description: "Check URL against redirection rules from JSON config"
+      action: "If match found: HTTP 301/302 redirect to target URL"
+      source: "loadWebContent(WebContentType.REDIRECTION)"
+    2_machine_token:
+      description: "Generate MACHINE_TOKEN cookie for new visitors"
+      conditions:
+        - "No existing MACHINE_TOKEN cookie"
+        - "URL does not contain 'undefined'"
+        - "User-agent does not contain 'bot'"
+      action: "Call getNewMachineToken(), set 90-day cookie"
+    3_utm_tracking:
+      description: "Extract all utm_* query parameters, store as individual cookies (90 days)"
+    4_affiliate_tracking:
+      description: "If pixid query param exists: set pixId, pixIdUnixTimestamp, and GCLAW cookies"
+      gclaw_logic: "GCLAW only set if gclid is NOT present (prevents overwriting Google Click ID)"
+    5_coupon_tracking:
+      description: "If couponcode query param exists: set MODI_COUPON cookie (90 days)"
+
+  categoryproduct_layout_middleware:
+    description: "Additional checks in the categoryproduct layout's onRequest handler"
+    source_spec: "../migration-specs/frontend/layouts/layout-categoryproduct.yaml"
+    checks:
+      - "redeemgift redirect: URLs containing 'redeemgift' → 302 to /redeemgift/{params}"
+      - "Excluded route check: isExcludedRoute(url) → exit request"
+      - "Then runs cookieAndRedirectionMiddleware(event)"
+
+region_configuration:
+  description: "All region configs from server.ts — the SINGLE SOURCE OF TRUTH"
+  source_spec: "../migration-specs/backend/services/server.yaml"
+  source_file: "src/services/server.ts"
+  key_function: "getSiteSetting() → returns current region config based on WEBSITE env var"
+  fallback: "UK (GB) if region cannot be determined"
+
+  regions:
+    - code: GB
+      countryCode2: "GB"
+      domain: "printerpix.co.uk"
+      website: "https://www.printerpix.co.uk"
+      api_legacy: "https://api.printerpix.co.uk"
+      api_new: "https://qt-api.printerpix.co.uk"
+      locale: "en-GB"
+      currency: "GBP"
+      currency_symbol: "£"
+      thousands_sep: ","
+      fraction_sep: "."
+      site_code: 4
+      language_code: "en"
+      is_default: true
+
+    - code: US
+      countryCode2: "US"
+      domain: "printerpix.com"
+      website: "https://www.printerpix.com"
+      api_legacy: "https://api.printerpix.com"
+      api_new: "https://qt-api.printerpix.com"
+      locale: "en-US"
+      currency: "USD"
+      currency_symbol: "$"
+      thousands_sep: ","
+      fraction_sep: "."
+      site_code: 6
+      language_code: "us"
+
+    - code: DE
+      countryCode2: "DE"
+      domain: "printerpix.de"
+      website: "https://www.printerpix.de"
+      api_legacy: "https://api.printerpix.de"
+      api_new: "https://qt-api.printerpix.de"
+      locale: "de-DE"
+      currency: "EUR"
+      currency_symbol: "€"
+      thousands_sep: "."
+      fraction_sep: ","
+      site_code: 16
+      language_code: "de"
+
+    - code: FR
+      countryCode2: "FR"
+      domain: "printerpix.fr"
+      website: "https://www.printerpix.fr"
+      api_legacy: "https://api.printerpix.fr"
+      api_new: "https://qt-api.printerpix.fr"
+      locale: "fr-FR"
+      currency: "EUR"
+      currency_symbol: "€"
+      thousands_sep: "."
+      fraction_sep: ","
+      site_code: 10
+      language_code: "fr"
+
+    - code: IT
+      countryCode2: "IT"
+      domain: "printerpix.it"
+      website: "https://www.printerpix.it"
+      api_legacy: "https://api.printerpix.it"
+      api_new: "https://qt-api.printerpix.it"
+      locale: "it-IT"
+      currency: "EUR"
+      currency_symbol: "€"
+      thousands_sep: "."
+      fraction_sep: ","
+      site_code: 13
+      language_code: "it"
+
+    - code: ES
+      countryCode2: "ES"
+      domain: "printerpix.es"
+      website: "https://www.printerpix.es"
+      api_legacy: "https://api.printerpix.es"
+      api_new: "https://qt-api.printerpix.es"
+      locale: "es-ES"
+      currency: "EUR"
+      currency_symbol: "€"
+      thousands_sep: "."
+      fraction_sep: ","
+      site_code: 12
+      language_code: "es"
+
+    - code: NL
+      countryCode2: "NL"
+      domain: "printerpix.nl"
+      website: "https://www.printerpix.nl"
+      api_legacy: "https://api.printerpix.nl"
+      api_new: "https://qt-api.printerpix.nl"
+      locale: "nl-NL"
+      currency: "EUR"
+      currency_symbol: "€"
+      thousands_sep: "."
+      fraction_sep: ","
+      site_code: 14
+      language_code: "nl"
+
+    - code: IN
+      countryCode2: "IN"
+      domain: "printerpix.in"
+      website: "https://www.printerpix.in"
+      api_legacy: "https://api.printerpix.in"
+      api_new: "https://qt-api.printerpix.in"
+      locale: "en-IN"
+      currency: "INR"
+      currency_symbol: "₹"
+      site_code: null
+      language_code: "en"
+      notes: "Not in source code's websiteVariables array — may be served separately"
+
+    - code: AE
+      countryCode2: "AE"
+      domain: "printerpix.ae"
+      website: "https://www.printerpix.ae"
+      api_legacy: "https://api.printerpix.ae"
+      api_new: "https://qt-api.printerpix.ae"
+      locale: "en-AE"
+      currency: "AED"
+      currency_symbol: "د.إ"
+      site_code: null
+      language_code: "en"
+      notes: "Not in source code's websiteVariables array — may be served separately"
+
+hreflang_generation:
+  source_function: "getHreflangLinks(pathname)"
+  source_file: "src/services/server.ts"
+  source_spec: "../migration-specs/backend/services/server.yaml"
+  output_count: 8
+  output_format:
+    - rel: "alternate"
+      hreflang: "{locale lowercase, e.g. en-gb}"
+      href: "{website}{pathname}"
+  x_default: "https://www.printerpix.co.uk{pathname}"
+  known_issues:
+    - issue: "Hreflang does not account for i18n URL rewrites"
+      detail: |
+        For example, /delivery-rates on NL becomes /leveringstarieven.
+        But getHreflangLinks('/delivery-rates') generates:
+          https://www.printerpix.nl/delivery-rates (WRONG)
+        Instead of:
+          https://www.printerpix.nl/leveringstarieven (CORRECT)
+        This affects all pages with rewrite_routes in non-English locales.
+      affected_pages: "All info pages with i18n rewrites (see _index.yaml routing_table)"
+      severity: "Medium — search engines may not properly associate locale variants"
+
+api_infrastructure:
+  critical_rule: "ALWAYS use qt-api (newAPIEndpoint), never the legacy api endpoint for SEO-relevant data"
+  source_spec: "../migration-specs/shared/config/http.yaml"
+  source_file: "src/config/http.ts"
+
+  clients:
+    - name: "baseAPI()"
+      base_url: "api.{domain} (legacy)"
+      usage: "Legacy operations — avoid for new work"
+    - name: "baseNewAPI()"
+      base_url: "qt-api.{domain}"
+      usage: "All product/category data fetching, cart operations"
+      features:
+        - "Auto-injects machineToken into POST body"
+        - "Auto-injects machine-token header"
+        - "Auto-injects cookieData into POST body"
+        - "Logs non-OK responses to Sentry"
+        - "Updates cookies from modifierCookieRequest in response"
+
+  authentication:
+    mechanism: "machine-token"
+    description: |
+      Every API call requires a MACHINE_TOKEN. The baseNewAPI() axios interceptor
+      automatically injects it. For direct API testing, include it manually as both:
+      1. Header: machine-token: {token}
+      2. POST body field: machineToken: {token}
+    token_generation: "GET /Account/GetNewMachineToken"
+    token_lifetime: "Does not expire"
+    see: "_api-guide.yaml for pre-generated tokens"
+
+cookie_system:
+  description: "All cookies set by the frontend, with purpose and lifetime"
+  source_spec: "../migration-specs/backend/services/middle-ware-service.yaml"
+
+  cookies:
+    - name: "MACHINE_TOKEN"
+      purpose: "Session/visitor identification — required for all API calls"
+      lifetime: "90 days"
+      source: "cookieAndRedirectionMiddleware"
+      domain: "Base domain (e.g., printerpix.co.uk)"
+
+    - name: "utm_source, utm_medium, utm_campaign, etc."
+      purpose: "Marketing attribution tracking"
+      lifetime: "90 days"
+      source: "cookieAndRedirectionMiddleware — extracted from URL query params"
+
+    - name: "pixId"
+      purpose: "Affiliate/partner tracking"
+      lifetime: "90 days"
+      source: "cookieAndRedirectionMiddleware — from pixid query param"
+
+    - name: "pixIdUnixTimestamp"
+      purpose: "Timestamp when affiliate pixId was set"
+      lifetime: "90 days"
+      source: "cookieAndRedirectionMiddleware"
+
+    - name: "GCLAW"
+      purpose: "Google Click Ads attribution — format: GCL.{timestamp}.{pixid}"
+      lifetime: "90 days"
+      source: "cookieAndRedirectionMiddleware — only if gclid NOT present"
+
+    - name: "MODI_COUPON"
+      purpose: "Promotional coupon code"
+      lifetime: "90 days"
+      source: "cookieAndRedirectionMiddleware — from couponcode query param"
+
+    - name: "showCrossDomainNotification"
+      purpose: "Controls whether cross-domain notification banner shows"
+      lifetime: "Session"
+      source: "User interaction"
+
+layouts:
+  description: "Four layout definitions that wrap page content"
+
+  default:
+    source_spec: "../migration-specs/frontend/layouts/layout-default.yaml"
+    source_file: "src/routes/layout.tsx"
+    used_by: "All info pages, shipping-policy, delivery-rates, etc."
+    seo_elements_owned:
+      - "No head/meta generation at layout level (delegates to child routes)"
+    render_order:
+      - "CrossDomainNotification (conditional)"
+      - "StripBanner (conditional)"
+      - "HeaderWrapper"
+      - "MainBanner / PromoBanner (conditional, desktop only)"
+      - "<main><Slot /></main> (child route content)"
+      - "Footer (conditional — hidden if showFooter=0)"
+    middleware: "cookieAndRedirectionMiddleware"
+    data_loaders:
+      - "useLoadBanner — strip banner data"
+      - "useLoadPromoBanners — promo banner data"
+      - "useDetectCountry — country detection + cross-domain notification flag"
+
+  categoryproduct:
+    source_spec: "../migration-specs/frontend/layouts/layout-categoryproduct.yaml"
+    source_file: "src/routes/layout-categoryproduct.tsx"
+    used_by: "Product and category pages (/[...productCategory])"
+    seo_elements_owned:
+      - "head export: generates title, meta tags, OG, Twitter, canonical, structured data scripts"
+      - "Breadcrumbs component with schema.org BreadcrumbList"
+      - "Hreflang links (via head export)"
+    render_order:
+      - "CrossDomainNotification (conditional)"
+      - "StripBanner or CampaignStripBanner (campaign takes priority)"
+      - "HeaderWrapper"
+      - "<main> with Breadcrumbs (conditional) + Slot"
+      - "FooterProductCategory (conditional — hidden if showFooter=0)"
+    middleware: "cookieAndRedirectionMiddleware + redeemgift redirect + excluded route check"
+    data_loaders:
+      - "useLoadAllData — consolidated parallel loader (country, banner, device, product/category data)"
+      - "Conditional secondary loaders: delivery deadlines + quick links (category only) or free shipping (product only)"
+    head_generation:
+      category: "getCategoryHeadData(category, url) from category-service.ts"
+      product: "getProductHeadData(product, url) from product-page-service.ts"
+      fallback: '{ title: "Printerpix" }'
+
+  bulkorder:
+    source_spec: "../migration-specs/frontend/layouts/layout-bulkorder.yaml"
+    source_file: "src/routes/layout-bulkorder.tsx"
+    used_by: "/bulk-ordering"
+    seo_elements_owned:
+      - "No head/meta generation at layout level"
+    render_order:
+      - "HeaderWrapper"
+      - "<main><Slot /></main>"
+      - "Footer"
+    middleware: "cookieAndRedirectionMiddleware"
+    notes: "Simplified layout — no banners, no cross-domain notification"
+
+  containerless:
+    source_spec: "../migration-specs/frontend/layouts/layout-containerless.yaml"
+    source_file: "src/routes/layout-containerless.tsx"
+    used_by: "Home page (/)"
+    seo_elements_owned:
+      - "No head/meta generation at layout level (child route owns all SEO)"
+    render_order:
+      - "CrossDomainNotification (conditional — country detected + notification not dismissed)"
+      - "StripBanner (conditional — if strip banner data from API)"
+      - "HeaderWrapper"
+      - "<main class='relative'><Slot /></main> (child route content)"
+      - "FooterContainerLess (conditional — hidden if showFooter=0)"
+    middleware: "cookieAndRedirectionMiddleware"
+    data_loaders:
+      - "useLoadBanner — strip banner, promo banner, shipping footer banner data"
+      - "useDetectCountry — country detection from CF-IPCountry header + cross-domain notification flag"
+    notes: |
+      Key differences from default layout:
+      - No useLoadPromoBanners (no MainBanner at layout level — child route handles its own)
+      - No useAddToCart / useAddToCartProductBundle global actions
+      - Uses FooterContainerLess instead of full Footer
+      - No category sidebar

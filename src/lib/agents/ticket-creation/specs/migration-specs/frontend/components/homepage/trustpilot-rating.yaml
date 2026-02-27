@@ -1,0 +1,215 @@
+name: TrustpilotRating
+source: components/homepage/trustpilot-rating.tsx
+description: >
+  Displays a Trustpilot-style star rating summary with rating text label,
+  numeric rating value, star icons, and formatted review count. Used widely
+  across the site: homepage reviews, product pages, category pages, and
+  canvas print pages. Clicking the component scrolls to the active customer
+  review section on the page (if present). Supports center or left alignment.
+
+exports:
+  - name: default
+    type: component
+    description: TrustpilotRating component (default export)
+
+props:
+  - name: ratingText
+    type: string
+    required: true
+    description: "Text label displayed before the numeric rating (e.g., 'Excellent', 'Magnifique')."
+  - name: ratingValue
+    type: number
+    required: true
+    description: "Numeric rating value (e.g., 4.7). Displayed as text and passed to StarRating for icon rendering."
+  - name: reviewCount
+    type: number
+    required: true
+    description: "Total number of reviews. Formatted with locale-aware number formatting via formatNumber()."
+  - name: reviewString
+    type: string
+    required: true
+    description: "Text after the review count (e.g., 'reviews', 'avis', 'Bewertungen')."
+  - name: align
+    type: "'center' | 'left'"
+    required: false
+    default: "center"
+    description: "Horizontal alignment of the rating content. Defaults to 'center'."
+
+component_structure:
+  root_element: div
+  root_classes: "flex flex-col items-center cursor-pointer"
+  root_event: "onClick scrolls to .product_page_customer_review_wrapper--active element"
+  layout: >
+    Single row (flex-wrap) containing two groups: (1) rating text + numeric
+    value + star icons, and (2) formatted review count + review string label.
+
+  rating_group:
+    element: div
+    classes: "flex"
+    children:
+      - rating_label:
+          element: span
+          classes: "text-sm font-semibold text-right mr-1 md:mr-2"
+          content: "{ratingText} {ratingValue}"
+      - star_icons:
+          component: StarRating
+          props: "rating={ratingValue}"
+
+  count_group:
+    element: span
+    classes: "text-sm text-left ml-1 md:ml-2"
+    content: "{formatNumber(reviewCount)} {reviewString}"
+
+child_components:
+  - name: StarRating
+    source: components/customer-review/star-rating.tsx
+    description: Renders star icons (filled/half/empty) based on the numeric rating value.
+    props_passed:
+      - name: rating
+        from: props.ratingValue
+
+data_structure:
+  inputs:
+    ratingText: "Localized text label (from region-specific JSON)"
+    ratingValue: "Numeric value, typically 1.0-5.0"
+    reviewCount: "Integer count of total reviews"
+    reviewString: "Localized 'reviews' label"
+  formatting:
+    reviewCount: "Formatted via formatNumber() which uses Intl.NumberFormat with site locale"
+
+behavior:
+  click_handler:
+    description: >
+      When the component is clicked, it searches the DOM for an element with
+      class .product_page_customer_review_wrapper--active and smoothly scrolls
+      to it, centering it in the viewport. This is used on product pages
+      where clicking the rating bar scrolls down to the detailed reviews
+      section.
+    target_selector: ".product_page_customer_review_wrapper--active"
+    scroll_options:
+      behavior: smooth
+      block: center
+      inline: center
+    graceful_degradation: "If no matching element exists, nothing happens (querySelector returns null)"
+
+  alignment:
+    description: >
+      The align prop controls horizontal alignment of the inner flex row.
+      'center' uses justify-center, 'left' uses justify-start.
+    default: center
+
+  number_formatting:
+    description: >
+      Review count is formatted using formatNumber() from utility/format.ts,
+      which uses Intl.NumberFormat with the current site locale. For example,
+      15243 becomes "15,243" in US or "15.243" in DE.
+
+styling:
+  wrapper: "flex flex-col items-center cursor-pointer"
+  inner_row: "flex flex-wrap justify-center (or justify-start) items-center w-full gap-2"
+  rating_text: "text-sm font-semibold text-right mr-1 md:mr-2"
+  review_count: "text-sm text-left ml-1 md:ml-2"
+  responsive:
+    mobile: "mr-1 / ml-1 spacing"
+    desktop: "md:mr-2 / md:ml-2 wider spacing"
+  cursor: "pointer (entire component is clickable)"
+
+dependencies:
+  internal:
+    - path: components/customer-review/star-rating.tsx
+      purpose: Renders visual star icons based on rating value
+    - path: utility/format.ts
+      purpose: "formatNumber() for locale-aware number formatting"
+  external: []
+
+used_by:
+  - path: components/homepage/home-customer-reviews.tsx
+    description: Homepage reviews section
+  - path: components/homepage/usergeneratedcontent.tsx
+    description: User-generated content section on homepage
+  - path: components/product-page/containers/product-page-container.tsx
+    description: Product page main container
+  - path: components/product-page/containers/templates/product-page-hub-template.tsx
+    description: Product page hub template
+  - path: components/product-page/containers/templates/product-page-fixed-template.tsx
+    description: Product page fixed template
+  - path: components/product-page/containers/templates/product-page-basic-template.tsx
+    description: Product page basic template
+  - path: components/product-page/containers/templates/product-page-base-template.tsx
+    description: Product page base template
+  - path: components/product-page/containers/templates/product-page-fixed-theme-template.tsx
+    description: Product page fixed-theme template
+  - path: components/product-page/containers/photo-calendars/photo-calendars-baloo-radio-template.tsx
+    description: Photo calendars template
+  - path: components/product-page/containers/photo-calendars/photo-calendars-base-template.tsx
+    description: Photo calendars base template
+  - path: components/product-page/containers/photo-calendars/photo-calendars-jbc2024-template.tsx
+    description: Photo calendars JBC 2024 template
+  - path: components/product-page/containers/photo-calendars/photo-calendars-daisy-template.tsx
+    description: Photo calendars daisy template
+  - path: components/product-page/containers/photo-canvas-prints/photo-canvas-prints-bundled-template.tsx
+    description: Canvas prints bundled template
+  - path: components/product-page/containers/photo-canvas-prints/photo-canvas-prints-hub-bundled-template.tsx
+    description: Canvas prints hub bundled template
+  - path: components/product-page/containers/photo-canvas-prints/photo-canvas-prints-base-template.tsx
+    description: Canvas prints base template
+  - path: components/product-page/containers/photo-canvas-prints/photo-canvas-prints-new-template.tsx
+    description: Canvas prints new template
+  - path: components/product-page/containers/photo-canvas-prints/photo-canvas-prints-template-v2.tsx
+    description: Canvas prints template v2
+  - path: components/canvas-prints/excellent-mobile.tsx
+    description: Canvas prints mobile view
+  - path: components/canvas-prints/excellent-desktop.tsx
+    description: Canvas prints desktop view
+  - path: components/canvas-prints/canvas-customer-review.tsx
+    description: Canvas prints customer review section
+  - path: components/category-page/customer-reviews.tsx
+    description: Category page reviews section
+  - path: components/photo-books/customer-reviews.tsx
+    description: Photo books reviews section
+
+security:
+  concerns: none
+  auth_required: false
+  sensitive_data: false
+
+notes:
+  - This is one of the most widely used components in the codebase (20+ consumers)
+  - The interface name in source has a typo: "TrustpolotRating" (missing 'i' in Trustpilot)
+  - The click-to-scroll behavior is only relevant on pages that have a customer review section
+  - On the homepage, there may not be a .product_page_customer_review_wrapper--active element
+  - A v2 variant (trustpilot-rating-v2.tsx) exists and is used by some newer templates
+  - The component is cursor-pointer styled even when there is nothing to scroll to
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  TrustpolotRating:
+    description: Component props interface (internal; note source has typo — missing 'i' in Trustpilot)
+    fields:
+      - name: ratingText
+        type: string
+      - name: ratingValue
+        type: number
+      - name: reviewCount
+        type: number
+      - name: reviewString
+        type: string
+      - name: align
+        type: "'center' | 'left'"
+        optional: true
+        default: "'center'"
+
+field_consumption:
+  TrustpolotRating:
+    consumed:
+      - ratingText: Rendered inline as text before ratingValue in the rating span
+      - ratingValue: Rendered inline after ratingText; also passed to StarRating as rating
+      - reviewCount: Passed to formatNumber() and rendered as text before reviewString
+      - reviewString: Rendered inline after formatted reviewCount
+      - align: Controls flex justify class — justify-center when 'center', justify-start when 'left'
+
+visibility_map:
+  inner_row_alignment:
+    condition: "align === 'center'"
+    default: "justify-center (center-aligned); justify-start when align is 'left'"

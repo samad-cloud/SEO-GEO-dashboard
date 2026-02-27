@@ -1,0 +1,277 @@
+name: PhotoQualityContainer
+source: src/components/photo-quality-page/containers/photo-quality-container.tsx
+description: Educational information page explaining photo quality best practices, cropping, image resolution, and color calibration
+
+exports:
+  default:
+    type: component
+    signature: "component$(() => JSX.Element)"
+    description: Main container wrapper that renders PhotoQuality child component
+  Head:
+    type: function
+    signature: "() => DocumentHead"
+    description: Document head configuration with SEO metadata including description
+
+component_structure:
+  PhotoQuality_component:
+    element: div
+    classes: "flex flex-col items-start justify-center gap-14 text-left my-14"
+    sections:
+      - section: title
+        element: h3
+        classes: "font-bold text-2xl text-center w-full"
+        text: t("image_quality.image_quality_title")
+
+      - section: introduction
+        element: div
+        classes: "flex flex-col gap-3"
+        children:
+          - element: p
+            children:
+              - element: strong
+                classes: "text-[#d447a4]"
+                text: t("image_quality.how_get_best_picture")
+          - element: p
+            text: t("image_quality.description_1")
+          - element: p
+            text: t("image_quality.description_2")
+
+      - section: cropping
+        element: div
+        classes: "flex flex-col gap-4"
+        subsections:
+          - title:
+              element: p
+              classes: "text-[#d447a4]"
+              children:
+                - element: strong
+                  classes: "text-base"
+                  text: t("image_quality.cropping")
+
+          - cropping_issue:
+              element: div
+              classes: "flex flex-col gap-2"
+              children:
+                - element: p
+                  children:
+                    - element: strong
+                      classes: "text-base"
+                      text: t("image_quality.cropping_issue")
+                - element: p
+                  text: t("image_quality.cropping_description")
+
+          - camera_types:
+              element: div
+              classes: "flex flex-col gap-2"
+              children:
+                - element: p
+                  classes: "text-[#d447a4]"
+                  text: t("image_quality.compact_digital_cameras")
+                - element: p
+                  text: t("image_quality.compact_digital_cameras_description")
+                - element: p
+                  classes: "text-[#d447a4]"
+                  text: t("image_quality.digital_slr_cameras")
+                - element: p
+                  text: t("image_quality.digital_slr_cameras_description")
+                - element: p
+                  dangerouslySetInnerHTML: t("image_quality.cropping_recommendation")
+                  note: HTML content from translation
+
+          - cropping_options:
+              element: div
+              classes: "flex flex-col gap-2"
+              children:
+                - element: p
+                  children:
+                    - element: strong
+                      text: t("image_quality.cropping_options_question")
+                - element: p
+                  text: t("image_quality.portrait_landscape")
+                - element: p
+                  text: t("image_quality.portrait_landscape_description")
+
+      - section: image_resolution
+        element: div
+        classes: "flex flex-col gap-4"
+        children:
+          - element: p
+            children:
+              - element: strong
+                classes: "text-[#d447a4]"
+                text: t("image_quality.image_resolution")
+          - element: p
+            text: t("image_quality.image_resolution_description_1")
+          - element: p
+            text: t("image_quality.image_resolution_description_2")
+
+      - section: colour_calibration
+        element: div
+        classes: "flex flex-col gap-4"
+        children:
+          - element: p
+            children:
+              - element: strong
+                classes: "text-[#d447a4]"
+                text: t("image_quality.colour_calibration")
+          - element: p
+            text: t("image_quality.colour_calibration_description")
+
+  default_export:
+    element: div
+    classes: "w-full h-full"
+    children:
+      - component: PhotoQuality
+
+behavior:
+  content_structure:
+    - Section 1: Title - Main heading about image quality
+    - Section 2: Introduction - How to get best pictures
+    - Section 3: Cropping
+      - Cropping issues and solutions
+      - Camera type differences (compact vs DSLR)
+      - Cropping recommendations (HTML content allowed)
+      - Portrait vs landscape options
+    - Section 4: Image Resolution
+      - Resolution importance
+      - Resolution recommendations
+    - Section 5: Color Calibration
+      - Calibration explanation
+
+  styling:
+    accent_color: "#d447a4" (pink)
+    text_alignment: left
+    spacing: gap-14 between major sections, gap-2 to gap-4 within sections
+    typography: Base text with strong emphasis for subsection titles
+
+  html_content:
+    cropping_recommendation:
+      uses: dangerouslySetInnerHTML
+      reason: Translation may contain HTML markup for formatting
+      security_note: Content comes from trusted translation files
+
+child_components:
+  - name: PhotoQuality
+    type: internal
+    description: Inner component containing all content sections
+
+i18n:
+  translation_keys:
+    title:
+      - image_quality.image_quality_title
+    introduction:
+      - image_quality.how_get_best_picture
+      - image_quality.description_1
+      - image_quality.description_2
+    cropping:
+      - image_quality.cropping
+      - image_quality.cropping_issue
+      - image_quality.cropping_description
+      - image_quality.compact_digital_cameras
+      - image_quality.compact_digital_cameras_description
+      - image_quality.digital_slr_cameras
+      - image_quality.digital_slr_cameras_description
+      - image_quality.cropping_recommendation (HTML content)
+      - image_quality.cropping_options_question
+      - image_quality.portrait_landscape
+      - image_quality.portrait_landscape_description
+    image_resolution:
+      - image_quality.image_resolution
+      - image_quality.image_resolution_description_1
+      - image_quality.image_resolution_description_2
+    colour_calibration:
+      - image_quality.colour_calibration
+      - image_quality.colour_calibration_description
+    meta:
+      - image_quality.meta.title
+      - image_quality.meta.description
+  library: qwik-speak
+  method: inlineTranslate()
+
+static_content:
+  type: Educational text content
+  topics:
+    - Photo quality best practices
+    - Image cropping guidelines
+    - Camera type considerations
+    - Image resolution recommendations
+    - Color calibration importance
+
+images: []
+
+used_by:
+  - "~/routes/photo-quality/index.tsx"
+  - "~/routes/qualite-des-photos/index.tsx"
+
+dependencies:
+  framework:
+    - "@builder.io/qwik": [component$]
+  i18n:
+    - "qwik-speak": [inlineTranslate]
+
+data_dependencies: []
+
+seo:
+  head_config:
+    title: t("image_quality.meta.title")
+    meta_tags:
+      - name: title
+        content: t("image_quality.image_quality_title")
+      - name: description
+        content: t("image_quality.meta.description")
+      - name: google
+        content: notranslate
+      - name: theme-color
+        content: "#ffffff"
+      - name: distribution
+        content: Global
+      - name: rating
+        content: Safe For Kids
+      - name: author
+        content: printerpix
+      - name: copyright
+        content: printerpix
+      - name: google-signin-scope
+        content: profile email
+      - name: robots
+        content: none
+
+responsive_design:
+  all_devices:
+    layout: Vertical flex column
+    alignment: Left-aligned text
+    spacing: Responsive with gap utilities
+    width: Full width container
+
+edge_cases:
+  - Missing translation keys: Should display key names as fallback
+  - Empty translation values: May render empty paragraphs
+  - HTML in cropping_recommendation: Must be sanitized in translation files
+  - Long text content: Layout should handle variable content lengths
+
+security:
+  dangerouslySetInnerHTML:
+    usage: Single instance for cropping_recommendation
+    source: Trusted translation files only
+    risk: Low - content managed by internal team
+  no_user_input: true
+  no_authentication_required: true
+  content_type: Static educational content
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  PhotoQualityContainerProps:
+    description: No props — the component is fully self-contained with static i18n content
+    fields: []
+
+visibility_map:
+  all_content_sections:
+    condition: Always rendered — no conditional visibility in this component
+    default: visible
+    notes: All five sections (title, introduction, cropping, image_resolution, colour_calibration) are unconditionally rendered
+
+  cropping_recommendation_html:
+    condition: Always rendered via dangerouslySetInnerHTML
+    default: visible
+    notes: Content is set from translation key image_quality.cropping_recommendation; any HTML in the translation string is injected as raw markup

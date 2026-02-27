@@ -1,0 +1,294 @@
+name: InstantProductPageContainer
+source: src/components/product-page/containers/instant-product-page-container.tsx
+category: product-page-container
+description: |
+  Container component for "instant" product pages - products that use theme-based
+  customization rather than full editor customization. Manages size selection,
+  theme selection, and quantity for instant products. Displays a preview image
+  that updates based on selected options.
+
+exports:
+  default: component$ (unnamed, Qwik component function)
+
+props: {}
+
+context_consumed:
+  - name: ProductContext
+    from: "~/context/product-category-context"
+    fields_used:
+      - product (base product data)
+      - sizeOptions (available size/filter options)
+      - preselectedRefId (default size to select)
+      - instantProductThemeData (theme configuration data)
+      - svgThemeId (default theme to select)
+
+component_structure: |
+  <div class="container mx-auto my-0 lg:my-4 relative product_page_instant_wrapper">
+    <div class="flex flex-nowrap flex-col lg:flex-row lg:flex-wrap mx-0 lg:-mx-4 h-[calc(100svh-60px)] lg:h-[calc(100vh-128px)] relative">
+      {activeThemeImage.value && (
+        <div class="flex-1 lg:flex-[0_0_70%] lg:max-w-[70%] px-0 lg:px-4">
+          <div class="h-full flex flex-col items-center justify-center px-4">
+            <div class="w-[70%] lg:w-[50%]">
+              <Image src={activeThemeImage.value} />
+            </div>
+            <div class="font-bold text-center">
+              <p>{productContextData.product.imageCaption}</p>
+              <p>{displayProductName.value}</p>
+            </div>
+          </div>
+        </div>
+      )}
+      <div class="lg:flex-[0_0_30%] lg:max-w-[30%] px-0 lg:px-4">
+        <InstantProductOptionPanel
+          selectedFilter={selectedFilter}
+          selectedTheme={selectedTheme}
+          selectedQuantity={selectedQuantity}
+        />
+      </div>
+    </div>
+  </div>
+
+child_components:
+  - name: Image
+    from: "@unpic/qwik"
+    purpose: Display theme preview image with optimized loading
+    props:
+      - src: activeThemeImage.value (computed theme URL)
+
+  - name: InstantProductOptionPanel
+    from: "~/components/product-page/instant-product-option-panel"
+    purpose: Render option selection UI for instant products
+    props:
+      - selectedFilter: Signal<Filter | null> (current size/filter)
+      - selectedTheme: Signal<InstantTheme | null> (current theme)
+      - selectedQuantity: Signal<number> (quantity)
+
+state_management:
+  local_state:
+    - name: selectedFilter
+      type: Signal<Filter | null>
+      initial: null
+      purpose: Tracks currently selected size/filter option
+
+    - name: selectedTheme
+      type: Signal<InstantTheme | null>
+      initial: null
+      purpose: Tracks currently selected theme
+
+    - name: selectedQuantity
+      type: Signal<number>
+      initial: 1
+      purpose: Tracks selected quantity
+
+  computed_values:
+    - name: activeThemeImage
+      depends_on: [selectedFilter.value, selectedTheme.value]
+      purpose: |
+        Computes the preview image URL by replacing placeholders in the theme's
+        beautyshotUrlPattern:
+        - #PRODUCT_REF_ID# -> selectedFilter.refCode (lowercased)
+        - #THEME_ID# -> selectedTheme.themeId
+        - "480" -> "112" (image size adjustment)
+      returns: string (image URL or empty string)
+
+    - name: displayProductName
+      depends_on: [selectedFilter.value, selectedTheme.value]
+      purpose: |
+        Generates display name showing size, frame color (if applicable), and theme.
+        Format: "{size name} (frame color) - {theme display name}"
+        Frame detection: checks refCode for "floatframeblack" or "floatframewhite"
+      returns: string
+
+side_effects:
+  tasks:
+    - trigger: productContextData changes (via ProductContext)
+      behavior: |
+        When product context updates:
+        1. Set default filter:
+           - If preselectedRefId exists, find matching option in sizeOptions
+           - Otherwise use first option in sizeOptions
+        2. Set default theme:
+           - If svgThemeId exists, find matching theme (case-insensitive)
+           - Otherwise use first theme in instantProductThemeData.themes
+        3. Reset quantity to 1
+
+layout:
+  responsive_design:
+    mobile:
+      - Full-width flex column layout
+      - Image at 70% width
+      - Height: calc(100svh - 60px) - accounts for mobile header
+    desktop:
+      - Flex row layout
+      - Left: 70% width (image/preview)
+      - Right: 30% width (options panel)
+      - Height: calc(100vh - 128px) - accounts for desktop header/nav
+
+unique_characteristics:
+  - Instant products use theme-based customization (not full editor)
+  - Single-column layout on mobile, two-column on desktop
+  - Full viewport height on both mobile/desktop
+  - Image preview updates dynamically based on selections
+  - Frame color detection for specific product types (float frames)
+  - Theme URL pattern replacement for dynamic image loading
+
+data_dependencies:
+  context_required:
+    - ProductContext with instantProductThemeData populated
+    - sizeOptions array (Filter[])
+
+  optional_data:
+    - preselectedRefId (for default selection)
+    - svgThemeId (for default theme selection)
+
+types_used:
+  - Filter (from "~/data/option-data")
+  - InstantTheme (from "~/services/themes-service")
+  - ProductContext (from "~/context/product-category-context")
+
+security:
+  authentication: None - public product page
+  authorization: None
+  sensitive_data: None
+
+dependencies:
+  qwik:
+    - component$
+    - useComputed$
+    - useContext
+    - useSignal
+    - useTask$
+
+  components:
+    - InstantProductOptionPanel (from "~/components/product-page/instant-product-option-panel")
+    - Image (from "@unpic/qwik")
+
+  types:
+    - InstantTheme (from "~/services/themes-service")
+    - Filter (from "~/data/option-data")
+
+  context:
+    - ProductContext (from "~/context/product-category-context")
+
+behavior:
+  - On mount, reads productContextData from ProductContext including product, sizeOptions, preselectedRefId, instantProductThemeData, and svgThemeId
+  - Initializes selectedFilter, selectedTheme, and selectedQuantity as signals (null, null, 1)
+  - Tracks productContextData changes via useTask$; when context updates, sets default filter by finding sizeOptions entry matching preselectedRefId, or falls back to first sizeOptions entry
+  - Sets default theme by finding instantProductThemeData.themes entry matching svgThemeId (case-insensitive comparison), or falls back to first theme
+  - Resets selectedQuantity to 1 on every context change
+  - Computes activeThemeImage by replacing placeholders in selectedTheme.beautyshotUrlPattern: #PRODUCT_REF_ID# with lowercased selectedFilter.refCode, #THEME_ID# with selectedTheme.themeId, and "480" with "112" for thumbnail size; returns empty string if filter or theme not selected
+  - Computes displayProductName showing "{size name} (frame color) - {theme display name}"; frame color detected by checking refCode for "floatframeblack" (Black Frame) or "floatframewhite" (White Frame), otherwise no frame suffix
+  - Renders theme preview image (activeThemeImage) conditionally only when URL is non-empty
+  - Below preview image shows product.imageCaption and computed displayProductName
+  - Passes selectedFilter, selectedTheme, and selectedQuantity signals to InstantProductOptionPanel child component for two-way binding
+  - Full viewport height layout: mobile uses calc(100svh - 60px), desktop uses calc(100vh - 128px)
+  - Desktop: 70/30 two-column layout (image left, options right); mobile: stacked column layout
+
+used_by:
+  - product-page-selection (rendered when productPageViewName === NonCustomizableThemes2021Q1)
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  Filter:
+    description: Size/option filter for instant product (from ~/data/option-data)
+    fields:
+      - name: refCode
+        type: string
+      - name: imageUrl
+        type: string
+      - name: imageAltText
+        type: string
+      - name: name
+        type: string
+
+  InstantTheme:
+    description: Theme configuration for an instant product (from ~/services/themes-service)
+    fields:
+      - name: themeId
+        type: string
+      - name: displayName
+        type: string
+      - name: beautyshotUrlPattern
+        type: string
+
+  InstantProductThemeData:
+    description: Container for all themes associated with an instant product
+    fields:
+      - name: themes
+        type: "InstantTheme[]"
+
+  ProductContextValue:
+    description: Shape of ProductContext fields consumed by this component
+    source: ~/context/product-category-context
+    fields:
+      - name: product
+        type: object
+        optional: false
+      - name: sizeOptions
+        type: "Filter[]"
+      - name: preselectedRefId
+        type: "string | undefined"
+      - name: instantProductThemeData
+        type: "InstantProductThemeData | undefined"
+      - name: svgThemeId
+        type: "string | undefined"
+
+field_consumption:
+  ProductContext:
+    consumed:
+      - product: imageCaption field used for display text below preview image
+      - sizeOptions: Iterated to find the default filter (matching preselectedRefId or first entry)
+      - preselectedRefId: Used to pre-select the default filter on context change
+      - instantProductThemeData: themes array used to find default theme and iterate available themes
+      - svgThemeId: Used to pre-select the default theme (case-insensitive match)
+    ignored:
+      - friendlyUrl: Present in ProductContext but not read by this component
+      - filterIndex: Not used; size selection managed locally via selectedFilter signal
+      - refCode: Not read directly; theme/filter selection uses its own signals
+
+implementation_logic:
+  default_filter_selection:
+    rule: |
+      When productContextData changes, the default selectedFilter is resolved as:
+      1. If preselectedRefId exists, find the sizeOptions entry whose refCode matches it.
+      2. If no match or preselectedRefId is absent, fall back to sizeOptions[0].
+      This runs inside useTask$ tracking productContextData.
+    critical: true
+
+  default_theme_selection:
+    rule: |
+      When productContextData changes, the default selectedTheme is resolved as:
+      1. If svgThemeId exists, find the themes entry whose themeId matches it (case-insensitive comparison).
+      2. If no match or svgThemeId is absent, fall back to instantProductThemeData.themes[0].
+    critical: true
+
+  active_theme_image_computation:
+    rule: |
+      activeThemeImage is computed by replacing three placeholders in
+      selectedTheme.beautyshotUrlPattern:
+        - "#PRODUCT_REF_ID#" → selectedFilter.refCode (lowercased)
+        - "#THEME_ID#"       → selectedTheme.themeId
+        - "480"              → "112"  (thumbnail size reduction)
+      Returns empty string if either selectedFilter or selectedTheme is null.
+    critical: true
+
+  frame_color_display:
+    rule: |
+      displayProductName includes a frame-color suffix only when selectedFilter.refCode
+      contains "floatframeblack" (→ " (Black Frame)") or "floatframewhite" (→ " (White Frame)").
+      All other refCodes produce no frame suffix.
+    critical: false
+
+visibility_map:
+  preview_image_section:
+    condition: "activeThemeImage.value is non-empty string"
+    default: hidden (empty string until both filter and theme are selected)
+
+  image_caption_text:
+    condition: "activeThemeImage.value is non-empty string (same container)"
+    default: hidden
+
+  desktop_left_column:
+    condition: "activeThemeImage.value is non-empty string"
+    default: hidden

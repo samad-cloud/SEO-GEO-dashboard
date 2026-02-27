@@ -1,0 +1,135 @@
+name: StarRating
+source: src/components/customer-review/star-rating.tsx
+description: |
+  Pure display component that renders a row of star icons representing a numeric rating.
+  Given a rating value (0–5), it rounds to the nearest 0.5, then renders the correct
+  number of full star, half star, and grey (empty) star SVG images to always total exactly
+  5 stars. Uses three distinct icon images: star.svg (full), half_star.svg (half), grey_star.svg (empty).
+  No interactivity — display only.
+
+exports:
+  - name: default
+    type: component$<StarRatingProps>
+    description: Default Qwik component export
+
+props:
+  - name: rating
+    type: number
+    required: true
+    description: Numeric rating value (0–5). Rounded to nearest 0.5 before rendering.
+
+component_structure:
+  root:
+    element: div
+    class: "flex justify-center"
+    children:
+      - "Array of full star Image elements (fullStar count)"
+      - "Array of half star Image elements (halfStar count: 0 or 1)"
+      - "Array of grey star Image elements (greyStar count)"
+
+child_components:
+  - name: Image
+    source: "@unpic/qwik"
+    purpose: Renders individual star icons
+    props:
+      - class: "w-4 xl:w-auto"
+      - width: 21
+      - height: 20
+      - alt: "Rating Star"
+      - src: one of /images-q/icons/star.svg | /images-q/icons/half_star.svg | /images-q/icons/grey_star.svg
+
+data_structure:
+  derived_values:
+    roundedRating:
+      formula: "Math.round(props.rating / 0.5) * 0.5"
+      description: Rounds input to nearest 0.5 increment
+    fullStar:
+      formula: "Math.floor(roundedRating)"
+      description: Number of full stars (0–5)
+    halfStar:
+      formula: "(roundedRating - fullStar) > 0 ? 1 : 0"
+      description: 0 or 1 half star
+    greyStar:
+      formula: "5 - fullStar - halfStar"
+      description: Number of grey (empty) stars; total always equals 5
+
+behavior:
+  - action: "Round rating to nearest 0.5"
+    details: >
+      Math.round(rating / 0.5) * 0.5 snaps the input to the nearest half-star boundary.
+      Examples: 4.3 → 4.5, 4.7 → 5.0, 4.2 → 4.0, 0 → 0, 5 → 5.
+  - action: "Calculate star counts"
+    details: >
+      fullStar = Math.floor(roundedRating) — whole stars.
+      halfStar = 1 if (roundedRating - fullStar) > 0 else 0 — at most one half star.
+      greyStar = 5 - fullStar - halfStar — remainder always fills to 5 total.
+  - action: "Render star images"
+    details: >
+      Full stars: Array(fullStar).keys() → Image with src=/images-q/icons/star.svg, key=key.
+      Half star: only if halfStar > 0 → Image with src=/images-q/icons/half_star.svg, key=key+fullStar.
+      Grey stars: only if greyStar > 0 → Image with src=/images-q/icons/grey_star.svg, key=key+fullStar+halfStar.
+      All images: class="w-4 xl:w-auto", width=21, height=20, alt="Rating Star".
+
+styling:
+  container: "flex justify-center"
+  star_image: "w-4 xl:w-auto (Tailwind); width=21 height=20 (intrinsic dimensions)"
+  icon_paths:
+    full: "/images-q/icons/star.svg"
+    half: "/images-q/icons/half_star.svg"
+    grey: "/images-q/icons/grey_star.svg"
+
+dependencies:
+  qwik:
+    - component$ from @builder.io/qwik
+  components:
+    - Image from @unpic/qwik
+
+used_by:
+  - CustomerReview
+  - CustomerReviewItem
+  - CustomerReviewPreview
+  - CustomerReviewV3
+  - TrustpilotRating
+  - TrustpilotRatingV2
+  - MarketingCustomerReviews
+
+security:
+  - No user input rendered as HTML — purely computed display
+  - Icon paths are hardcoded local paths, no CMS injection risk
+
+edge_cases:
+  - rating=0: fullStar=0, halfStar=0, greyStar=5 (all grey)
+  - rating=5: fullStar=5, halfStar=0, greyStar=0 (all full)
+  - rating=2.5: fullStar=2, halfStar=1, greyStar=2
+  - rating > 5: fullStar could exceed 5 (no upper bound guard — greyStar would go negative)
+  - rating < 0: Math.floor of negative rounds down, greyStar could be > 5 (no lower bound guard)
+  - Non-integer half boundary (e.g. 4.25): rounds to 4.5 → fullStar=4, halfStar=1, greyStar=0
+
+notes:
+  - Total star count is always exactly 5 when 0 ≤ rating ≤ 5
+  - No validation of rating range in source — caller must ensure 0–5
+  - Keys for half star use key+fullStar offset; keys for grey star use key+fullStar+halfStar offset to avoid key collisions across star type arrays
+  - All stars share the same alt text "Rating Star" (not distinct per star position)
+  - The component does NOT render a text fallback for accessibility beyond the alt attribute
+
+types:
+  StarRatingProps:
+    description: Component props interface
+    fields:
+      - name: rating
+        type: number
+
+field_consumption:
+  StarRatingProps:
+    consumed:
+      - rating: Used in rounding formula to derive fullStar, halfStar, greyStar counts
+    ignored: []
+
+implementation_logic:
+  rounding_to_half:
+    rule: |
+      The rounding formula Math.round(rating / 0.5) * 0.5 divides by 0.5, rounds to nearest integer,
+      then multiplies back by 0.5. This correctly snaps any decimal to the nearest 0.5 increment.
+      Example for 4.3: 4.3/0.5=8.6 → round=9 → 9*0.5=4.5.
+      Example for 4.2: 4.2/0.5=8.4 → round=8 → 8*0.5=4.0.
+    critical: true

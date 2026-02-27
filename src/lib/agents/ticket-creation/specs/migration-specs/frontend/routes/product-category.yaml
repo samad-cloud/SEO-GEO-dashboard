@@ -1,0 +1,126 @@
+name: ProductCategoryRoute
+source:
+  path: routes/[...productCategory]/index@categoryproduct.tsx
+  lines: 1-19
+  type: route
+
+description: |
+  Dynamic catch-all route that handles both category pages and product detail pages.
+  Uses WebPageTypeContext to determine whether to render a CategoryPageFactory or ProductPageSelection.
+  Routes through the @categoryproduct layout.
+
+url_pattern: /[...productCategory]
+layout: "@categoryproduct"
+
+exports:
+  default: true
+  component: |
+    Default component that:
+    - Reads WebPageTypeContext value
+    - Switches between:
+      - WebPageTypeEnum.CategoryPage → renders CategoryPageFactory with COMMON type
+      - WebPageTypeEnum.ProductPage → renders ProductPageSelection
+      - Default fallback → renders CategoryPageFactory with COMMON type
+  routeLoader: false
+  head: false
+  onRequest: false
+
+dependencies:
+  - "@builder.io/qwik"
+  - "~/components/category-page/containers/category-page-factory"
+  - "~/components/product-page/containers/product-page-selection"
+  - "~/context/product-category-context"
+  - "~/services/product-category-service"
+
+behavior:
+  - Consumes WebPageTypeContext to decide rendering mode
+  - CategoryPageFactory supports multiple types (COMMON used here)
+  - ProductPageSelection handles product detail view
+  - No data loading at route level (handled by context/layout)
+
+i18n_keys: []
+
+rewrite_routes: []
+
+used_by: []
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  WebPageTypeEnum:
+    description: |
+      Numeric enum discriminating the page type returned by the API in the webPageType field.
+      Set by the @categoryproduct layout's routeLoader (useLoadAllData) and provided via
+      WebPageTypeContext. The route component reads this to select its render branch.
+    fields:
+      - name: Unknown
+        type: "0"
+      - name: ProductPage
+        type: "1"
+      - name: CategoryPage
+        type: "2"
+
+  CategoryType:
+    description: |
+      Enum used by CategoryPageFactory to select which category container to render.
+      Currently only COMMON is defined and used — all category pages use CommonCategoryContainer.
+    fields:
+      - name: COMMON
+        type: "0"
+
+  WebPageTypeContextValue:
+    description: |
+      Shape of the context value provided by layout-categoryproduct.tsx via useContextProvider.
+      The route reads webPageType.value (a Signal<WebPageTypeEnum>) to determine render branch.
+    source: ~/context/product-category-context (WebPageTypeContext)
+    fields:
+      - name: value
+        type: WebPageTypeEnum
+        notes: "Signal wrapping the WebPageTypeEnum value; initialized to CategoryPage in layout, updated by useTask$ after loader data arrives"
+
+field_consumption:
+  WebPageTypeContext:
+    consumed:
+      - value: Read via webPageType.value in the switch statement to select CategoryPageFactory or ProductPageSelection
+    ignored: []
+
+implementation_logic:
+  webpagetype_dispatch:
+    rule: |
+      The route component contains a single switch on webPageType.value:
+        - WebPageTypeEnum.CategoryPage (2): renders <CategoryPageFactory type={CategoryType.COMMON} />
+        - WebPageTypeEnum.ProductPage (1): renders <ProductPageSelection />
+        - default (covers Unknown = 0 and any future values): falls back to
+          <CategoryPageFactory type={CategoryType.COMMON} />
+
+      The webPageType signal is initialized to WebPageTypeEnum.CategoryPage in the layout
+      and updated by useTask$ after the parallel loader (useLoadAllData) resolves. This means
+      the initial SSR render always shows CategoryPageFactory; the correct component is
+      rendered once the task fires. On the server, useTask$ runs synchronously, so SSR
+      renders the correct type based on loader data.
+
+      All product/category data loading, context provisioning, SEO head generation, and
+      breadcrumb/footer logic is handled by layout-categoryproduct.tsx — NOT by this route file.
+    critical: true
+
+  context_dependency:
+    rule: |
+      This route file has no routeLoader$, no onRequest handler, and no head export of its own.
+      It relies entirely on the @categoryproduct layout (layout-categoryproduct.tsx) to:
+        - Run the onRequest middleware (cookieAndRedirectionMiddleware, redirect handling)
+        - Execute the parallel data loader (useLoadAllData) which calls getProductOrCategoryData
+        - Provide WebPageTypeContext, ProductContext, CategoryContext, DeviceDetectorContext
+        - Resolve and return the DocumentHead (getCategoryHeadData / getProductHeadData)
+      The route file is intentionally minimal — it is only a dispatch switch.
+    critical: true
+
+visibility_map:
+  category_page_factory:
+    condition: "webPageType.value === WebPageTypeEnum.CategoryPage (2) OR webPageType.value is unknown/default"
+    default: visible
+    notes: "Default branch also renders CategoryPageFactory, so this is the fallback for any unrecognized webPageType including Unknown (0)"
+
+  product_page_selection:
+    condition: "webPageType.value === WebPageTypeEnum.ProductPage (1)"
+    default: hidden
+    notes: "Only rendered when the API explicitly returns webPageType = 1 (ProductPage)"

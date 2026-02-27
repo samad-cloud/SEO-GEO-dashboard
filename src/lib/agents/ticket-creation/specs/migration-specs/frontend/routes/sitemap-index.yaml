@@ -1,0 +1,56 @@
+name: SitemapIndexRoute
+source:
+  path: routes/sitemap-index.xml/index.tsx
+  lines: 1-33
+  type: route
+
+description: |
+  XML sitemap index that lists all child sitemaps.
+  Returns XML response listing:
+  - sitemap-pages.xml
+  - sitemap-products.xml
+  - sitemap-categories.xml
+  - blog/sitemap_index.xml (if not IN or AE)
+
+url_pattern: /sitemap-index.xml
+layout: none (server-side XML response)
+
+exports:
+  default: false
+  onGet: true
+  onGet_behavior: |
+    RequestHandler that:
+    - Gets origin from getSiteSetting().website
+    - Builds XML sitemapindex with child sitemap URLs
+    - Conditionally includes blog sitemap (excluded for IN, AE)
+    - Returns Response with Content-Type: text/xml
+
+dependencies:
+  - "@builder.io/qwik-city" (RequestHandler)
+  - "~/config/settings"
+  - "~/services/server" (getSiteSetting)
+
+data_dependencies:
+  - getSiteSetting().website for origin URL
+  - settings().website for IN/AE region check
+
+behavior:
+  - Server-side only (no client component)
+  - XML format per sitemaps.org schema
+  - Blog sitemap excluded for IN and AE regions
+  - Returns 200 status with text/xml content type
+
+i18n_keys: []
+
+rewrite_routes: []
+
+used_by: []
+
+types:
+  RequestHandler:
+    description: Qwik City server request handler type imported from @builder.io/qwik-city
+    source: "@builder.io/qwik-city"
+    fields:
+      - name: send
+        type: "(response: Response) => void"
+        description: Sends a Response object directly to the client

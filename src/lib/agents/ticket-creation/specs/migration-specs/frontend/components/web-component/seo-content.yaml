@@ -1,0 +1,281 @@
+name: SeoContentComponent
+source: components/web-component/seo-content.tsx
+description: >
+  SEO content section that renders CMS-driven text content with optional headings, subheadings,
+  and icon displays. Supports two icon layout modes: "With Icon Right" (icons next to content columns)
+  and "With Icon Row" (icons in a separate grid row below content). Content is markdown-converted to
+  HTML via dangerouslySetInnerHTML. Theme-aware link coloring via injected CSS styles.
+
+exports:
+  - name: default
+    type: component
+    description: SeoContentComponent (default export)
+
+props:
+  - name: heading
+    type: string
+    required: false
+    description: "Main heading text. Rendered as <h2> when truthy."
+  - name: subHeading
+    type: string
+    required: false
+    description: "Sub-heading text. Rendered as <h3> when truthy."
+  - name: content
+    type: "string[]"
+    required: true
+    description: >
+      Array of markdown content strings. Each rendered in its own column.
+      Single item = single column. Multiple items = 2-column grid on md+ screens.
+  - name: icons
+    type: "Array<{ image: string; imageAlt: string; heading: string; description: string; width: string; height: string; }>"
+    required: false
+    description: "Optional array of icons. Rendering depends on the 'type' prop value."
+  - name: type
+    type: string
+    required: true
+    description: >
+      Component type from CMS. Controls icon layout:
+      - "With Icon Right": icon displayed to the right of each content section
+      - "With Icon Row": icons displayed in a separate grid row below content
+      - Any other value: icons not displayed
+  - name: theme
+    type: "CategoryTheme | null"
+    required: false
+    description: "Optional category theme. Used to set link color (falls back to #F02480 pink)."
+
+component_structure:
+  type: div
+  root_class: "seo_content_wrapper"
+  children:
+    - element: h2
+      condition: "heading is truthy"
+      class: "text-2xl text-center font-bold"
+      content: "{heading}"
+    - element: h3
+      condition: "subHeading is truthy"
+      class: "text-xl text-center font-bold"
+      content: "{subHeading}"
+    - element: div (content grid)
+      class: "mt-6 grid grid-cols-1 relative md:grid-cols-2(conditional) gap-6 w-full max-w-full"
+      note: "md:grid-cols-2 applied only when content.length > 1"
+      children:
+        - element: div (per content section)
+          iteration: "content.map()"
+          class: "flex flex-col lg:flex-row space-y-5 seo-content-section"
+          children:
+            - element: div (markdown content)
+              class: "seo-conent-seciton flex-1"
+              html: "dangerouslySetInnerHTML={convertMarkdownToHtml(section)}"
+              note: "Class has typo 'seo-conent-seciton' from source - preserved intentionally"
+            - element: div (icon right)
+              condition: "icons && icons[index] && type == 'With Icon Right'"
+              class: "mt-4 lg:mt-0 lg:ml-4 flex justify-center lg:justify-start"
+              children:
+                - element: Image
+                  props: "width, height, src={icon.image}, alt={icon.imageAlt}"
+        - element: div (vertical divider)
+          condition: "type == 'With Icon Right' && content.length == 2"
+          class: "absolute top-1/2 left-1/2 w-[1px] h-full -translate-x-1/2 -translate-y-1/2 bg-[#FBF6F7]"
+          description: "Vertical center divider between two content columns"
+    - element: div (icon row)
+      condition: "icons && type == 'With Icon Row'"
+      class: "grid grid-cols-2 lg:grid-cols-4 mt-4 gap-4 w-full"
+      children:
+        - element: div (per icon)
+          iteration: "icons.map()"
+          class: "flex flex-col items-center lg:flex-row"
+          children:
+            - element: Image
+              props: "width, height, src={icon.image}, alt={icon.imageAlt}"
+            - element: div (icon text)
+              class: "mt-4 lg:mt-0 lg:ml-4"
+              children:
+                - element: h3
+                  class: "font-bold text-center lg:text-left"
+                  content: "{icon.heading}"
+                - element: p
+                  class: "text-center lg:text-left"
+                  content: "{icon.description}"
+    - element: style
+      html: "dangerouslySetInnerHTML={seoContentStyles.value}"
+      description: "Dynamic theme-aware CSS injection"
+
+child_components:
+  - name: Image
+    source: "@unpic/qwik"
+    description: "Optimized image component - replace with Next.js Image in migration"
+
+data_structure:
+  SeoContent:
+    heading: string
+    subHeading: string
+    content: string[] (markdown strings)
+    icons: optional array of { image, imageAlt, heading, description, width, height }
+
+behavior:
+  - action: "Render heading and subheading"
+    details: "h2 for heading, h3 for subheading. Both centered, bold. Only rendered when truthy."
+  - action: "Render content columns"
+    details: >
+      Content array items are rendered in a grid. Single item = 1 column.
+      Multiple items = 2-column grid on md+ breakpoint. Each item is markdown-converted to HTML.
+  - action: "Render icons in 'With Icon Right' mode"
+    details: >
+      When type is 'With Icon Right', each content section gets an icon displayed to its right
+      (on lg+ screens, below on mobile). Icons are matched by index to content sections.
+      When exactly 2 content sections exist, a vertical divider line is rendered between them.
+  - action: "Render icons in 'With Icon Row' mode"
+    details: >
+      When type is 'With Icon Row', icons are displayed in a separate grid below content.
+      2 columns on mobile, 4 columns on lg+. Each icon shows image, heading, and description.
+  - action: "Dynamic CSS for theme colors"
+    details: >
+      Injects a <style> tag with theme-aware CSS. Links (a tags) inside .seo-content-section
+      are bold and colored with theme.primary (defaults to #F02480). h2 and h3 inside the section
+      are bold. Paragraphs have 16px bottom margin. Lists use disc style with 16px left margin.
+
+styling:
+  dynamic_css:
+    ".seo-content-section h3": "font-weight: bold"
+    ".seo-content-section a": "font-weight: bold; color: {theme.primary || '#F02480'}"
+    ".seo-conent-seciton p": "margin-bottom: 16px"
+    ".seo-conent-seciton ul": "list-style-type: disc; margin-left: 16px"
+    ".seo-content-section h2": "font-weight: bold"
+  note: >
+    The CSS class 'seo-conent-seciton' is a typo in the source (missing 't' in 'content' and 'i/o' swap
+    in 'section'). The injected styles target both '.seo-content-section' (correct) and '.seo-conent-seciton'
+    (typo). Both class names are used in the HTML.
+
+dependencies:
+  services:
+    - name: markdown-service
+      function: convertMarkdownToHtml
+      description: "Converts markdown strings to HTML for dangerouslySetInnerHTML"
+  types:
+    - name: SeoContent
+      source: "~/services/web-component-service"
+    - name: CategoryTheme
+      source: "~/services/category-service"
+
+used_by:
+  - "WebContentsComponent (web-contents-component.tsx) - renders SEO sections"
+
+security:
+  - "Uses dangerouslySetInnerHTML for markdown content - relies on markdown-service for sanitization"
+  - "Dynamic CSS injection via style tag with dangerouslySetInnerHTML"
+  - "Theme colors injected into CSS - ensure theme values are sanitized"
+
+notes:
+  - "The CSS class typo 'seo-conent-seciton' is intentional in the source and must be preserved for styling to work"
+  - "Images use @unpic/qwik Image component with explicit width/height from CMS data"
+  - "The vertical divider between columns is an absolute-positioned element, only shown for 2-column 'With Icon Right' layout"
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  SeoContentComponentProps:
+    description: Component props — SeoContentProps extends SeoContent, adding type and theme
+    fields:
+      - name: heading
+        type: string
+        optional: true
+      - name: subHeading
+        type: string
+        optional: true
+      - name: content
+        type: "string[]"
+      - name: icons
+        type: "Array<SeoContentIcon>"
+        optional: true
+      - name: type
+        type: string
+      - name: theme
+        type: "CategoryTheme | null"
+        optional: true
+
+  SeoContent:
+    description: SEO content data from web-component-service
+    source: ~/services/web-component-service
+    fields:
+      - name: heading
+        type: string
+      - name: subHeading
+        type: string
+      - name: content
+        type: "string[]"
+      - name: icons
+        type: "Array<SeoContentIcon>"
+        optional: true
+
+  SeoContentIcon:
+    description: Icon item used in "With Icon Right" and "With Icon Row" layouts
+    fields:
+      - name: image
+        type: string
+      - name: imageAlt
+        type: string
+      - name: heading
+        type: string
+      - name: description
+        type: string
+      - name: width
+        type: string
+      - name: height
+        type: string
+
+  CategoryTheme:
+    description: Optional category theme for link color in injected CSS
+    source: ~/services/category-service
+    fields:
+      - name: primary
+        type: string
+      - name: secondary
+        type: string
+      - name: primaryText
+        type: string
+      - name: secondaryText
+        type: string
+
+field_consumption:
+  SeoContentComponentProps:
+    consumed:
+      - heading: Rendered as h2 when truthy
+      - subHeading: Rendered as h3 when truthy
+      - content: Iterated to render markdown sections; length > 1 enables md:grid-cols-2
+      - icons: Used when type is "With Icon Right" (one icon per content section by index) or "With Icon Row" (grid below content)
+      - type: Controls which icon layout mode is active ("With Icon Right" vs "With Icon Row" vs neither)
+      - theme: Used in injected CSS for link color (theme.primary or fallback #F02480)
+
+  SeoContentIcon:
+    consumed:
+      - image: Passed as src to Image component
+      - imageAlt: Passed as alt to Image component (in "With Icon Right" mode — note: imageAlt is not used in "With Icon Row" mode, alt defaults to imageAlt)
+      - heading: Rendered as h3 in "With Icon Row" mode
+      - description: Rendered as p in "With Icon Row" mode
+      - width: Passed as width to Image component
+      - height: Passed as height to Image component
+
+visibility_map:
+  heading_h2:
+    condition: "heading is truthy"
+    default: hidden
+
+  subheading_h3:
+    condition: "subHeading is truthy"
+    default: hidden
+
+  two_column_grid:
+    condition: "content.length > 1"
+    default: "single column (md:grid-cols-2 only applied when content.length > 1)"
+
+  icon_right_per_section:
+    condition: "icons && icons[index] && type == 'With Icon Right'"
+    default: hidden
+
+  vertical_divider:
+    condition: "type == 'With Icon Right' && content.length == 2"
+    default: hidden
+
+  icon_row_grid:
+    condition: "icons && type == 'With Icon Row'"
+    default: hidden

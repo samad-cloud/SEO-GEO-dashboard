@@ -1,0 +1,275 @@
+name: Video
+source: components/media/video.tsx
+description: >
+  Video player component with lazy loading via IntersectionObserver, play/pause
+  state management for multi-video galleries, and a custom play button overlay.
+  Supports both autoplay mode (no controls overlay) and interactive mode with
+  coordinated play/pause across multiple video instances. Detects video format
+  from the URL (mp4 or webm) and renders the appropriate source element.
+
+exports:
+  default:
+    type: component
+    description: Video - HTML5 video player with lazy loading and multi-video coordination
+
+props:
+  autoplay:
+    type: boolean
+    required: false
+    description: "When true, video autoplays and no play button overlay is shown."
+  loop:
+    type: boolean
+    required: false
+    description: "When true, video loops continuously."
+  muted:
+    type: boolean
+    required: false
+    description: "When true, video is muted."
+  playsinline:
+    type: boolean
+    required: false
+    description: "When true, video plays inline on mobile devices (no fullscreen takeover)."
+  controls:
+    type: boolean
+    required: false
+    description: "When true, native browser video controls are shown."
+  preload:
+    type: "'none' | 'auto' | 'metadata'"
+    required: false
+    default: "'metadata'"
+    description: "Video preload strategy."
+  poster:
+    type: string
+    required: false
+    description: "URL for the video poster image shown before playback."
+  name:
+    type: string
+    required: true
+    description: >
+      Video source URL. The component checks if the URL contains 'webm' or
+      'mp4' to determine which source element to render with the correct MIME type.
+  id:
+    type: string
+    required: true
+    description: >
+      HTML id attribute for the video element. Used for DOM queries in lazy
+      loading and multi-video coordination. For multi-video galleries, the
+      format is 'photobook-video-{index}'.
+  aspectRatio:
+    type: string
+    required: false
+    description: "CSS aspect-ratio value applied inline to the video element."
+  normalVideoLoad:
+    type: boolean
+    required: false
+    description: >
+      When true, skips lazy loading and sets the src attribute directly.
+      The video also does not get the 'lazy' CSS class.
+  videoStateStore:
+    type: "VideoStateStoreType"
+    required: false
+    description: >
+      Shared store for coordinating play/pause state across multiple video
+      instances. Contains a boolean array where true means paused.
+  index:
+    type: number
+    required: false
+    description: >
+      Index of this video in a multi-video gallery. Used with videoStateStore
+      to track and coordinate play/pause state.
+
+component_structure:
+  layout:
+    - "div wrapper (relative, w-full)"
+    - "video element with conditional source elements"
+    - "Play button overlay (triangle shape via CSS borders, shown when paused in non-autoplay mode)"
+
+child_components: []
+
+data_structure:
+  VideoStateStoreType:
+    states: "boolean[] - array of paused states for each video (true = paused, false = playing)"
+  scrolled_signal:
+    type: "Signal<boolean>"
+    default: false
+    description: "Tracks whether scroll event has fired for lazy loading initialization"
+
+behavior:
+  lazy_loading:
+    trigger: "Window scroll event"
+    condition: "Only when normalVideoLoad is false"
+    mechanism:
+      - On first scroll, sets scrolled signal to true
+      - Creates IntersectionObserver on the video element
+      - When video enters viewport, copies data-src to src on all child source elements
+      - Calls video.load() to begin loading
+      - Unobserves element after loading
+    fallback: "If IntersectionObserver not available, calls video.load() directly"
+    initial_state: "Source elements have data-src set but src is empty (or empty string)"
+
+  multi_video_coordination:
+    condition: "When videoStateStore and index are provided"
+    play_behavior: >
+      When a video is clicked or play is triggered, it calls handleClick which
+      iterates all videos (queried by id pattern 'photobook-video-{i}'), plays
+      the clicked video and pauses all others. Updates videoStateStore.states
+      accordingly.
+    pause_behavior: >
+      Pausing a video sets its state to true in videoStateStore and hides
+      native controls.
+    play_on_click: "Sets state to false, shows native controls, calls video.play()"
+
+  event_listeners:
+    setup: "useVisibleTask$ (runs on client when element becomes visible)"
+    condition: "Only when autoplay is false"
+    events:
+      play: "Sets videoStateStore.states[index] to false, shows native controls"
+      seeking: "Shows native controls, calls play()"
+      pause: "Sets videoStateStore.states[index] to true, hides native controls"
+
+  play_button_overlay:
+    condition: "Shown when autoplay is false"
+    visibility: "Hidden when video is playing (videoStateStore.states[index] is false)"
+    appearance: "Triangle play icon created with CSS borders (border hack)"
+    click_action: "Triggers handleClick to play this video and pause others"
+
+  format_detection:
+    - "If name contains 'webm', renders <source type='video/webm'>"
+    - "If name contains 'mp4', renders <source type='video/mp4'>"
+    - "Both can render simultaneously if URL contains both strings"
+
+styling:
+  video_element:
+    inline_styles:
+      - "width: 100%"
+      - "height: auto"
+      - "object-fit: cover"
+      - "aspect-ratio: {aspectRatio} (if provided)"
+  tailwind_classes:
+    wrapper: "relative w-full"
+    video: "m-0 z-[10]"
+    play_button: >
+      absolute w-[45px] top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2
+      h-[50px] z-[200] border-[30px] border-gray border-r-0 border-l-[50px]
+      border-t-transparent border-b-transparent border-r-transparent
+    lazy_class: "lazy (added when not normalVideoLoad, removed after loading)"
+
+dependencies:
+  external: []
+  internal:
+    - "components/mothers-day/ugc-section (VideoStateStoreType interface)"
+
+used_by:
+  - components/carousels/dynamic-carousel.tsx
+  - components/media/dynamic-carousel.tsx
+  - components/homepage/usergeneratedcontent.tsx
+  - components/homepage/marketing-content-video.tsx
+  - components/mothers-day/ugc-section.tsx
+  - components/category-page/ugc-section.tsx
+  - components/web-component/ugc-section.tsx
+
+security:
+  - Video URLs come from CMS/API data, not user input
+  - No user-controlled content rendered as HTML
+  - IntersectionObserver is a read-only browser API
+
+notes:
+  - The lazy loading removes the scroll event listener by removing an attribute 'on-window:scroll' (Qwik-specific), which needs a different approach in Next.js
+  - The play button overlay is a CSS triangle created with border tricks, not an SVG or icon
+  - Multi-video coordination queries the DOM by id pattern 'photobook-video-{i}', tightly coupling to that naming convention
+  - The component uses useVisibleTask$ (Qwik client-only lifecycle) for setting up video event listeners
+  - When both videoStateStore and index are undefined, click handlers return undefined (no-op)
+  - Native controls are dynamically shown/hidden via JavaScript rather than the controls prop
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  VideoProps:
+    description: Component props interface (internal, not exported)
+    fields:
+      - name: autoplay
+        type: boolean
+        optional: true
+      - name: loop
+        type: boolean
+        optional: true
+      - name: muted
+        type: boolean
+        optional: true
+      - name: playsinline
+        type: boolean
+        optional: true
+      - name: controls
+        type: boolean
+        optional: true
+      - name: preload
+        type: "'none' | 'auto' | 'metadata'"
+        optional: true
+        default: "'metadata'"
+      - name: poster
+        type: string
+        optional: true
+      - name: name
+        type: string
+      - name: id
+        type: string
+      - name: aspectRatio
+        type: string
+        optional: true
+      - name: normalVideoLoad
+        type: boolean
+        optional: true
+      - name: videoStateStore
+        type: VideoStateStoreType
+        optional: true
+      - name: index
+        type: number
+        optional: true
+
+  PreloadValues:
+    description: Internal helper interface constraining the preload attribute value
+    fields:
+      - name: name
+        type: "'none' | 'auto' | 'metadata'"
+
+  VideoStateStoreType:
+    description: Shared store for coordinating play/pause state across multiple video instances
+    source: ~/components/mothers-day/ugc-section
+    fields:
+      - name: states
+        type: "boolean[]"
+        notes: "true = paused, false = playing; indexed by video position in gallery"
+
+field_consumption:
+  VideoProps:
+    consumed:
+      - autoplay: Set on <video> autoplay attribute; also gates play-button overlay and event listener setup in useVisibleTask$
+      - loop: Set on <video> loop attribute
+      - muted: Set on <video> muted attribute
+      - playsinline: Set on <video> playsInline attribute
+      - controls: Set on <video> controls attribute; native controls also toggled dynamically via JS on play/pause events
+      - preload: Set on <video> preload attribute; defaults to 'metadata'
+      - poster: Set on <video> poster attribute; empty string when absent
+      - name: Used for format detection (includes 'webm' or 'mp4') and as data-src on <source> elements
+      - id: Set as HTML id on <video> element; used in DOM queries for lazy loading and multi-video coordination
+      - aspectRatio: Applied as inline style aspect-ratio on the <video> element when provided
+      - normalVideoLoad: When true skips lazy loading and sets src directly; also removes 'lazy' CSS class
+      - videoStateStore: Checked for undefined before reading states[index]; drives play button visibility and multi-video pause logic
+      - index: Used with videoStateStore to read/write the correct index in states array and to build DOM id 'photobook-video-{index}'
+
+visibility_map:
+  play_button_overlay:
+    condition: "autoplay is false/undefined"
+    default: hidden when autoplay is true; rendered (but visibility further gated) when autoplay is false
+
+  play_button_visible_state:
+    condition: "videoStateStore !== undefined && index !== undefined && videoStateStore.states[index] === true"
+    default: visible (shown when paused); hidden class applied when playing
+
+  webm_source_element:
+    condition: "props.name.includes('webm')"
+    default: hidden (not rendered when URL does not contain 'webm')
+
+  mp4_source_element:
+    condition: "props.name.includes('mp4')"
+    default: hidden (not rendered when URL does not contain 'mp4')

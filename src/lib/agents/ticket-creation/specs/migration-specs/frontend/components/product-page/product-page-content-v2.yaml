@@ -1,0 +1,267 @@
+name: ProductPageContentV2
+source: src/components/product-page/product-page-content-v2.tsx
+description: |
+  Layout orchestrator for the product page content below the fold. Renders up to
+  seven section types (typeOption1-4, upsells, finalSalePitch, featuresSlideshow,
+  floatingBanner, guidelineSection, webComponents) in a product-type-dependent
+  display order using CSS `order` property. Each section is conditionally rendered
+  only if its data exists and is non-empty. Uses updated V2 sub-components
+  (ProductOptionType2V2, ProductOptionType3V2) compared to the Basic variant.
+
+exports:
+  - name: default
+    type: component$<ProductPageContentProps>
+    description: Default Qwik component export
+  - name: ProductPageContentProps
+    type: interface
+    description: Props interface
+
+props:
+  - name: productPageContent
+    type: ProductPageContent
+    required: true
+    description: Full product page content data containing all section types
+  - name: designUrl
+    type: string
+    required: true
+    description: Current design URL passed down to option type components and final sale pitch
+  - name: productType
+    type: PlatinumProductTypeEnum
+    required: true
+    description: Determines section display order via customOrder function
+  - name: theme
+    type: "CategoryTheme | null"
+    required: false
+    default: "{ primary: '#F02480', secondary: '#FFF', primaryText: '#FFF', secondaryText: '#000' }"
+    description: Colour theme passed to featuresSlideshow and webComponents
+  - name: type
+    type: '"product" | "category"'
+    required: false
+    default: '"product"'
+    description: Context type passed to FloatingBanner
+
+component_structure:
+  - TypeOption1Wrapper: div with CSS order, my-4 lg:my-8
+  - TypeOption2Wrapper: div with CSS order, my-4 lg:my-8
+  - TypeOption3Wrapper: div with CSS order, container mx-auto, my-4 lg:my-8, px-3
+  - TypeOption4Wrapper: div with CSS order, my-4 lg:my-8
+  - UpsellsWrapper: div with CSS order, my-4 lg:my-8
+  - FinalSalePitchWrapper: div with CSS order, my-4 lg:my-8 container mx-auto
+  - FeaturesSlideWrapper: div with CSS order, container mx-auto my-4 lg:my-8
+  - FloatingBanner: (no wrapper div)
+  - GuidelineWrapper: div with CSS order, container mx-auto my-4 lg:my-8
+  - WebComponentsWrapper: (no wrapper div)
+
+child_components:
+  - name: ProductOptionType1
+    source: ~/components/product-page/product-option-type-1
+    props:
+      - data: productPageContent.typeOption1
+      - designUrl: string
+      - productType: PlatinumProductTypeEnum
+  - name: ProductOptionType2V2
+    source: ~/components/product-page/product-option-type-2-v2
+    purpose: Used for both typeOption2 and typeOption4
+    props:
+      - data: productPageContent.typeOption2 or typeOption4
+      - designUrl: string
+  - name: ProductOptionType3V2
+    source: ~/components/product-page/product-option-type-3-v2
+    props:
+      - data: productPageContent.typeOption3
+      - designUrl: string
+  - name: ProductUpsellOptions
+    source: ~/components/product-page/product-upsell-options
+    props:
+      - data: productPageContent.upsells
+  - name: ProductFinalSalePitch
+    source: ~/components/product-page/product-final-sale-pitch
+    props:
+      - data: productPageContent.finalSalePitch
+      - designUrl: string
+  - name: CategoryFeaturesSlide
+    source: ~/components/category-page/category-features-slide
+    props:
+      - featuresSlideshow: productPageContent.featuresSlideshow
+      - id: "product-features-slideshow-1"
+      - theme: CategoryTheme
+  - name: FloatingBanner
+    source: ~/components/banner/dynamic-promo-banner-v2
+    props:
+      - type: "product" | "category"
+      - data: productPageContent.floatingBanner.floating
+  - name: GuidelineSection
+    source: ~/components/guideline-section/guideline-section
+  - name: ProductPageContentWebComponents
+    source: ~/components/web-component/web-contents-component
+    props:
+      - data: productPageContent.webComponents
+      - theme: CategoryTheme
+
+data_structure:
+  ISectionDisplayOrder:
+    - typeOption1: number
+    - typeOption2: number
+    - typeOption3: number
+    - typeOption4: number
+    - upsells: number
+    - finalSalePitch: number
+
+behavior:
+  - customOrder(productType) returns ISectionDisplayOrder based on product type:
+      - Photobook: typeOption1=3, typeOption2=2, typeOption3=4, typeOption4=1, upsells=9, finalSalePitch=9
+      - Frame: typeOption1=3, typeOption2=1, typeOption3=4, typeOption4=2, upsells=9, finalSalePitch=9
+      - Calendar: typeOption1=3, typeOption2=0, typeOption3=2, typeOption4=4, upsells=13, finalSalePitch=14
+      - Blanket: typeOption1=2, typeOption2=3, typeOption3=4, typeOption4=1, upsells=8, finalSalePitch=9
+      - Canvas: typeOption1=3, typeOption2=1, typeOption3=4, typeOption4=2, upsells=9, finalSalePitch=10
+      - Default: typeOption1=1, typeOption2=3, typeOption3=5, typeOption4=7, upsells=9, finalSalePitch=11
+  - getOrder(section): returns productPageContent[section].order if set, else customOrder result
+  - Each section renders conditionally (see visibility_map)
+  - featuresSlideshow order defaults to 7 if not set
+  - guidelineSection order from productPageContent.guidelineSectionOrder or 8
+
+api_calls: []
+
+dependencies:
+  qwik:
+    - component$ from @builder.io/qwik
+  components:
+    - ProductOptionType1 from ~/components/product-page/product-option-type-1
+    - ProductOptionType2V2 from ~/components/product-page/product-option-type-2-v2
+    - ProductOptionType3V2 from ~/components/product-page/product-option-type-3-v2
+    - ProductUpsellOptions from ~/components/product-page/product-upsell-options
+    - ProductFinalSalePitch from ~/components/product-page/product-final-sale-pitch
+    - CategoryFeaturesSlide from ~/components/category-page/category-features-slide
+    - FloatingBanner from ~/components/banner/dynamic-promo-banner-v2
+    - GuidelineSection from ~/components/guideline-section/guideline-section
+    - ProductPageContentWebComponents from ~/components/web-component/web-contents-component
+  types:
+    - ProductPageContent, ProductPageContentProps from ~/services/product-page-service
+    - PlatinumProductTypeEnum from ~/services/product-category-service
+    - CategoryTheme from ~/services/category-service
+
+used_by:
+  - ProductPageBaseTemplate
+  - ProductPageFixedThemeTemplate
+  - ProductPageHubTemplate
+  - ProductPageHubChildTemplate
+  - PhotoCanvasPrintsNewTemplate
+  - PhotoCanvasPrintsBundledTemplate
+  - PhotoCanvasPrintsHubBundledTemplate
+  - PhotoCanvasPrintsTemplateV2
+  - PhotoCanvasPrintsBaseTemplate
+  - PhotoCalendarsBaseTemplate
+  - PhotoCalendarsBalooRadioTemplate
+  - PhotoCalendarsDaisyTemplate
+  - PhotoCalendarsJbc2024Template
+  - CommonCategoryContainer
+  - ProductPageContainer
+
+edge_cases:
+  - typeOption4 uses ProductOptionType2V2 (same as typeOption2), not a dedicated V4 component
+  - finalSalePitch renders even when heading is absent (only checks existence of finalSalePitch object); contrast with Basic variant which also checks heading
+  - Order conflicts: if two sections have the same order value, CSS flex order renders them in DOM order as tiebreaker
+
+notes:
+  - V2 differs from Basic: uses ProductOptionType2V2 and ProductOptionType3V2 (updated option components)
+  - typeOption4 in V2 maps to ProductOptionType2V2; in Basic it maps to ProductOptionType2 (non-V2)
+  - ProductPageContentBasic has identical structure but uses non-V2 sub-components and also accepts componentPositions
+
+types:
+  ProductPageContentProps:
+    description: Component props
+    fields:
+      - name: productPageContent
+        type: ProductPageContent
+      - name: designUrl
+        type: string
+      - name: productType
+        type: PlatinumProductTypeEnum
+      - name: theme
+        type: "CategoryTheme | null"
+        optional: true
+      - name: type
+        type: '"product" | "category"'
+        optional: true
+        default: '"product"'
+
+  ISectionDisplayOrder:
+    description: Per-product-type section display order map
+    fields:
+      - name: typeOption1
+        type: number
+      - name: typeOption2
+        type: number
+      - name: typeOption3
+        type: number
+      - name: typeOption4
+        type: number
+      - name: upsells
+        type: number
+      - name: finalSalePitch
+        type: number
+
+field_consumption:
+  ProductPageContent:
+    consumed:
+      - typeOption1: Rendered if exists AND types.length > 0
+      - typeOption2: Rendered if exists AND types.length > 0
+      - typeOption3: Rendered if exists AND types.length > 0
+      - typeOption4: Rendered if exists AND types.length > 0
+      - upsells: Rendered if exists AND upsells.length > 0
+      - finalSalePitch: Rendered if exists
+      - featuresSlideshow: Rendered if exists
+      - floatingBanner.floating: Rendered if truthy
+      - guidelineSectionOrder: Used as CSS order for guideline section
+      - webComponents: Passed to ProductPageContentWebComponents if present
+    ignored:
+      - floatingBanner.main: Used by ProductPageTopBannerV2, not here
+
+implementation_logic:
+  section_order_priority:
+    rule: |
+      Each section's CSS order is: productPageContent[section].order (CMS override) OR
+      customOrder(productType)[section] (type-based default).
+      If productPageContent[section].order is 0 or falsy, the type default is used.
+    critical: true
+
+visibility_map:
+  typeOption1_section:
+    condition: "productPageContent.typeOption1 exists AND types.length > 0"
+    default: hidden
+
+  typeOption2_section:
+    condition: "productPageContent.typeOption2 exists AND types.length > 0"
+    default: hidden
+
+  typeOption3_section:
+    condition: "productPageContent.typeOption3 exists AND types.length > 0"
+    default: hidden
+
+  typeOption4_section:
+    condition: "productPageContent.typeOption4 exists AND types.length > 0"
+    default: hidden
+
+  upsells_section:
+    condition: "productPageContent.upsells exists AND upsells.upsells.length > 0"
+    default: hidden
+
+  final_sale_pitch_section:
+    condition: "productPageContent.finalSalePitch is truthy"
+    default: hidden
+
+  features_slideshow_section:
+    condition: "productPageContent.featuresSlideshow is truthy"
+    default: hidden
+
+  floating_banner:
+    condition: "productPageContent.floatingBanner.floating is truthy"
+    default: hidden
+
+  web_components_section:
+    condition: "productPageContent.webComponents is truthy"
+    default: hidden
+
+  guideline_section:
+    condition: "Always rendered (no guard)"
+    default: visible

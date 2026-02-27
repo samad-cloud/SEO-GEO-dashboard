@@ -1,0 +1,133 @@
+name: DeliveryRatesRoute
+source:
+  path: routes/delivery-rates/index.tsx
+  lines: 1-135
+  type: route
+
+description: |
+  Interactive page displaying delivery rates by product type.
+  Features:
+  - Search/filter delivery rates by product name
+  - Accordion UI to show/hide rate cards per product
+  - LargeOrders and HowItWorks sections at bottom
+
+  Uses routeLoader$ to fetch delivery rates data asynchronously.
+
+url_pattern: /delivery-rates
+layout: default
+
+exports:
+  default: true
+  component: |
+    Renders:
+    - Page title (i18n: delivery_rates.delivery_rates_title)
+    - Search input to filter product types
+    - Accordion with delivery rate cards per product
+    - LargeOrders component
+    - HowItWorks component
+
+  routeLoader: useGetDeliveryRates
+  routeLoader_behavior: |
+    Calls getDeliveryRates() service
+    Returns: IDeliveryRates[] | null
+
+  head: Head
+  head_behavior: |
+    Uses inlineTranslate to get localized title and meta tags
+    Meta tags:
+    - title, google (notranslate), theme-color, distribution, rating, author, copyright
+    - google-signin-scope, robots (none)
+
+dependencies:
+  - "@builder.io/qwik" ($, component$, useComputed$, useSignal, useStore)
+  - "@builder.io/qwik-city" (routeLoader$, DocumentHead)
+  - "qwik-speak" (inlineTranslate)
+  - "~/components/share/accordion/accordion"
+  - "~/components/share/accordion/accordion-header"
+  - "~/components/share/accordion/accordion-details"
+  - "~/components/share/large-orders/large-orders"
+  - "~/components/share/how-it-works/how-it-works"
+  - "~/components/product-type-table/product-type-table"
+  - "~/components/svg-icon/svg-icon"
+  - "~/services/delivery-rates.service" (getDeliveryRates, IDeliveryRates, DeliveryRateCardType)
+  - "~/services/server" (getSiteSetting)
+
+data_dependencies:
+  - getDeliveryRates() API call
+  - getSiteSetting().currencyCode for currency display
+
+behavior:
+  - Accordion state managed via store (accordionData: AccordionDataType[])
+  - Search filter uses useComputed$ to filter accordionDataDisplay
+  - Only one accordion section expanded at a time (handleAccordionChange)
+  - ProductTypeTable receives deliveryRateCards and currencySymbol
+  - Search input uses bind:value for reactive filtering
+
+state:
+  - store.accordionData: Array of accordion items with expanded state
+  - productType: String signal for search filter
+  - deliveryRates: Signal holding loaded data
+
+i18n_keys:
+  - delivery_rates.delivery_rates_title
+  - delivery_rates.product_search
+
+rewrite_routes:
+  NL: /leveringstarieven
+  FR: /tarifs-de-livraison
+  IT: /tariffe-di-spedizione
+  ES: /entrega
+
+used_by: []
+
+types:
+  DeliveryRateCardType:
+    description: A single delivery rate card entry for a product; imported from delivery-rates.service
+    source: "~/services/delivery-rates.service"
+    fields:
+      - name: referenceCode
+        type: string
+        description: Product reference/SKU code
+      - name: name
+        type: string
+        description: Product display name
+      - name: qty
+        type: number
+        description: Quantity for this rate entry
+      - name: shippingChargeDisplay
+        type: "Record<string, any>"
+        description: Keyed map of shipping charge display strings (keys are shipping method names)
+
+  IDeliveryRates:
+    description: A single accordion section grouping delivery rate cards by product type; imported from delivery-rates.service
+    source: "~/services/delivery-rates.service"
+    fields:
+      - name: header
+        type: string
+        description: Product type heading shown in the accordion header
+      - name: deliveryRateCards
+        type: "DeliveryRateCardType[]"
+        description: Array of delivery rate cards for this product type
+
+  AccordionDataType:
+    description: Locally-defined interface extending IDeliveryRates with accordion UI state; defined in route file
+    fields:
+      - name: expanded
+        type: boolean
+        description: Whether this accordion section is currently open
+      - name: id
+        type: number
+        description: Zero-based index used as accordion item identifier
+      - name: header
+        type: string
+        description: Product type heading (copied from IDeliveryRates.header)
+      - name: deliveryRateCards
+        type: "DeliveryRateCardType[]"
+        description: Delivery rate cards for this section
+
+  StoreType:
+    description: Locally-defined interface for the Qwik useStore shape; defined in route file
+    fields:
+      - name: accordionData
+        type: "AccordionDataType[]"
+        description: Full list of accordion sections with their expanded/collapsed state

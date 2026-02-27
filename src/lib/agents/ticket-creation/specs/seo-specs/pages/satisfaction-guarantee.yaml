@@ -1,0 +1,49 @@
+page_id: satisfaction-guarantee
+description: "Satisfaction guarantee policy page with complex multi-region conditional rendering."
+
+url:
+  pattern: "/satisfaction-guarantee"
+  layout: "default"
+  i18n_rewrites:
+    FR: "/garantie-satisfaction"
+
+seo_contract:
+  title:
+    source: "i18n key: satisfaction_guarantee.meta.title"
+    generating_mechanism: "inlineTranslate (qwik-speak)"
+  meta_description:
+    source: "i18n key: satisfaction_guarantee.meta.description"
+  meta_keywords:
+    source: "i18n key: satisfaction_guarantee.meta.keywords"
+  canonical:
+    pattern: "{domain}/satisfaction-guarantee"
+  robots:
+    value: "Standard"
+  structured_data: "None"
+  hreflang:
+    count: 8
+    known_issues:
+      - "Hreflang for FR will use /satisfaction-guarantee instead of /garantie-satisfaction"
+  heading_hierarchy:
+    h1: "i18n key: satisfaction_guarantee.title"
+
+file_chain:
+  route:
+    file: "src/routes/satisfaction-guarantee/index.tsx"
+    spec: "../migration-specs/frontend/routes/satisfaction-guarantee.yaml"
+  layout:
+    file: "src/routes/layout.tsx"
+    spec: "../migration-specs/frontend/layouts/layout-default.yaml"
+  middleware:
+    ref: "_architecture.yaml → middleware_pipeline"
+
+region_variations:
+  GB: "Phone link hidden"
+  US: "Phone link hidden"
+  NL: "Phone link hidden"
+  IN: "Phone link hidden"
+  DE: "Phone link hidden, quality description part 2 hidden"
+  IT: "Phone link hidden"
+  ES: "Phone link hidden"
+  FR: "Phone link hidden"
+  notes: "Cancellation content uses dangerouslySetInnerHTML"

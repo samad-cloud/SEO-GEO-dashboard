@@ -1,0 +1,55 @@
+page_id: delivery-rates
+description: "Interactive delivery rates page with search/filter and accordion UI. Uses routeLoader for data fetching."
+
+url:
+  pattern: "/delivery-rates"
+  layout: "default"
+  i18n_rewrites:
+    NL: "/leveringstarieven"
+    FR: "/tarifs-de-livraison"
+    IT: "/tariffe-di-spedizione"
+    ES: "/entrega"
+
+seo_contract:
+  title:
+    source: "i18n key via inlineTranslate in head export"
+    generating_mechanism: "head export with inlineTranslate"
+  meta_description:
+    source: "Not explicitly set in head export"
+    known_issues:
+      - "Head export sets 'google: notranslate' and 'robots: none' but no description"
+  canonical:
+    pattern: "{domain}/delivery-rates"
+  robots:
+    value: "none"
+    notes: "Explicitly set to 'none' in head export — page is noindex, nofollow"
+    known_issues:
+      - "robots: none means this page won't be indexed by search engines"
+  structured_data: "None"
+  hreflang:
+    count: 8
+    known_issues:
+      - "Hreflang incorrect for NL, FR, IT, ES rewritten URLs"
+      - "Page is noindex anyway, so hreflang may be moot"
+  heading_hierarchy:
+    h1: "i18n key: delivery_rates.delivery_rates_title"
+
+file_chain:
+  route:
+    file: "src/routes/delivery-rates/index.tsx"
+    spec: "../migration-specs/frontend/routes/delivery-rates.yaml"
+  layout:
+    file: "src/routes/layout.tsx"
+    spec: "../migration-specs/frontend/layouts/layout-default.yaml"
+  data_source:
+    function: "getDeliveryRates()"
+    file: "src/services/delivery-rates.service.ts"
+    spec: "../migration-specs/backend/services/delivery-rates-service.yaml"
+    loader: "useGetDeliveryRates (routeLoader$)"
+  page_components:
+    - "Accordion, AccordionHeader, AccordionDetails"
+    - "ProductTypeTable"
+    - "LargeOrders"
+    - "HowItWorks"
+  middleware:
+    ref: "_architecture.yaml → middleware_pipeline"

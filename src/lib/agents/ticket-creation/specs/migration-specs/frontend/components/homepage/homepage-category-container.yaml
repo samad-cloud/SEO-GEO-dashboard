@@ -1,0 +1,231 @@
+name: HomepageCategoryContainer
+source: components/homepage/homepage-category-container.tsx
+description: >
+  Container component that renders a list of HomePageCategory components with
+  progressive lazy-loading on scroll. Initially shows a limited number of
+  categories (controlled by initialCount prop), then loads more when the user
+  scrolls down. Provides "Show More" and "Show Less" toggle buttons with
+  arrow icons to manually expand or collapse the full category list.
+
+exports:
+  - name: default
+    type: component
+    description: HomepageCategoryContainer component (default export)
+  - name: imgFetchPriority
+    type: type
+    description: "Union type: 'high' | 'low' | 'auto' for image fetch priority"
+
+props:
+  - name: data
+    type: ProductSection[]
+    required: true
+    description: Array of product category sections to render. Each section contains heading, subheading, categoryPageUrl, productPages array, and buttonCaption.
+  - name: initialCount
+    type: number
+    required: true
+    description: Number of categories to show initially before scroll-based lazy loading triggers. After lazy load triggers, this value is updated to 3 internally.
+  - name: shopCollectionCtaText
+    type: string
+    required: true
+    description: CTA text passed through to each HomePageCategory child (e.g., "Shop Collection").
+
+component_structure:
+  root_element: div
+  root_id: categories-container
+  root_classes: "home-category-container w-full"
+  layout: >
+    Vertical stack of HomePageCategory components followed by a centered
+    button row. Categories are conditionally rendered based on visible count.
+    Button row uses flex with column on mobile, row on md+ screens.
+
+child_components:
+  - name: HomePageCategory
+    source: components/homepage/homepagecategory.tsx
+    description: Renders individual category section with heading, product cards, and CTA link.
+    props_passed:
+      - name: shopCollectionCtaText
+        from: props.shopCollectionCtaText
+      - name: data
+        from: "category (iterated from props.data)"
+      - name: key
+        from: index
+      - name: showOff
+        from: "index === props.data.length - 1 (true only for last category)"
+  - name: SVGIcon
+    source: components/svg-icon/svg-icon.tsx
+    description: Arrow icon used in Show More/Show Less buttons.
+    props_passed:
+      - name: name
+        value: "arrow-down"
+      - name: width
+        value: "16"
+      - name: height
+        value: "16"
+      - name: class
+        value: "'ml-2 top-[1px]' for Show More, 'ml-2 top-[1px] rotate-180' for Show Less"
+
+data_structure:
+  ProductSection:
+    heading: string
+    subheading: string
+    categoryPageUrl: string
+    productPages: ProductPage[]
+    buttonCaption: string
+  ProductPage:
+    caption: string
+    bannerUrl: string
+    bannerAltText: string
+    productPageUrl: string
+    price: number
+    discountedPrice: number
+    priceDisplay: string
+    discountedPriceDisplay: string
+
+behavior:
+  lazy_loading:
+    trigger: window scroll event on the container element
+    mechanism: >
+      On first scroll event, sets a loaded flag to true and updates the
+      initial visible count to 3 (hardcoded). Removes the scroll event
+      listener from the container after first trigger. If already loaded,
+      just removes the scroll listener.
+    initial_state: "Shows props.initialCount categories"
+    after_scroll: "Shows 3 categories (hardcoded after lazy load)"
+
+  show_more_button:
+    visible_when: "visibleCategoryCount < props.data.length"
+    action: "Sets visibleCategoryCount to props.data.length (shows all categories)"
+    label_source: "getHome().home.show_more_categories (region-specific translated text)"
+    icon: "arrow-down SVG icon, 16x16, appended after text"
+
+  show_less_button:
+    visible_when: "visibleCategoryCount > initialVisibleCategoryCount"
+    action: "Sets visibleCategoryCount back to initialVisibleCategoryCount"
+    label_source: "getHome().home.show_less_categories (region-specific translated text)"
+    icon: "arrow-down SVG icon, 16x16, rotated 180 degrees (arrow-up), appended after text"
+
+  button_coexistence: >
+    Both buttons can be visible simultaneously. Show More appears when not
+    all categories are shown. Show Less appears when more than the initial
+    count are shown. When all are shown, only Show Less is visible.
+
+  i18n:
+    button_text_source: "getHome() returns region-specific JSON based on settings().website"
+    supported_regions: ["US", "GB", "FR", "DE", "NL", "IT", "ES"]
+    keys_used:
+      - "home.show_more_categories"
+      - "home.show_less_categories"
+
+styling:
+  container: "home-category-container w-full"
+  button_row: "flex flex-col md:flex-row justify-center items-center"
+  buttons: >
+    flex items-center mx-[10px] h-[48px] sm:h-[24px] py-[15px] px-[38px]
+    mb-[25px] rounded-3xl bg-white text-base-complementaryText font-semibold
+  button_border: "1px solid rgba(0, 0, 0, 0.7) (inline style)"
+  responsive:
+    mobile: "Buttons stacked vertically (flex-col), h-[48px]"
+    desktop: "Buttons side by side (md:flex-row), h-[24px] at sm+"
+
+dependencies:
+  internal:
+    - path: components/homepage/homepagecategory.tsx
+      purpose: Individual category section rendering
+    - path: components/svg-icon/svg-icon.tsx
+      purpose: Arrow icon for toggle buttons
+    - path: utility/homepage-contents.ts
+      purpose: "getHome() for region-specific translated button labels"
+    - path: services/home-service.ts
+      purpose: ProductSection and ProductPage type definitions
+  external: []
+
+used_by:
+  - path: routes/index@containerless.tsx
+    description: Homepage route renders this as the main category listing
+
+security:
+  concerns: none
+  auth_required: false
+  sensitive_data: false
+
+notes:
+  - The scroll-based lazy loading has a hardcoded value of 3 categories after first scroll
+  - The imgFetchPriority type is exported but not used within this component itself
+  - showOff prop is true only for the last category in the list
+  - getHome() is called at render time, not reactively; region is determined by server settings
+  - Both buttons can appear simultaneously when partially expanded
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  CategoryContainerProps:
+    description: Component props interface (internal, not exported)
+    fields:
+      - name: data
+        type: "ProductSection[]"
+      - name: initialCount
+        type: number
+      - name: shopCollectionCtaText
+        type: string
+
+  imgFetchPriority:
+    description: Union type for image fetch priority hint (exported)
+    fields:
+      - name: value
+        type: "'high' | 'low' | 'auto'"
+
+  ProductSection:
+    description: Single category section data shape
+    source: ~/services/home-service
+    fields:
+      - name: heading
+        type: string
+      - name: subheading
+        type: string
+      - name: categoryPageUrl
+        type: string
+      - name: productPages
+        type: "ProductPage[]"
+      - name: buttonCaption
+        type: string
+
+  ProductPage:
+    description: Individual product card data within a category section
+    source: ~/services/home-service
+    fields:
+      - name: caption
+        type: string
+      - name: bannerUrl
+        type: string
+      - name: bannerAltText
+        type: string
+      - name: productPageUrl
+        type: string
+      - name: price
+        type: number
+      - name: discountedPrice
+        type: number
+      - name: priceDisplay
+        type: string
+      - name: discountedPriceDisplay
+        type: string
+
+field_consumption:
+  CategoryContainerProps:
+    consumed:
+      - data: Iterated to render HomePageCategory instances; length checked for button visibility; passed per-item as data prop; used to compute showOff flag
+      - initialCount: Used to initialise intialVisibleCategoryCount signal; after first scroll this signal is reset to 3
+      - shopCollectionCtaText: Passed through to each HomePageCategory child unchanged
+
+visibility_map:
+  category_items:
+    condition: "index < visibleCategoryCount.value"
+    default: "only first initialCount items visible; rest hidden until expanded or scrolled"
+
+  show_more_button:
+    condition: "visibleCategoryCount.value < props.data.length"
+    default: visible (when list is not fully expanded)
+
+  show_less_button:
+    condition: "visibleCategoryCount.value > intialVisibleCategoryCount.value"
+    default: hidden (shown only after categories have been expanded beyond initial count)

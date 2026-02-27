@@ -1,0 +1,254 @@
+name: HomePageCategoryCard
+source: src/components/homepage/homepagecategorycard.tsx
+description: |
+  Display card for a single product within a homepage category row. Renders a
+  product image, caption, formatted discounted price, and optionally a
+  strikethrough original price and a percentage-off badge. Card width adapts
+  based on how many products are in the category: categories with more than 3
+  products use a narrower two-column-on-mobile / four-column-on-desktop grid;
+  categories with 3 or fewer products use a wider single-column-on-mobile /
+  three-column-on-desktop grid. Product images use eager loading for "Our Best
+  Sellers" categories and lazy loading for all others. Price formatting is
+  region-aware via Intl.NumberFormat. Discount badge and original price are
+  conditionally shown only when product.price is non-zero and showOff is true.
+
+  Note: A legacy variant exists at src/components/homepage/homepage-category-card.tsx
+  (used by the older home-category-container.tsx path). That file uses @unpic/qwik
+  Image, the US-only "$" price prefix, and lacks the showOff/discount-badge logic.
+  The canonical version documented here is homepagecategorycard.tsx, which is the
+  one used by the active homepage route (via homepage-category-container → homepagecategory).
+
+exports:
+  - name: default
+    type: component$<CategoryCardProps>
+    description: Default export; anonymous component (no named export)
+
+props:
+  - name: product
+    type: ProductPage
+    required: true
+    description: Product data object from the homepage API response.
+  - name: categorySize
+    type: number
+    required: true
+    description: |
+      Total number of products in this category row. Controls grid width:
+      categorySize > 3 → narrow card (w-[49%] lg:w-[24%]);
+      categorySize <= 3 → wide card (w-full lg:w-[32%]).
+  - name: categoryName
+    type: string
+    required: false
+    description: Heading of the parent category. Used to detect "Our Best Sellers" for eager image loading.
+  - name: imgFetchPriority
+    type: imgFetchPriority
+    required: false
+    description: "'high' | 'low' | 'auto'. Accepted but not applied in this component (see notes)."
+  - name: showOff
+    type: boolean
+    required: true
+    description: |
+      When true and product.price is non-zero, renders the strikethrough original
+      price and the discount badge. HomepageCategory passes showOff=true only for
+      the last category in the list.
+
+component_structure:
+  root: "div.home-product-card.home_page_category_product_item (width class conditional on categorySize)"
+  children:
+    - anchor: "a.w-full.flex.flex-col.box-border.justify-center.py-[10px].md:py-[10px].link_homepage_category_product_page"
+      children:
+        - image: "img (src, alt, width, height, loading, style aspect-ratio:3/2, class w-full h-auto mb-[15px] image_homepage_category_product_page)"
+        - caption_p: "p.font-medium (text-left if categorySize>3, else text-center) h-[24px] lg:h-auto overflow-hidden"
+        - price_row: "div.mt-1.w-full.flex.items-center (justify-between if realShow, else justify-start/justify-center)"
+          children:
+            - price_block: "div.flex (text-left or text-center based on realShow)"
+              children:
+                - discounted_price: "p.text-sm.mr-2 — '{jsonHome.from} {formatPrice(discountedPrice)}'"
+                - original_price: "p.hidden.md:block.text-sm.text-center.mr-2.line-through — formatPrice(price) (only if realShow)"
+            - discount_badge: "div.text-sm.text-center.font-semibold.bg-[#29CC80].p-1.text-white — getPriceOff(discountedPrice, price) (only if realShow)"
+
+data_structure:
+  ProductPage:
+    source: ~/services/home-service
+    fields:
+      - caption: string
+      - bannerUrl: string
+      - bannerAltText: string
+      - productPageUrl: string
+      - price: number (0 when no original price available)
+      - discountedPrice: number
+      - priceDisplay: string (pre-formatted; not used by this component)
+      - discountedPriceDisplay: string (pre-formatted; not used by this component)
+
+behavior:
+  - step: 1
+    action: "Compute realShow = product.price is truthy (non-zero) AND showOff prop is true."
+  - step: 2
+    action: "Load region-specific JSON: jsonHome = getHome().home to get the 'from' prefix string."
+  - step: 3
+    action: "Render outer div with width class: categorySize > 3 → 'w-[49%] lg:w-[24%]', else 'w-full lg:w-[32%]'."
+  - step: 4
+    action: "Render anchor linking to product.productPageUrl."
+  - step: 5
+    action: "Render img with src=product.bannerUrl, alt=product.bannerAltText. Width/height: 285x190 if categorySize>3, else 380x252. loading='eager' if categoryName contains 'Our Best Sellers', otherwise 'lazy'. Inline style: aspect-ratio: 3/2 always applied."
+  - step: 6
+    action: "Render caption paragraph with product.caption. Alignment: text-left if categorySize>3, text-center otherwise."
+  - step: 7
+    action: "Render price row. If realShow: justify-between, text-left; else: justify-start (categorySize>3) or justify-center."
+  - step: 8
+    action: "Render discounted price as '{jsonHome.from} {formatPrice(product.discountedPrice)}' using Intl.NumberFormat with region locale and currency."
+  - step: 9
+    action: "If realShow: render original price (hidden on mobile, line-through) and discount badge (green bg, 'X% OFF' text from getPriceOff())."
+
+styling:
+  card_width_narrow: "w-[49%] lg:w-[24%] (categorySize > 3)"
+  card_width_wide: "w-full lg:w-[32%] (categorySize <= 3)"
+  card_classes: "home-product-card home_page_category_product_item"
+  anchor_classes: "w-full flex flex-col box-border justify-center py-[10px] md:py-[10px] link_homepage_category_product_page"
+  image_classes: "w-full h-auto mb-[15px] image_homepage_category_product_page"
+  image_style: "aspect-ratio: 3 / 2"
+  caption_classes: "font-medium h-[24px] lg:h-auto overflow-hidden (text-left if narrow, text-center if wide)"
+  price_row_classes: "mt-1 w-full flex items-center"
+  discounted_price_classes: "text-sm mr-2"
+  original_price_classes: "hidden md:block text-sm text-center mr-2 line-through"
+  discount_badge_classes: "text-sm text-center font-semibold bg-[#29CC80] p-1 text-white"
+
+dependencies:
+  qwik:
+    - component$ from @builder.io/qwik
+  services:
+    - ProductPage (type) from ~/services/home-service
+  utilities:
+    - getHome from ~/utility/homepage-contents
+    - formatPrice, getPriceOff from ~/utility/format
+  types:
+    - imgFetchPriority from ./homepagecategory
+
+used_by:
+  - HomepageCategory
+
+security:
+  - No authentication required; public-facing display component.
+  - product.bannerUrl is used directly as img src without validation.
+
+edge_cases:
+  - product.price === 0: realShow is false regardless of showOff; no original price or badge rendered.
+  - showOff === false: realShow is false; no discount display even if price is non-zero.
+  - categoryName undefined or not containing "Our Best Sellers": image loading is 'lazy'.
+  - categoryName includes "Our Best Sellers": image loading is 'eager' for LCP optimisation.
+  - Very long captions: clipped by h-[24px] on mobile, allowed to wrap on lg: (h-auto).
+  - categorySize === 0 or 1: treated as <= 3, so wide card layout applies.
+
+notes:
+  - imgFetchPriority prop is declared but not applied in the rendered img tag; it appears in the interface for forwards compatibility but has no effect in this component version.
+  - The 'from' text prefix (e.g., "From", "Von") is sourced from region-specific JSON via getHome().home.from, making price display region-aware.
+  - The legacy variant (homepage-category-card.tsx) has key differences: uses @unpic/qwik Image component, uses a hardcoded US "printerpix.com" URL prefix on bannerUrl, uses a literal "$" prefix instead of formatPrice, and lacks the showOff/discount-badge logic.
+  - getPriceOff returns locale-formatted discount (e.g., "25% OFF" for US/GB, "25% Rabatt" for DE, "- 25%" for FR).
+
+types:
+  CategoryCardProps:
+    description: Props interface for the default export component
+    fields:
+      - name: product
+        type: ProductPage
+      - name: categorySize
+        type: number
+      - name: categoryName
+        type: string
+        optional: true
+      - name: imgFetchPriority
+        type: imgFetchPriority
+        optional: true
+      - name: showOff
+        type: boolean
+
+  ProductPage:
+    description: Product data from the homepage API (~/services/home-service)
+    fields:
+      - name: caption
+        type: string
+      - name: bannerUrl
+        type: string
+      - name: bannerAltText
+        type: string
+      - name: productPageUrl
+        type: string
+      - name: price
+        type: number
+      - name: discountedPrice
+        type: number
+      - name: priceDisplay
+        type: string
+      - name: discountedPriceDisplay
+        type: string
+
+  imgFetchPriority:
+    description: Type alias re-exported from homepagecategory.tsx
+    value: "'high' | 'low' | 'auto'"
+
+field_consumption:
+  ProductPage:
+    consumed:
+      - caption: Rendered in the caption <p> element
+      - bannerUrl: Used as img src
+      - bannerAltText: Used as img alt attribute
+      - productPageUrl: Used as anchor href
+      - price: Used in realShow computation (truthy check) and passed to getPriceOff() and formatPrice()
+      - discountedPrice: Formatted with formatPrice() for the primary price display; passed to getPriceOff()
+    ignored:
+      - priceDisplay: Pre-formatted string present in type but not used; component calls formatPrice() directly
+      - discountedPriceDisplay: Pre-formatted string present in type but not used; component calls formatPrice() directly
+
+  CategoryCardProps:
+    consumed:
+      - product: All consumed fields listed under ProductPage above
+      - categorySize: Controls card width class and text alignment; also controls img dimensions
+      - categoryName: Checked for "Our Best Sellers" substring to set img loading='eager'
+      - showOff: Combined with product.price in realShow gate
+    ignored:
+      - imgFetchPriority: Declared but not used in rendered output
+
+implementation_logic:
+  realShow_gate:
+    rule: |
+      realShow = product.price is truthy (non-zero, non-null, non-undefined) AND showOff === true.
+      Only when realShow is true are the strikethrough original price and the discount badge rendered.
+      This means the discount UI is a controlled opt-in: HomepageCategory passes showOff=true only
+      for the last category in the list (index === props.data.length - 1), giving CMS control over
+      which category shows discounts.
+    critical: true
+
+  image_loading_priority:
+    rule: |
+      If categoryName exists AND includes the substring "Our Best Sellers" (case-sensitive),
+      the img loading attribute is set to 'eager' for LCP optimisation.
+      All other categories use loading='lazy'.
+    critical: false
+
+  card_width_breakpoint:
+    rule: |
+      categorySize > 3 → card width: w-[49%] on mobile (2-column), lg:w-[24%] on desktop (4-column).
+      categorySize <= 3 → card width: w-full on mobile (1-column), lg:w-[32%] on desktop (3-column).
+      Image dimensions follow the same breakpoint: 285×190 for narrow, 380×252 for wide.
+    critical: false
+
+visibility_map:
+  original_price:
+    condition: "realShow is true (product.price truthy AND showOff === true)"
+    default: hidden
+    notes: Also hidden on mobile (hidden md:block); only visible md and above
+
+  discount_badge:
+    condition: "realShow is true"
+    default: hidden
+
+  discounted_price:
+    condition: always rendered
+    default: visible
+
+  image:
+    condition: always rendered
+    default: visible
+
+  caption:
+    condition: always rendered
+    default: visible

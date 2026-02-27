@@ -1,0 +1,210 @@
+name: CrossDomainNotification
+source: components/cross-domain-notification/cross-domain-notification.tsx
+description: >
+  Notification bar that detects when a user is browsing a Printerpix regional site
+  that does not match their detected country (from request headers). When a mismatch
+  is found, it displays a pink banner suggesting the user visit their local regional
+  site, with a CTA button linking to the correct domain. The banner is dismissible
+  via a close icon, which sets a cookie to suppress future display.
+
+exports:
+  - name: default
+    type: component
+    description: Qwik component that renders the cross-domain notification bar
+
+props:
+  - name: country
+    type: string
+    required: true
+    description: >
+      Two-letter country code (ISO 3166-1 alpha-2) detected from the user request
+      headers (e.g., US, GB, DE, FR, IT, ES, NL, IN, AE, CA, MX, PR).
+
+component_structure:
+  type: conditional_banner
+  root_element: div
+  children:
+    - element: div (container)
+      description: Centered flex container with responsive layout (column on mobile, row on desktop)
+      children:
+        - element: div (text block)
+          description: Contains two paragraphs - current site info and suggestion
+          children:
+            - element: p
+              description: >
+                Localized text telling user which site they are currently viewing.
+                Uses i18n key app.viewingWebsite with country parameter set to current
+                site countryCode2.
+            - element: p
+              description: >
+                Localized text suggesting the user regional site. Uses i18n key
+                app.suggestWebsite with website parameter (e.g., www.printerpix.com).
+                Rendered via dangerouslySetInnerHTML because the translated string may
+                contain HTML markup.
+        - element: a (CTA button)
+          description: >
+            Link button styled as white text on pink background. Links to the full website
+            URL for the target country. Text uses i18n key app.continue.
+        - element: SVGIcon (close button)
+          description: >
+            Close icon (24x24, white fill) positioned absolutely in top-right corner.
+            On click, sets cookie showCrossDomainNotification to false on the base domain
+            and hides the banner.
+
+data_structure:
+  internal_state:
+    - name: showCrossDomainNotification
+      type: boolean
+      initial: false
+      description: Controls banner visibility. Set to true during init if country mismatch detected.
+    - name: targetCountry
+      type: string
+      initial: props.country
+      description: >
+        The country code to redirect to. Usually matches the detected country, but for
+        CA/MX/PR it is overridden to US (redirect to US site).
+
+behavior:
+  initialization:
+    - step: Check if detected country is in supported list [US, GB, DE, FR, IT, ES, NL, IN, AE]
+    - step: >
+        If supported AND current site countryCode2 does NOT match detected country,
+        show notification with targetCountry = detected country
+    - step: >
+        Else check if detected country is in [CA, MX, PR] AND current site is NOT US.
+        If so, show notification with targetCountry = US (North American redirect)
+    - step: If neither condition matches, banner stays hidden (showCrossDomainNotification remains false)
+
+  country_mapping_logic:
+    direct_match_countries:
+      - US
+      - GB
+      - DE
+      - FR
+      - IT
+      - ES
+      - NL
+      - IN
+      - AE
+    redirect_to_us_countries:
+      - CA
+      - MX
+      - PR
+
+  dismiss_behavior:
+    - step: User clicks the close (X) icon
+    - step: >
+        Cookie showCrossDomainNotification is set to false with domain = base domain
+        of current hostname (e.g., .printerpix.com from www.printerpix.com).
+        Default expiry is 90 days.
+    - step: Banner is immediately hidden by setting showCrossDomainNotification = false
+
+  cta_behavior:
+    - step: CTA button links to the full website URL for the target country
+    - step: URL is obtained from getSiteSettingByCountryCode(targetCountry).website
+    - step: It is a standard anchor link (not SPA navigation), so clicking navigates to the other domain
+
+  i18n_keys:
+    - key: app.viewingWebsite
+      params: "{ country: string }"
+      description: "You are currently viewing the {country} website"
+    - key: app.suggestWebsite
+      params: "{ website: string }"
+      description: "We suggest you visit {website} for the best experience"
+    - key: app.continue
+      params: none
+      description: CTA button text (e.g., Continue or Go to site)
+
+styling:
+  banner_background: "#f02084 (Printerpix pink)"
+  text_color: white
+  cta_button:
+    background: white
+    text_color: "#f02084"
+    font_weight: bold
+    padding: px-4 py-1
+    border_radius: rounded
+  layout:
+    container: container mx-auto p-2
+    direction: flex-col on mobile, flex-row on lg+
+    alignment: justify-center items-center
+  close_icon:
+    position: absolute top-1 right-1
+    cursor: pointer
+    size: 24x24
+    fill: white
+
+dependencies:
+  internal:
+    - module: ~/services/server
+      imports: [getSiteSetting, getSiteSettingByCountryCode]
+      description: >
+        getSiteSetting() returns current site configuration including countryCode2.
+        getSiteSettingByCountryCode(code) returns site config for a given country code,
+        including mainDomain and website URL.
+    - module: ~/services/cart-services/cookie
+      imports: [setCookie, getBaseDomainName]
+      description: Cookie utility for setting dismissal cookie and extracting base domain
+    - module: ../svg-icon/svg-icon
+      imports: [SVGIcon]
+      description: SVG icon component, used here with name=close
+  external:
+    - package: qwik-speak
+      imports: [inlineTranslate]
+      description: Internationalization library for translating UI text
+    - package: "@builder.io/qwik"
+      imports: [component$, useStore, useTask$]
+    - package: "@builder.io/qwik-city"
+      imports: [useLocation]
+
+used_by:
+  - description: >
+      Rendered in the main app layout (likely root or header area) so it appears at the top
+      of every page when a country mismatch is detected. Receives the country prop from
+      server-side detection of user geographic location via request headers.
+
+security:
+  - Cookie is set on the base domain to work across subdomains
+  - dangerouslySetInnerHTML is used for the suggestion text (i18n string may contain HTML)
+  - The translated string source must be trusted (comes from i18n files, not user input)
+  - Country detection is server-side (from headers), not client-side (cannot be spoofed via JS)
+
+notes:
+  - The component does NOT check for an existing dismissal cookie on load. The cookie-based
+    suppression must be handled at the parent level (e.g., not rendering the component if
+    the cookie is already set, or the component could be enhanced to check on mount).
+  - getSiteSetting() and getSiteSettingByCountryCode() are server-side functions that provide
+    site configuration data. The site settings include mainDomain (e.g., printerpix.com)
+    and website (full URL like https://www.printerpix.com).
+  - The IN (India) and AE (UAE) country codes are in the supported list but may not have
+    dedicated Printerpix domains - behavior depends on getSiteSettingByCountryCode implementation.
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  CrossDomainNotificationProps:
+    description: Component props interface
+    fields:
+      - name: country
+        type: string
+
+  CrossDomainStore:
+    description: Internal useStore shape tracking banner state
+    fields:
+      - name: showCrossDomainNotification
+        type: boolean
+        default: false
+      - name: targetCountry
+        type: string
+        default: "props.country"
+
+field_consumption:
+  CrossDomainNotificationProps:
+    consumed:
+      - country: Checked against supported country lists to determine if banner should show; also used as initial targetCountry
+
+visibility_map:
+  entire_banner:
+    condition: "crossDomainData.showCrossDomainNotification === true"
+    default: hidden
+    notes: Entire component renders null when showCrossDomainNotification is false; set to true in useTask$ when country mismatch detected

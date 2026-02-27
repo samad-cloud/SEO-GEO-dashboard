@@ -1,0 +1,291 @@
+name: FaqSectionV2
+source: components/web-component/v2/faq.tsx
+description: >
+  FAQ section component (version 2) that renders questions and answers in a two-column inline layout
+  (NOT accordion). Questions are split evenly across two columns. Includes JSON-LD structured data
+  for SEO (FAQPage schema). Answers support markdown-to-HTML conversion. Uses Schema.org microdata
+  attributes for additional SEO markup. Page name for structured data is derived from meta.fields
+  PHEADING value, falling back to meta.name, then to "Frequently Asked Questions".
+
+exports:
+  - name: default
+    type: component
+    description: FaqSectionV2 component (default export)
+
+props:
+  - name: content
+    type: FaqContent
+    required: true
+    description: >
+      FAQ content data with heading, subHeading, faqs array [{question, answer}], and order number.
+  - name: theme
+    type: "CategoryTheme | null"
+    required: false
+    description: "Optional category theme. Currently received but not used in rendering (reserved for future use)."
+  - name: pageUrl
+    type: string
+    required: false
+    description: "Optional page URL. Currently received but not used."
+  - name: meta
+    type: "WebComponent"
+    required: false
+    description: >
+      Optional original WebComponent metadata. Used to extract page name for structured data
+      from fields (PHEADING fieldName) or name property.
+
+component_structure:
+  type: fragment
+  children:
+    - element: script (JSON-LD structured data)
+      type: "application/ld+json"
+      html: "dangerouslySetInnerHTML={structuredData.value}"
+      description: "FAQPage schema.org structured data for SEO"
+    - element: section
+      id: "inline-faq-{content.order}"
+      class: "w-full"
+      aria-labelledby: "faq-title-{content.order}"
+      children:
+        - element: div (container)
+          class: "container mx-auto px-4 md:px-6 max-w-7xl"
+          children:
+            - element: h2
+              id: "faq-title-{content.order}"
+              class: "text-2xl font-bold text-center mb-8 md:mb-12"
+              content: "{content.heading || 'Frequently Asked Questions'}"
+            - element: div (two-column grid)
+              class: "grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-8 md:gap-x-12 md:gap-y-10"
+              children:
+                - element: div (left column)
+                  class: "flex flex-col space-y-8"
+                  children:
+                    - element: article (FAQ item)
+                      iteration: "content.faqs.slice(0, firstColumnFaqs)"
+                      key: "faq-item-{content.order}-{i}"
+                      class: "w-full"
+                      itemScope: true
+                      itemType: "https://schema.org/Question"
+                      children:
+                        - element: h3 (question)
+                          class: "font-bold mb-2"
+                          itemProp: "name"
+                          content: "{faq.question || 'Question'}"
+                        - element: div (answer wrapper)
+                          itemScope: true
+                          itemProp: "acceptedAnswer"
+                          itemType: "https://schema.org/Answer"
+                          children:
+                            - element: div (answer content)
+                              class: "faq-content"
+                              itemProp: "text"
+                              html: "dangerouslySetInnerHTML={convertMarkdownToHtml(faq.answer)}"
+                - element: div (right column)
+                  class: "flex flex-col space-y-8"
+                  children:
+                    - element: article (FAQ item)
+                      iteration: "content.faqs.slice(firstColumnFaqs)"
+                      key: "faq-item-{content.order}-{i + firstColumnFaqs}"
+                      description: "Same structure as left column items"
+
+child_components: []
+
+data_structure:
+  FaqContent:
+    heading: string
+    subHeading: string
+    faqs:
+      - question: string
+        answer: string (markdown)
+    order: number
+
+  structured_data_output:
+    "@context": "https://schema.org"
+    "@type": "FAQPage"
+    name: "derived from meta.fields PHEADING || meta.name || 'Frequently Asked Questions'"
+    mainEntity:
+      - "@type": "Question"
+        name: "{faq.question}"
+        acceptedAnswer:
+          "@type": "Answer"
+          text: "{faq.answer}"
+
+behavior:
+  - action: "Split FAQs into two columns"
+    details: >
+      FAQs are split using Math.ceil(content.faqs.length / 2) for the first column.
+      Left column gets the first half (rounded up), right column gets the remainder.
+      For odd counts, the left column has one more item than the right.
+      Examples: 5 items = 3 left + 2 right; 4 items = 2 left + 2 right; 1 item = 1 left + 0 right.
+  - action: "Generate JSON-LD structured data"
+    details: >
+      Creates FAQPage schema.org structured data as a script tag with type application/ld+json.
+      Page name resolution priority:
+      1. meta.fields array -> find field with fieldName === 'PHEADING' -> use fieldValue
+      2. meta.name
+      3. Fallback: "Frequently Asked Questions"
+      All FAQ items are included in mainEntity array with question and raw answer text.
+  - action: "Render FAQ items with Schema.org microdata"
+    details: >
+      Each FAQ is wrapped in an <article> with itemScope/itemType for Question schema.
+      Question text is in h3 with itemProp="name".
+      Answer is wrapped in div with itemScope for Answer schema, content rendered as HTML
+      from markdown conversion with itemProp="text".
+  - action: "Heading fallback"
+    details: "If content.heading is falsy, displays 'Frequently Asked Questions' as default."
+  - action: "Question fallback"
+    details: "If faq.question is falsy, displays 'Question' as fallback text."
+
+styling:
+  scoped_css:
+    ".faq-content a": "color: #F02084; font-weight: 600; text-decoration: underline"
+    ".faq-content > p": "margin-top: 0; margin-bottom: 12px; line-height: 1.6"
+    ".faq-content > p:last-child": "margin-bottom: 0"
+    ".faq-content ul": "list-style-type: disc; margin-left: 20px; margin-top: 12px; margin-bottom: 12px; padding-left: 4px"
+    ".faq-content ol": "list-style-type: decimal; margin-left: 20px; margin-top: 12px; margin-bottom: 12px; padding-left: 4px"
+    ".faq-content li": "margin-bottom: 8px; line-height: 1.6"
+    ".faq-content strong": "font-weight: 600"
+  note: >
+    In the Qwik source, styles are scoped via useStylesScoped$. In Next.js migration,
+    use CSS Modules or scoped class names to prevent global style leakage.
+    Link color is hardcoded to #F02084 (NOT theme-dependent in this component).
+  layout:
+    grid: "grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-8 md:gap-x-12 md:gap-y-10"
+    column: "flex flex-col space-y-8"
+    container: "container mx-auto px-4 md:px-6 max-w-7xl"
+
+dependencies:
+  services:
+    - name: markdown-service
+      function: convertMarkdownToHtml
+      description: "Converts markdown answers to HTML"
+  types:
+    - name: FaqContent
+      source: "~/services/web-component-service"
+    - name: WebComponent
+      source: "~/services/web-component-service"
+    - name: CategoryTheme
+      source: "~/services/category-service"
+
+used_by:
+  - "WebContentsComponent (web-contents-component.tsx) - renders FAQ sections"
+
+security:
+  - "Uses dangerouslySetInnerHTML for FAQ answers (markdown content)"
+  - "JSON-LD structured data injected via dangerouslySetInnerHTML"
+  - "Ensure CMS-provided FAQ content is sanitized to prevent XSS"
+
+notes:
+  - >
+    This is V2 of the FAQ component - it uses an inline two-column layout, NOT an accordion.
+    Despite the filename suggesting accordion, this renders all Q&A pairs visible without expand/collapse.
+  - "The subHeading prop is part of FaqContent but is NOT rendered in the component template"
+  - "The theme prop is received but NOT used in this component's rendering or styling"
+  - "The pageUrl prop is declared in the interface but NOT used"
+  - "Link color in FAQ answers is hardcoded to #F02084 (slightly different from the common #F02480)"
+  - >
+    Scoped styles in Qwik (useStylesScoped$) add data attributes for scoping. In Next.js,
+    use CSS Modules or a scoped styling approach to prevent these styles from leaking globally.
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  FaqSectionV2Props:
+    description: Component props interface
+    fields:
+      - name: content
+        type: FaqContent
+      - name: theme
+        type: "CategoryTheme | null"
+        optional: true
+      - name: pageUrl
+        type: string
+        optional: true
+      - name: meta
+        type: WebComponent
+        optional: true
+
+  FaqContent:
+    description: FAQ section data from web-component-service
+    source: ~/services/web-component-service
+    fields:
+      - name: heading
+        type: string
+      - name: subHeading
+        type: string
+      - name: faqs
+        type: "Array<{ question: string; answer: string }>"
+      - name: order
+        type: number
+
+  FaqItem:
+    description: Individual FAQ question/answer pair within FaqContent.faqs
+    fields:
+      - name: question
+        type: string
+      - name: answer
+        type: string
+
+  WebComponent:
+    description: Raw CMS web component metadata (used for structured data page name extraction)
+    source: ~/services/web-component-service
+    fields:
+      - name: name
+        type: string
+      - name: fields
+        type: "WebComponentField[]"
+
+  CategoryTheme:
+    description: Optional category theme (received but not rendered)
+    source: ~/services/category-service
+    fields:
+      - name: primary
+        type: string
+      - name: secondary
+        type: string
+      - name: primaryText
+        type: string
+      - name: secondaryText
+        type: string
+
+field_consumption:
+  FaqContent:
+    consumed:
+      - heading: Rendered as h2 heading; falls back to "Frequently Asked Questions" when falsy
+      - faqs: Split into two columns (Math.ceil(length/2)) and rendered as article elements
+      - order: Used in element ids (e.g., inline-faq-{order}, faq-title-{order}, faq-item-{order}-{i})
+    ignored:
+      - subHeading: Declared in FaqContent interface but not rendered in the component template
+
+  WebComponent:
+    consumed:
+      - name: Used as fallback page name for JSON-LD structured data when PHEADING field is absent
+      - fields: Searched for PHEADING fieldName to extract page name for JSON-LD schema
+    ignored:
+      - guid: Not used
+      - wcTemplateName: Not used
+      - componentType: Not used
+      - isActive: Not used
+      - order: Not used (FaqContent.order used instead)
+      - childWebComponents_1: Not used
+      - childWebComponents_2: Not used
+      - customTag: Not used
+
+  CategoryTheme:
+    consumed: []
+    ignored:
+      - primary: Received but not used (link color is hardcoded to #F02084)
+      - secondary: Not used
+      - primaryText: Not used
+      - secondaryText: Not used
+
+visibility_map:
+  faq_heading:
+    condition: "content.heading is truthy"
+    default: "visible (falls back to 'Frequently Asked Questions' when falsy — always shown)"
+
+  left_column_faq_items:
+    condition: "content.faqs.slice(0, Math.ceil(faqs.length / 2)) — always rendered if faqs array is non-empty"
+    default: visible
+
+  right_column_faq_items:
+    condition: "content.faqs.slice(Math.ceil(faqs.length / 2)) — empty when faqs.length <= 1"
+    default: visible (may render empty column for single FAQ)

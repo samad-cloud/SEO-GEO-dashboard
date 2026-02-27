@@ -1,0 +1,200 @@
+name: AccordionDetails
+source: components/share/accordion/accordion-details.tsx
+description: >
+  Accordion content/details panel component that shows or hides its content based on
+  the expanded prop. Uses CSS max-height transition for smooth expand/collapse animation.
+  Injects default rich-text styling (links, lists, paragraphs) via useStyles$ unless
+  disabled. Supports customizable wrapper classes for both expanded and collapsed states.
+
+exports:
+  default:
+    type: component
+    description: AccordionDetails component (default export)
+
+props:
+  expanded:
+    type: boolean
+    required: true
+    description: Whether this content panel is currently visible/expanded
+  wrapperClass:
+    type: string
+    required: false
+    description: >
+      Additional CSS classes applied when collapsed.
+      Default: "" (empty string)
+  activeWrapperClass:
+    type: string
+    required: false
+    description: >
+      CSS classes applied when expanded. Overrides default expanded styling.
+      Default: "border-b relative -top-[2px] py-3 lg:py-8 bg-[#FBF6F7]"
+  id:
+    type: string
+    required: false
+    description: DOM id attribute for the panel element
+  ariaLabelledBy:
+    type: string
+    required: false
+    description: ID of the header element that labels this panel (for accessibility)
+  disableDefaultStyling:
+    type: boolean
+    required: false
+    default: false
+    description: >
+      When true, disables the default rich-text styling (accordion-default-styles class).
+      Used when parent provides its own content styling.
+  shortVersion:
+    type: boolean
+    required: false
+    default: false
+    description: >
+      When true, removes the large right padding on desktop (lg:pr-[30%]).
+      Used for compact accordion content.
+
+component_structure:
+  root: div
+  attributes:
+    id: props.id
+    role: tabpanel
+    aria-labelledby: props.ariaLabelledBy
+    aria-hidden: "!expanded (boolean, not string)"
+    inert: "true when collapsed, undefined when expanded"
+  children: Slot (content projection)
+
+child_components:
+  - name: Slot
+    source: "@builder.io/qwik"
+    description: Content projection for panel content
+
+data_structure: {}
+
+behavior:
+  expand_collapse:
+    expanded_state:
+      - max-height set to "max-h-fit" (auto height)
+      - activeWrapperClass applied
+      - Default expanded styling: "border-b relative -top-[2px] py-3 lg:py-8 bg-[#FBF6F7]"
+    collapsed_state:
+      - max-height set to "max-h-0"
+      - overflow hidden
+      - wrapperClass applied (default empty)
+      - Content hidden via aria-hidden=true and inert attribute
+    animation: "duration-300 overflow-hidden transition-all" (300ms CSS transition)
+  default_rich_text_styling:
+    class: accordion-default-styles
+    condition: "Applied unless disableDefaultStyling is true"
+    rules:
+      links:
+        color: "#F02480 (Printerpix pink)"
+        font-weight: bold
+      unordered_lists:
+        list-style-type: disc
+        margin-left: 16px
+        margin-top: 12px
+        margin-bottom: 12px
+      ordered_lists:
+        list-style-type: decimal
+        margin-left: 16px
+        margin-top: 12px
+        margin-bottom: 12px
+      paragraphs:
+        margin: "12px 0"
+      first_paragraph: "margin-top: 0"
+      last_paragraph: "margin-bottom: 0"
+  accessibility:
+    - role="tabpanel" identifies this as a panel associated with a tab
+    - aria-labelledby links back to the header element
+    - aria-hidden=true when collapsed prevents assistive tech from reading hidden content
+    - inert attribute when collapsed prevents focus and interaction with hidden content
+
+styling:
+  framework: Tailwind CSS
+  base_classes: "duration-300 overflow-hidden transition-all font-normal text-[#555] pl-3 pr-[62px] lg:pl-4"
+  conditional_classes:
+    shortVersion_false: "lg:pr-[30%]"
+    shortVersion_true: "" (no extra right padding)
+    disableDefaultStyling_false: "accordion-default-styles"
+    disableDefaultStyling_true: "" (no default styles class)
+  expanded_default: "max-h-fit border-b relative -top-[2px] py-3 lg:py-8 bg-[#FBF6F7]"
+  collapsed_default: "max-h-0"
+  injected_styles:
+    method: "useStyles$ (global style injection)"
+    scope: ".accordion-default-styles" class-scoped selectors
+    content: Rich text formatting for links, lists, and paragraphs
+
+dependencies:
+  - "@builder.io/qwik": Slot, component$, useStyles$
+
+used_by:
+  - components/footer/footer-containerless.tsx (with disableDefaultStyling=true)
+  - components/footer/footer.tsx
+  - components/footer/footer-product-category.tsx
+  - components/footer/footer-canvas.tsx
+  - components/footer/footer-auth.tsx
+  - Various FAQ and product detail sections using accordion pattern
+
+security:
+  - Content is rendered via Slot (content projection) -- security depends on what the parent passes
+  - Default styles include link coloring which could affect injected HTML content
+  - No direct user input handling
+
+notes:
+  - The expand/collapse uses max-height transition (max-h-0 to max-h-fit) which may have animation limitations with max-h-fit
+  - Default expanded styling includes "relative -top-[2px]" to overlap a 2px gap with the header border
+  - The default text color for content is #555 (medium gray), lighter than the header text (#333)
+  - Right padding is asymmetric: 62px on mobile (pr-[62px]), 30% of container on desktop (lg:pr-[30%]) unless shortVersion
+  - Left padding: 12px on mobile (pl-3), 16px on desktop (lg:pl-4)
+  - useStyles$ injects styles globally scoped to the .accordion-default-styles class
+  - The bg-[#FBF6F7] default expanded background is a very light pink, consistent with the Printerpix brand
+  - inert is a boolean HTML attribute: set to true when collapsed, undefined (removed) when expanded
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  IAccordionDetails:
+    description: Component props interface
+    fields:
+      - name: expanded
+        type: boolean
+      - name: wrapperClass
+        type: string
+        optional: true
+      - name: activeWrapperClass
+        type: string
+        optional: true
+      - name: id
+        type: string
+        optional: true
+      - name: ariaLabelledBy
+        type: string
+        optional: true
+      - name: disableDefaultStyling
+        type: boolean
+        optional: true
+        default: false
+      - name: shortVersion
+        type: boolean
+        optional: true
+        default: false
+
+visibility_map:
+  content_panel:
+    condition: "expanded === true"
+    default: hidden
+    notes: Uses max-height transition (max-h-0 when hidden, max-h-fit when visible)
+  accordion_default_styles_class:
+    condition: "disableDefaultStyling === false"
+    default: visible
+    notes: CSS class added to panel; controls rich-text styling for links, lists, paragraphs
+  large_right_padding_desktop:
+    condition: "shortVersion === false"
+    default: visible
+    notes: "lg:pr-[30%] is added only when shortVersion is false"
+  active_wrapper_class:
+    condition: "expanded === true"
+    default: hidden
+    notes: Applies activeWrapperClass (default 'border-b relative -top-[2px] py-3 lg:py-8 bg-[#FBF6F7]') when expanded
+  collapsed_wrapper_class:
+    condition: "expanded === false"
+    default: visible
+    notes: Applies wrapperClass (default empty string) when collapsed

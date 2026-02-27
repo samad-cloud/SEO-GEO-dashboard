@@ -1,0 +1,50 @@
+page_id: shipping-policy
+description: "Shipping policy info page with shipping methods table and holiday info. Uses routeLoader to fetch content."
+
+url:
+  pattern: "/shipping-policy"
+  layout: "default"
+  i18n_rewrites:
+    NL: "/bezorgmethoden"
+    DE: "/lieferbedingungen"
+    IT: "/politica-di-spedizione"
+    ES: "/politica-de-envio"
+
+seo_contract:
+  title:
+    pattern: "Printerpix | Shipping Policy"
+    source: "Hardcoded in head export"
+  meta_description:
+    source: "Not explicitly set"
+    known_issues:
+      - "No meta description defined"
+  canonical:
+    pattern: "{domain}/shipping-policy"
+  robots:
+    value: "Standard"
+  open_graph: "Not configured"
+  twitter_card: "Not configured"
+  structured_data: "None"
+  hreflang:
+    count: 8
+    known_issues:
+      - "Hreflang incorrect for NL, DE, IT, ES rewritten URLs"
+  heading_hierarchy:
+    h1: "Shipping Policy"
+
+file_chain:
+  route:
+    file: "src/routes/shipping-policy/index.tsx"
+    spec: "../migration-specs/frontend/routes/shipping-policy.yaml"
+  layout:
+    file: "src/routes/layout.tsx"
+    spec: "../migration-specs/frontend/layouts/layout-default.yaml"
+  data_source:
+    function: "loadWebContent(WebContentType.SHIPPING_POLICY)"
+    file: "src/services/json-service.ts"
+    loader: "useShippingPolicyLoader (routeLoader$)"
+  middleware:
+    ref: "_architecture.yaml → middleware_pipeline"
+
+region_variations:
+  NL: "Hides satisfaction guarantee and help sections"

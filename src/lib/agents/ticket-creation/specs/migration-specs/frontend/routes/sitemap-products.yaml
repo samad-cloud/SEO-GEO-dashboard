@@ -1,0 +1,54 @@
+name: SitemapProductsRoute
+source:
+  path: routes/sitemap-products.xml/index.tsx
+  lines: 1-24
+  type: route
+
+description: |
+  XML sitemap for product pages.
+  Reads pre-generated sitemap-products.xml file from dist/sitemap-q/{website}/ directory.
+  Falls back to empty XML on file read error.
+
+url_pattern: /sitemap-products.xml
+layout: none (server-side XML response)
+
+exports:
+  default: false
+  onGet: true
+  onGet_behavior: |
+    RequestHandler that:
+    - Resolves file path: dist/sitemap-q/{website.toLowerCase()}/sitemap-products.xml
+    - Reads XML content via fs.readFile
+    - Returns XML content as Response with Content-Type: text/xml
+    - On error: returns empty Response (200 OK, text/xml)
+
+dependencies:
+  - "@builder.io/qwik-city" (RequestHandler)
+  - "~/config/settings"
+  - "fs/promises" (Node.js fs module)
+  - "path" (Node.js path module)
+
+data_dependencies:
+  - settings().website for file path resolution
+  - Pre-generated sitemap XML file at dist/sitemap-q/{website}/sitemap-products.xml
+
+behavior:
+  - Server-side only (no client component)
+  - File must be pre-generated at build time
+  - Graceful error handling (returns empty XML on failure)
+  - Case-insensitive website code (toLowerCase())
+
+i18n_keys: []
+
+rewrite_routes: []
+
+used_by: []
+
+types:
+  RequestHandler:
+    description: Qwik City server request handler type imported from @builder.io/qwik-city
+    source: "@builder.io/qwik-city"
+    fields:
+      - name: send
+        type: "(response: Response) => void"
+        description: Sends a Response object directly to the client

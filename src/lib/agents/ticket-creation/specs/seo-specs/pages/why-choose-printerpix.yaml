@@ -1,0 +1,45 @@
+page_id: why-choose-printerpix
+description: "Why choose PrinterPix marketing page. Fully i18n-localized content."
+
+url:
+  pattern: "/why-choose-printerpix"
+  layout: "default"
+  i18n_rewrites:
+    NL: "/waarom-printerpix"
+    DE: "/warum-printerpix"
+    IT: "/perche-printerpix"
+    ES: "/por-que-elegir-printerpix"
+
+seo_contract:
+  title:
+    source: "i18n key: why_choose_printerpix.meta.title"
+    generating_mechanism: "inlineTranslate (qwik-speak)"
+  meta_description:
+    source: "i18n key: why_choose_printerpix.meta.description"
+  meta_keywords:
+    source: "i18n key: why_choose_printerpix.meta.keywords"
+  canonical:
+    pattern: "{domain}/why-choose-printerpix"
+  robots:
+    value: "Standard"
+  structured_data: "None"
+  hreflang:
+    count: 8
+    known_issues:
+      - "Hreflang incorrect for NL, DE, IT, ES rewritten URLs"
+  heading_hierarchy:
+    h1: "i18n key: why_choose_printerpix.title"
+    sections:
+      - "Commit to Quality"
+      - "Safe and Secure"
+      - "Stand Behind Product"
+
+file_chain:
+  route:
+    file: "src/routes/why-choose-printerpix/index.tsx"
+    spec: "../migration-specs/frontend/routes/why-choose-printerpix.yaml"
+  layout:
+    file: "src/routes/layout.tsx"
+    spec: "../migration-specs/frontend/layouts/layout-default.yaml"
+  middleware:
+    ref: "_architecture.yaml → middleware_pipeline"

@@ -1,0 +1,394 @@
+name: FooterProductCategory
+source:
+  path: src/components/footer/footer-product-category.tsx
+  lines: 1-498
+  type: component
+
+description: |
+  Specialized footer variant for product and category pages. Similar to main footer
+  but accepts promoBanner and shippingFooterBanner as props instead of route loader.
+  Has isProduct flag to control promo banner visibility. Otherwise identical structure
+  to the main footer component.
+
+exports:
+  - type: default
+    name: FooterProductCategory
+    kind: component
+
+props:
+  - name: promoBanner
+    type: PromoBanner | null
+    required: true
+    description: Promotional banner data to display at top of footer
+  - name: shippingFooterBanner
+    type: ShippingFooterBanner | null
+    required: true
+    description: Shipping information banner data
+  - name: isProduct
+    type: boolean
+    required: true
+    description: Controls whether promoBanner is displayed (true = show on product pages)
+
+component_structure:
+  root: footer
+  className: "w-full"
+  children:
+    - component: HomeBottomBanner (conditional on isProduct && promoBanner)
+    - section: trust-indicators
+      children:
+        - component: TrustIndicator
+    - section: main-content
+      className: "bg-base-complementaryBg text-base-footerText w-full py-[20px]"
+      children:
+        - section: plant-a-tree
+        - component: FooterShippingBanner (conditional on shippingFooterBanner)
+        - component: OurHelp (excluded for DE, NL)
+        - section: mobile-accordion (mobile only)
+        - section: desktop-grid (desktop only)
+    - section: worldwide-regions
+    - section: trust-elements
+    - section: copyright-legal
+    - component: FreshDeskWidget
+
+child_components:
+  - name: Accordion
+    path: "~/components/share/accordion/accordion"
+  - name: AccordionHeader
+    path: "~/components/share/accordion/accordion-header"
+  - name: AccordionDetails
+    path: "~/components/share/accordion/accordion-details"
+  - name: HomeBottomBanner
+    path: "~/components/homepage/home-bottom-banner"
+  - name: OurHelp
+    path: "~/components/share/our-help/our-help"
+  - name: TrustIndicator
+    path: "~/components/share/trust-indication/trust-indicator"
+  - name: FooterShippingBanner
+    path: "./footer-shipping-banner"
+  - name: FreshDeskWidget
+    path: "~/components/customer-service-components/fresh-desk-widget"
+  - name: Link
+    path: "@builder.io/qwik-city"
+  - name: Image
+    path: "@unpic/qwik"
+
+context_consumed: []
+
+state_management:
+  stores:
+    - name: footerData
+      type: array
+      description: Footer link sections with expanded state
+      structure:
+        - title: string
+        - links: array
+        - expanded: boolean
+        - id: number
+      initial: jsonFooter.footerLinks with expanded=false
+
+event_handlers:
+  - event: click (handleFooterAccordion)
+    description: Toggles accordion sections on mobile
+    implementation: |
+      Finds currently expanded section.
+      Collapses it if different from clicked section.
+      Toggles clicked section's expanded state.
+
+data_sources:
+  json:
+    - name: jsonHome
+      source: getHome()
+    - name: jsonFooter
+      source: getFooter()
+    - name: trustIndicatorContent
+      source: getTrustIndicatorContent()
+
+responsive_behavior:
+  mobile:
+    - Footer links in accordion
+    - Contact and social centered
+    - Country flags without labels
+    - Trust elements stacked
+  desktop:
+    - Footer links in grid (6 columns)
+    - Contact and social in rightmost column
+    - Country flags with labels
+    - Trust elements in 3-column layout
+
+differences_from_main_footer:
+  - promoBanner and shippingFooterBanner passed as props (not from route loader)
+  - isProduct prop controls promo banner visibility
+  - Promo banner only shows when isProduct=true AND promoBanner exists
+  - Footer wrapper has "w-full" instead of "bg-base-complementaryBg w-full"
+  - Terms link: hardcoded "/terms-and-conditions" (not jsonFooter.termsserviceHref)
+  - Privacy link: hardcoded "/privacy-policy" (not jsonFooter.privacyHref)
+  - Email link has "break-words" class for long addresses
+
+footer_sections:
+  plant_a_tree:
+    icon: /images-q/plantatree-green.svg
+    text: jsonHome.plant_tree
+
+  footer_links:
+    layout: dynamic grid
+    source: jsonFooter.footerLinks
+
+  contact_info:
+    excluded_regions: [DE, NL]
+    items:
+      - email: jsonFooter.howToReachUs.email (with break-words)
+
+  social_media:
+    source: jsonFooter.followUs.links
+
+  worldwide_regions:
+    countries: [US, UK, FR, IT, ES, DE, NL, IN, AE]
+
+  payment_methods:
+    items: [PayPal, Visa, Mastercard, Maestro, Amex, Apple Pay, Amazon Pay]
+
+  shipping_partners:
+    image_path: "/images-q/footer/delivery/${settings().website}.svg"
+
+  security:
+    provider: Sectigo SSL
+
+dependencies:
+  qwik:
+    - component$
+    - useStore
+    - $
+  qwik-city:
+    - Link
+  unpic:
+    - Image
+  types:
+    - "~/services/json-service" (PromoBanner, ShippingFooterBanner)
+  services:
+    - "~/utility/homepage-contents" (getHome, getFooter)
+    - "~/utility/share-content/share-contents" (getTrustIndicatorContent)
+  config:
+    - "~/config/settings" (settings)
+
+region_specific:
+  DE:
+    - Hides OurHelp component
+    - Hides contact info section
+  NL:
+    - Hides OurHelp component
+    - Hides contact info section
+
+usage:
+  - Product pages (isProduct=true, shows promo banner)
+  - Category pages (isProduct=false, hides promo banner)
+
+edge_cases:
+  - Promo banner only shows if BOTH isProduct=true AND promoBanner exists
+  - Hardcoded legal links vs dynamic in main footer
+  - Email address with break-words for long addresses
+  - Region-specific contact info visibility
+  - Accordion exclusive expansion
+
+behavior:
+  - step: 1
+    action: "Receive promoBanner, shippingFooterBanner, and isProduct as props (no route loader consumption, unlike main Footer)"
+  - step: 2
+    action: "Load static JSON data for homepage content (getHome), footer content (getFooter), and trust indicator content (getTrustIndicatorContent)"
+  - step: 3
+    action: "Initialize footerData store by mapping footer link sections with expanded=false and sequential id for accordion state"
+  - step: 4
+    action: "Render HomeBottomBanner only when BOTH isProduct=true AND promoBanner data exists (category pages hide the promo banner)"
+  - step: 5
+    action: "Render TrustIndicator component with bottomContent variant inside a centered container"
+  - step: 6
+    action: "Render plant-a-tree section with icon image and descriptive text from homepage JSON"
+  - step: 7
+    action: "If shippingFooterBanner data exists, render FooterShippingBanner with responsive images"
+  - step: 8
+    action: "Render OurHelp component unless the current region is DE or NL"
+  - step: 9
+    action: "On mobile, render contact info and social media centered, then footer link sections as an Accordion with exclusive expansion"
+  - step: 10
+    action: "Hide contact info section (How To Reach Us title and email) for both DE and NL regions (differs from main footer which only hides for DE on mobile)"
+  - step: 11
+    action: "On mobile accordion click, find and collapse the currently expanded section (if different from clicked), then toggle the clicked section's expanded state"
+  - step: 12
+    action: "On desktop, render footer links in a multi-column grid layout with contact info and social media in the rightmost column; email address uses break-words class for long addresses"
+  - step: 13
+    action: "Distinguish between internal links (rendered as Qwik Link for client-side navigation) and external links (rendered as plain <a> tags) by checking if href contains 'http'"
+  - step: 14
+    action: "Render worldwide regions section with country flag images for US, UK, FR, IT, ES, DE, NL, IN, AE; show country name labels only on desktop"
+  - step: 15
+    action: "Render trust elements section with three columns: payment partners, region-specific shipping partners, and Sectigo SSL security badge"
+  - step: 16
+    action: "Render copyright section with dynamic year and Printerpix link"
+  - step: 17
+    action: "Render terms and privacy links with hardcoded paths (/terms-and-conditions, /privacy-policy) instead of dynamic JSON hrefs used in main footer"
+  - step: 18
+    action: "Render FreshDeskWidget component at the bottom for customer support chat"
+
+used_by:
+  - Product pages
+  - Category pages
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  CategoryProductFooterProps:
+    description: Props interface for the FooterProductCategory component
+    fields:
+      - name: promoBanner
+        type: "PromoBanner | null"
+      - name: shippingFooterBanner
+        type: "ShippingFooterBanner | null"
+      - name: isProduct
+        type: boolean
+
+  PromoBanner:
+    description: Promotional banner data (from json-service)
+    fields:
+      - name: firstText1
+        type: string
+      - name: bgColor
+        type: string
+      - name: textColor
+        type: string
+      - name: bottomText1
+        type: string
+      - name: bottomText2
+        type: string
+      - name: bottomText3
+        type: string
+      - name: cta
+        type: "{ url: string; title: string; bgColor: string; textColor: string; mobileTextColor: string }"
+
+  ShippingFooterBanner:
+    description: Shipping banner data (from json-service)
+    fields:
+      - name: mobileShippingFooterBanner
+        type: string
+      - name: desktopShippingFooterBanner
+        type: string
+      - name: display
+        type: boolean
+      - name: background
+        type: string
+      - name: href
+        type: string
+        optional: true
+
+  FooterLink:
+    description: A single navigation link entry
+    fields:
+      - name: name
+        type: string
+      - name: href
+        type: string
+
+  FooterLinkGroup:
+    description: A titled group of footer navigation links with runtime expansion state
+    fields:
+      - name: title
+        type: string
+      - name: links
+        type: "FooterLink[]"
+      - name: expanded
+        type: boolean
+        optional: true
+        notes: Added by useStore at runtime; not in JSON source
+      - name: id
+        type: number
+        optional: true
+        notes: Added by useStore at runtime (index)
+
+  SocialLink:
+    description: Social media link entry
+    fields:
+      - name: name
+        type: string
+      - name: link
+        type: string
+      - name: image
+        type: string
+
+field_consumption:
+  CategoryProductFooterProps:
+    consumed:
+      - promoBanner: Passed to HomeBottomBanner when isProduct=true AND value is truthy
+      - shippingFooterBanner: Passed to FooterShippingBanner; truthiness checked to conditionally render it
+      - isProduct: Guards whether the promo banner is shown (must be true for banner to display)
+
+  jsonHome:
+    consumed:
+      - plant_tree: Rendered as paragraph text in the plant-a-tree section
+
+  jsonFooter:
+    consumed:
+      - footerLinks: Iterated to build accordion (mobile) and grid columns (desktop)
+      - howToReachUs.title: Rendered as section heading (hidden for DE and NL)
+      - howToReachUs.email.name: Label before email link
+      - howToReachUs.email.value: mailto: href and link text; email link has break-words class
+      - followUs.title: Social section heading
+      - followUs.links: Social media icon links (name, link, image consumed)
+      - printerpixWorldwide.title: Worldwide section heading
+      - printerpixWorldwide.countries: Country name labels shown on desktop (indexed 0-8)
+      - securedPayment: Label above payment icons
+      - certifiedDelivery: Label above shipping icons
+      - securedBy: Label above Sectigo badge
+      - copyright: Copyright text prefix with dynamic year
+      - termsservice: Terms link text (href hardcoded to /terms-and-conditions — NOT from jsonFooter.termsserviceHref)
+      - privacy: Privacy link text (href hardcoded to /privacy-policy — NOT from jsonFooter.privacyHref)
+    ignored:
+      - termsserviceHref: Not used; link href is hardcoded to /terms-and-conditions
+      - privacyHref: Not used; link href is hardcoded to /privacy-policy
+      - howToReachUs.phone: Commented out; not rendered
+
+  trustIndicatorContent:
+    consumed:
+      - trustIndicators.bottomContent: Passed to TrustIndicator (variant="bottom")
+
+  settings:
+    consumed:
+      - website: Controls OurHelp visibility (≠ DE, ≠ NL), contact section visibility (≠ DE, ≠ NL), and shipping icon path
+
+visibility_map:
+  promo_banner:
+    condition: "isProduct === true && promoBanner is truthy"
+    default: hidden
+    notes: Category pages always hide promo banner because isProduct=false
+
+  shipping_footer_banner:
+    condition: "shippingFooterBanner is truthy"
+    default: hidden
+
+  our_help_section:
+    condition: "settings().website !== 'DE' && settings().website !== 'NL'"
+    default: visible
+
+  how_to_reach_us_heading_mobile:
+    condition: "settings().website !== 'DE' && settings().website !== 'NL'"
+    default: visible
+
+  how_to_reach_us_contact_list_mobile:
+    condition: "settings().website !== 'DE' && settings().website !== 'NL'"
+    default: visible
+
+  how_to_reach_us_heading_desktop:
+    condition: "settings().website !== 'DE' && settings().website !== 'NL'"
+    default: visible
+
+  how_to_reach_us_contact_list_desktop:
+    condition: "settings().website !== 'DE' && settings().website !== 'NL'"
+    default: visible
+
+  mobile_footer_block:
+    condition: "always rendered; CSS visibility by Tailwind 'block md:hidden'"
+    default: visible on mobile only
+
+  desktop_footer_grid:
+    condition: "always rendered; CSS visibility by Tailwind 'hidden md:flex'"
+    default: visible on desktop only
+
+  country_name_labels:
+    condition: "always rendered; CSS visibility by Tailwind 'hidden md:block'"
+    default: hidden on mobile, visible on desktop

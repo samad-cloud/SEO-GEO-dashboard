@@ -1,0 +1,542 @@
+# Behavioral Spec: http.ts
+# Source: C:\Users\JawadSaad\source\repos\ecommerce-frontend-qwik\src\config\http.ts
+# Lines: 1-167
+# Type: HTTP Client Configuration Module
+
+name: http
+description: |
+  Axios HTTP client factory module that creates three configured axios instances:
+  1. baseAPI() - Legacy API client with basic configuration
+  2. baseNewAPI() - New API client with automatic cookie injection and Sentry logging
+  3. baseCustomerReminderAPI() - Customer reminder service client with custom headers
+
+  The baseNewAPI instance automatically injects machineToken and cookieData into
+  POST requests, handles cookie updates from API responses, and logs non-OK responses
+  to Sentry. All instances support server-side rendering with HTTP agents.
+
+source:
+  path: src/config/http.ts
+  lines: 1-167
+  type: http-client-factory
+
+exports:
+  types:
+    - name: Nullable
+      description: Utility type for nullable values
+      definition: "Nullable<T> = T | null"
+
+    - name: APIResponse
+      description: |
+        Legacy API response structure (PascalCase fields).
+        Used by baseAPI() client. Has both 'Data' and 'data' fields
+        (likely for backwards compatibility).
+      structure:
+        Svr: string
+        Status: string
+        Data: T (generic)
+        data: T (generic, duplicate of Data)
+        ErrorCode: string
+        Message: string
+        ExMsg: Nullable<string>
+        ExId: Nullable<string>
+        Ex: Nullable<string>
+
+    - name: NewAPIResponse
+      description: |
+        New API response structure (camelCase fields).
+        Used by baseNewAPI() client. Lowercase field names align
+        with modern JavaScript conventions.
+      structure:
+        svr: string
+        status: string
+        data: T (generic)
+        errorCode: string
+        message: string
+        ExMsg: Nullable<string>
+        ExId: Nullable<string>
+        Ex: Nullable<string>
+
+  constants:
+    - name: MAX_API_ATTEPMTS
+      type: number
+      value: 1
+      description: Maximum retry attempts for API calls (typo in name: ATTEPMTS)
+
+  functions:
+    - name: baseAPI
+      type: default export
+      description: |
+        Creates a basic axios instance for legacy API endpoints.
+        Uses baseAPIEndpoint from site settings.
+        No automatic cookie injection or response logging.
+        Timeout set to WRITE_API_TIMEOUT.
+      signature: "() => AxiosInstance"
+      behavior: |
+        - Creates axios instance with baseURL from getSiteSetting().baseAPIEndpoint
+        - Sets Content-Type: application/json
+        - Sets timeout to settings().WRITE_API_TIMEOUT
+        - Applies HTTP agents from getHttpAgents() (SSR support)
+        - Request interceptor: pass-through (no modifications)
+        - Response interceptor: pass-through (no modifications)
+      configuration:
+        baseURL: getSiteSetting().baseAPIEndpoint
+        headers:
+          Content-Type: application/json
+        timeout: settings().WRITE_API_TIMEOUT
+        httpAgent: from getHttpAgents()
+      interceptors:
+        request:
+          - No modifications, just returns config
+        response:
+          - No modifications, just returns response
+          - Rejects errors as-is
+
+    - name: baseNewAPI
+      type: named export
+      description: |
+        Creates an axios instance for new API endpoints with automatic
+        cookie/token injection and response handling.
+        - Injects machineToken and cookieData into POST request bodies
+        - Adds machine-token header to POST requests
+        - Updates cookies from API responses (modifierCookieRequest)
+        - Logs non-OK responses to Sentry
+      signature: "() => AxiosInstance"
+      behavior: |
+        - Creates axios instance with baseURL from getSiteSetting().newAPIEndpoint
+        - Sets Content-Type: application/json
+        - Sets timeout to settings().WRITE_API_TIMEOUT
+        - Applies HTTP agents from getHttpAgents() (SSR support)
+        - Request interceptor (async):
+          * Only modifies POST requests
+          * Client-side: reads cookies via getCookieDataOnClient()
+          * Server-side: reads cookies via await getCookieDataOnServer()
+          * Injects cookieData and machineToken into request body
+          * Sets machine-token header
+        - Response interceptor (async):
+          * Checks for modifierCookieRequest in response.data
+          * Updates cookies via updateCookieData() if present
+          * Logs to Sentry if status/Status !== "OK"
+          * Logs includes: event, type, url, data, config, errorMessage
+      configuration:
+        baseURL: getSiteSetting().newAPIEndpoint
+        headers:
+          Content-Type: application/json
+        timeout: settings().WRITE_API_TIMEOUT
+        httpAgent: from getHttpAgents()
+      interceptors:
+        request:
+          - Check if method is POST (case-insensitive)
+          - Detect execution context (window !== undefined = client)
+          - Client: getCookieDataOnClient() (synchronous)
+          - Server: await getCookieDataOnServer() (async)
+          - Merge { cookieData, machineToken } into config.data
+          - Set config.headers["machine-token"] = machineToken
+        response:
+          - Check if response.data.modifierCookieRequest exists
+          - If exists: await updateCookieData(modifierCookieRequest)
+          - Check if status/Status !== "OK" (case-insensitive field check)
+          - If not OK: logHTTPDataToSentry with:
+              * event: ESentryEvent.API_ERROR_RESPONSE
+              * type: ESentryType.ERROR
+              * url: response.config.url
+              * data: JSON.stringify({ data, config })
+              * errorMessage: response.data.Message or message
+          - Always return response (even on non-OK status)
+          - Reject errors as-is
+
+    - name: baseCustomerReminderAPI
+      type: named export
+      description: |
+        Creates an axios instance for customer reminder service.
+        Uses baseAPIEndpoint with /user/reminders/v1 path suffix.
+        No timeout configured (uses axios default).
+        Injects custom headers: x-user-machine-token, x-printerpix-guid, x-printerpix-locale.
+      signature: "() => AxiosInstance"
+      behavior: |
+        - Creates axios instance with baseURL = baseAPIEndpoint + /user/reminders/v1
+        - Sets Content-Type: application/json
+        - No timeout set (uses axios default ~0 = infinite)
+        - NO HTTP agents applied (may not work SSR)
+        - Request interceptor (async):
+          * Client-side: reads machineToken, customerGuid via getCookieDataOnClient()
+          * Server-side: reads machineToken, customerGuid via await getCookieDataOnServer()
+          * Sets headers:
+            - x-user-machine-token: machineToken
+            - x-printerpix-guid: customerGuid
+            - x-printerpix-locale: getSiteSetting().locale
+        - Response interceptor: pass-through (no modifications)
+      configuration:
+        baseURL: "${getSiteSetting().baseAPIEndpoint}/user/reminders/v1"
+        headers:
+          Content-Type: application/json
+        timeout: undefined (axios default)
+      interceptors:
+        request:
+          - Detect execution context (window !== undefined = client)
+          - Client: getCookieDataOnClient() (synchronous)
+          - Server: await getCookieDataOnServer() (async)
+          - Set x-user-machine-token header
+          - Set x-printerpix-guid header
+          - Set x-printerpix-locale header from getSiteSetting().locale
+        response:
+          - Pass-through (no modifications)
+          - Reject errors as-is
+
+dependencies:
+  external:
+    - package: axios
+      version: not specified
+      usage: HTTP client library for all instances
+
+  internal:
+    - path: ~/services/cart-services/cookie
+      imports:
+        - getCookieDataOnClient
+        - getCookieDataOnServer
+        - updateCookieData
+      usage: |
+        Read machineToken, cookieData, customerGuid from cookies.
+        Update cookies from API responses (modifierCookieRequest).
+        Used by baseNewAPI and baseCustomerReminderAPI interceptors.
+
+    - path: ~/services/server
+      imports:
+        - getSiteSetting
+      usage: |
+        Provides site-specific configuration:
+        - baseAPIEndpoint (legacy API URL)
+        - newAPIEndpoint (new API URL)
+        - locale (region/language code)
+
+    - path: ~/utility/sentry
+      imports:
+        - logHTTPDataToSentry
+        - ESentryEvent
+        - ESentryType
+      usage: |
+        Logs non-OK API responses to Sentry error tracking.
+        Used only by baseNewAPI response interceptor.
+
+    - path: ./settings
+      imports:
+        - settings
+      usage: |
+        Provides WRITE_API_TIMEOUT for axios timeout configuration.
+        Used by all three axios instances.
+
+    - path: ./http-agents.server
+      imports:
+        - getHttpAgents
+      usage: |
+        Provides HTTP/HTTPS agents for server-side requests.
+        Likely for connection pooling, proxy support, or SSL config.
+        Used by baseAPI and baseNewAPI (NOT baseCustomerReminderAPI).
+
+behavior:
+  baseAPI_instance:
+    purpose: Legacy API client for backward compatibility
+    baseURL_source: getSiteSetting().baseAPIEndpoint
+    timeout: settings().WRITE_API_TIMEOUT
+    http_agents: true (via getHttpAgents())
+    request_modifications: none
+    response_modifications: none
+    cookie_handling: none (caller must handle)
+    error_logging: none (caller must handle)
+
+  baseNewAPI_instance:
+    purpose: Modern API client with automatic cookie and error handling
+    baseURL_source: getSiteSetting().newAPIEndpoint
+    timeout: settings().WRITE_API_TIMEOUT
+    http_agents: true (via getHttpAgents())
+
+    request_modifications:
+      post_requests_only: true
+      cookie_injection:
+        client:
+          - Method: getCookieDataOnClient() (sync)
+          - Injects: { cookieData, machineToken }
+        server:
+          - Method: await getCookieDataOnServer() (async)
+          - Injects: { cookieData, machineToken }
+      body_merge:
+        - Original data preserved
+        - cookieData and machineToken added to config.data
+      headers:
+        - machine-token: machineToken
+
+    response_modifications:
+      cookie_updates:
+        - Checks: response.data.modifierCookieRequest
+        - If present: await updateCookieData(modifierCookieRequest)
+      error_logging:
+        - Triggers: status !== "OK" OR Status !== "OK"
+        - Service: Sentry
+        - Event: ESentryEvent.API_ERROR_RESPONSE
+        - Type: ESentryType.ERROR
+        - Payload:
+            * url: response.config.url
+            * data: stringified { data, config }
+            * errorMessage: response.data.Message or message
+      always_returns_response: true (does not throw on non-OK)
+
+  baseCustomerReminderAPI_instance:
+    purpose: Customer reminder service client
+    baseURL_source: "${getSiteSetting().baseAPIEndpoint}/user/reminders/v1"
+    timeout: none (axios default ~infinite)
+    http_agents: false (NOT applied - may break SSR)
+
+    request_modifications:
+      cookie_reading:
+        client:
+          - Method: getCookieDataOnClient() (sync)
+          - Reads: { machineToken, customerGuid }
+        server:
+          - Method: await getCookieDataOnServer() (async)
+          - Reads: { machineToken, customerGuid }
+      headers:
+        x-user-machine-token: machineToken
+        x-printerpix-guid: customerGuid
+        x-printerpix-locale: getSiteSetting().locale
+
+    response_modifications: none
+
+api_response_structures:
+  legacy_response:
+    type: APIResponse<T>
+    case: PascalCase
+    fields:
+      - Svr: string (server identifier)
+      - Status: string (OK, ERROR, etc.)
+      - Data: T (payload - PascalCase)
+      - data: T (duplicate payload - camelCase)
+      - ErrorCode: string
+      - Message: string (error message)
+      - ExMsg: string | null (exception message)
+      - ExId: string | null (exception ID)
+      - Ex: string | null (exception details)
+    usage: baseAPI() responses
+
+  new_response:
+    type: NewAPIResponse<T>
+    case: camelCase
+    fields:
+      - svr: string (server identifier)
+      - status: string (OK, ERROR, etc.)
+      - data: T (payload - camelCase)
+      - errorCode: string
+      - message: string (error message)
+      - ExMsg: string | null (exception message - legacy)
+      - ExId: string | null (exception ID - legacy)
+      - Ex: string | null (exception details - legacy)
+    usage: baseNewAPI() and baseCustomerReminderAPI() responses
+    special_fields:
+      modifierCookieRequest:
+        type: unknown (not in type definition)
+        description: Instructs client to update cookies
+        handling: await updateCookieData(modifierCookieRequest)
+
+cookie_handling:
+  getCookieDataOnClient:
+    execution: client-side only
+    returns:
+      cookieData: unknown type
+      machineToken: string
+      customerGuid: string (baseCustomerReminderAPI only)
+    synchronous: true
+
+  getCookieDataOnServer:
+    execution: server-side only
+    returns:
+      cookieData: unknown type (async)
+      machineToken: string
+      customerGuid: string (baseCustomerReminderAPI only)
+    synchronous: false (async function)
+
+  updateCookieData:
+    execution: client or server
+    parameter: modifierCookieRequest (from API response)
+    synchronous: false (async function)
+    behavior: Updates cookie store with new values from API
+
+http_agents:
+  getHttpAgents:
+    description: |
+      Provides HTTP/HTTPS agents for server-side axios requests.
+      Likely includes:
+      - httpAgent: http.Agent (for http:// requests)
+      - httpsAgent: https.Agent (for https:// requests)
+      May configure: connection pooling, keepAlive, SSL options, proxy
+    applied_to:
+      - baseAPI: YES
+      - baseNewAPI: YES
+      - baseCustomerReminderAPI: NO (potential SSR bug)
+
+sentry_integration:
+  logHTTPDataToSentry:
+    when: API response status/Status !== "OK"
+    parameters:
+      event: ESentryEvent.API_ERROR_RESPONSE
+      type: ESentryType.ERROR
+      url: response.config.url (string)
+      data: JSON.stringify({ data: response.data, config: response.config })
+      errorMessage: response.data.Message || response.data.message
+    behavior:
+      - Does NOT throw error (response still returned to caller)
+      - Logs for monitoring/alerting only
+      - Caller receives response with non-OK status
+
+security:
+  machineToken_exposure:
+    - Sent in request body (POST requests)
+    - Sent in machine-token header (baseNewAPI)
+    - Sent in x-user-machine-token header (baseCustomerReminderAPI)
+    - Used for user/session identification
+
+  customerGuid_exposure:
+    - Sent in x-printerpix-guid header (baseCustomerReminderAPI)
+    - Links request to specific customer
+
+  cookieData_structure:
+    - Type not defined in this module
+    - Entire object sent to API in POST body
+    - May contain sensitive session data
+
+  error_logging:
+    - response.config may contain request body (with tokens/cookies)
+    - Logged to Sentry (ensure Sentry scrubbing is configured)
+
+known_issues:
+  typo:
+    - Constant: MAX_API_ATTEPMTS (should be MAX_API_ATTEMPTS)
+
+  duplicate_fields:
+    - APIResponse has both Data and data (likely legacy compat)
+
+  missing_http_agents:
+    - baseCustomerReminderAPI does NOT apply getHttpAgents()
+    - May cause issues with SSR requests to reminder service
+
+  case_insensitive_status_check:
+    - Checks both status and Status fields
+    - Assumes one of them exists (may fail if neither present)
+
+  no_timeout_for_reminders:
+    - baseCustomerReminderAPI has no timeout configured
+    - Uses axios default (infinite or very high)
+    - May cause hanging requests
+
+types:
+  Nullable:
+    description: Utility generic type for nullable values
+    definition: "Nullable<T> = T | null"
+
+  APIResponse:
+    description: Legacy API response structure with PascalCase fields, used by baseAPI() client
+    fields:
+      - name: Svr
+        type: string
+        description: Server identifier
+      - name: Status
+        type: string
+        description: Response status (e.g., "OK", "ERROR")
+      - name: Data
+        type: T
+        description: Response payload (generic, PascalCase variant)
+      - name: data
+        type: T
+        description: Response payload (generic, camelCase duplicate for backwards compatibility)
+      - name: ErrorCode
+        type: string
+        description: Error code string
+      - name: Message
+        type: string
+        description: Human-readable error message
+      - name: ExMsg
+        type: "Nullable<string>"
+        description: Exception message
+      - name: ExId
+        type: "Nullable<string>"
+        description: Exception identifier
+      - name: Ex
+        type: "Nullable<string>"
+        description: Exception details
+
+  NewAPIResponse:
+    description: New API response structure with camelCase fields, used by baseNewAPI() client
+    fields:
+      - name: svr
+        type: string
+        description: Server identifier
+      - name: status
+        type: string
+        description: Response status (e.g., "OK", "ERROR")
+      - name: data
+        type: T
+        description: Response payload (generic)
+      - name: errorCode
+        type: string
+        description: Error code string
+      - name: message
+        type: string
+        description: Human-readable error message
+      - name: ExMsg
+        type: "Nullable<string>"
+        description: Exception message (legacy PascalCase field retained)
+      - name: ExId
+        type: "Nullable<string>"
+        description: Exception identifier (legacy PascalCase field retained)
+      - name: Ex
+        type: "Nullable<string>"
+        description: Exception details (legacy PascalCase field retained)
+
+used_by:
+  - "~/services/category-service.ts"
+  - "~/services/common-service.ts"
+  - "~/services/json-service.ts"
+  - "~/services/mothers-day-service.ts"
+  - "~/services/web-component-service.ts"
+  - "~/services/reminder-service.ts"
+  - "~/services/reminder-photo-service.ts"
+  - "~/services/product-page-service.ts"
+  - "~/services/project-listing-service.ts"
+  - "~/services/promotions-service.ts"
+  - "~/services/shop-page-service.ts"
+  - "~/services/single-designer-service.ts"
+  - "~/services/splash-service.ts"
+  - "~/services/status-service.ts"
+  - "~/services/themes-service.ts"
+  - "~/services/upsell-service.ts"
+  - "~/services/vouchers-service.ts"
+  - "~/services/ryzanProjectService.ts"
+  - "~/services/order-tracking-service.ts"
+  - "~/services/home-service.ts"
+  - "~/services/delivery-rates.service.ts"
+  - "~/services/customer-service.ts"
+  - "~/services/cart-service.ts"
+  - "~/services/bundle-designer-service.ts"
+  - "~/services/address-service.ts"
+  - "~/services/add-to-cart-service.ts"
+  - "~/services/accounts-service.ts"
+  - "~/utility/http.ts"
+  - "~/routes/layout-auth.tsx"
+  - "~/routes/layout-category.tsx"
+  - "~/routes/layout-categoryproduct.tsx"
+  - "~/routes/invoice/index@invoice.tsx"
+  - "~/routes/open-project/index.tsx"
+  - "~/routes/reset-password/index.tsx"
+  - "~/routes/redemption/index.tsx"
+  - "~/routes/reminders/[reminderId]/index.tsx"
+  - "~/routes/account/[type]/index.tsx"
+  - "~/components/login/login.tsx"
+  - "~/components/login/login-form.tsx"
+  - "~/components/login/register-form.tsx"
+  - "~/components/account/container/user-details-container.tsx"
+  - "~/components/account/container/redeem-voucher-container.tsx"
+  - "~/components/upsells/carousel-upsells.tsx"
+  - "~/components/uploadcare/uploadcare.tsx"
+  - "~/components/csr/CSR-service.ts"
+  - "~/components/csr/SLA-service.ts"
+  - "~/components/csr/csr-uploadcare.ts"
+  - "~/components/editor/designer-login/express-registration-form.tsx"
+  - "~/components/editor/designer-login/designer-login-register-form.tsx"
+

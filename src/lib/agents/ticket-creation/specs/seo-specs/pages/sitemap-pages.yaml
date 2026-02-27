@@ -1,0 +1,25 @@
+page_id: sitemap-pages
+description: |
+  Server-side XML route that returns the pages sitemap.
+  Reads pre-generated XML from dist/sitemap-q/{website}/sitemap-pages.xml.
+
+url:
+  pattern: "/sitemap-pages.xml"
+  layout: null
+  i18n_rewrites: {}
+
+seo_contract:
+  content_type: "application/xml"
+  description: "Returns pre-generated XML sitemap of all static/info pages"
+  no_html_head: true
+
+file_chain:
+  route:
+    file: "src/routes/sitemap-pages.xml/index.tsx"
+    spec: "../migration-specs/frontend/routes/sitemap-pages.yaml"
+    export_type: "onGet (RequestHandler)"
+  data_source:
+    description: "Reads file from filesystem: dist/sitemap-q/{website}/sitemap-pages.xml"
+    dependencies: ["fs/promises", "path"]
+    error_handling: "Returns empty XML on read failure"
+    website_code: "Case-insensitive match from settings().website"

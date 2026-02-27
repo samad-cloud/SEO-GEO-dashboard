@@ -1,0 +1,204 @@
+name: NavigationV3Service
+source: services/navigation-v3-service.ts
+description: |
+  Fetches navigation menu data from region-specific JSON files. Provides hierarchical
+  navigation structure with categories, subcategories, and product pages. Supports
+  toggling visibility of subcategories and product pages. Uses region-based URL selection
+  for US, GB, FR, DE regions.
+
+exports:
+  functions:
+    - name: getMenu
+      signature: "async function getMenu(controller?: AbortController): Promise<NavigationMenu>"
+      description: Fetches navigation menu JSON from region-specific CDN URL with optional abort control
+      params:
+        - name: controller
+          type: AbortController (optional)
+          description: Allows request cancellation via AbortController signal
+      returns:
+        type: NavigationMenu
+        description: Navigation menu structure with categories, subcategories, and product pages
+      side_effects:
+        - Makes fetch request to region-specific JSON file
+        - Uses hardcoded versioned URLs (e.g., ?v=34517)
+
+  types:
+    - name: ProductPage
+      fields:
+        - caption: string
+        - friendlyUrl: string
+
+    - name: Subcategory
+      fields:
+        - caption: string
+        - friendlyUrl: string
+        - productPages: ProductPage[]
+
+    - name: Category
+      fields:
+        - caption: string
+        - friendlyUrl: string
+        - subcategories: Subcategory[] (optional)
+        - productPages: ProductPage[]
+        - showSubcategories: boolean
+        - showProductPages: boolean
+
+    - name: NavigationMenu
+      fields:
+        - categories: Category[]
+
+  zod_schemas:
+    - name: ProductPageSchema
+      fields:
+        - caption: string
+        - friendlyUrl: string
+
+    - name: SubcategorySchema
+      fields:
+        - caption: string
+        - friendlyUrl: string
+        - productPages: array of ProductPageSchema (optional)
+
+    - name: CategorySchema
+      fields:
+        - caption: string
+        - friendlyUrl: string
+        - subcategories: array of SubcategorySchema (optional)
+        - productPages: array of ProductPageSchema
+        - showSubcategories: boolean
+        - showProductPages: boolean
+
+    - name: NavigationMenuSchema
+      fields:
+        - categories: array of CategorySchema
+
+api_contracts:
+  - endpoint: https://www.printerpix.com/media/2023/04/menuus.json?v=34517
+    method: GET
+    description: US navigation menu (default)
+    response:
+      success: NavigationMenu
+
+  - endpoint: https://www.printerpix.co.uk/media/2023/04/menuuk.json?v=50322
+    method: GET
+    description: GB navigation menu
+    response:
+      success: NavigationMenu
+
+  - endpoint: https://www.printerpix.fr/media/2023/04/menufr.json?v=50297
+    method: GET
+    description: FR navigation menu
+    response:
+      success: NavigationMenu
+
+  - endpoint: https://www.printerpix.de/media/2023/06/menude.json?v=50297
+    method: GET
+    description: DE navigation menu
+    response:
+      success: NavigationMenu
+
+dependencies:
+  internal:
+    - "~/config/settings": settings function
+  external:
+    - zod: Schema validation library
+
+data_flow:
+  inputs:
+    - Region setting from settings().website (US, GB, FR, DE)
+    - Optional AbortController for request cancellation
+  processing:
+    - Determines URL based on region
+    - Fetches JSON from CDN
+    - Parses response as NavigationMenu
+  outputs:
+    - Hierarchical navigation structure
+    - Categories with optional subcategories
+    - Product pages at category or subcategory level
+
+business_logic:
+  - Multi-region support with region-specific menu files
+  - Three-level hierarchy: Category → Subcategory → Product Page
+  - Categories can show/hide subcategories and product pages independently
+  - Fallback to US menu for unsupported regions
+  - Versioned JSON files for cache busting
+  - Friendly URLs for SEO-friendly navigation
+
+error_handling:
+  - No explicit error handling (throws on fetch failure)
+  - AbortController allows request cancellation
+  - Settings must provide valid website value
+
+security:
+  - No authentication required (public JSON files)
+  - HTTPS used for all CDN URLs
+  - No sensitive data in navigation
+
+behavior:
+  - name: getMenu
+    steps:
+      - Reads settings().website to determine current region
+      - Selects region-specific CDN URL for navigation menu JSON file
+      - US maps to printerpix.com/media/.../menuus.json, GB to printerpix.co.uk/.../menuuk.json, FR to printerpix.fr/.../menufr.json, DE to printerpix.de/.../menude.json
+      - For any unsupported region, falls back to the US menu URL
+      - Performs fetch() with optional AbortController signal for request cancellation
+      - Parses the JSON response
+      - Returns the parsed result as NavigationMenu (no Zod validation applied at fetch time)
+      - No explicit error handling - throws on fetch failure or JSON parse error
+
+used_by:
+  - backend/services/json-service.yaml # Imports NavigationMenuSchema for WebContent MENU/MENU_V2 validation
+
+types:
+  ProductPage:
+    description: A leaf-level product page entry in the navigation hierarchy
+    fields:
+      - name: caption
+        type: string
+        description: Display text for the navigation link
+      - name: friendlyUrl
+        type: string
+        description: SEO-friendly URL path
+
+  Subcategory:
+    description: A subcategory node containing product pages
+    fields:
+      - name: caption
+        type: string
+        description: Display text for the subcategory
+      - name: friendlyUrl
+        type: string
+        description: SEO-friendly URL path
+      - name: productPages
+        type: "ProductPage[]"
+        description: Product pages within this subcategory
+
+  Category:
+    description: Top-level navigation category with optional subcategories and product pages
+    fields:
+      - name: caption
+        type: string
+        description: Display text for the category
+      - name: friendlyUrl
+        type: string
+        description: SEO-friendly URL path
+      - name: subcategories
+        type: "Subcategory[]"
+        optional: true
+        description: Optional nested subcategories
+      - name: productPages
+        type: "ProductPage[]"
+        description: Product pages directly under this category
+      - name: showSubcategories
+        type: boolean
+        description: Toggle visibility of subcategories
+      - name: showProductPages
+        type: boolean
+        description: Toggle visibility of product pages
+
+  NavigationMenu:
+    description: Root navigation menu structure
+    fields:
+      - name: categories
+        type: "Category[]"
+        description: All top-level navigation categories

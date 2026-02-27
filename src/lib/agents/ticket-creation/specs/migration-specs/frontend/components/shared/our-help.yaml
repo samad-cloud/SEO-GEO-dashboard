@@ -1,0 +1,200 @@
+name: OurHelp
+source:
+  path: components/share/our-help/our-help.tsx
+  lines: 1-46
+  type: component
+
+description: |
+  Contact/help section component displaying multiple contact methods (phone, email,
+  live chat, FAQs, etc.). Shows a title and description on the left, and contact
+  option icons/links on the right. Responsive layout: stacked on mobile, side-by-side
+  on desktop. Uses Image component from @unpic/qwik for optimized images.
+
+  Features:
+  - Contact options from getOurHelpContent() utility
+  - Each option: icon, name, URL
+  - External links open in new tab
+  - Responsive 2-column layout (desktop)
+  - Complementary background color
+
+exports:
+  - name: default
+    type: component
+    description: Default export of OurHelp component
+
+component_structure: |
+  <div class="bg-base-complementaryBg border-t-2">
+    <div class="container mx-auto">
+      <div class="flex flex-wrap">
+        <!-- Left column: Title + Description -->
+        <div class="lg:flex-[0_0_40%] text-center lg:text-left">
+          <p class="font-bold text-2xl">{ourHelpContent.title}</p>
+          <p>{ourHelpContent.description}</p>
+        </div>
+
+        <!-- Right column: Contact options -->
+        <div class="lg:flex-[0_0_60%] flex flex-wrap">
+          {ourHelpContent.contacts.map((section) => (
+            <div class="lg:flex-[0_0_33.33%] text-center">
+              <Image src={section.icon} width={48} height={48} />
+              <a href={section.url} target={external ? "_blank" : "_self"}>
+                {section.name}
+              </a>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+
+behavior:
+  rendering:
+    - Calls getOurHelpContent() on component initialization
+    - Renders title and description from content
+    - Iterates over contacts array to render each option
+    - Determines link target based on URL (external vs internal)
+
+  link_behavior:
+    - External links (http/https): target="_blank"
+    - Internal links: target="_self"
+    - All links have underline styling
+
+data_structure:
+  ourHelpContent:
+    properties:
+      title:
+        type: string
+        description: Main heading text
+      description:
+        type: string
+        description: Subtitle/description text
+      contacts:
+        type: array
+        items:
+          icon:
+            type: string
+            description: URL/path to contact icon image
+          name:
+            type: string
+            description: Display name of contact method
+          url:
+            type: string
+            description: Link URL (phone:, mailto:, https:, relative path)
+
+dependencies:
+  qwik:
+    - component$ (from @builder.io/qwik)
+
+  images:
+    - Image (from @unpic/qwik)
+
+  utilities:
+    - getOurHelpContent (from ~/utility/footer/footer-content)
+
+data_dependencies:
+  services:
+    - getOurHelpContent(): Returns ourHelpContent object with title, description, contacts
+
+styling:
+  classes:
+    container:
+      - bg-base-complementaryBg: Complementary background color
+      - border-t-2 border-gray-300: Top border
+      - container mx-auto: Centered container
+      - py-6: Vertical padding
+      - lg:px-[10px]: Desktop horizontal padding
+
+    left_column:
+      - flex-[0_0_100%] max-w-[100%]: Full width on mobile
+      - lg:flex-[0_0_40%] lg:max-w-[40%]: 40% width on desktop
+      - text-center lg:text-left: Centered on mobile, left on desktop
+      - mb-5 lg:mb-0: Bottom margin on mobile only
+
+    title:
+      - font-bold: Bold weight
+      - text-2xl: 24px font size
+      - mb-2 lg:mb-5: Bottom margin
+
+    right_column:
+      - flex-[0_0_100%] max-w-[100%]: Full width on mobile
+      - lg:flex-[0_0_60%] lg:max-w-[60%]: 60% width on desktop
+      - flex flex-wrap items-center: Flex container
+
+    contact_item:
+      - flex flex-col items-center: Vertical flex layout
+      - flex-[0_0_100%] max-w-[100%]: Full width on mobile
+      - lg:flex-[0_0_33.33%] lg:max-w-[33.33%]: 3 columns on desktop
+      - mb-3 lg:mb-0: Bottom margin on mobile only
+
+    icon:
+      - w-[48px] h-[48px]: 48x48 size
+      - mb-2: Bottom margin
+      - fill-black: Icon fill color
+
+    link:
+      - underline: Underlined text
+
+responsive:
+  mobile_default:
+    - Stacked layout (title/desc above contacts)
+    - Each contact full width
+    - Centered text
+
+  desktop_lg:
+    - 40/60 split (title/desc left, contacts right)
+    - 3 columns for contacts (33.33% each)
+    - Left-aligned title/desc
+
+accessibility:
+  considerations:
+    - Images have alt text (section.name or "Contact option")
+    - Links have descriptive text (section.name)
+    - External links open in new tab
+
+used_by: []
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  OurHelpContent:
+    description: Shape of object returned by getOurHelpContent() utility (region-specific JSON)
+    fields:
+      - name: title
+        type: string
+      - name: description
+        type: string
+      - name: contacts
+        type: "Array<OurHelpContact>"
+
+  OurHelpContact:
+    description: Individual contact method entry
+    fields:
+      - name: icon
+        type: string
+      - name: name
+        type: string
+      - name: url
+        type: string
+
+field_consumption:
+  OurHelpContent:
+    consumed:
+      - title: Displayed as bold h-like paragraph heading
+      - description: Displayed as paragraph below title
+      - contacts: Iterated to render each contact item (icon, name, url)
+
+  OurHelpContact:
+    consumed:
+      - icon: Image src for the contact method icon
+      - name: Link display text; also used as Image alt attribute
+      - url: Anchor href; checked for "http" substring to determine link target (_blank vs _self)
+
+visibility_map:
+  contact_link_external:
+    condition: "section.url.includes('http') === true"
+    default: visible
+    notes: Link opens in _blank (new tab) when URL contains 'http'
+  contact_link_internal:
+    condition: "section.url.includes('http') === false"
+    default: hidden
+    notes: Link opens in _self when URL is a relative path or uses non-http protocol (tel:, mailto:)

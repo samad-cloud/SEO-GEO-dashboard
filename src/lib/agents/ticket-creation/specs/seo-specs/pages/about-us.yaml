@@ -1,0 +1,55 @@
+page_id: about-us
+description: "Static informational page about PrinterPix company, mission, culture."
+
+url:
+  pattern: "/about-us"
+  layout: "default"
+  i18n_rewrites:
+    NL: "/over-ons"
+    DE: "/uber-uns"
+    IT: "/chi-siamo"
+    ES: "/sobre-nosotros"
+
+seo_contract:
+  title:
+    pattern: "Printerpix | About Us"
+    source: "Hardcoded in head export"
+  meta_description:
+    source: "Not explicitly set — may inherit from layout or be empty"
+    known_issues:
+      - "No meta description defined for this page"
+  canonical:
+    pattern: "{domain}/about-us"
+  robots:
+    value: "Standard (index, follow implied by no robots tag)"
+  open_graph: "Not configured"
+  twitter_card: "Not configured"
+  structured_data: "None"
+  hreflang:
+    count: 8
+    generating_function: "getHreflangLinks(pathname)"
+    known_issues:
+      - "Hreflang URLs for NL, DE, IT, ES will use /about-us instead of their rewritten paths"
+  heading_hierarchy:
+    h1: "About Us (or localized equivalent)"
+  known_issues:
+    - "No meta description"
+    - "No Open Graph tags"
+    - "Hreflang incorrect for rewritten locales"
+
+file_chain:
+  route:
+    file: "src/routes/about-us/index.tsx"
+    spec: "../migration-specs/frontend/routes/about-us.yaml"
+  layout:
+    file: "src/routes/layout.tsx"
+    spec: "../migration-specs/frontend/layouts/layout-default.yaml"
+  data_source:
+    function: "getAboutUsContent()"
+    file: "src/utility/about-us/about-us-content.ts"
+    spec: "../migration-specs/shared/utilities/about-us-content.yaml"
+  middleware:
+    ref: "_architecture.yaml → middleware_pipeline"
+
+region_variations:
+  NL: "Hides help and customer support sections"

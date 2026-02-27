@@ -1,0 +1,375 @@
+name: FloatingBanner
+source: src/components/banner/dynamic-promo-banner-v2.tsx
+description: |
+  Named sub-component exported from dynamic-promo-banner-v2.tsx. Renders one or
+  more floating promotional banner tiles positioned below the main banner on home,
+  category, and product pages. Each tile contains up to three text/CTA sections
+  (section1, section2, section3) and an optional countdown clock. Tiles are ordered
+  via a CMS-driven order array with separate sequences for desktop and mobile. CTA
+  sections are injected by overwriting section slots based on position config.
+  Integrates Matomo analytics for CTA click tracking.
+
+exports:
+  - name: FloatingBanner
+    type: component$ (named export from dynamic-promo-banner-v2.tsx)
+    description: Renders floating promotional banner(s) with optional countdown
+
+props:
+  - name: data
+    type: FloatingBannerSection
+    required: true
+    description: Full floating banner configuration including desktop and mobile sub-configs.
+  - name: type
+    type: "'product' | 'category' | 'home'"
+    required: false
+    description: Page context; affects countdown placement (home → left side, others → right).
+
+component_structure:
+  desktop:
+    wrapper: "hidden lg:flex p-4 rounded-lg justify-between items-center my-3 (+ container class on category/product pages)"
+    per_banner: "div with dynamic backgroundColor, rounded-lg, CSS order from banner.order"
+    layout: "flex items-center justify-between w-full"
+    sections:
+      - section1 (BannerSection)
+      - section2 (BannerSection)
+      - countdown (if home: left side as overflow-hidden; if non-home: right side 250px)
+      - section3 (BannerSection)
+
+  mobile:
+    wrapper: "lg:hidden flex p-4 flex-col my-3"
+    per_banner: "div with dynamic backgroundColor, rounded-lg, CSS order from banner.order"
+    layout: "flex flex-col w-full"
+    sections:
+      - countdown at top (if present): centered, max-w-[360px]
+      - section1 (BannerSection)
+      - section2 (BannerSection)
+      - section3 (BannerSection)
+
+child_components:
+  - name: BannerFlipClock
+    source: "~/components/product-page/banner-flip-clock/banner-flip-clock"
+    props:
+      - deliveryDeadline: countdown.expiryDateTime
+      - clockColor: countdown.clockBgColor
+      - textColor: countdown.clockTextColor
+      - bannerType: type
+  - name: BannerSection (internal, not separately exported)
+    purpose: Renders a filtered array of PromoBannerSection items; TEXT uses dangerouslySetInnerHTML, CTA uses <a> with Matomo tracking.
+  - name: CountdownSectionComponent (internal, not separately exported)
+    purpose: Wraps optional title paragraph + BannerFlipClock.
+
+state_management:
+  signals:
+    - name: displayData
+      type: FloatingBannerSection
+      description: |
+        Derived from data prop via useTask$ on data change. CTA injection applied:
+        desktop ctaDisplayDesktop/ctaPosition → replaces section slot;
+        mobile ctaDisplayMobile/ctaPosition → replaces section slot.
+        Font properties (fontSize, isBold, isItalic, isUnderline) inherited from
+        the replaced section when injecting CTA.
+
+data_structure:
+  FloatingBannerSection:
+    description: Root prop type; contains desktop and mobile banner arrays
+    fields:
+      - desktop:
+          order: number[] (render sequence)
+          banners: FloatingBannerItem[]
+          ctaDisplayDesktop: boolean
+          ctaPosition: number (1-3, slot to inject CTA into)
+          ctaText: string
+          ctaColor: string
+          ctaBgColor: string
+          ctaUrl: string
+      - mobile:
+          order: number[] (render sequence)
+          banners: FloatingBannerItem[]
+          ctaDisplayMobile: boolean
+          ctaPosition: number (1-3, slot to inject CTA into)
+          ctaText: string
+          ctaColor: string
+          ctaBgColor: string
+          ctaUrl: string
+
+  FloatingBannerItem:
+    description: A single floating banner tile
+    fields:
+      - order: number
+      - backgroundColor: string
+      - section1: PromoBannerSection[]
+      - section2: PromoBannerSection[]
+      - section3: PromoBannerSection[]
+      - countdown: CountdownSection | null
+
+  PromoBannerSection:
+    fields:
+      - display: boolean
+      - text: string
+      - fontSize: string
+      - isBold: boolean
+      - isItalic: boolean
+      - isUnderline: boolean
+      - color: string
+      - backgroundColor: string
+      - type: "'TEXT' | 'CTA'"
+      - href: string
+
+  CountdownSection:
+    fields:
+      - display: boolean
+      - title: string (optional header text)
+      - expiryDateTime: string
+      - clockBgColor: string
+      - clockTextColor: string
+      - textColor: string
+
+behavior:
+  - step: 1
+    action: "On data change (useTask$), CTA injection runs for both desktop and mobile config: if ctaDisplayDesktop is true and ctaPosition is 1, 2, or 3, the banner's section[ctaPosition] array is replaced with a single CTA object (type: 'CTA', text: ctaText, color: ctaColor, backgroundColor: ctaBgColor, href: ctaUrl). Font properties fontSize/isBold/isItalic/isUnderline are copied from the first item of the replaced section."
+  - step: 2
+    action: "Same CTA injection is applied to mobile config if ctaDisplayMobile is true."
+  - step: 3
+    action: "Desktop render: iterate over data.desktop.order array. For each order index, find the matching banner (banner.order === index). Render a tile styled with the banner's backgroundColor and CSS order property."
+  - step: 4
+    action: "Desktop tile layout: section1, section2, then — if type === 'home' — countdown on the left (overflow-hidden), otherwise countdown on the right (250px width). section3 always follows countdown."
+  - step: 5
+    action: "Mobile render: iterate over data.mobile.order array. For each order index, render the matching banner tile as a vertical flex column."
+  - step: 6
+    action: "Mobile tile layout: countdown (if present) rendered first at top of column (max-w-[360px], centered), then section1, section2, section3 stacked."
+  - step: 7
+    action: "BannerSection filters items by item.display === true before rendering. TEXT items use dangerouslySetInnerHTML with inline styles derived from getStylesFromProperties(). CTA items render as <a> tags with onClick$ that calls pushMatomoEvent([CLICK_PROMO_BANNER_CTA, section.href])."
+  - step: 8
+    action: "CountdownSectionComponent renders an optional title <p> (if countdown.title exists) followed by BannerFlipClock passing expiryDateTime, clockBgColor, clockTextColor, and bannerType."
+  - step: 9
+    action: "All floating banner wrapper divs carry a data-lazy attribute for scroll-based lazy loading by the parent page."
+
+styling:
+  desktop_wrapper: "hidden lg:flex p-4 rounded-lg justify-between items-center my-3"
+  mobile_wrapper: "lg:hidden flex p-4 flex-col my-3"
+  banner_tile: "rounded-lg (inline style: backgroundColor, order)"
+  countdown_desktop_home: "overflow-hidden"
+  countdown_desktop_non_home: "width: 250px"
+  countdown_mobile: "max-w-[360px] mx-auto"
+  getStylesFromProperties:
+    - color: section.color
+    - fontWeight: "section.isBold ? 'bold' : 'normal'"
+    - fontSize: section.fontSize
+    - fontStyle: "section.isItalic ? 'italic' : 'normal'"
+    - textDecoration: "section.isUnderline ? 'underline' : 'none'"
+    - backgroundColor: section.backgroundColor
+  cta_classes: "py-2 px-4 rounded block text-center"
+
+analytics:
+  matomo:
+    event: CLICK_PROMO_BANNER_CTA
+    category: MatomoCategory.COMMON
+    label: section.href (the CTA URL)
+
+dependencies:
+  qwik:
+    - component$, useSignal, useTask$ from @builder.io/qwik
+  types:
+    - FloatingBannerSection, PromoBannerSection, CountdownSection from ~/services/json-service
+  utilities:
+    - MatomoCategory, MatomoEvent, pushMatomoEvent from ~/utility/matomo
+  components:
+    - BannerFlipClock from ~/components/product-page/banner-flip-clock/banner-flip-clock
+
+used_by:
+  - DynamicPromoBannerV2
+  - ProductPageContentBasic
+  - ProductPageContentV2
+  - HomeLayout
+
+security:
+  - CTA hrefs are rendered as-is from CMS data; no sanitization is applied.
+  - No authentication required; public-facing component.
+
+edge_cases:
+  - Single floating banner: order array has one element; no CSS ordering conflict.
+  - Empty sections array: BannerSection renders nothing (filtered by display flag).
+  - CTA injection position out of range (not 1-3): no replacement occurs.
+  - Countdown with display: false: CountdownSectionComponent is not rendered.
+  - Home page countdown: placed on left side of desktop tile (differs from other page types).
+  - No countdown: tile layout renders section1, section2, section3 without clock slot.
+
+notes:
+  - FloatingBanner is a named export from the same file as MainBanner and DynamicPromoBannerV2.
+  - There is no separate floating-banner.tsx file; this component lives at lines ~350–661 of dynamic-promo-banner-v2.tsx.
+  - The data-lazy attribute on wrapper divs integrates with the page's scroll-based lazy loading (lazyLoading("[data-lazy]", handleComponentVisible)).
+
+types:
+  FloatingBannerProps:
+    description: Props interface for FloatingBanner
+    fields:
+      - name: data
+        type: FloatingBannerSection
+      - name: type
+        type: "'product' | 'category' | 'home'"
+        optional: true
+
+  FloatingBannerSection:
+    description: Root configuration for floating banners; contains desktop and mobile sub-objects
+    fields:
+      - name: desktop
+        type: FloatingBannerConfig
+      - name: mobile
+        type: FloatingBannerConfig
+
+  FloatingBannerConfig:
+    description: Desktop or mobile specific banner configuration
+    fields:
+      - name: order
+        type: number[]
+      - name: banners
+        type: FloatingBannerItem[]
+      - name: ctaDisplayDesktop
+        type: boolean
+        note: For desktop config object; mobile equivalent is ctaDisplayMobile
+      - name: ctaPosition
+        type: number
+        note: 1-3; slot index to inject CTA
+      - name: ctaText
+        type: string
+      - name: ctaColor
+        type: string
+      - name: ctaBgColor
+        type: string
+      - name: ctaUrl
+        type: string
+
+  FloatingBannerItem:
+    description: A single floating banner tile definition
+    fields:
+      - name: order
+        type: number
+      - name: backgroundColor
+        type: string
+      - name: section1
+        type: PromoBannerSection[]
+      - name: section2
+        type: PromoBannerSection[]
+      - name: section3
+        type: PromoBannerSection[]
+      - name: countdown
+        type: "CountdownSection | null"
+
+  PromoBannerSection:
+    description: Individual text or CTA item within a banner section slot
+    fields:
+      - name: display
+        type: boolean
+      - name: text
+        type: string
+      - name: fontSize
+        type: string
+      - name: isBold
+        type: boolean
+      - name: isItalic
+        type: boolean
+      - name: isUnderline
+        type: boolean
+      - name: color
+        type: string
+      - name: backgroundColor
+        type: string
+      - name: type
+        type: "'TEXT' | 'CTA'"
+      - name: href
+        type: string
+
+  CountdownSection:
+    description: Configuration for countdown clock within a floating banner
+    fields:
+      - name: display
+        type: boolean
+      - name: title
+        type: string
+        optional: true
+      - name: expiryDateTime
+        type: string
+      - name: clockBgColor
+        type: string
+      - name: clockTextColor
+        type: string
+      - name: textColor
+        type: string
+
+field_consumption:
+  FloatingBannerSection:
+    consumed:
+      - desktop.order: Drives render iteration sequence for desktop tiles
+      - desktop.banners: Source for tile data; matched by banner.order === index
+      - desktop.ctaDisplayDesktop: Gates CTA injection for desktop sections
+      - desktop.ctaPosition: Slot number (1-3) to replace with CTA object
+      - desktop.ctaText / ctaColor / ctaBgColor / ctaUrl: CTA content injected into section slot
+      - mobile.order: Drives render iteration sequence for mobile tiles
+      - mobile.banners: Source for mobile tile data
+      - mobile.ctaDisplayMobile: Gates CTA injection for mobile sections
+      - mobile.ctaPosition / ctaText / ctaColor / ctaBgColor / ctaUrl: Mobile CTA injection content
+    ignored: []
+
+  FloatingBannerItem:
+    consumed:
+      - order: Matched against iteration index; applied as CSS order inline style
+      - backgroundColor: Applied as inline style to tile wrapper div
+      - section1 / section2 / section3: Passed to BannerSection; may be replaced by CTA injection
+      - countdown: Passed to CountdownSectionComponent if present
+    ignored: []
+
+  PromoBannerSection:
+    consumed:
+      - display: Filters items within BannerSection (only display===true rendered)
+      - text: Content for TEXT type (dangerouslySetInnerHTML) or CTA anchor text
+      - fontSize / isBold / isItalic / isUnderline / color / backgroundColor: Inline styles via getStylesFromProperties()
+      - type: Determines TEXT vs CTA rendering path
+      - href: Used as <a> href for CTA type and as Matomo event label
+    ignored: []
+
+implementation_logic:
+  cta_injection:
+    rule: |
+      Before rendering, useTask$ inspects the desktop and mobile config objects.
+      If ctaDisplayDesktop is true and ctaPosition is 1, 2, or 3, the corresponding
+      section (section1/section2/section3) array in every banner tile is replaced
+      with a new array containing a single object:
+        { type: 'CTA', text: ctaText, color: ctaColor, backgroundColor: ctaBgColor, href: ctaUrl,
+          fontSize: <inherited from original section[0]>, isBold: <inherited>,
+          isItalic: <inherited>, isUnderline: <inherited> }
+      The same logic runs independently for mobile (ctaDisplayMobile, mobile ctaPosition/ctaText etc).
+      This means a CTA completely replaces all original items in the targeted slot.
+    critical: true
+
+  countdown_placement_by_page_type:
+    rule: |
+      On desktop, if type === 'home', the countdown is placed before section1/section2/section3
+      (left side, overflow-hidden). For all other page types (product/category), the countdown
+      is placed after section2 and before section3 (right side, 250px width).
+      On mobile, the countdown is always placed at the top of the tile column regardless of type.
+    critical: true
+
+visibility_map:
+  desktop_wrapper:
+    condition: viewport >= 1024px (Tailwind hidden lg:flex)
+    default: hidden on mobile
+
+  mobile_wrapper:
+    condition: viewport < 1024px (Tailwind lg:hidden)
+    default: hidden on desktop
+
+  countdown_section:
+    condition: "banner.countdown exists AND banner.countdown.display is true"
+    default: hidden
+
+  countdown_left_desktop:
+    condition: "type === 'home'"
+    default: shown on right for non-home pages
+
+  section_items:
+    condition: "item.display === true"
+    default: hidden (items with display===false are filtered out)
+
+  cta_anchor:
+    condition: "section.type === 'CTA'"
+    default: renders as <p> for TEXT type

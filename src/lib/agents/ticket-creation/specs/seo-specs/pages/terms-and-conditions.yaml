@@ -1,0 +1,44 @@
+page_id: terms-and-conditions
+description: "Terms and conditions legal page. Uses container component pattern."
+
+url:
+  pattern: "/terms-and-conditions"
+  layout: "default"
+  i18n_rewrites:
+    NL: "/voorwaarden"
+    DE: "/geschaftsbedingungen"
+    IT: "/termini-e-condizioni"
+    ES: "/terminos-y-condiciones"
+
+seo_contract:
+  title:
+    source: "Managed by TermsAndConditionsContainer"
+  meta_description:
+    source: "Managed by TermsAndConditionsContainer"
+  canonical:
+    pattern: "{domain}/terms-and-conditions"
+  robots:
+    value: "Standard"
+  structured_data: "None"
+  hreflang:
+    count: 8
+    known_issues:
+      - "Hreflang incorrect for NL, DE, IT, ES rewritten URLs"
+
+file_chain:
+  route:
+    file: "src/routes/terms-and-conditions/index.tsx"
+    spec: "../migration-specs/frontend/routes/terms-and-conditions.yaml"
+  layout:
+    file: "src/routes/layout.tsx"
+    spec: "../migration-specs/frontend/layouts/layout-default.yaml"
+  page_component:
+    name: "TermsAndConditionsContainer"
+    file: "src/components/terms-and-conditions-page/containers/terms-and-conditions-container.tsx"
+    spec: "../migration-specs/frontend/components/info-pages/terms-and-conditions-container.yaml"
+  data_source:
+    function: "getTermsAndConditionsContent()"
+    file: "src/services/static-page-service.ts"
+    spec: "../migration-specs/backend/services/static-page-service.yaml"
+  middleware:
+    ref: "_architecture.yaml → middleware_pipeline"

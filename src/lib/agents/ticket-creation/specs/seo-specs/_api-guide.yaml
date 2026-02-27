@@ -1,0 +1,254 @@
+purpose: |
+  API testing guide for AI agents. Use these pre-generated MACHINE_TOKENs and
+  example API calls to directly query PrinterPix backends and verify what data
+  the APIs return for SEO auditing (compare API response vs frontend rendering).
+
+  IMPORTANT: Always use qt-api (newAPIEndpoint), never the legacy api endpoint.
+
+machine_tokens:
+  description: |
+    Pre-generated tokens for each region. Tokens do not expire.
+    Include as both a header (machine-token) and in the POST body (machineToken).
+  generated_at: "2026-02-18"
+  tokens:
+    GB: "c2e1ccba-0df5-4a76-9c5d-bbb6682e93f9"
+    US: "0fa346dd-01de-4b80-b29d-6e4b4b55b69d"
+    DE: "ac49a651-b22a-4882-96cc-7d4c851e1bf5"
+    FR: "4b3cc44c-7333-4d5b-af2c-2f79e8b9139c"
+    IT: "526ea971-94ce-4ff7-a74d-7a2d2fcd405c"
+    ES: "0e8f7817-76d5-4324-bf83-fa187d669f4f"
+    NL: "4b59c925-2187-48eb-99c2-0342b057523a"
+    IN: "31316b8d-bc9a-4803-a384-9f9f5859b261"
+    AE: "518efc79-fb3f-476f-92ce-1323492452cc"
+
+  refresh_instructions: |
+    If a token stops working, generate a new one:
+    curl -s https://qt-api.printerpix.{tld}/Account/GetNewMachineToken
+    Response: {"data": "<new-uuid>", "status": "OK", ...}
+
+api_calls:
+  fetch_product_or_category:
+    description: |
+      Primary endpoint — RECOMMENDED for SEO auditing. Given a friendly URL passed
+      as a query parameter, returns EITHER product page data OR category page data.
+      The server determines which type based on the URL.
+    endpoint: "/CategoryAndProductPage/GetByFriendlyUrlForQwikV2"
+    method: POST
+    url_parameter: "?url={friendly-url}"
+    content_type: "application/json"
+    verified: "2026-02-18 — all 9 regions return 200 OK"
+    example_curl:
+      top_level_category: |
+        curl -X POST "https://qt-api.printerpix.co.uk/CategoryAndProductPage/GetByFriendlyUrlForQwikV2/?url=canvas-prints" \
+          -H "Content-Type: application/json" \
+          -H "machine-token: c2e1ccba-0df5-4a76-9c5d-bbb6682e93f9" \
+          -d '{"machineToken": "c2e1ccba-0df5-4a76-9c5d-bbb6682e93f9"}'
+      nested_category: |
+        curl -X POST "https://qt-api.printerpix.co.uk/CategoryAndProductPage/GetByFriendlyUrlForQwikV2/?url=photo-gifts/photo-calendars" \
+          -H "Content-Type: application/json" \
+          -H "machine-token: c2e1ccba-0df5-4a76-9c5d-bbb6682e93f9" \
+          -d '{"machineToken": "c2e1ccba-0df5-4a76-9c5d-bbb6682e93f9"}'
+      product_page: |
+        curl -X POST "https://qt-api.printerpix.co.uk/CategoryAndProductPage/GetByFriendlyUrlForQwikV2/?url=canvas-prints/single-canvas-print" \
+          -H "Content-Type: application/json" \
+          -H "machine-token: c2e1ccba-0df5-4a76-9c5d-bbb6682e93f9" \
+          -d '{"machineToken": "c2e1ccba-0df5-4a76-9c5d-bbb6682e93f9"}'
+    notes: |
+      - The URL path goes in the QUERY STRING as ?url=...
+      - Slashes in the URL are fine: ?url=photo-gifts/photo-calendars works the same as ?url=canvas-prints
+      - The body only needs machineToken
+      - The frontend's axios interceptor auto-injects cookieData and machineToken,
+        but for standalone API testing only machineToken is required
+      - Strip the domain and leading slash from the website URL to get the value:
+        https://www.printerpix.co.uk/photo-gifts/photo-calendars/ → url=photo-gifts/photo-calendars
+    response_structure:
+      svr: "Server identifier"
+      status: "OK or ERROR"
+      errorCode: "Error code if status is ERROR"
+      message: "Error message if status is ERROR (e.g. 'productPage Is Null')"
+      modifierCookieRequest: "Cookie update instructions (can be ignored for SEO testing)"
+      data:
+        webPageType: "1 = ProductPage, 2 = CategoryPage (WebPageTypeEnum)"
+        pageTitle: "Display title (e.g. 'Canvas Prints')"
+        seoTitle: "SEO title (e.g. 'Canvas Photo Prints | Custom Wall Art | Printerpix')"
+        metaTitle: "Same as seoTitle — duplicate field"
+        canonicalUrl: "Canonical URL path (e.g. '/canvas-prints/v1/')"
+        metaDescription: "Meta description text"
+        metaKeywords: "Meta keywords"
+        seoHeader: "SEO H1 header (may be empty)"
+        friendlyurl: "Friendly URL with leading/trailing slashes"
+        productName: "Product display name"
+        imageCaption: "Image alt text / caption"
+        platinumProductType: "Product type enum (e.g. 4 = Canvas)"
+        platinumProductTypeName: "Product type name (e.g. 'Canvas')"
+        productPageViewName: "Template enum (24 types — see product-page-service spec)"
+        standardShippingPrice: "number — used in structured data offers"
+        couponCode: "Active coupon code"
+        percentDiscountCoupon: "Discount percentage (e.g. 0.2 = 20%)"
+        metaData:
+          title: "Full SEO title for <title> tag"
+          description: "Full meta description"
+          keywords: "Meta keywords"
+          themeColor: "Theme color meta tag"
+          distribution: "Distribution meta tag (e.g. 'Global')"
+          author: "Author meta tag (e.g. 'printerpix')"
+          copyright: "Copyright meta tag"
+          ogTitle: "Open Graph title"
+          ogDescription: "OG description"
+          ogImage: "OG image URL (relative path)"
+          ogUrl: "OG URL path"
+          ogType: "OG type (e.g. 'Website')"
+          ogSitename: "OG site name (e.g. 'Printerpix')"
+          ogLocale: "OG locale (e.g. 'en_GB')"
+          ogAppId: "Facebook App ID"
+          twitterCard: "Twitter card type (e.g. 'summary_large_image')"
+          twitterSite: "Twitter handle (e.g. '@Printerpix')"
+          twitterTitle: "Twitter title"
+          twitterDescription: "Twitter description"
+          twitterImage: "Twitter image URL (relative path)"
+          isIndex: "boolean — controls robots meta tag"
+        breadcrumbs: "Array of {title, url, qwikUrl, order}"
+        breadcrumbsNavigation: "Array of {title, url, qwikUrl, order} (category pages)"
+        images: "Array of product images"
+        productSections: "Array of product sections (category pages only)"
+        reviewsCollection:
+          ratingValue: "Average rating (e.g. 4.5)"
+          ratingText: "Rating label (e.g. 'Great')"
+          heading: "Reviews section heading"
+        productExtendedDetails:
+          name: "Extended details section name"
+          title: "Section title"
+          paragraphs: "Content paragraphs"
+          bullets: "Bullet point features"
+        deliveryDeadline:
+          offerTag: "Promotional deadline text"
+          showClock: "Whether to show countdown"
+
+  fetch_homepage:
+    description: |
+      Homepage endpoint — fetches all homepage data including SEO metadata, banners,
+      category associations, web components (CMS sections), and review data.
+      SEPARATE from the product/category endpoint — different URL, different response structure.
+    endpoint: "/homepage/getv2"
+    method: POST
+    url_parameter: null
+    content_type: "application/json"
+    verified: "2026-02-18 — GB region returns 200 OK with full homepage data"
+    example_curl: |
+      curl -X POST "https://qt-api.printerpix.co.uk/homepage/getv2" \
+        -H "Content-Type: application/json" \
+        -H "machine-token: c2e1ccba-0df5-4a76-9c5d-bbb6682e93f9" \
+        -d '{"machineToken": "c2e1ccba-0df5-4a76-9c5d-bbb6682e93f9", "couponCode": "", "gclId": "", "pixId": ""}'
+    notes: |
+      - No URL parameter needed (unlike product/category endpoint)
+      - All params go in POST body (machineToken required, others optional)
+      - Response structure differs from product/category: data.homepageViewModel (not data.metaData)
+      - Optional body fields: couponCode, gclId, pixId, utm_* params, wbraid, gbraid
+    response_structure:
+      status: "OK or ERROR"
+      data:
+        homepageViewModel:
+          pageTitle: "Page title for <title> tag (e.g., 'Personalised Photo Gifts, Photo Books & Canvas Prints | Printerpix UK')"
+          metaDescription: "Meta description text"
+          metaKeywords: "Meta keywords"
+          h1: "H1 heading text (e.g., 'Meaningful Personalised Gifts For Every Budget')"
+          homepageBanners: "Array of {bannerUrl, mobileBannerUrl, bannerAltText, bannerNavUrl} — carousel slides"
+          homepageAssociations: "Array of category sections with headings and product images"
+        webComponents: "Array of CMS-driven content sections (FAQ, SEO content, trust signals, best sellers, etc.)"
+        reviewsCollection: "Customer review data (ratingValue, ratingText, heading, reviews[]) — null for some regions"
+        mainPromoBanner: "Promotional banner data or null"
+        floatingPromoBanner: "Floating promo banner data or null"
+
+  generate_new_token:
+    description: "Generate a fresh machine token for any region"
+    endpoint: "/Account/GetNewMachineToken"
+    method: GET
+    verified: "2026-02-18 — all 9 regions return valid UUIDs"
+    example_curl: |
+      curl -s "https://qt-api.printerpix.co.uk/Account/GetNewMachineToken"
+    response: '{"data": "<uuid>", "status": "OK"}'
+
+api_call_pattern: |
+  1. The page URL goes as a QUERY PARAMETER (not in the body)
+  2. The body only needs {"machineToken": "<token>"}
+  3. The machine-token header should also be set
+  4. The frontend's axios interceptor additionally injects cookieData into the body,
+     but this is NOT required for read-only SEO auditing
+
+other_endpoints:
+  description: |
+    These endpoints exist in the service layer but are NOT used by the catch-all route.
+    The catch-all route only uses CategoryAndProductPage/GetByFriendlyUrlForQwikV2 above.
+    Listed here for completeness only.
+  category_only:
+    endpoint: "/CategoryPage/GetByFriendlyUrlV3"
+    method: POST
+    url_parameter: "?friendlyUrl={friendly-url}"
+    service_function: "getCategoryPage() in category-service.ts"
+    notes: "Query param is 'friendlyUrl' (not 'url'). Not used in routes."
+  product_only:
+    endpoint: "/ProductPage/GetByFriendlyUrlForQwikV2"
+    method: POST
+    url_parameter: "?url={friendly-url}"
+    service_function: "Referenced in product-page-service.ts"
+    notes: "Use full product path (category/product-name). Not used in routes."
+
+seo_field_mapping:
+  description: "How API response fields map to HTML SEO elements"
+  title_tag:
+    primary: "data.metaData.title"
+    fallback: "data.seoTitle → data.metaTitle → data.pageTitle"
+    notes: "metaData.title is the full SEO title; pageTitle is the display name"
+  meta_description:
+    primary: "data.metaData.description"
+    fallback: "data.metaDescription"
+  meta_keywords:
+    primary: "data.metaData.keywords"
+    fallback: "data.metaKeywords"
+  canonical_url:
+    source: "data.canonicalUrl"
+    notes: "Relative path (e.g. '/canvas-prints/v1/') — frontend prepends domain"
+  robots:
+    source: "data.metaData.isIndex"
+    logic: "isIndex === true → 'index, follow'; isIndex === false → 'noindex, nofollow'"
+    notes: "Some pages (delivery-rates) use hardcoded 'robots: none' regardless of API"
+  open_graph:
+    og_title: "data.metaData.ogTitle"
+    og_description: "data.metaData.ogDescription"
+    og_image: "data.metaData.ogImage (relative path — prepend domain)"
+    og_url: "data.metaData.ogUrl"
+    og_type: "data.metaData.ogType"
+    og_site_name: "data.metaData.ogSitename"
+    og_locale: "data.metaData.ogLocale"
+    og_app_id: "data.metaData.ogAppId (Facebook App ID)"
+  twitter:
+    twitter_card: "data.metaData.twitterCard"
+    twitter_site: "data.metaData.twitterSite"
+    twitter_title: "data.metaData.twitterTitle"
+    twitter_description: "data.metaData.twitterDescription"
+    twitter_image: "data.metaData.twitterImage (relative path — prepend domain)"
+  breadcrumbs:
+    source: "data.breadcrumbs (array of {title, url, qwikUrl, order})"
+    alt_source: "data.breadcrumbsNavigation (category pages)"
+    schema: "BreadcrumbList with ListItem entries — generated by Breadcrumbs component"
+    notes: "qwikUrl is the URL used in the Qwik frontend; url is the legacy URL"
+  structured_data:
+    category_pages: "ItemList with product offers — generated client-side by getCategoryItemsSchema()"
+    product_pages: "ProductGroup with offers, reviews, variants — generated client-side by getProductPageJsonSchema()"
+    notes: "Structured data is NOT in the API response — it's generated client-side from the data fields above"
+  hreflang:
+    source: "Generated by getHreflangLinks(pathname) in server.ts"
+    count: "8 links (7 regions + x-default) — see known_issues in _architecture.yaml"
+    notes: "Not in API response — generated server-side from region config"
+
+region_api_endpoints:
+  description: "Quick reference for all region API base URLs"
+  GB: "https://qt-api.printerpix.co.uk"
+  US: "https://qt-api.printerpix.com"
+  DE: "https://qt-api.printerpix.de"
+  FR: "https://qt-api.printerpix.fr"
+  IT: "https://qt-api.printerpix.it"
+  ES: "https://qt-api.printerpix.es"
+  NL: "https://qt-api.printerpix.nl"
+  IN: "https://qt-api.printerpix.in"
+  AE: "https://qt-api.printerpix.ae"

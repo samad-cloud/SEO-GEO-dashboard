@@ -1,0 +1,355 @@
+name: ProductPageHubChildTemplate
+source: components/product-page/containers/templates/product-page-hub-chilld-template.tsx
+description: |
+  Simplified product page template for hub child products (sub-products in a hub collection).
+  Displays a hero banner with product title overlay, filterable themed products grid,
+  optional bottom CTA, and dynamic page content. No option panels, carousels, or countdown
+  timers. Focus is on browsing themed product variations with quantity-based filtering.
+
+exports:
+  default: ProductPageHubChildTemplate component
+  ProductPageHubChilldTemplateProps: Props interface
+  HubChildFilter: Filter interface
+
+component_type: Qwik component$ (QRL)
+
+props:
+  productType:
+    type: PlatinumProductTypeEnum
+    description: The type of product being displayed (used for content rendering)
+
+interfaces:
+  HubChildFilter:
+    label: string (display text like "50 prints" or "All")
+    qty: string (filter key like "50" or "ALL")
+
+context_consumed:
+  ProductContext:
+    fields:
+      - product: Full product data including images, themedProducts, productPageContent
+
+component_structure: |
+  <ProductPageTopBannerV2 /> (campaign banner)
+
+  <div.product_page_hub_child_template_wrapper>
+    <!-- Hero Banner with Title Overlay -->
+    {!globalCategoryBanner.isActive && product.images.length > 1 && (
+      <div.relative>
+        <Image src={product.images[0].url} /> (desktop)
+        <Image src={product.images[1].url} /> (mobile)
+        <div.absolute.top-0> (overlay)
+          <div.container.mx-auto>
+            <div onClick={handleScrollToProductList}> (clickable title box)
+              <h3>{product.imageCaption}</h3>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    <div.container.mx-auto>
+      <!-- Quantity Filter Buttons -->
+      {filters && filters.length > 2 && (
+        <ProductHubChildFilter
+          filters={filters}
+          selectedFilter={selectedFilter}
+          handleFilteredClick={handleFilteredClick}
+        />
+      )}
+
+      <!-- Themed Products Grid -->
+      {product.themedProducts && (
+        <div#theme-products>
+          <ThemeProductsSection products={currentFilteredProducts} />
+        </div>
+      )}
+
+      <!-- Bottom CTA Button -->
+      {product.productPageBundleInfo?.bottomPageCta && (
+        <a.cta_product_bundle_bottom_page_cta href={...}>
+          {bottomPageCta.ctaText}
+        </a>
+      )}
+
+      <!-- Dynamic Product Page Content -->
+      {product.productPageContent && (
+        <ProductPageContentV2
+          productPageContent={product.productPageContent}
+          productType={product.platinumProductType}
+          designUrl=""
+        />
+      )}
+    </div>
+  </div>
+
+child_components:
+  - ProductPageTopBannerV2: Campaign banner at top
+  - Image: Unpic image component for hero banner
+  - ProductHubChildFilter: Quantity filter button group
+  - ThemeProductsSection: Grid of themed product cards
+  - ProductPageContentV2: Dynamic web component renderer
+
+state_management:
+  local_signals:
+    - currentFilteredProducts: ThemeProduct[] | null (filtered product list)
+    - filters: HubChildFilter[] (quantity filter options)
+    - selectedFilter: string (current filter key like "ALL" or "50")
+
+  local_computed:
+    - globalCategoryBanner: Extracts CATEGORY_PAGE_BANNER_OVERRIDE web component
+      - Returns processed banner data or null
+      - Used to conditionally hide hero banner if CMS banner is active
+
+side_effects:
+  useTask$:
+    - Builds filter options from themedProducts
+    - Extracts unique quantity values from product.themedProducts[].ryzanSettings
+    - Parses JSON ryzanSettings to get quantity field
+    - Creates filter array: [{ label: "All", qty: "ALL" }, { label: "50 prints", qty: "50" }, ...]
+    - Uses inlineTranslate for "print" text localization
+
+event_handlers:
+  handleScrollToProductList:
+    action: Smooth scrolls to #theme-products element
+    behavior: "smooth", block: "start"
+
+  handleFilteredClick:
+    params: [filterQTY: string]
+    action: |
+      - Updates selectedFilter.value
+      - If filterQTY === "ALL": Shows all products
+      - Else: Filters products by JSON.parse(ryzanSettings).quantity === filterQTY
+
+styling:
+  classes:
+    - product_page_hub_child_template_wrapper: Root wrapper
+    - cta_product_bundle_bottom_page_cta: Bottom CTA button
+
+  dynamic_styles:
+    - Hero banner overlay box: bg-[#fff], opacity-90, w-[50%] lg:w-[25%] xl:w-[20%]
+    - CTA button: backgroundColor and color from productPageBundleInfo.bottomPageCta
+
+responsive_behavior:
+  mobile:
+    - Shows product.images[1] (mobile hero image)
+    - Title overlay: 50% width
+    - Filters stack vertically
+
+  desktop:
+    - Shows product.images[0] (desktop hero image)
+    - Title overlay: 25% width (XL: 20%)
+    - Filters display horizontally
+
+data_dependencies:
+  product:
+    fields:
+      - imageCaption: Product title shown in hero overlay
+      - images: [desktop, mobile] hero images (expects at least 2 images)
+      - themedProducts: ThemeProduct[] (filterable product list)
+        - Each has ryzanSettings: JSON string with { quantity: number }
+      - productPageBundleInfo:
+        - bottomPageCta: { ctaText, ctaColor, ctaTextColor, href }
+      - productPageContent: Dynamic web components
+      - platinumProductType: Product type enum
+      - campaignInfo: Campaign banner data
+
+  web_components:
+    - CATEGORY_PAGE_BANNER_OVERRIDE: Custom banner that replaces hero image
+
+filter_logic:
+  quantity_extraction:
+    - Parses product.ryzanSettings JSON string
+    - Extracts quantity field (e.g., 50, 100)
+    - Creates filter options with localized labels
+    - Handles products with invalid/missing ryzanSettings gracefully
+
+  filtering:
+    - "ALL": Shows all themedProducts
+    - Specific quantity: Shows products where JSON.parse(ryzanSettings).quantity === filterQTY
+
+differences_from_base:
+  unique_features:
+    - NO option panels (OptionPanel, OptionPhotoCardsPanel)
+    - NO product carousel
+    - NO countdown timer or delivery dates
+    - NO trust indicators or customer reviews
+    - Hero banner with clickable title overlay
+    - Themed products grid with quantity filters
+    - Bottom CTA button for bundle navigation
+    - Global category banner override support
+
+  shared_features:
+    - ProductPageTopBannerV2 (campaign banner)
+    - ProductPageContentV2 (dynamic web components)
+    - Container/grid layout
+
+security_notes:
+  - ryzanSettings JSON parsing (handle errors, don't expose stack traces)
+  - bottomPageCta href is user-controlled (ensure CMS validates URLs)
+  - product.imageCaption rendered as text (no XSS risk)
+
+dependencies:
+  qwik:
+    - "@builder.io/qwik": [$, component$, useComputed$, useContext, useSignal, useTask$]
+
+  image:
+    - "@unpic/qwik": [Image]
+
+  i18n:
+    - "qwik-speak": [inlineTranslate]
+
+  components:
+    - "~/components/product-page/theme-products-section": [ThemeProductsSection]
+    - "~/components/product-page/product-hub-child-filter": [ProductHubChildFilter]
+    - "~/components/product-page/product-page-top-banner-v2": [ProductPageTopBannerV2]
+    - "~/components/product-page/product-page-content-v2": [ProductPageContentV2]
+
+  context:
+    - "~/context/product-category-context": [ProductContext]
+
+  services:
+    - "~/services/product-category-service": [PlatinumProductTypeEnum]
+    - "~/services/product-page-service": [Nullable type, ThemeProduct type]
+    - "~/services/web-component-service": [processCategoryPageBannerOverrideData, WebComponentType]
+
+behavior:
+  - On mount, reads product data from ProductContext and initializes inline translation function for the word "print" (localized)
+  - Initializes currentFilteredProducts signal with the full product.themedProducts array, selectedFilter signal with "ALL", and filters signal as undefined
+  - On component task (useTask$), builds filter options from themedProducts: extracts unique quantity values by parsing each item's ryzanSettings JSON string (expects { quantity: number }), creates a filter array starting with { label: "All", qty: "ALL" } followed by entries like { label: "50 prints", qty: "50" } with pluralized localized print text
+  - Computes globalCategoryBanner by searching product.productPageContent.webComponents for a component whose wcTemplateName starts with CATEGORY_PAGE_BANNER_OVERRIDE; if found, processes it via processCategoryPageBannerOverrideData; returns null if not found
+  - Hero banner with title overlay renders only when globalCategoryBanner is NOT active (isActive is false) AND product has more than 1 image; shows product.images[0] on desktop and product.images[1] on mobile; title overlay is clickable and smooth-scrolls to #theme-products element
+  - Quantity filter buttons (ProductHubChildFilter) only render when filters array has more than 2 entries (meaning at least 2 distinct quantities plus "All")
+  - When user clicks a filter (handleFilteredClick): if "ALL" is selected, shows all themedProducts; otherwise filters products by comparing JSON.parse(ryzanSettings).quantity against the selected filter quantity value (using Number() coercion for comparison)
+  - Themed products grid (ThemeProductsSection) renders when product.themedProducts exists and has items, displaying the currentFilteredProducts
+  - Bottom CTA button renders when product.productPageBundleInfo.bottomPageCta exists, with dynamic backgroundColor and text color from CTA config, linking to the configured href
+  - ProductPageContentV2 renders at the bottom when product.productPageContent exists, passing product.platinumProductType (not the productType prop) and empty string for designUrl
+  - No option panels, carousels, countdown timers, delivery dates, trust indicators, bulk pricing, customer reviews, or theme sections are rendered (simplified template focused on browsing themed product variations)
+  - Uses Unpic Image component for responsive hero banner images; hero images MUST use priority={true} (not lazy loading) as they are above-the-fold LCP candidates
+
+used_by:
+  - name: ProductPageSelection
+    reason: Rendered when productPageViewName === HubChild (bypasses productPageContent check)
+
+performance_notes:
+  - No heavy computations (no API calls, no large loops)
+  - themedProducts filtering happens synchronously on click
+  - Hero banner images (product.images[0] desktop, product.images[1] mobile) are above-the-fold
+    LCP candidates — they MUST use priority={true} on the Unpic <Image> component, NOT lazy loading.
+    Using Unpic's default lazy loading for these images delays LCP and harms Core Web Vitals.
+  - For carousel images: only the starting/first visible slide should use priority={true} or
+    loading="eager"; all subsequent slides must use lazy loading.
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  ProductPageHubChilldTemplateProps:
+    description: Component props interface
+    fields:
+      - name: productType
+        type: PlatinumProductTypeEnum
+
+  HubChildFilter:
+    description: Quantity filter option for hub child product browsing
+    fields:
+      - name: label
+        type: string
+        description: Display text e.g. "50 prints" or "All"
+      - name: qty
+        type: string
+        description: Filter key e.g. "50" or "ALL"
+
+  ThemeProduct:
+    description: A themed product variant in the hub child grid
+    source: ~/services/product-page-service
+    fields:
+      - name: ryzanSettings
+        type: string
+        description: JSON string with { quantity number }
+
+  GlobalCategoryBanner:
+    description: Processed CMS banner data that overrides the hero image when active
+    fields:
+      - name: isActive
+        type: boolean
+
+  ProductContextValue:
+    description: Shape of ProductContext fields consumed by this template
+    source: ~/context/product-category-context
+    fields:
+      - name: product
+        type: object
+        description: Requires images[], themedProducts[], productPageBundleInfo, productPageContent, imageCaption, campaignInfo, platinumProductType
+
+field_consumption:
+  ProductContext:
+    consumed:
+      - product.images: Hero banner images — index 0 for desktop, index 1 for mobile
+      - product.imageCaption: Title text shown in hero overlay and page title
+      - product.themedProducts: Source array for filter extraction and product grid
+      - product.productPageBundleInfo.bottomPageCta: CTA button config (ctaText, ctaColor, ctaTextColor, href)
+      - product.productPageContent: Searched for CATEGORY_PAGE_BANNER_OVERRIDE web component; passed to ProductPageContentV2
+      - product.platinumProductType: Passed to ProductPageContentV2 (not the productType prop)
+      - product.campaignInfo: Passed to ProductPageTopBannerV2
+    ignored:
+      - product.optionData: Not used — no option panel in this template
+      - product.deliveryDeadline: Not used — no countdown timer
+      - product.reviewsCollection: Not used — no customer reviews
+      - product.productExtendedDetails: Not used — no description accordion
+
+implementation_logic:
+  quantity_filter_extraction:
+    rule: |
+      In useTask$, filter options are built from product.themedProducts:
+        1. Parse each item's ryzanSettings JSON string → extract quantity field
+        2. Collect unique quantity values
+        3. Build filter array: [{ label: "All", qty: "ALL" }, { label: "N prints", qty: "N" }, ...]
+        4. Filter buttons only rendered when filters.length > 2 (at least 2 distinct quantities
+           plus the "All" entry, meaning more than just "All" is available)
+      Invalid/missing ryzanSettings entries are skipped gracefully.
+    critical: false
+
+  filtered_product_selection:
+    rule: |
+      handleFilteredClick(filterQTY):
+        - "ALL" → currentFilteredProducts = all themedProducts
+        - Other → currentFilteredProducts = themedProducts.filter(p =>
+            Number(JSON.parse(p.ryzanSettings).quantity) === filterQTY)
+      Uses Number() coercion for comparison (string qty vs number in JSON).
+    critical: false
+
+  hero_banner_override:
+    rule: |
+      globalCategoryBanner searches product.productPageContent.webComponents for a component
+      whose wcTemplateName starts with "CATEGORY_PAGE_BANNER_OVERRIDE".
+      If found and isActive is true, the hero image+overlay is NOT rendered.
+      ProductPageTopBannerV2 renders regardless of this check.
+    critical: false
+
+visibility_map:
+  hero_banner_with_title_overlay:
+    condition: "globalCategoryBanner.isActive is false AND product.images.length > 1"
+    default: hidden (suppressed when CMS banner override is active)
+
+  quantity_filter_buttons:
+    condition: "filters.length > 2"
+    default: hidden (not shown when only one distinct quantity or none)
+
+  themed_products_grid:
+    condition: "product.themedProducts exists"
+    default: hidden
+
+  bottom_cta_button:
+    condition: "product.productPageBundleInfo.bottomPageCta exists"
+    default: hidden
+
+  product_page_content_section:
+    condition: "product.productPageContent exists"
+    default: hidden
+
+  desktop_hero_image:
+    condition: "hero banner is visible AND viewport is desktop"
+    default: hidden (hidden on mobile)
+
+  mobile_hero_image:
+    condition: "hero banner is visible AND viewport is mobile"
+    default: hidden (hidden on desktop)

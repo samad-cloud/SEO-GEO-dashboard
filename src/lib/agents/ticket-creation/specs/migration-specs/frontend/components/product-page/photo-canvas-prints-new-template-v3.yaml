@@ -1,0 +1,521 @@
+name: PhotoCanvasPrintsNewTemplateV3
+source: ecommerce-frontend-qwik/src/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-new-template-v3.tsx
+description: |
+  Canvas product page template v3 (Ryzan template) featuring modern 60/40 layout with
+  synchronized scrolling between columns on desktop. This is the most advanced template
+  with upload progress tracking, OptionRyzanPanel, TrustpilotRatingV2, CustomerReviewV3,
+  and ProductPageContentV3. Features complex scroll synchronization via useVisibleTask$,
+  ResizeObserver, and transform-based scrolling. Supports isMulti prop for multi-photo
+  products. Uses modern carousel variant and payment trust indicators.
+
+exports:
+  - name: default
+    type: component$
+    props:
+      - isMulti: boolean (default: false)
+
+context_consumed:
+  - ProductContext:
+      - product
+      - friendlyUrl
+      - filterIndex
+      - refCode
+      - firstSlideUrl
+      - preselectedRefId
+      - selectedFilter
+  - DeviceDetectorContext:
+      - deviceInfo
+
+component_structure: |
+  <>
+    <ProductPageTopBannerV2 />
+
+    <div.container>
+      <div ref={twoColumnWrapperRef} class="lg:items-start">
+        # LEFT COLUMN (60%, ref={leftColumnRef})
+        <div.max-w-[60%] ref={leftColumnRef}>
+          <ProductCarousel                       # Modern carousel variant
+            showPriceTag={true}
+            displayDotOnMoble={true}
+            defaultStartingPosition={1}
+          />
+
+          # MOBILE TITLE & RATING (after carousel)
+          {isMobile && (
+            <h1 />
+            <TrustpilotRatingV2
+              align="left"
+              variant="compact"
+            />
+            <TrustIndicator2                     # Trust badges from bullets
+              variant="top"
+              data={trustIndicatorData}
+            />
+          )}
+
+          # DESKTOP TRUST & REVIEWS
+          {isDesktop && (
+            <>
+              <ProductTrustIndicatorV6 />
+              <CustomerReviewV3                  # Modern review carousel
+                itemsPerSlideDesktop={3}
+              />
+            </>
+          )}
+        </div>
+
+        # RIGHT COLUMN (40%, ref={rightColumnRef})
+        <div.max-w-[40%].hidden.lg:flex ref={rightColumnRef}>
+          {isDesktop && <h1 />}
+          <TrustpilotRatingV2 align="left" />
+
+          <TrustIndicator2                       # Trust badges
+            variant="top"
+            data={trustIndicatorData}
+          />
+
+          <OptionRyzanPanel                      # Ryzan-specific panel
+            useDynamicCtaContent={true}
+            isMulti={isMulti}
+            hideTrustIndicators={true}
+            uploadProgress={uploadProgress}
+            multipleFileUpload={multipleFileUpload}
+          />
+
+          <PaymentTrustIndicatorV3               # Payment badges with price
+            price={currentPrice}
+          />
+
+          <div.border>                          # Delivery deadline
+            <p>{aboveClockText}</p>
+            <ProductFlipClock
+              useNewStyle={true}
+              align="left"
+              clockColor={dynamic}
+              textColor={dynamic}
+            />
+            <ProductDeliveryDateV2 />
+          </div>
+
+          <BulkPricingV4 />
+
+          <ProductDescriptionV3                  # Short version
+            shortVersion={true}
+            referenceId="product-information-ryzan"
+            instanceId="short-desktop"
+          />
+
+          <CanvasSizeTable
+            isMulti={isMulti}
+          />
+        </div>
+      </div>
+
+      # MOBILE LAYOUT (block lg:hidden)
+      {isMobile && (
+        <div.block.lg:hidden>
+          <OptionRyzanPanel
+            isMulti={isMulti}
+            uploadProgress={uploadProgress}
+            multipleFileUpload={multipleFileUpload}
+          />
+
+          <PaymentTrustIndicatorV3 />
+
+          <div.border>                          # Mobile delivery deadline
+            <p>{aboveClockText}</p>
+            <ProductFlipClock />
+            <ProductDeliveryDateV2 />
+          </div>
+
+          <BulkPricingV4 />
+
+          <ProductDescriptionV3
+            shortVersion={true}
+            referenceId="product-information-ryzan"
+            instanceId="short-mobile"
+          />
+
+          <ProductTrustIndicatorV6 />
+
+          <CanvasSizeTable isMulti={isMulti} />
+
+          <CustomerReviewV3 />
+        </div>
+      )}
+    </div>
+
+    # BELOW COLUMNS CONTENT (ref={belowColumnsContentRef})
+    <div ref={belowColumnsContentRef}>
+      {product.productExtendedDetails && (
+        <div.container id="product-information-ryzan">
+          <ProductDescriptionV2 />               # Full description
+        </div>
+      )}
+
+      # HUB CHILDREN (hidden for GB)
+      {product.listHubChilds.length > 0 && settings().website != "GB" && (
+        <ProductOptionType4 />
+      )}
+
+      <ProductPageContentV3 />                   # Modern CMS content
+    </div>
+
+    # UPLOAD PROGRESS OVERLAY (rendered at root level)
+    {uploadProgress.started && (
+      <Uploadprogress
+        percents={100 * uploadProgress.progress}
+        fileSize={uploadProgress.fileSize}
+        multipleFileUpload={multipleFileUpload}
+      />
+    )}
+  </>
+
+child_components:
+  - ProductPageTopBannerV2: Campaign banner
+  - ProductCarousel: Modern carousel variant (from product-carousel-modern)
+  - TrustpilotRatingV2: Modern rating widget with align/variant props
+  - TrustIndicator2: Trust badges derived from product.productExtendedDetails.bullets
+  - OptionRyzanPanel: Ryzan-specific configuration panel with upload progress
+  - PaymentTrustIndicatorV3: Payment trust badges with dynamic price
+  - ProductFlipClock: Countdown timer with dynamic colors and align prop
+  - ProductDeliveryDateV2: Delivery date
+  - BulkPricingV4: Volume discounts
+  - ProductDescriptionV3: Modern description with shortVersion + referenceId props
+  - ProductDescriptionV2: Full description (below columns)
+  - CanvasSizeTable: Size comparison with isMulti prop
+  - ProductTrustIndicatorV6: Trust badges
+  - CustomerReviewV3: Modern review carousel with itemsPerSlideDesktop prop
+  - ProductOptionType4: Hub child products
+  - ProductPageContentV3: Modern CMS content sections
+  - Uploadprogress: Upload progress modal (from ~/components/uploadcare/uploadprogress)
+
+state_management:
+  local_signals:
+    - designUrl: string
+    - leftColumnRef: HTMLDivElement ref
+    - rightColumnRef: HTMLDivElement ref
+    - twoColumnWrapperRef: HTMLDivElement ref
+    - belowColumnsContentRef: HTMLDivElement ref
+    - multipleFileUpload: boolean (for upload progress)
+
+  local_stores:
+    - initialCarouselImages: ProductCarouseImage[]
+    - optionStore: OptionStore
+    - carousel: { activeIndex: number }
+    - uploadProgress: { fileSize: number, progress: number, started: boolean }
+
+  reactive_computeds:
+    - trustIndicatorData: maps product.productExtendedDetails.bullets to trust indicator format
+      Splits on " - " to extract title and desc
+    - productImages: adds selectedFilter to carousel
+    - currentPrice: calculates price via processProductPageData (cheapestFilter or preselectedFilter discountedPrice)
+    - clockColors: extracts from floatingBanner
+
+side_effects:
+  useTask$:
+    - Tracks product.id
+    - Updates optionStore
+    - Builds carousel images
+
+  useVisibleTask$:
+    - #1: Extracts #cta-design-button href (document-ready)
+    - #2: Synchronized scroll effect (document-ready)
+      - Calculates height difference between left and right columns
+      - Applies sticky positioning to left column
+      - Applies translateY transform to right column based on scroll
+      - Adjusts belowColumnsContentRef marginTop to compensate
+      - Handles resize events with debouncing
+      - Uses ResizeObserver to watch column height changes
+      - Only active on desktop (window.innerWidth >= 1024)
+
+  qrl_functions:
+    - changeActiveSlide: updates carousel.activeIndex
+    - onChangeDesignUrl: updates designUrl.value
+
+unique_features:
+  - "60/40 layout (not 70/30) for better balance on large screens"
+  - "Synchronized scroll: left column sticky, right column translateY, below content marginTop adjustment"
+  - "useVisibleTask$ with complex scroll logic: handleScroll, handleResize (debounced), ResizeObserver"
+  - "Upload progress state lifted to template level (uploadProgress store)"
+  - "isMulti prop support for multi-photo products"
+  - "trustIndicatorData computed from productExtendedDetails.bullets (splits on ' - ')"
+  - "currentPrice computed via processProductPageData utility"
+  - "Uses OptionRyzanPanel (not standard canvas panel)"
+  - "Uses TrustpilotRatingV2, CustomerReviewV3, ProductPageContentV3 (modern variants)"
+  - "PaymentTrustIndicatorV3 with dynamic price prop"
+  - "ProductDescriptionV3 with shortVersion, referenceId, instanceId props"
+  - "ProductCarousel from product-carousel-modern (not standard product-carousel)"
+  - "TrustIndicator2 with variant='top'"
+  - "Uploadprogress modal rendered at root level (outside transform contexts)"
+  - "ProductFlipClock with align='left' for right panel"
+  - "ResizeObserver watches column height changes for scroll recalculation"
+  - "Debounced resize handler (200ms) with immediate mobile reset"
+  - "requestAnimationFrame used for clean measurements after resize"
+
+scroll_synchronization_logic: |
+  1. Calculate height difference: rightHeight - leftHeight
+  2. If heightDiff <= 0: no sync needed (right not taller)
+  3. Calculate scrollProgress: -wrapperTop + headerOffset (24px)
+  4. If scrollProgress <= 0: reset transforms
+  5. If scrollProgress < heightDiff:
+     - leftCol: position sticky, top 24px
+     - rightCol: transform translateY(-scrollProgress)
+     - belowContent: marginTop -scrollProgress
+  6. If scrollProgress >= heightDiff:
+     - rightCol: transform translateY(-heightDiff) (fully scrolled)
+     - leftCol: unstick
+     - belowContent: marginTop -heightDiff
+
+layout_characteristics:
+  desktop:
+    - 60% left column (carousel + trust indicator + reviews)
+    - 40% right column (options + payment trust + delivery + bulk pricing + short description + size table)
+    - Right column scrolls via transform while left stays sticky
+    - Below columns content margin adjusted to compensate for transform
+  mobile:
+    - Stacked vertical
+    - Carousel full-width
+    - Title + rating + trust indicator after carousel
+    - Options + payment trust + delivery + bulk pricing + short description + trust indicator + size table + reviews
+
+dependencies:
+  qwik_core:
+    - "@builder.io/qwik": [$, component$, useComputed$, useContext, useSignal, useStore, useStylesScoped$, useTask$, useVisibleTask$]
+
+  external_packages:
+    - "qwik-speak": [inlineTranslate]
+
+  internal_imports:
+    - "~/components/product-page/product-carousel/product-carousel-modern": [ProductCarousel, ProductCarouseImage (type)]
+    - "~/components/homepage/trustpilot-rating-v2": [TrustpilotRatingV2]
+    - "~/components/product-page/canvas-size-table/canvas-size-table": [CanvasSizeTable]
+    - "~/components/customer-review/customer-review-v3": [CustomerReviewV3]
+    - "~/components/product-page/option-ryzan-panel-v2": [OptionRyzanPanel]
+    - "~/components/product-page/payment-trust-indicator-v3": [PaymentTrustIndicatorV3]
+    - "~/components/product-page/product-option-type-4": [ProductOptionType4]
+    - "~/components/product-page/product-page-content-v3": [ProductPageContentV3]
+    - "~/components/product-page/product-page-top-banner-v2": [ProductPageTopBannerV2]
+    - "~/components/product-page/product-countdown-timer/product-flip-clock-v2": [ProductFlipClock]
+    - "~/components/product-page/product-delivery-date-v2": [ProductDeliveryDateV2]
+    - "~/components/product-page/product-description-v2": [ProductDescriptionV2]
+    - "~/components/product-page/product-description-v3": [ProductDescriptionV3]
+    - "~/components/product-page/product-trust-indicator-v6": [ProductTrustIndicatorV6]
+    - "~/components/product-page/bulk-pricing-v4": [BulkPricingV4]
+    - "~/components/share/trust-indication/trust-indicator-2": [TrustIndicator2]
+    - "~/components/uploadcare/uploadprogress": [Uploadprogress]
+    - "~/context/product-category-context": [ProductContext]
+    - "~/context/device-detector-context": [DeviceDetectorContext]
+    - "~/services/product-page-service": [TypeOption2 (type), processProductPageData]
+    - "~/services/product-category-service": [PlatinumProductTypeEnum]
+    - "~/data/option-data": [OptionStore (type)]
+    - "~/config/settings": [settings]
+    - "~/hooks/useDetectScreen": [useDetectScreen]
+
+  styles:
+    - "../styles/index.css?inline": [styles]
+
+behavior:
+  - Accepts optional isMulti prop (default false) for multi-photo product support
+  - On mount, reads product data from ProductContext and device info from DeviceDetectorContext
+  - Initializes optionStore with product.optionData, filterIndex, refCode, firstSlideUrl, and selectedFilter
+  - Tracks product.id changes via useTask$ and rebuilds carousel images from product.images; appends embededVideoIcon if embededVideo is present
+  - Computes productImages by prepending selectedFilter image (if a filter is selected) to the carousel image array
+  - Computes trustIndicatorData from product.productExtendedDetails.bullets by splitting each bullet on " - " to extract title and description, with check-mark.svg icon
+  - Computes currentPrice via processProductPageData utility using product.optionData.filters and preselectedRefId; uses preselectedFilter or cheapestFilter discountedPrice
+  - Computes clockColors dynamically from product.productPageContent.floatingBanner (desktop/mobile backgroundColor and section text color, fallback defaults #2E638A/#FFFFFF)
+  - Manages uploadProgress store (fileSize, progress, started) and multipleFileUpload signal at template level for rendering Uploadprogress overlay outside transform stacking context
+  - useVisibleTask$ #1 (document-ready): extracts href from #cta-design-button DOM element and stores in designUrl signal
+  - useVisibleTask$ #2 (document-ready): implements synchronized scroll effect for desktop two-column layout
+  - Synchronized scroll calculates height difference between right and left columns; if right is taller, left column becomes sticky (top 24px) while right column translateY scrolls; belowColumnsContent marginTop adjusts to compensate
+  - Scroll sync uses ResizeObserver on both columns for dynamic content height changes, debounced resize handler (200ms), and requestAnimationFrame for clean DOM measurements
+  - Scroll sync only active on desktop (window.innerWidth >= 1024); mobile immediately resets all transform styles
+  - Left column (60%): ProductCarousel (modern variant with displayDotOnMoble, defaultStartingPosition=1), then mobile title/TrustpilotRatingV2 (compact variant)/TrustIndicator2 (variant="top"), then desktop ProductTrustIndicatorV6 and CustomerReviewV3 (itemsPerSlideDesktop=3)
+  - Right column (40%, desktop only): title, TrustpilotRatingV2, TrustIndicator2, OptionRyzanPanel (with useDynamicCtaContent, isMulti, hideTrustIndicators, uploadProgress, multipleFileUpload), PaymentTrustIndicatorV3 (with dynamic currentPrice), delivery deadline (ProductFlipClock with align="left"), BulkPricingV4, ProductDescriptionV3 (shortVersion, referenceId="product-information-ryzan"), CanvasSizeTable (with isMulti)
+  - Mobile layout (block lg:hidden): OptionRyzanPanel, PaymentTrustIndicatorV3, delivery deadline, BulkPricingV4, ProductDescriptionV3 (instanceId="short-mobile"), ProductTrustIndicatorV6, CanvasSizeTable, CustomerReviewV3
+  - Below columns content (ref tracked for scroll sync): full ProductDescriptionV2 in container with id="product-information-ryzan", hub children (ProductOptionType4 from listHubChilds, hidden for GB), ProductPageContentV3
+  - Upload progress overlay (Uploadprogress component) rendered at root level outside transform contexts when uploadProgress.started is true; shows percents as 100 * uploadProgress.progress
+  - changeActiveSlide QRL updates carousel.activeIndex; onChangeDesignUrl QRL updates designUrl.value
+
+used_by:
+  - product-page-selection (rendered when productPageViewName === RyzanGoV3 or RyzanGoMulti; isMulti=true for RyzanGoMulti)
+
+security_notes:
+  - Validate uploadProgress data before rendering
+  - Sanitize CMS content in ProductPageContentV3
+  - Validate price data before passing to PaymentTrustIndicatorV3
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  PhotoCanvasPrintsNewTemplateV3Props:
+    description: Component props interface
+    fields:
+      - name: isMulti
+        type: boolean
+        optional: true
+        default: false
+
+  ProductCarouseImage:
+    description: Single image entry for the product carousel
+    source: ~/components/product-page/product-carousel/product-carousel-modern
+    fields:
+      - name: url
+        type: string
+      - name: altText
+        type: string
+
+  UploadProgressStore:
+    description: Reactive store tracking file upload progress state
+    fields:
+      - name: fileSize
+        type: number
+      - name: progress
+        type: number
+      - name: started
+        type: boolean
+
+  TrustIndicatorItem:
+    description: Single entry in the trustIndicatorData computed array
+    fields:
+      - name: icon
+        type: string
+      - name: title
+        type: string
+      - name: desc
+        type: string
+
+  ClockColors:
+    description: Computed clock color pair extracted from floatingBanner CMS data
+    fields:
+      - name: clockColor
+        type: string
+      - name: textColor
+        type: string
+
+  ProductContextValue:
+    description: Shape of ProductContext fields consumed by this template
+    source: ~/context/product-category-context
+    fields:
+      - name: product
+        type: object
+      - name: friendlyUrl
+        type: string
+      - name: filterIndex
+        type: "number[]"
+      - name: refCode
+        type: string
+      - name: firstSlideUrl
+        type: string
+      - name: preselectedRefId
+        type: "string | undefined"
+      - name: selectedFilter
+        type: "Filter | null"
+
+field_consumption:
+  ProductContext:
+    consumed:
+      - product: Full product object — imageCaption, images, optionData, deliveryDeadline, productPageContent.floatingBanner, productExtendedDetails.bullets (for trustIndicatorData), listHubChilds, productPageContent
+      - friendlyUrl: Passed to child option panel
+      - filterIndex: Seeds optionStore.filterIndex
+      - refCode: Seeds optionStore.refCode
+      - firstSlideUrl: Seeds optionStore.firstSlideUrl for carousel
+      - preselectedRefId: Used in processProductPageData for currentPrice computation
+      - selectedFilter: Seeds optionStore.selectedFilter; prepended to productImages
+    ignored:
+      - machineToken: Not used — no direct theme API call in this template
+      - editor: Not used
+      - couponCode: Not read
+
+  DeviceDetectorContext:
+    consumed:
+      - deviceInfo: Used via useDetectScreen to derive isMobile / isDesktop booleans
+    ignored: []
+
+implementation_logic:
+  synchronized_scroll_columns:
+    rule: |
+      On desktop (window.innerWidth >= 1024), useVisibleTask$ #2 implements
+      synchronized scroll between the 60% left and 40% right columns:
+        1. Measure heightDiff = rightColumn.offsetHeight - leftColumn.offsetHeight
+        2. If heightDiff <= 0: no sync needed
+        3. scrollProgress = -(twoColumnWrapper.getBoundingClientRect().top) + 24
+        4. If scrollProgress <= 0: reset all transforms
+        5. If 0 < scrollProgress < heightDiff:
+             leftCol style: position=sticky, top=24px
+             rightCol style: transform=translateY(-scrollProgress)
+             belowContent style: marginTop=-scrollProgress px
+        6. If scrollProgress >= heightDiff:
+             rightCol style: transform=translateY(-heightDiff)
+             leftCol style: position=static
+             belowContent style: marginTop=-heightDiff px
+      Recalculates on resize (debounced 200ms) and ResizeObserver column height changes.
+      Resets all transforms immediately on mobile (width < 1024).
+    critical: true
+
+  trust_indicator_data_computation:
+    rule: |
+      trustIndicatorData is derived from product.productExtendedDetails.bullets by
+      splitting each bullet on " - " (space-dash-space):
+        title = parts[0]
+        desc  = parts[1] || ""
+      Icon is always "check-mark.svg". Returns empty array if bullets is absent.
+    critical: false
+
+  current_price_computation:
+    rule: |
+      currentPrice is computed via processProductPageData(product.optionData.filters, preselectedRefId):
+        - If preselectedRefId matches a filter, use that filter's discountedPrice
+        - Otherwise use the cheapest filter's discountedPrice
+      Passed to PaymentTrustIndicatorV3 as the price prop.
+    critical: false
+
+  upload_progress_overlay_placement:
+    rule: |
+      The Uploadprogress component is rendered at the root JSX level (outside all
+      transform and sticky stacking contexts) to avoid visual clipping. It only mounts
+      when uploadProgress.started is true. The percents prop is 100 * uploadProgress.progress.
+    critical: true
+
+  hub_children_gb_exclusion:
+    rule: |
+      ProductOptionType4 (from product.listHubChilds) is suppressed for the "GB" region:
+      condition is `product.listHubChilds.length > 0 && settings().website != "GB"`.
+    critical: true
+
+visibility_map:
+  desktop_right_column:
+    condition: "isDesktop is true (hidden lg:flex)"
+    default: hidden
+
+  desktop_title_in_right_column:
+    condition: "isDesktop is true"
+    default: hidden
+
+  mobile_title_trustpilot_trust_indicator:
+    condition: "isMobile is true"
+    default: hidden (shown in left column only on mobile)
+
+  desktop_trust_indicators_and_reviews_in_left_column:
+    condition: "isDesktop is true"
+    default: hidden
+
+  mobile_layout_section:
+    condition: "isMobile is true (block lg:hidden)"
+    default: hidden
+
+  delivery_deadline_box:
+    condition: "product.deliveryDeadline.showClock is true"
+    default: hidden
+
+  hub_children_section:
+    condition: "product.listHubChilds.length > 0 AND settings().website != 'GB'"
+    default: hidden
+
+  product_description_v2_full:
+    condition: "product.productExtendedDetails exists"
+    default: hidden
+
+  upload_progress_overlay:
+    condition: "uploadProgress.started is true"
+    default: hidden

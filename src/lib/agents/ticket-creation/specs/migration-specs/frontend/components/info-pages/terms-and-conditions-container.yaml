@@ -1,0 +1,164 @@
+name: TermsAndConditionsContainer
+source: src/components/terms-and-conditions-page/containers/terms-and-conditions-container.tsx
+description: |
+  Static content page displaying terms and conditions for Printerpix services.
+  Renders a structured list of terms sections from static content, with styled links.
+  Includes SEO metadata via Head export with robots: none to prevent indexing.
+
+exports:
+  - name: default
+    type: component
+    signature: component$(() => JSX.Element)
+    description: Main container component wrapping TermsAndConditions
+
+  - name: Head
+    type: function
+    signature: () => DocumentHead
+    description: |
+      Exports page metadata for SEO.
+      Sets title, meta tags, and robots: none directive.
+
+component_structure:
+  type: container
+  layout: |
+    <div class="mt-[50px] mb-[30px] px-[15px] lg:px-0 terms-and-conditions-container">
+      <h1 class="text-center mb-5">
+        {title from i18n}
+      </h1>
+      {sections.map(section => (
+        <div class="mb-8">
+          <p class="font-extrabold mb-4 uppercase text-center">
+            {section.sectionName}
+          </p>
+          {section.data.map(point => (
+            <p dangerouslySetInnerHTML={point} class="mb-4 text-sm" />
+          ))}
+        </div>
+      ))}
+      <p>{refund note from i18n}</p>
+    </div>
+
+  inline_styles: |
+    .terms-and-conditions-container a {
+      color: #f02084;
+      font-weight: bold;
+    }
+
+child_components:
+  - name: TermsAndConditions
+    type: internal component
+    description: Inner component that renders the actual terms content
+    props: none
+
+data_sources:
+  - name: getTermsAndConditionsContent
+    type: static_data_function
+    source: ~/utility/terms-and-conditions/terms-and-conditions
+    returns: |
+      {
+        termsAndConditions: Array<{
+          sectionName: string;
+          data: string[]; // HTML strings for dangerouslySetInnerHTML
+        }>
+      }
+    description: Returns pre-defined terms and conditions sections with HTML content
+
+i18n:
+  translation_keys:
+    - terms_and_conditions.terms_and_conditions_title
+    - terms_and_conditions.refund_note
+    - terms_and_conditions.meta.description
+
+dependencies:
+  qwik:
+    - component$
+    - useStyles$
+  qwik_speak:
+    - inlineTranslate
+  utility:
+    - getTermsAndConditionsContent: ~/utility/terms-and-conditions/terms-and-conditions
+
+rendering:
+  features:
+    - Static content rendering with HTML injection via dangerouslySetInnerHTML
+    - Inline scoped styles for links within container
+    - Responsive padding (mobile vs desktop)
+    - Centered headings and section titles
+
+seo:
+  title_source: i18n key
+  robots: none
+  meta_tags:
+    - name: title
+    - name: description
+    - name: google (notranslate)
+    - name: theme-color
+    - name: distribution
+    - name: rating
+    - name: author
+    - name: copyright
+    - name: google-signin-scope
+
+behavior:
+  - step: 1
+    action: "Call getTermsAndConditionsContent() at module level (outside component) to retrieve static terms and conditions data with sections array"
+  - step: 2
+    action: "Initialize the inner TermsAndConditions component with inlineTranslate for i18n and inject scoped styles for link coloring (pink #f02084, bold)"
+  - step: 3
+    action: "Render a centered page title from i18n key 'terms_and_conditions.terms_and_conditions_title'"
+  - step: 4
+    action: "Iterate over each section in the terms data: render the section name as a bold uppercase centered heading, then render each point within the section using dangerouslySetInnerHTML (content is pre-defined HTML from the utility function, not user-supplied)"
+  - step: 5
+    action: "Render a refund note paragraph at the bottom from i18n key 'terms_and_conditions.refund_note'"
+  - step: 6
+    action: "The default export wraps TermsAndConditions in a simple container component"
+
+used_by:
+  - "~/routes/terms-and-conditions/index.tsx"
+  - "~/routes/conditions-generales-de-vente/index.tsx"
+
+security:
+  - Uses dangerouslySetInnerHTML for static content from getTermsAndConditionsContent
+  - Content is pre-defined in utility function, not user-supplied
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  TermsSection:
+    description: A single section of the terms and conditions document
+    fields:
+      - name: sectionName
+        type: string
+        description: Bold uppercase heading displayed for this section
+      - name: data
+        type: "string[]"
+        description: Array of HTML strings rendered via dangerouslySetInnerHTML as individual paragraphs
+
+  TermsAndConditionsData:
+    description: Top-level shape of the JSON files returned by getTermsAndConditionsContent
+    fields:
+      - name: termsAndConditions
+        type: "TermsSection[]"
+
+field_consumption:
+  TermsAndConditionsData:
+    consumed:
+      - termsAndConditions: Iterated to render each section block
+    ignored: []
+
+  TermsSection:
+    consumed:
+      - sectionName: Rendered as a bold uppercase <p> heading for each section
+      - data: Each element rendered as a <p> with dangerouslySetInnerHTML
+    ignored: []
+
+visibility_map:
+  section_blocks:
+    condition: data.termsAndConditions.length > 0
+    default: visible
+    notes: Each section renders unconditionally; if array is empty no section blocks appear
+
+  section_points:
+    condition: section.data.length > 0
+    default: visible
+    notes: Each HTML point string renders unconditionally within its section

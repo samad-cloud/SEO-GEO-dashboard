@@ -1,0 +1,40 @@
+name: ContactUsRoute
+source:
+  path: routes/contact-us/index.tsx
+  lines: 1-9
+  type: route
+
+description: |
+  Contact form page for customer inquiries.
+  Renders ContactUsContainer and uses its Head export.
+
+url_pattern: /contact-us
+layout: default
+
+exports:
+  default: true
+  component: ContactUsContainer
+  head: true
+  head_source: "Imported from ContactUsContainer (Head export)"
+
+dependencies:
+  - "@builder.io/qwik"
+  - "@builder.io/qwik-city" (DocumentHead type)
+  - "~/components/contact-us/containers/contact-us-container"
+
+behavior:
+  - Renders container component
+  - Head metadata managed by container
+
+i18n_keys: []
+
+rewrite_routes:
+  NL: /contacteer-ons
+  DE: /kontaktieren-sie-uns
+  IT: /contattaci
+  ES: /contactos
+
+used_by: []
+
+types:
+  notes: "Route component. Types defined in associated container component. No locally-defined interfaces."

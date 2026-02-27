@@ -1,0 +1,642 @@
+name: ProductPageFixedThemeTemplate
+source: components/product-page/containers/templates/product-page-fixed-theme-template.tsx
+description: |
+  Specialized product page template for theme-based products (greeting cards, calendars).
+  Features a centered carousel with dynamic preview generation, multiple option panel
+  variants (OptionFixedThemeCardsPanel, OptionPanelV2, OptionPanel), countdown timers,
+  delivery dates, bulk pricing, trust indicators, customer reviews, bundle options
+  (ProductOptionType4), product descriptions, and SEO content injection. Supports
+  dynamic product caption generation and calendar-specific delivery UI. Shows ProductPageTopBannerV2
+  for all product types EXCEPT Calendar.
+
+exports:
+  default: ProductPageFixedThemeTemplate component
+
+component_type: Qwik component$ (QRL)
+
+props:
+  productType:
+    type: PlatinumProductTypeEnum
+    default: PlatinumProductTypeEnum.Unknown
+    description: Product type (determines option panel variant and UI features)
+
+context_consumed:
+  ProductContext:
+    fields:
+      - product: Full product data
+      - couponCode: Active coupon code
+      - friendlyUrl: Product SEO URL
+      - filterIndex: Selected filter indices
+      - refCode: Product reference code
+      - firstSlideUrl: Initial carousel image
+      - themeUrl: Theme image URL
+      - selectedFilter: Currently selected filter
+  DeviceDetectorContext:
+    fields:
+      - deviceInfo: Device type information
+
+component_structure: |
+  {productType !== Calendar && <ProductPageTopBannerV2 />} (campaign banner, skip for calendars)
+
+  <div.product_page_fixed_template_wrapper>
+    <div.container.mx-auto>
+      <div.flex.flex-wrap> (main grid)
+
+        <!-- Mobile title -->
+        {isMobile && <h1>{productCaption}</h1>}
+
+        <!-- Mobile Trustpilot -->
+        {isMobile && <TrustpilotRating />}
+
+        <!-- LEFT COLUMN (70%) - Centered Carousel -->
+        <div.product_page_left_container>
+          <div> (centered carousel wrapper, width varies by product type)
+            <ProductCarousel
+              productImages={
+                GreetingCard ? [initialImage, previewImageUrl] :
+                [firstSlideUrl, ...product.images]
+              }
+              displayDotOnMoble={true}
+              defaultStartingPosition={GreetingCard ? 1 : 0}
+            />
+          </div>
+
+          <!-- Mobile Options Panel (3 variants) -->
+          {isMobile && getOptionPanel()}
+
+          <!-- SEO Content Injection Targets (if no productPageContent) -->
+          {!productPageContent && (
+            <>
+              <div#desktop-seo-content /> (hidden on mobile)
+              <div#mobile-seo-content /> (hidden on desktop)
+            </>
+          )}
+        </div>
+
+        <!-- RIGHT COLUMN (30%) - Options & Sticky Panel -->
+        <div.product_page_right_container>
+          {isDesktop && <h1>{productCaption}</h1>}
+          {isDesktop && <TrustpilotRating align="left" />}
+
+          {getOptionPanel()}
+        </div>
+      </div>
+    </div>
+
+    <!-- Bundle Options Section (not for GB region) -->
+    {product.productBundleGroup?.typeOptionSection && settings().website != "GB" && (
+      <ProductOptionType4 data={typeOptionSection[0]} />
+    )}
+
+    <div.container.mx-auto>
+      <div.flex.flex-wrap>
+        <!-- LEFT COLUMN (70%) - Content Sections -->
+        <div (70% width)>
+          <!-- Countdown & Delivery (Mobile) -->
+          {isMobile && (
+            {productType === Calendar ?
+              <ProductDeliveryDateV2 showFastestOption={true} /> :
+              <div> (border box)
+                <p>{deliveryDeadline.aboveClockText}</p>
+                {showClock && <ProductFlipClock />}
+                <ProductDeliveryDateV2 />
+              </div>
+            }
+          )}
+
+          <!-- Mobile Bulk Pricing & Trust Indicators -->
+          {isMobile && (
+            <BulkPricingV4 />
+            <ProductTrustIndicatorV6 />
+          )}
+
+          <!-- Product Description -->
+          {product.productExtendedDetails && (
+            <ProductDescriptionV2 productDetails={productExtendedDetails} />
+          )}
+
+          <!-- Customer Reviews -->
+          {product.reviewsCollection && (
+            <CustomerReview
+              {...reviewsCollection}
+              itemsPerSlideDesktop={3}
+            />
+          )}
+        </div>
+
+        <!-- RIGHT COLUMN (30%) - Desktop Sticky Panel (second sticky section) -->
+        <div#sticky-panel>
+          {productType === Calendar ?
+            <ProductDeliveryDateV2 showFastestOption={true} /> :
+            <div> (countdown box)
+              <p>{deliveryDeadline.aboveClockText}</p>
+              {showClock && <ProductFlipClock />}
+              <ProductDeliveryDateV2 />
+            </div>
+          }
+
+          <ProductTrustIndicatorV6 shortVersion={true} />
+
+          <BulkPricingV4 />
+        </div>
+      </div>
+    </div>
+
+    <!-- Dynamic Product Page Content -->
+    {product.productPageContent && (
+      <ProductPageContentV2
+        productPageContent={product.productPageContent}
+        productType={productType}
+        designUrl={designUrl}
+      />
+    )}
+  </div>
+
+child_components:
+  - ProductPageTopBannerV2: Campaign banner (hidden for Calendar)
+  - ProductCarousel: Image carousel with dynamic images
+  - TrustpilotRating: Star rating (left-aligned on desktop)
+  - OptionFixedThemeCardsPanel: Greeting card theme selector
+  - OptionPanelV2: Calendar-specific options
+  - OptionPanel: Default options panel
+  - ProductFlipClock: Countdown timer with dynamic colors
+  - ProductDeliveryDateV2: Delivery date estimator (supports showFastestOption for calendars)
+  - BulkPricingV4: Bulk pricing table
+  - ProductTrustIndicatorV6: Trust badges
+  - ProductOptionType4: Bundle options selector
+  - ProductDescriptionV2: Product description accordion
+  - CustomerReview: Customer review carousel
+  - ProductPageContentV2: Dynamic web component renderer
+
+state_management:
+  local_signals:
+    - designUrl: string (design button URL)
+    - initialImage: string (default preview image for greeting cards)
+    - selectedProduct: Product | null (currently selected product variant)
+
+  local_stores:
+    - optionStore: OptionStore (product option selections)
+      - Includes additional fields vs base:
+        - orientation: string (for greeting cards)
+        - themeUrl: string
+    - carousel: { activeIndex: number }
+
+  computed_values:
+    - productCaption: Uses getProductDynamicTitle(product, location.url)
+      - Dynamically generates title based on product and URL parameters
+    - clockColors: Extracts colors from floating banner (same as other templates)
+    - previewImageUrl: Generates preview image URL for selected product
+      - For GreetingCard: Finds product by refCode in cardFilterOptions.shapeOptions
+      - Extracts desktopPreviewUrl and replaces "800" with "1200"
+      - For other types: Uses optionStore.firstSlideUrl
+
+side_effects:
+  useTask$:
+    - Tracks product.id changes
+    - Updates optionStore with context data
+    - For GreetingCard: Pre-selects orientation by finding matching refCode in shapeOptions
+
+  useVisibleTask$ (1):
+    - strategy: "document-ready"
+    - Tracks product, location.url
+    - Only runs if product.productPageContent is falsy
+    - Injects marketingContent2 into #desktop-seo-content
+    - Injects marketingContent3 into #mobile-seo-content
+    - Sets up accordion behavior (same logic as fixed template)
+
+  useVisibleTask$ (2):
+    - strategy: "document-ready"
+    - Tracks product.id
+    - Queries #cta-design-button, sets designUrl
+
+event_handlers:
+  onChangeSelectedOption:
+    params: [imageUrl: string, themeUrl?: string]
+    action: Updates firstSlideUrl and themeUrl (if provided), resets carousel to 0
+
+  onChangeDesignUrl:
+    params: [url: string]
+    action: Sets designUrl.value
+
+  onChangeRefCode:
+    params: [refCode: string]
+    action: Updates optionStore.refCode
+
+  onChangeSelectedFilter:
+    params: [filter: Filter]
+    action: Updates selectedFilter and refCode, resets carousel to 0
+
+  onChangeSelectedProduct:
+    params: [product: Product]
+    action: Sets selectedProduct.value (used for preview URL generation)
+
+  changeActiveSlide:
+    params: [index: number]
+    action: Updates carousel.activeIndex
+
+styling:
+  scoped: styles from ../styles/index.css?inline
+  global: fixedTemplateStyles from ../styles/product-fixed-template.css?inline
+  classes:
+    - product_page_fixed_template_wrapper: Root wrapper
+    - product_page_left_container: Left column
+    - product_page_right_container: Right column
+    - product_page_customer_review_wrapper: Review section
+    - product_page_customer_review_wrapper--active: Active state
+    - product_page_description_wrapper: Description section
+
+  dynamic_sizing:
+    - Carousel wrapper: w-[90%] xl:w-[65%] for GreetingCard, w-[90%] xl:w-[90%] for others
+    - Carousel height: max-h-[650px] overflow-hidden
+
+responsive_behavior:
+  mobile:
+    - Title at top (generated by productCaption)
+    - Trustpilot below title
+    - Options below carousel
+    - Countdown timer (or fastest delivery for Calendar)
+    - Right sidebar hidden
+    - SEO content in #mobile-seo-content (if productPageContent is null)
+
+  desktop:
+    - Title in right sidebar (generated by productCaption)
+    - Trustpilot left-aligned
+    - Right sidebar for options (not sticky initially)
+    - Second sticky panel (#sticky-panel) further down page
+    - SEO content in #desktop-seo-content
+
+data_dependencies:
+  product:
+    fields:
+      - id: Product identifier
+      - images: ProductImage[]
+      - optionData: Product options
+        - cardFilterOptions: { shapeOptions: [{ products: [...] }] }
+      - deliveryDeadline: { aboveClockText, showClock }
+      - reviewsCollection: Review data (with order property)
+      - productExtendedDetails: Description data (with order property)
+      - productBundleGroup: { typeOptionSection: [...] }
+      - campaignInfo: Campaign banner (not shown for Calendar)
+      - marketingContent2, marketingContent3: SEO HTML (used if productPageContent is null)
+      - productPageContent: Dynamic web components (or null)
+      - productPageViewName: View type enum
+      - platinumProductType: Product type
+
+  location:
+    - url: URL object (used for dynamic title generation)
+
+  settings:
+    - website: Region code (e.g., "GB")
+
+option_panel_variants:
+  function: getOptionPanel()
+
+  GreetingCard:
+    component: OptionFixedThemeCardsPanel
+    props: [optionStore, optionData.cardFilterOptions, productData, onChangeSelectedProduct, couponCode, onChangeDesignUrl, productType, onChangeRefCode]
+
+  Calendar:
+    component: OptionPanelV2
+    props: [optionStore, optionData, productData, onChangeSelectedOption, couponCode, onChangeDesignUrl, productType, onChangeSelectedFilter, productCaption]
+
+  default:
+    component: OptionPanel
+    props: [optionStore, optionData, productData, onChangeSelectedOption, couponCode, onChangeDesignUrl, productType, onChangeSelectedFilter]
+
+calendar_specific_features:
+  - No ProductPageTopBannerV2 shown
+  - ProductDeliveryDateV2 with showFastestOption={true}
+  - No countdown timer (showClock logic skipped)
+  - Different desktop layout for delivery info
+
+greeting_card_specific_features:
+  - Carousel shows [initialImage, previewImageUrl]
+  - previewImageUrl dynamically generated from selected product
+  - Orientation pre-selection logic in useTask$
+  - OptionFixedThemeCardsPanel used
+  - defaultStartingPosition={1} for carousel (shows preview first)
+  - Narrower carousel width (xl:w-[65%])
+
+differences_from_base:
+  unique_features:
+    - getOptionPanel() function for dynamic panel selection
+    - productCaption computed from getProductDynamicTitle()
+    - previewImageUrl computed (greeting card preview generation)
+    - Calendar-specific UI (no banner, showFastestOption delivery)
+    - ProductOptionType4 for bundle options (not in hub template)
+    - Second sticky panel (#sticky-panel) for delivery/trust/pricing
+    - Centered carousel with dynamic width by product type
+    - Commented out useOnDocument/useOnWindow (present in fixed template)
+    - SEO content only injected if productPageContent is null
+    - ProductDescriptionV2 and CustomerReview BELOW carousel/options
+    - TrustpilotRating with align="left" on desktop
+
+  shared_features:
+    - Clock color extraction from floating banner
+    - SEO content injection and accordion setup
+    - ProductDeliveryDateV2, BulkPricingV4, ProductTrustIndicatorV6
+    - ProductPageContentV2 for dynamic web components
+    - Two-column layout (70/30 split)
+
+security_notes:
+  - marketingContent2/3 injected as HTML (must be sanitized by CMS)
+  - No direct user-supplied HTML injection
+
+behavior:
+  - On mount, reads product data, coupon code, friendly URL, filter index, ref code, first slide URL, theme URL, and selected filter from ProductContext; reads device info from DeviceDetectorContext; reads current URL from useLocation
+  - Initializes deep reactive optionStore with additional fields vs other templates: orientation (string, for greeting cards) and themeUrl (string); carousel starts at activeIndex 0 (not 1 like other templates)
+  - Computes productCaption dynamically using getProductDynamicTitle(product, location.url) instead of using product.imageCaption directly
+  - When product.id changes (useTask$), syncs optionStore; for GreetingCard products, pre-selects orientation by searching through cardFilterOptions.shapeOptions for a product matching the current refCode, then sets optionStore.orientation to the found product's orientation (lowercased)
+  - Computes previewImageUrl: for GreetingCard, if selectedProduct exists, uses its first previewUrls.desktopPreviewUrl; otherwise searches cardFilterOptions.shapeOptions for a product matching the refCode and uses its desktopPreviewUrl with "800" replaced by "1200"; for non-GreetingCard, uses optionStore.firstSlideUrl
+  - Computes clockColors from floating banner data with standard fallbacks (#2E638A / #FFFFFF)
+  - Uses getOptionPanel() function to dynamically select the option panel: GreetingCard uses OptionFixedThemeCardsPanel (with onChangeSelectedProduct callback), Calendar uses OptionPanelV2 (with computed productCaption), default uses standard OptionPanel
+  - Campaign banner (ProductPageTopBannerV2) is NOT rendered for Calendar product type
+  - Carousel images differ by product type: GreetingCard shows [initialImage (hardcoded Printerpix preview URL), previewImageUrl], with defaultStartingPosition=1 and displayDotOnMoble=true; other types show [firstSlideUrl, ...product.images]
+  - Carousel wrapper width varies: GreetingCard uses xl:w-[65%], others use xl:w-[90%]; max height capped at 650px with overflow hidden
+  - Calendar-specific delivery UI: uses ProductDeliveryDateV2 with showFastestOption={true} instead of the standard countdown clock/delivery date combo
+  - Bundle options (ProductOptionType4) rendered below carousel/options when product.productBundleGroup.typeOptionSection exists and region is NOT "GB"
+  - Second sticky panel (#sticky-panel) renders delivery/trust/pricing on desktop below the main layout
+  - SEO content injection (marketingContent2/3 with accordion setup) only runs if product.productPageContent is falsy (when productPageContent exists, ProductPageContentV2 renders instead)
+  - On document-ready (useVisibleTask$), extracts CTA URL from #cta-design-button href
+  - ProductDescriptionV2 and CustomerReview render below carousel/options section with dynamic CSS order; CustomerReview shows 3 items per desktop slide
+  - onChangeSelectedOption accepts optional themeUrl parameter and updates both firstSlideUrl and themeUrl in optionStore
+  - onChangeSelectedFilter resets carousel to index 0 in addition to updating filter and refCode
+  - Uses both scoped styles (index.css) and global styles (product-fixed-template.css)
+  - useOnDocument and useOnWindow hooks for CSS/overflow management are commented out (present in fixed template but disabled here)
+  - TrustpilotRating aligned left on desktop (align="left" prop)
+
+used_by:
+  - name: ProductPageSelection
+    reason: Rendered when productPageViewName === FixedTheme (bypasses productPageContent check)
+
+dependencies:
+  qwik:
+    - "@builder.io/qwik": [$, component$, useComputed$, useContext, useSignal, useStore, useStyles$, useStylesScoped$, useTask$, useVisibleTask$]
+
+  routing:
+    - "@builder.io/qwik-city": [useLocation]
+
+  components:
+    - "~/components/product-page/product-carousel/product-carousel": [ProductCarousel]
+    - "~/components/homepage/trustpilot-rating": [TrustpilotRating]
+    - "~/components/product-page/option-panel": [OptionPanel]
+    - "~/components/product-page/option-panel-v2": [OptionPanelV2]
+    - "~/components/customer-review/customer-review": [CustomerReview]
+    - "~/components/product-page/option-fixed-theme-cards-panel": [OptionFixedThemeCardsPanel, OptionStore type]
+    - "~/components/product-page/product-option-type-4": [ProductOptionType4]
+    - "~/components/product-page/product-page-top-banner-v2": [ProductPageTopBannerV2]
+    - "~/components/product-page/product-delivery-date-v2": [ProductDeliveryDateV2]
+    - "~/components/product-page/product-countdown-timer/product-flip-clock-v2": [ProductFlipClock]
+    - "~/components/product-page/product-page-content-v2": [ProductPageContentV2]
+    - "~/components/product-page/product-description-v2": [ProductDescriptionV2]
+    - "~/components/product-page/product-trust-indicator-v6": [ProductTrustIndicatorV6]
+    - "~/components/product-page/bulk-pricing-v4": [BulkPricingV4]
+
+  context:
+    - "~/context/product-category-context": [ProductContext]
+    - "~/context/device-detector-context": [DeviceDetectorContext]
+
+  services:
+    - "~/services/product-category-service": [PlatinumProductTypeEnum]
+    - "~/services/product-page-service": [TypeOption2 type, getProductDynamicTitle]
+
+  config:
+    - "~/config/settings": [settings]
+
+  data:
+    - "~/data/option-card": [Filter type, Product type]
+
+  hooks:
+    - "~/hooks/useDetectScreen": [useDetectScreen]
+
+  styles:
+    - "../styles/index.css?inline": Scoped styles
+    - "../styles/product-fixed-template.css?inline": Global styles
+
+performance_notes:
+  - previewImageUrl computed value caches result until selectedProduct or optionStore.refCode changes
+  - SEO content injection only once per product.id change
+  - Accordion setup only runs on document-ready
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  ProductPageFixedThemeTemplateProps:
+    description: Component props interface
+    fields:
+      - name: productType
+        type: PlatinumProductTypeEnum
+        optional: true
+        default: PlatinumProductTypeEnum.Unknown
+
+  OptionStore:
+    description: Extended option store with additional fields for theme/greeting card products
+    source: ~/components/product-page/option-fixed-theme-cards-panel
+    fields:
+      - name: optionData
+        type: object
+      - name: productData
+        type: object
+      - name: filterIndex
+        type: "number[]"
+      - name: refCode
+        type: string
+      - name: firstSlideUrl
+        type: string
+      - name: themeUrl
+        type: string
+      - name: orientation
+        type: string
+      - name: selectedFilter
+        type: "Filter | null"
+
+  Filter:
+    description: A selectable filter/size option
+    source: ~/data/option-card
+    fields:
+      - name: refCode
+        type: string
+      - name: imageUrl
+        type: string
+
+  Product:
+    description: A product variant with preview URLs (used for greeting card preview)
+    source: ~/data/option-card
+    fields:
+      - name: refCode
+        type: string
+      - name: orientation
+        type: string
+      - name: previewUrls
+        type: object
+        optional: true
+
+  ClockColors:
+    description: Computed clock color pair
+    fields:
+      - name: clockColor
+        type: string
+      - name: textColor
+        type: string
+
+  ProductContextValue:
+    description: Shape of ProductContext fields consumed by this template
+    source: ~/context/product-category-context
+    fields:
+      - name: product
+        type: object
+      - name: couponCode
+        type: string
+      - name: friendlyUrl
+        type: string
+      - name: filterIndex
+        type: "number[]"
+      - name: refCode
+        type: string
+      - name: firstSlideUrl
+        type: string
+      - name: themeUrl
+        type: string
+      - name: selectedFilter
+        type: "Filter | null"
+
+field_consumption:
+  ProductContext:
+    consumed:
+      - product: Full product — images, optionData (cardFilterOptions.shapeOptions for GreetingCard orientation pre-selection), deliveryDeadline, reviewsCollection, productExtendedDetails, productBundleGroup (typeOptionSection), productPageContent, marketingContent2, marketingContent3, platinumProductType
+      - couponCode: Passed to option panel variant
+      - friendlyUrl: Seeds optionStore.friendlyUrl
+      - filterIndex: Seeds optionStore.filterIndex
+      - refCode: Seeds optionStore.refCode; used in previewImageUrl computation
+      - firstSlideUrl: Seeds optionStore.firstSlideUrl; used in previewImageUrl for non-GreetingCard
+      - themeUrl: Seeds optionStore.themeUrl
+      - selectedFilter: Seeds optionStore.selectedFilter
+    ignored:
+      - machineToken: Not used — no theme API call in this template
+      - editor: Not used
+
+  DeviceDetectorContext:
+    consumed:
+      - deviceInfo: Used via useDetectScreen to derive isMobile / isDesktop booleans
+    ignored: []
+
+implementation_logic:
+  option_panel_variant_selection:
+    rule: |
+      getOptionPanel() function selects the option panel in this priority order:
+        1. productType === GreetingCard → OptionFixedThemeCardsPanel
+           (uses onChangeSelectedProduct callback; no onChangeSelectedFilter)
+        2. productType === Calendar → OptionPanelV2
+           (with productCaption computed from getProductDynamicTitle)
+        3. default → standard OptionPanel
+      This runs for both mobile and desktop panel placements.
+    critical: true
+
+  carousel_images_by_product_type:
+    rule: |
+      Carousel images differ by product type:
+        - GreetingCard: [initialImage (hardcoded Printerpix preview URL), previewImageUrl]
+          with defaultStartingPosition=1 and displayDotOnMoble=true
+        - All others: [firstSlideUrl, ...product.images]
+          with defaultStartingPosition=0
+      Carousel wrapper width also varies:
+        - GreetingCard: xl:w-[65%]
+        - Others: xl:w-[90%]
+    critical: true
+
+  greeting_card_orientation_preselection:
+    rule: |
+      In useTask$ (tracking product.id), for GreetingCard products:
+      Searches cardFilterOptions.shapeOptions[0].products for an entry whose
+      refCode matches the current context refCode. If found, sets
+      optionStore.orientation to that product's orientation (lowercased).
+    critical: false
+
+  preview_image_url_computation:
+    rule: |
+      previewImageUrl is computed as follows:
+        - If productType === GreetingCard:
+            1. If selectedProduct exists: use selectedProduct.previewUrls.desktopPreviewUrl
+            2. Else: search cardFilterOptions.shapeOptions for a product matching refCode,
+               use its desktopPreviewUrl with "800" replaced by "1200"
+        - Else: use optionStore.firstSlideUrl
+    critical: true
+
+  seo_content_injection:
+    rule: |
+      useVisibleTask$ #1 only runs when product.productPageContent is falsy.
+      When it runs, injects marketingContent2 → #desktop-seo-content,
+      marketingContent3 → #mobile-seo-content, and sets up accordion behavior
+      (same logic as ProductPageFixedTemplate).
+      When product.productPageContent exists, ProductPageContentV2 is rendered instead.
+    critical: true
+
+  calendar_delivery_ui:
+    rule: |
+      For Calendar product type, the delivery UI uses only
+      `<ProductDeliveryDateV2 showFastestOption={true} />` without a countdown clock.
+      For all other product types, the standard delivery countdown box is shown.
+    critical: true
+
+  bundle_section_gb_exclusion:
+    rule: |
+      ProductOptionType4 (from product.productBundleGroup.typeOptionSection) renders only
+      when `typeOptionSection exists && settings().website != "GB"`.
+    critical: true
+
+visibility_map:
+  campaign_banner:
+    condition: "productType !== Calendar"
+    default: visible (hidden only for Calendar)
+
+  mobile_title_and_trustpilot:
+    condition: "isMobile is true"
+    default: hidden
+
+  desktop_right_column:
+    condition: "isDesktop is true"
+    default: hidden
+
+  desktop_title_in_sidebar:
+    condition: "isDesktop is true"
+    default: hidden
+
+  mobile_option_panel:
+    condition: "isMobile is true"
+    default: hidden
+
+  seo_content_targets:
+    condition: "product.productPageContent is falsy"
+    default: hidden (not rendered when productPageContent exists)
+
+  bundle_options_section:
+    condition: "product.productBundleGroup.typeOptionSection exists AND settings().website != 'GB'"
+    default: hidden
+
+  mobile_delivery_countdown:
+    condition: "isMobile is true AND productType !== Calendar AND product.deliveryDeadline.showClock is true"
+    default: hidden
+
+  desktop_delivery_countdown:
+    condition: "isDesktop is true AND productType !== Calendar AND product.deliveryDeadline.showClock is true"
+    default: hidden
+
+  calendar_fastest_delivery:
+    condition: "productType === Calendar"
+    default: hidden (only for Calendar)
+
+  mobile_bulk_pricing_and_trust:
+    condition: "isMobile is true"
+    default: hidden
+
+  product_description_section:
+    condition: "product.productExtendedDetails exists"
+    default: hidden
+
+  customer_review_section:
+    condition: "product.reviewsCollection exists"
+    default: hidden
+
+  product_page_content_v2:
+    condition: "product.productPageContent exists"
+    default: hidden

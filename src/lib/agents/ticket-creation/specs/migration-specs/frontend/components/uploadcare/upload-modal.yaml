@@ -1,0 +1,273 @@
+name: UploadModal
+source: components/uploadcare/uploadcare.tsx
+description: >
+  Inline sub-component defined at the bottom of uploadcare.tsx. Renders a
+  full-screen modal overlay that displays a validation error message when the
+  user selects an incorrect file count or an unsupported file type. The modal
+  has a header section with the error title, a body section with the error
+  description, and a footer with an "Upload Photos" button that embeds an
+  UploadInput to allow immediate re-upload without closing the modal. The
+  title text plays a CSS shake animation when the modal first appears (or
+  whenever errorAnimation is set true). Body scroll lock is managed by the
+  parent Uploadcare component via useVisibleTask$ tracking showUploadModal;
+  UploadModal itself does not manage scroll lock. The modal closes on click
+  of the backdrop, the X button, or a successful re-upload initiated through
+  the embedded UploadInput.
+
+exports:
+  - name: UploadModal
+    type: component$<UploadModalProps>
+    description: Non-exported inline component (not exported from the module)
+
+props:
+  - name: closeDialog
+    type: "QRL<() => void>"
+    required: true
+    description: >
+      QRL callback that sets showUploadModal.value to false in the parent.
+      Bound to the backdrop div's onClick$ and the X close button's onClick$.
+  - name: handleClick
+    type: "QRL<() => Promise<void>>"
+    required: true
+    description: >
+      Passed through to the embedded UploadInput's handleClick prop.
+      Calls handleAddToCart in the parent if type is upload_and_addcart.
+  - name: handleChangeMultipleFiles
+    type: "QRL<(e: any) => Promise<void>>"
+    required: true
+    description: >
+      Passed through to the embedded UploadInput's handleChangeMultipleFiles
+      prop. Starting a new upload via the modal's button triggers the same
+      upload flow as clicking the primary input.
+  - name: classes
+    type: string
+    required: true
+    description: >
+      CSS class string passed through to the embedded UploadInput's classes
+      prop (and applied there to the hidden file input).
+  - name: validationMsg
+    type: ValidationMsgType
+    required: true
+    description: >
+      Object with title and description strings that populate the modal
+      header and body. Set by handleValidation in the parent before the
+      modal is shown.
+  - name: errorAnimation
+    type: "Signal<boolean>"
+    required: true
+    description: >
+      Shared signal (from parent scope) tracked by useVisibleTask$ inside
+      the modal. When true, the shake CSS class is added to the title element
+      and the signal is reset to false after 300 ms via setTimeout.
+
+component_structure:
+  - Backdrop: full-screen fixed div (z-[1000]) with dark rgba background.
+    onClick$ → closeDialog.
+  - Backdrop click layer: absolute full-screen div layered over backdrop,
+    onClick$ → closeDialog (captures clicks outside the dialog box).
+  - Dialog box: z-[1001] white rounded box, centered with translate trick.
+    - Close button: absolute top-right 50×50 px div with ✖ character,
+      onClick$ → closeDialog.
+    - Header section (id="header"): contains title <p ref={titleRef}>.
+      Shake animation applied/removed on titleRef via classList mutations.
+    - Body section (id="header"): contains description <p>.
+    - Footer section: flex justify-end row containing:
+        - "Upload Photos" button (pink bg-[#F02480]):
+            - Embedded UploadInput (positioned absolutely/relatively inside
+              the button to overlay it as the actual click target).
+
+child_components:
+  - name: UploadInput
+    purpose: >
+      Embedded inside the Upload Photos button so clicking the button
+      opens the OS file picker. The UploadInput overlays the button via
+      absolute positioning applied through the classes prop.
+    props:
+      - classes: passed from UploadModal's own classes prop
+      - handleClick: passed from UploadModal's handleClick prop
+      - handleChangeMultipleFiles: passed from UploadModal's
+          handleChangeMultipleFiles prop
+      - id: not passed (defaults to "upload")
+
+behavior:
+  - On mount / when errorAnimation becomes true:
+      useVisibleTask$ tracks errorAnimation.value.
+      1. Removes "duration-300" and "transition" classes from titleRef element.
+      2. Adds "shake" class to titleRef element (triggers CSS animation:
+         150 ms horizontal translate oscillation, repeats 2 times, color #E80042).
+      3. Schedules setTimeout of 300 ms that sets errorAnimation.value = false.
+      4. cleanup() registered to clearTimeout if the task re-runs before timeout.
+  - When errorAnimation becomes false:
+      1. Adds "duration-300" and "transition" classes to titleRef element.
+      2. Removes "shake" class from titleRef element (title returns to normal).
+  - User clicks backdrop or X button:
+      closeDialog() called → showUploadModal.value = false in parent →
+      modal unmounts and body scroll lock is released by parent's useVisibleTask$.
+  - User clicks Upload Photos button:
+      The overlaid UploadInput's click handler fires, resetting input value
+      and calling handleClick. Then the OS file picker opens. On file
+      selection onChange fires → handleChangeMultipleFiles in parent validates
+      and starts upload. If validation passes the upload proceeds and
+      handleCloseUploadDialog is called at the start of the multiple-file
+      upload flow (before the actual Uploadcare network call).
+
+styling:
+  modal_overlay:
+    - "flex items-center justify-center fixed md:block z-[1000] left-0 top-0
+      w-[100%] h-[100%] overflow-auto bg-[rgba(0,0,0,0.8)]"
+  backdrop_click_layer:
+    - "absolute h-[100%] w-[100%]"
+  dialog_box:
+    - "z-[1001] bg-white rounded-md w-[90%] sm:w-[600px] absolute left-[50%]
+      top-[50%] translate-x-[-50%] translate-y-[-50%]"
+  close_button:
+    - "absolute flex items-center justify-center top-0 right-0 w-[50px]
+      h-[50px] cursor-pointer"
+    - Inner span: "font-normal text-[1.5rem]" containing "✖"
+  header_section:
+    - "w-full p-7 text-base lg:text-xl font-bold border-b border-[#FBF6F7]"
+    - Title <p> initially has class "shake" in JSX (animation controlled
+      via classList mutations, not via signal-driven class binding)
+  body_section:
+    - "w-full p-7 lg:text-lg text-base"
+  footer_section:
+    - "flex justify-end items-center p-7"
+  upload_button:
+    - "relative bg-[#F02480] rounded-md w-[150px] flex justify-center py-2
+      text-white font-bold z-[10]"
+  shake_animation:
+    scoped_css: true
+    keyframes: "0% translate(3px,0) → 50% translate(-3px,0) → 100% translate(0,0)"
+    duration: "150ms"
+    repeat: "2 (linear)"
+    active_color: "#E80042"
+    vendor_prefixes: "-moz-, -webkit-, -ms-, -o-"
+
+dependencies:
+  qwik:
+    - component$, $, useSignal, useStylesScoped$, useVisibleTask$,
+      type QRL, type Signal from @builder.io/qwik
+  components:
+    - UploadInput (inline component in same file)
+
+used_by:
+  - Uploadcare
+
+security:
+  - Modal does not perform any API calls directly; all upload logic is in
+    parent callbacks passed as QRL props.
+  - The backdrop click-layer closes the modal, preventing interaction lock
+    if the user dismisses without uploading.
+
+edge_cases:
+  - If errorAnimation is still true when the modal unmounts (e.g., user
+    closes within 300 ms), the cleanup function cancels the pending
+    setTimeout, preventing a setState-after-unmount scenario.
+  - Both the backdrop div and the backdrop click-layer have closeDialog
+    bound to onClick$; the dialog box itself uses z-[1001] to sit above
+    both, so clicks on the dialog do not bubble to the backdrop.
+  - Two elements share id="header" (header section and body section) —
+    duplicate IDs in HTML; this is a known issue in the source.
+  - The title <p> has "shake" as a literal class in JSX markup and then
+    the class is toggled via classList mutations (not via Qwik signal
+    binding). This is direct DOM manipulation inside useVisibleTask$.
+
+notes:
+  - Not exported from the module. Only accessible within uploadcare.tsx scope.
+  - useStylesScoped$ is used, so the .shake CSS and @keyframes are scoped
+    to this component instance and will not leak to other elements.
+  - The shake animation is triggered on initial modal open (errorAnimation
+    starts true) and can be re-triggered by the parent setting
+    errorAnimation.value = true again (e.g., if the user tries to upload
+    the wrong count a second time while the modal is still open — though
+    the current flow closes the modal before re-validating, so this path
+    is not exercised in practice).
+  - The body scroll lock (position:fixed on document.body) is managed
+    entirely by the parent Uploadcare component's useVisibleTask$, not
+    by UploadModal itself.
+
+types:
+  UploadModalProps:
+    description: Props interface for the UploadModal inline component
+    fields:
+      - name: closeDialog
+        type: "QRL<() => void>"
+      - name: handleClick
+        type: "QRL<() => Promise<void>>"
+      - name: handleChangeMultipleFiles
+        type: "QRL<(e: any) => Promise<void>>"
+      - name: classes
+        type: string
+      - name: validationMsg
+        type: ValidationMsgType
+      - name: errorAnimation
+        type: "Signal<boolean>"
+
+  ValidationMsgType:
+    description: >
+      Shape of the validationMsg prop; defined as an interface in
+      uploadcare.tsx (not exported).
+    fields:
+      - name: title
+        type: string
+      - name: description
+        type: string
+
+field_consumption:
+  UploadModalProps:
+    consumed:
+      - closeDialog: Bound to backdrop div onClick$ and X button onClick$
+      - handleClick: Forwarded to embedded UploadInput
+      - handleChangeMultipleFiles: Forwarded to embedded UploadInput
+      - classes: Forwarded to embedded UploadInput's classes prop
+      - validationMsg.title: Rendered inside title <p ref={titleRef}>
+      - validationMsg.description: Rendered inside body <p>
+      - errorAnimation: Tracked by useVisibleTask$ to trigger shake animation
+    ignored: []
+
+implementation_logic:
+  shake_animation_management:
+    rule: >
+      When errorAnimation.value becomes true, the shake CSS class is added
+      to the title element via direct DOM classList mutation (not via Qwik
+      reactive class binding). Simultaneously "duration-300" and "transition"
+      are removed to prevent CSS transition from softening the animation.
+      After 300 ms, errorAnimation.value is reset to false, which triggers
+      the useVisibleTask$ to run again and remove "shake" while restoring
+      "duration-300" and "transition". The 300 ms timeout maps to the
+      animation total duration (150 ms × 2 repeats = 300 ms).
+    critical: true
+
+  animation_cleanup:
+    rule: >
+      A cleanup function is registered in useVisibleTask$ via the cleanup()
+      callback to clearTimeout. This prevents the errorAnimation signal from
+      being set to false after the component has unmounted or after the task
+      has been re-triggered by a new errorAnimation change before the prior
+      timeout expired.
+    critical: false
+
+visibility_map:
+  entire_modal:
+    condition: showUploadModal.value === true (evaluated in parent Uploadcare)
+    default: hidden (not rendered in DOM when false)
+    notes: >
+      UploadModal is conditionally rendered by Uploadcare using
+      {showUploadModal.value && <UploadModal .../>}. It is not hidden via
+      CSS; it is fully unmounted when false.
+
+  title_shake_state:
+    condition: errorAnimation.value === true
+    default: >
+      Title has "shake" class literally in JSX on mount; classList mutations
+      then toggle it. Effectively: shake is active immediately on first
+      render, removed after 300 ms.
+    notes: >
+      The <p> element has "shake" as a static class in the JSX template.
+      The useVisibleTask$ then removes it after 300 ms when errorAnimation
+      resets to false. On subsequent triggers (errorAnimation set true again),
+      shake is re-added.
+
+  upload_photos_button:
+    condition: always visible within the modal
+    default: visible

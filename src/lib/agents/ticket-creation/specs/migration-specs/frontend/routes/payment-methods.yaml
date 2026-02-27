@@ -1,0 +1,40 @@
+name: PaymentMethodsRoute
+source:
+  path: routes/payment-methods/index.tsx
+  lines: 1-10
+  type: route
+
+description: |
+  Static informational page displaying available payment methods.
+  Renders PaymentMethodsContainer and exports head metadata from the container.
+
+url_pattern: /payment-methods
+layout: default
+
+exports:
+  default: true
+  component: PaymentMethodsContainer
+  head: true
+  head_source: "Imported from PaymentMethodsContainer (Head export)"
+
+dependencies:
+  - "@builder.io/qwik"
+  - "@builder.io/qwik-city" (DocumentHead type)
+  - "~/components/payment-methods-page/containers/payment-methods-container"
+
+behavior:
+  - Renders container component
+  - Head metadata managed by container
+
+i18n_keys: []
+
+rewrite_routes:
+  NL: /betalingsmethoden
+  DE: /zahlungsarten
+  IT: /modalita-di-pagamento
+  ES: /formas-de-pago
+
+used_by: []
+
+types:
+  notes: "Route component. Types defined in associated container component. No locally-defined interfaces."

@@ -1,0 +1,158 @@
+name: ShipmentDetail
+source: src/components/track-my-order-page/containers/track-my-order-container.tsx
+description: |
+  Displays shipment tracking number and carrier link after order tracking data
+  has been fetched. Three mutually exclusive rendering states:
+  1. No carrier link and no tracking message: renders null (nothing shown).
+  2. No carrier link but tracking message exists: shows the tracking message as a
+     gray centered paragraph.
+  3. Carrier link present and trackingCode non-empty: shows the tracking code
+     with "your tracking number" and "follow order" text, and a pink external
+     link button to the carrier site if the link starts with "https://".
+  This component is defined as a module-level const inside
+  track-my-order-container.tsx and is not exported separately.
+
+exports:
+  - name: ShipmentDetail
+    type: component$ (module-scoped, not exported from the file)
+    description: Internal component used only within TrackMyOrderContainer
+
+props:
+  - name: trackingCode
+    type: string
+    required: true
+    description: The tracking code to display. Component renders null if this is falsy.
+  - name: carrierLink
+    type: string
+    required: true
+    description: URL to the external carrier tracking page. Empty string when not available.
+  - name: trackingMessage
+    type: "string | undefined"
+    required: false
+    description: Fallback text shown when no carrier link is available.
+
+types:
+  ShipmentDetailPropType:
+    description: Props interface defined inline in the container file
+    fields:
+      - name: trackingCode
+        type: string
+      - name: carrierLink
+        type: string
+      - name: trackingMessage
+        type: "string | undefined"
+        optional: true
+
+field_consumption:
+  props:
+    consumed:
+      - carrierLink: Truthiness check to choose rendering branch; includes("https://") check to control sub-elements
+      - trackingMessage: Shown in fallback branch when carrierLink is falsy
+      - trackingCode: Displayed as text in span#tracking-code; outer conditional renders null when falsy
+    ignored: []
+
+behavior:
+  - "Branch 1 — no carrier link:"
+      condition: "!carrierLink"
+      result: |
+        If trackingMessage is truthy: render <div class="pb-8"><p ...>{trackingMessage}</p></div>
+        If trackingMessage is also falsy: return null (nothing rendered)
+  - "Branch 2 — carrier link present:"
+      condition: "carrierLink is truthy AND trackingCode is truthy"
+      result: |
+        Wraps in Fragment <>:
+          <div class="pb-8">
+            If carrierLink.includes("https://"):
+              Renders t("track_your_order.your_tracking_number") text node
+            <span id="tracking-code"> {trackingCode}. </span>
+            If carrierLink.includes("https://"):
+              Renders <span dangerouslySetInnerHTML={t("track_your_order.real_time_update")} />
+          </div>
+          If carrierLink.includes("https://"):
+            <a target="_blank" href={carrierLink} ...>
+              {t("track_your_order.view_courier")}
+            </a>
+  - "Outer guard:"
+      The entire carrier-present branch is wrapped in: trackingCode && (<>...</>)
+      So if trackingCode is empty string the whole branch renders nothing.
+
+implementation_logic:
+  https_check:
+    rule: |
+      The "your tracking number" text, the "real_time_update" HTML span, and the
+      external carrier button are only rendered when carrierLink.includes("https://").
+      A carrierLink value that is truthy but does not start with "https://" causes
+      the trackingCode span to appear alone with no accompanying text or button.
+    critical: true
+
+  no_carrier_null_return:
+    rule: |
+      When carrierLink is falsy, the component returns null (not an empty div)
+      when trackingMessage is also absent. This means the parent layout must not
+      depend on a stable DOM node from this component.
+    critical: false
+
+styling:
+  carrier_link_wrapper: "pb-8"
+  tracking_code_span: id="tracking-code" (inline, no Tailwind classes)
+  carrier_button: |
+    "my-2 capitalize bg-[#E40080] text-white decoration-none font-bold rounded-md
+     w-100 py-2 block text-center"
+    target="_blank" (external link)
+  fallback_message: "text-gray-500 text-center"
+  fallback_wrapper: "pb-8"
+
+visibility_map:
+  entire_component_null:
+    condition: "!carrierLink AND !trackingMessage"
+    default: null returned
+  fallback_message:
+    condition: "!carrierLink AND trackingMessage is truthy"
+    default: hidden (only shown when no carrier link but message exists)
+  your_tracking_number_text:
+    condition: "carrierLink is truthy AND carrierLink.includes('https://')"
+    default: hidden when link is non-https
+  real_time_update_span:
+    condition: "carrierLink is truthy AND carrierLink.includes('https://')"
+    default: hidden when link is non-https
+  carrier_button:
+    condition: "carrierLink is truthy AND carrierLink.includes('https://')"
+    default: hidden when link is non-https
+  entire_carrier_branch:
+    condition: "trackingCode is truthy"
+    default: null returned when trackingCode is falsy (empty string or undefined)
+
+i18n:
+  translation_keys:
+    - track_your_order.your_tracking_number
+    - track_your_order.real_time_update
+      note: Rendered via dangerouslySetInnerHTML — may contain HTML markup
+    - track_your_order.view_courier
+
+security:
+  - dangerouslySetInnerHTML used for track_your_order.real_time_update translation key
+  - Content comes from trusted internal translation files only; risk is low
+  - Carrier link is rendered as target="_blank" href with no rel="noopener" in source
+  - trackingCode is displayed as text content inside a <span> — no sanitization but not treated as HTML
+
+dependencies:
+  qwik:
+    - component$ from @builder.io/qwik
+  i18n:
+    - inlineTranslate from qwik-speak
+
+used_by:
+  - TrackMyOrderContainer
+
+edge_cases:
+  - carrierLink is empty string (falsy): falls into no-carrier branch; shows trackingMessage if present, else null
+  - carrierLink present but not "https://": trackingCode span renders but no text labels or button shown
+  - trackingCode is empty string (falsy): outer guard returns null even if carrierLink is valid
+  - trackingMessage is undefined and carrierLink is falsy: returns null
+  - trackingMessage present but empty string: treated as falsy; component returns null
+
+notes:
+  - This component is co-located in the same file as MultiOrderSelect, TrackingHistory (inline variant), and Faq within track-my-order-container.tsx.
+  - The inline TrackingHistory component in the same file also renders a carrier section separately for the account-detail flow; this ShipmentDetail is the info-page (track-my-order route) version of that section.
+  - No "go back to orders" link — that link only appears in the account-detail TrackingHistory variant.
+  - Missing rel="noopener noreferrer" on the target="_blank" carrier link is a known source code issue.

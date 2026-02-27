@@ -1,0 +1,577 @@
+name: Header
+source:
+  path: src/components/header/header.tsx
+  lines: 1-650
+  type: component
+
+description: |
+  Main header component containing logo, navigation menu, user account dropdown,
+  tools dropdown, and shopping cart link. Manages user authentication state and
+  cart count. Handles mobile menu toggle, dropdown interactions, and user logout.
+  Integrates with GTM, Klaviyo, and Matomo for analytics.
+
+exports:
+  - type: default
+    name: Header
+    kind: component
+
+props:
+  - name: showMenu
+    type: boolean
+    optional: true
+    default: true
+    description: Controls navigation menu visibility
+  - name: showContact
+    type: boolean
+    optional: true
+    default: true
+    description: Controls contact/account/tools section visibility
+  - name: isFixed
+    type: boolean
+    optional: true
+    default: false
+    description: Whether header is in fixed/sticky mode
+
+component_structure:
+  root: header
+  className: "z-[3000]"
+  children:
+    - element: div
+      className: "flex flex-row justify-between items-center h-[60px] md:h-[60px] px-[12px] lg:px-0 w-full"
+      children:
+        - section: left-side
+          children:
+            - component: MobileMenuButton (conditional on showMenu)
+            - component: PixLogo
+        - section: right-side
+          children:
+            - component: GlobalSearch (NL region only)
+            - component: ToolsDropdown
+            - component: UserAccountDropdown
+            - component: CartLink
+    - component: NavigationMenu4 (conditional on showMenu)
+    - component: ReminderCreationModal (conditional on showReminderPopup)
+
+child_components:
+  - name: PixLogo
+    path: "~/components/icons/pix"
+  - name: IcBaselineShoppingCart
+    path: "~/components/icons/cart"
+  - name: IcBaselineAccountCircle
+    path: "~/components/icons/account"
+  - name: SVGIcon
+    path: "~/components/svg-icon/svg-icon"
+  - name: NavigationMenu4
+    path: "~/components/navigation-v4/navigation-menu"
+  - name: GlobalSearch
+    path: "~/components/global-search/global-search"
+  - name: ReminderProvider
+    path: "~/components/reminders/reminder-provider"
+  - name: ReminderCreationModal
+    path: "~/components/reminders/reminder-creation-modal"
+
+context_consumed: []
+
+state_management:
+  signals:
+    - name: cartCount
+      type: string
+      default: "0"
+      description: Number of items in cart (from cookie)
+    - name: isLogined
+      type: boolean
+      default: false
+      description: User authentication status
+    - name: showUserDropDown
+      type: boolean
+      default: false
+      description: User account dropdown visibility
+    - name: showToolsDropDown
+      type: boolean
+      default: false
+      description: Tools dropdown visibility
+    - name: mobileMenuOpen
+      type: boolean
+      default: false
+      description: Mobile menu open/closed state
+    - name: showReminderPopup
+      type: boolean
+      default: false
+      description: Reminder creation modal visibility
+
+  stores:
+    - name: userInfo
+      type: object
+      fields:
+        - email: string (default: "")
+        - firstName: string (default: "")
+        - lastName: string (default: "")
+        - customerGuid: string (default: "")
+      description: User profile information
+
+  computed:
+    - name: displayShortFullName
+      type: string
+      description: User initials (first letter of first + last name)
+      formula: "${firstName[0]}${lastName[0]}".toUpperCase()
+    - name: toolsOptions
+      type: array
+      description: Dynamic tools menu based on region
+      items:
+        - Go Quick
+        - My Reminders
+        - AI Art Gallery (all regions)
+        - AI Photo to Art (GB only)
+
+event_handlers:
+  - event: DOMContentLoaded
+    description: Sets up cart count update listener
+    implementation: |
+      Listens for custom "updateCartCount" event on window.
+      Updates cartCount signal from CartCount cookie.
+
+  - event: click (toggleMenu)
+    description: Toggles mobile menu and hamburger icon
+    implementation: |
+      Toggles "open" class on menu-burger icon.
+      Toggles mobileMenuOpen signal.
+      Toggles overflow:hidden on document body.
+
+  - event: click (handleClickAccount)
+    description: Toggles user account dropdown
+    implementation: |
+      Shows/hides user dropdown.
+      Closes tools dropdown.
+      Stops event propagation.
+
+  - event: click (handleClickTools)
+    description: Toggles tools dropdown
+    implementation: |
+      Shows/hides tools dropdown.
+      Closes user dropdown.
+      Stops event propagation.
+
+  - event: click (handleLogout)
+    description: Logs out user and clears cookies
+    implementation: |
+      Clears cookies across all domains:
+        - emarsysEmail
+        - MACHINE_TOKEN
+        - CartCount
+        - customerGuid
+        - isAnonymous
+      Pushes GTM logout event.
+      Redirects to home or reloads page.
+
+  - event: click (handleReminderClick)
+    description: Opens reminders page or modal
+    implementation: |
+      Sends Matomo event.
+      If logged in: redirect to /account/reminders.
+      If not logged in: show reminder popup modal.
+
+  - event: mouseMove/mouseOut (desktop hover)
+    description: Shows/hides dropdowns on hover (non-touch devices)
+    implementation: |
+      Detects touch device using useIsTouchDevice.
+      Only triggers on non-touch devices.
+      Shows dropdown on mouseMove, hides on mouseOut.
+
+  - event: route change (useTask$)
+    description: Closes dropdowns when navigating
+    implementation: |
+      Tracks location.url changes.
+      Sets both dropdowns to false.
+
+async_operations:
+  - name: useVisibleTask$ (user session)
+    trigger: document-ready
+    description: Loads user authentication state
+    implementation: |
+      1. Reads CartCount cookie
+      2. Gets MACHINE_TOKEN cookie
+      3. Checks sessionStorage for cached user info
+      4. If cached data exists and matches region/token:
+         - Use cached data
+      5. Else fetch from getCurrentLoginSession API
+      6. Save to sessionStorage
+      7. Set cookies (customerGuid, isAnonymous)
+      8. Identify user in Klaviyo
+
+responsive_behavior:
+  mobile:
+    - Hamburger menu visible
+    - User initials shown instead of full name
+    - Tools/account dropdowns work on tap
+    - Mobile menu overlay with scroll lock
+  desktop:
+    - Full navigation menu visible
+    - User name displayed as "Hi, {firstName}"
+    - Dropdowns trigger on hover (non-touch)
+    - Tools/account dropdowns positioned right
+
+dropdowns:
+  tools:
+    items:
+      - name: Go Quick
+        href: /go-quick
+        icon: lightning
+      - name: My Reminders
+        href: /account/reminders (special handling)
+        icon: reminder
+      - name: AI Art Gallery
+        href: https://artezaar.{mainDomain}
+        icon: ai-photo-art
+      - name: AI Photo to Art (GB only)
+        href: https://pixlab.{mainDomain}
+        icon: ai-art-gallery
+
+  user_account:
+    logged_out:
+      - name: Sign In
+        href: /login/signin
+        style: primary button
+      - name: Sign Up
+        href: /login/register
+        style: outlined button
+    logged_in:
+      - name: Account Setting
+        href: /account/edit
+      - name: My Projects
+        href: /account/project-listing
+      - name: Where's My Order
+        href: /account/order-tracking
+      - name: My Coupons
+        href: /account/vouchers
+      - name: My Reminders
+        href: /account/reminders
+      - name: Contact Us
+        href: /contact-us
+      - name: Sign Out (button)
+        action: handleLogout
+
+dependencies:
+  qwik:
+    - component$
+    - useComputed$
+    - useOnDocument
+    - useSignal
+    - useStore
+    - useStylesScoped$
+    - useTask$
+    - useVisibleTask$
+    - $
+  qwik-city:
+    - useLocation
+  qwik-speak:
+    - inlineTranslate
+  unpic:
+    - Image
+  services:
+    - "~/services/cart-services/cookie" (getCookie, setCookie, eraseCookie, getDomainNames, getBaseDomainName)
+    - "~/services/accounts-service" (getCurrentLoginSession, LoginSessionData)
+    - "~/services/server" (getSiteSetting)
+    - "~/services/cart-services/gtm/data-layer-mapper" (cookieKey, pushUserLogout, setEmailCommand)
+    - "~/services/klaviyo-service" (identifyKlaviyoUser)
+  utilities:
+    - "~/utility/homepage-contents" (getHome)
+    - "~/utility/storage" (getDataFromSessionStorage, saveDataToSessionStorage, StorageKey)
+    - "~/utility/matomo" (MatomoCategory, MatomoEvent, pushMatomoEvent)
+  config:
+    - "~/config/settings" (settings)
+  hooks:
+    - "~/hooks/useIsTouchDevice"
+  styles:
+    - "./header.css?inline"
+
+cookies:
+  read:
+    - CartCount (cart item count)
+    - MACHINE_TOKEN (session identifier)
+    - emarsysEmail (marketing email)
+  write:
+    - customerGuid
+    - isAnonymous
+
+session_storage:
+  read:
+    - USER_INFO (cached user session data)
+  write:
+    - USER_INFO (user session + region)
+
+api_calls:
+  - endpoint: getCurrentLoginSession
+    trigger: MACHINE_TOKEN exists but no cached session
+    params:
+      - machineToken: string
+    returns: LoginSessionData
+    fields:
+      - firstName
+      - lastName
+      - emailAddress
+      - customerGuid
+      - isAnonymous
+
+analytics:
+  gtm:
+    - pushUserLogout (on logout)
+    - setEmailCommand (on login/load)
+  klaviyo:
+    - identifyKlaviyoUser (on login/load)
+  matomo:
+    - CLICK_REMINDERS (on reminder button click)
+
+region_specific:
+  NL:
+    - Shows GlobalSearch component
+  GB:
+    - Shows "AI Photo to Art" in tools menu
+  US:
+    - Public order tracking: /track-my-order
+  FR:
+    - Public order tracking: /ou-est-ma-commande
+  DE:
+    - Public order tracking: /meine-bestellung-verfolgen
+
+security:
+  - MACHINE_TOKEN in cookie for authentication
+  - Cross-domain cookie clearing on logout
+  - Session validation against current region
+
+edge_cases:
+  - showHeader=0 query param hides entire header
+  - Touch devices use click instead of hover for dropdowns
+  - Logout redirects to home if on /account/* page
+  - Order tracking accessible without login (public URLs)
+  - Reminder click shows modal for logged-out users
+
+behavior:
+  - step: 1
+    action: "Initialize component with default props (showMenu=true, showContact=true, isFixed=false)"
+  - step: 2
+    action: "Create signals for cartCount (default '0'), isLogined (false), showUserDropDown (false), showToolsDropDown (false), mobileMenuOpen (false), showReminderPopup (false)"
+  - step: 3
+    action: "Create userInfo store with empty email, firstName, lastName, customerGuid fields"
+  - step: 4
+    action: "Register DOMContentLoaded listener that subscribes to 'updateCartCount' custom events on window, updating cartCount from CartCount cookie"
+  - step: 5
+    action: "On document-ready (useVisibleTask$), read CartCount and MACHINE_TOKEN cookies"
+  - step: 6
+    action: "Check sessionStorage for cached user info matching current region and token; if found, populate userInfo from cache"
+  - step: 7
+    action: "If no valid cache but MACHINE_TOKEN exists, call getCurrentLoginSession API to fetch user session data"
+  - step: 8
+    action: "Save fetched user session to sessionStorage with region tag for future cache hits"
+  - step: 9
+    action: "Set customerGuid and isAnonymous cookies on the base domain; set isLogined based on isAnonymous flag"
+  - step: 10
+    action: "If user has email, call setEmailCommand for GTM and identifyKlaviyoUser for Klaviyo analytics"
+  - step: 11
+    action: "Compute toolsOptions based on region: base tools (Go Quick, My Reminders, AI Art Gallery) plus AI Photo to Art for GB region only"
+  - step: 12
+    action: "Compute displayShortFullName as uppercase initials (first letter of firstName + lastName)"
+  - step: 13
+    action: "On route change (useTask$ tracking location.url), close both dropdown menus"
+  - step: 14
+    action: "Render header bar with mobile hamburger button (visible below xl breakpoint, conditional on showMenu), logo, and right-side controls"
+  - step: 15
+    action: "Show GlobalSearch component only for NL region"
+  - step: 16
+    action: "Render Tools dropdown with icon and 'New' badge; on desktop non-touch devices, open on hover; on touch/mobile, open on click"
+  - step: 17
+    action: "In Tools dropdown, render each tool as a link; Reminders item triggers special handler (Matomo event, redirect if logged in, show popup if not)"
+  - step: 18
+    action: "Render User Account dropdown; show 'Hi, {firstName}' on desktop when logged in, show initials circle on mobile when logged in"
+  - step: 19
+    action: "When logged out, show Sign In (primary button) and Sign Up (outlined button) in user dropdown"
+  - step: 20
+    action: "When logged in, show account menu items (Account Setting, My Projects, Where's My Order, My Coupons, My Reminders, Contact Us) plus Sign Out button"
+  - step: 21
+    action: "Order tracking link resolves to region-specific URL: /track-my-order (US/GB), /ou-est-ma-commande (FR), /meine-bestellung-verfolgen (DE)"
+  - step: 22
+    action: "When not logged in, account links redirect through /login/signin?destinationUrl= except Contact Us and order tracking"
+  - step: 23
+    action: "On logout, clear cookies (emarsysEmail, MACHINE_TOKEN, CartCount, customerGuid, isAnonymous) across all domains, push GTM logout event"
+  - step: 24
+    action: "After logout, redirect to home page if on /account/* page, otherwise reload current page"
+  - step: 25
+    action: "Render cart link with shopping cart icon and badge showing cartCount (hidden when '0')"
+  - step: 26
+    action: "Render NavigationMenu4 below header bar (conditional on showMenu), passing mobileMenuOpen state and isFixed"
+  - step: 27
+    action: "On mobile menu toggle, toggle hamburger icon 'open' class, toggle mobileMenuOpen signal, toggle body overflow:hidden for scroll lock"
+  - step: 28
+    action: "When showReminderPopup is true, render ReminderCreationModal inside ReminderProvider for non-authenticated users (maxReminders=3)"
+
+used_by: []
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  HeaderProps:
+    description: Component props interface
+    fields:
+      - name: showMenu
+        type: boolean
+        optional: true
+        default: true
+      - name: showContact
+        type: boolean
+        optional: true
+        default: true
+      - name: isFixed
+        type: boolean
+        optional: true
+        default: false
+
+  UserInfoStore:
+    description: useStore shape for cached user profile data
+    fields:
+      - name: email
+        type: string
+        default: '""'
+      - name: firstName
+        type: string
+        default: '""'
+      - name: lastName
+        type: string
+        default: '""'
+      - name: customerGuid
+        type: string
+        default: '""'
+
+  LoginSessionData:
+    description: Response shape from getCurrentLoginSession API call
+    source: ~/services/accounts-service
+    fields:
+      - name: firstName
+        type: string
+      - name: lastName
+        type: string
+      - name: emailAddress
+        type: string
+      - name: customerGuid
+        type: string
+      - name: isAnonymous
+        type: boolean
+      - name: machineToken
+        type: string
+
+  ToolOption:
+    description: Single item in the computed toolsOptions array
+    fields:
+      - name: name
+        type: string
+      - name: href
+        type: string
+      - name: icon
+        type: string
+
+field_consumption:
+  HeaderProps:
+    consumed:
+      - showMenu: Gates rendering of MobileMenuButton and NavigationMenu4; also gates mobile hamburger toggle handler
+      - showContact: Gates rendering of the entire right-side section (tools dropdown, user account dropdown, cart link)
+      - isFixed: Forwarded to NavigationMenu4 as isFixed prop
+    ignored: []
+
+  LoginSessionData:
+    consumed:
+      - firstName: Stored in userInfo.firstName; shown in "Hi, {firstName}" greeting and used for initials computation
+      - lastName: Stored in userInfo.lastName; used for initials computation
+      - emailAddress: Stored in userInfo.email; triggers GTM setEmailCommand and Klaviyo identify if present; clears emarsysEmail cookie if absent
+      - customerGuid: Stored in userInfo.customerGuid; written to customerGuid cookie on base domain
+      - isAnonymous: Determines isLogined signal value (isLogined = !isAnonymous)
+      - machineToken: Used for sessionStorage cache validation (compared against current MACHINE_TOKEN cookie)
+
+implementation_logic:
+  session_cache_strategy:
+    rule: |
+      On component mount (useVisibleTask$), the header first checks sessionStorage for a
+      USER_INFO entry. The cached entry is only used if BOTH conditions are met:
+        1. userInfoData.region === settings().website (matches current site/region)
+        2. userInfoData.machineToken === current MACHINE_TOKEN cookie value
+      If either condition fails (different region, expired token, or no cache), a fresh
+      call to getCurrentLoginSession is made. The result is then saved back to sessionStorage
+      with the current region and token attached.
+    critical: true
+
+  tools_options_region_filter:
+    rule: |
+      The toolsOptions computed array always contains: Go Quick, My Reminders, AI Art Gallery.
+      "AI Photo to Art" (pixlab subdomain) is added ONLY for the GB region.
+      Region is determined by getSiteSetting() from the server configuration.
+    critical: false
+
+  logout_cookie_clearing:
+    rule: |
+      handleLogout clears five cookies across all domain variants:
+        emarsysEmail, MACHINE_TOKEN, CartCount, customerGuid, isAnonymous
+      Cookies are cleared using eraseCookie which removes them from the base domain and all
+      sub-domains returned by getDomainNames(). After clearing, pushUserLogout is called
+      for GTM. Then: if the current pathname starts with "/account/", navigate to home ("/");
+      otherwise reload the current page.
+    critical: true
+
+  reminder_auth_gate:
+    rule: |
+      When the "My Reminders" tools item is clicked, handleReminderClick runs:
+        1. Always fires a Matomo CLICK_REMINDERS event
+        2. If isLogined.value is true: navigate to /account/reminders (full redirect)
+        3. If isLogined.value is false: set showReminderPopup.value = true (show modal)
+      This is the only tools item with special click handling; all others are plain hrefs.
+    critical: false
+
+  dropdown_hover_vs_click:
+    rule: |
+      On non-touch devices (useIsTouchDevice returns false):
+        - Tools and account dropdowns open on mouseMove (hover) and close on mouseOut
+      On touch devices:
+        - Dropdowns open/close only on click (handleClickTools / handleClickAccount)
+      Both dropdowns are mutually exclusive: opening one closes the other.
+    critical: false
+
+visibility_map:
+  mobile_menu_button:
+    condition: "showMenu is true AND viewport < xl breakpoint"
+    default: hidden (xl:hidden applied — hamburger only on mobile/tablet)
+
+  navigation_menu:
+    condition: "showMenu is true"
+    default: visible
+
+  global_search:
+    condition: "region is NL (site === 'NL' or equivalent)"
+    default: hidden
+
+  tools_dropdown_panel:
+    condition: "showToolsDropDown.value is true"
+    default: hidden
+
+  user_dropdown_panel:
+    condition: "showUserDropDown.value is true"
+    default: hidden
+
+  cart_badge_count:
+    condition: "cartCount.value !== '0'"
+    default: hidden (badge not shown when cart is empty)
+
+  logged_in_account_menu:
+    condition: "isLogined.value is true"
+    default: hidden (shows logged-out buttons when false)
+
+  logged_out_buttons:
+    condition: "isLogined.value is false"
+    default: visible (Sign In + Sign Up shown by default until session loads)
+
+  desktop_user_greeting:
+    condition: "isLogined.value is true AND viewport >= md breakpoint"
+    default: hidden
+
+  user_initials_circle:
+    condition: "isLogined.value is true AND viewport < md breakpoint"
+    default: hidden
+
+  reminder_creation_modal:
+    condition: "showReminderPopup.value is true"
+    default: hidden

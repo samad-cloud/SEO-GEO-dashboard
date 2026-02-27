@@ -1,0 +1,194 @@
+name: MarketingContentData
+source:
+  path: src/data/marketing-content-data.ts
+  lines: 1-29
+  type: data
+  language: typescript
+
+description: |
+  Marketing content data structures for product pages and promotional sections.
+  Defines types for bulletins, images, rows, and marketing content patterns.
+  Used to render marketing sections with various layout patterns (numbered 1-N).
+
+exports:
+  - name: Bulletin
+    type: interface
+    description: Marketing bulletin with image and text
+  - name: Image
+    type: interface
+    description: Image with dimensions
+  - name: Row
+    type: interface
+    description: Marketing row with subtitle, text, and image
+  - name: Marketingcontents
+    type: interface
+    description: Marketing content section with title, pattern, and content blocks
+  - name: MarketingContentData
+    type: interface
+    description: Container for marketing content sections
+
+data_structures:
+  Bulletin:
+    fields:
+      imageURL:
+        type: string
+        required: true
+        description: URL to bulletin icon/image
+      text:
+        type: string
+        required: true
+        description: Bulletin text content
+
+  Image:
+    fields:
+      url:
+        type: string
+        required: true
+        description: Image URL
+      width:
+        type: string
+        required: true
+        description: Image width (CSS value, e.g., "300px")
+      height:
+        type: string
+        required: true
+        description: Image height (CSS value, e.g., "200px")
+
+  Row:
+    fields:
+      subtitle:
+        type: string
+        required: true
+        description: Row subtitle/heading
+      text:
+        type: string
+        required: true
+        description: Row text content
+      imageURL:
+        type: string
+        required: true
+        description: Row image URL
+
+  Marketingcontents:
+    fields:
+      title:
+        type: string
+        required: true
+        description: Marketing section title
+      pattern:
+        type: number
+        required: true
+        description: Layout pattern identifier (1, 2, 3, etc.) determining rendering template
+      paragraphs:
+        type: string[]
+        required: true
+        description: Array of paragraph text blocks
+      bulletins:
+        type: Bulletin[]
+        required: true
+        description: Array of bulletin items (icons with text)
+      images:
+        type: Image[]
+        required: true
+        description: Array of images with dimensions
+      rows:
+        type: Row[]
+        required: true
+        description: Array of content rows (subtitle/text/image trios)
+
+  MarketingContentData:
+    fields:
+      MarketingContent:
+        type: Marketingcontents[]
+        required: true
+        description: Array of marketing content sections for the page
+
+types:
+  Bulletin:
+    description: Marketing bulletin item with icon image and text
+    fields:
+      - name: imageURL
+        type: string
+        description: URL to bulletin icon or image
+      - name: text
+        type: string
+        description: Bulletin text content
+
+  Image:
+    description: Image with explicit CSS width and height dimensions
+    fields:
+      - name: url
+        type: string
+        description: Image URL
+      - name: width
+        type: string
+        description: Image width as CSS value (e.g., "300px")
+      - name: height
+        type: string
+        description: Image height as CSS value (e.g., "200px")
+
+  Row:
+    description: Marketing content row with subtitle heading, text, and image URL
+    fields:
+      - name: subtitle
+        type: string
+        description: Row subtitle or heading
+      - name: text
+        type: string
+        description: Row body text content
+      - name: imageURL
+        type: string
+        description: Row image URL
+
+  Marketingcontents:
+    description: A complete marketing section with title, numeric pattern identifier, and content arrays
+    fields:
+      - name: title
+        type: string
+        description: Marketing section title
+      - name: pattern
+        type: number
+        description: Layout pattern identifier (e.g., 1, 2, 3) that determines which rendering template to use
+      - name: paragraphs
+        type: "string[]"
+        description: Array of paragraph text blocks
+      - name: bulletins
+        type: "Bulletin[]"
+        description: Array of bulletin items
+      - name: images
+        type: "Image[]"
+        description: Array of images with dimensions
+      - name: rows
+        type: "Row[]"
+        description: Array of content rows
+
+  MarketingContentData:
+    description: Top-level container wrapping all marketing content sections for a page
+    fields:
+      - name: MarketingContent
+        type: "Marketingcontents[]"
+        description: Array of marketing content sections
+
+behavior:
+  - step: 1
+    action: "Export TypeScript interfaces defining marketing content data structures for product pages and promotional sections"
+  - step: 2
+    action: "Bulletin interface defines a marketing bulletin item with an imageURL (icon/image) and text content, used for icon-with-text marketing callouts"
+  - step: 3
+    action: "Image interface defines an image with url, width, and height as CSS string values (e.g., '300px'), used for sized images within marketing layouts"
+  - step: 4
+    action: "Row interface defines a marketing content row with subtitle heading, text content, and imageURL — used for repeating subtitle/text/image trios in marketing sections"
+  - step: 5
+    action: "Marketingcontents interface defines a complete marketing section with title, numeric pattern identifier (determines which rendering template to use, e.g., pattern 1, 2, 3), and arrays of paragraphs, bulletins, images, and rows"
+  - step: 6
+    action: "MarketingContentData is the top-level container wrapping an array of Marketingcontents sections — represents all marketing content blocks for a product page"
+  - step: 7
+    action: "Consumed by product-page-service for data loading, and by share/accordion and share/content components for rendering pattern-based marketing layouts"
+
+dependencies:
+  imports: []
+
+used_by:
+  - "~/services/product-page-service.ts"
+  - "~/components/share/accordion.tsx"
+  - "~/components/share/content.tsx"

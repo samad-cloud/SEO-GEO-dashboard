@@ -1,0 +1,314 @@
+name: ProductCarousel
+source: src/components/product-page/product-carousel/product-carousel.tsx
+description: |
+  Interactive image carousel for the product page. Displays an ordered list of
+  product images (and an optional embedded video) with touch-swipe support on
+  mobile and thumbnail/dot navigation below the main slide. Supports an optional
+  price tag overlay (PriceTag sub-component) that shows the cheapest or
+  preselected filter price. Navigation emits Matomo analytics events on every
+  slide change.
+
+exports:
+  - name: default
+    type: component$<IProductCarouselProps>
+    description: Default Qwik component export — the main carousel
+  - name: ProductCarouseImage
+    type: interface
+    description: Shape of a single carousel image item
+
+props:
+  - name: productImages
+    type: "Array<ProductCarouseImage>"
+    required: true
+    description: Ordered list of images (and video icon placeholder) to display
+  - name: changeActiveSlide
+    type: "PropFunction<(index: number) => void>"
+    required: true
+    description: Callback to update the active slide index in the parent
+  - name: carousel
+    type: "{ activeIndex: number }"
+    required: true
+    description: Controlled carousel state — current active slide index
+  - name: product
+    type: ProductPageData
+    required: true
+    description: Full product page data (used for embededVideo, embededVideoIcon, optionData)
+  - name: showPriceTag
+    type: boolean
+    required: false
+    description: Whether to show the price tag overlay on the active slide
+  - name: preselectedRefId
+    type: string
+    required: false
+    description: Pre-selected product refCode used to pick the price tag filter
+  - name: productType
+    type: PlatinumProductTypeEnum
+    required: true
+    description: Determines the visual style of the price tag overlay
+  - name: displayDotOnMoble
+    type: boolean
+    required: false
+    description: Show dot indicators instead of thumbnails on mobile
+  - name: displayDotOnDesktop
+    type: boolean
+    required: false
+    description: Show dot indicators instead of thumbnails on desktop
+  - name: displayDotBellow
+    type: boolean
+    required: false
+    description: If true, dots/thumbnails render below the slide (not overlaid)
+  - name: displayFullWidthOnMobile
+    type: boolean
+    required: false
+    description: Reserved prop (not yet wired to logic in this version)
+  - name: dotSize
+    type: number
+    required: false
+    description: Pixel size for dot indicators (defaults to 16px)
+  - name: defaultStartingPosition
+    type: number
+    required: false
+    default: 1
+    description: Slide index to activate on DOMContentLoaded
+
+context_consumed:
+  - name: ProductContext
+    source: ~/context/product-category-context
+    fields:
+      - product: Full product data (used for embededVideo, embededVideoIcon, optionData.filters)
+
+component_structure:
+  - SlidesContainer: Horizontally translated div containing all slides; moves by translateX based on activeIndex
+  - ImageSlide: Rendered for each non-video image in productImages
+  - VideoSlide: Rendered when image.url === product.embededVideoIcon; injects iframe or video via dangerouslySetInnerHTML
+  - PriceTag: Conditional overlay on image slides showing discounted price (Canvas or default style)
+  - NavigationRow: Thumbnail list or dot list below main slide
+
+child_components:
+  - name: Image
+    source: "@unpic/qwik"
+    purpose: Renders optimised product images and thumbnails
+    props:
+      - src: string
+      - aspectRatio: "105 / 62" (main) or "784 / 507" (thumbnail)
+      - priority: true for index 0
+      - alt: string
+  - name: PriceTag
+    purpose: Price overlay showing discounted price and sale label
+    props:
+      - priceTag: Filter
+      - showPriceTag: boolean
+      - productType: PlatinumProductTypeEnum
+
+data_structure:
+  ProductCarouseImage:
+    - url: string
+    - altText: string
+
+  CarouselStatus:
+    - drag: boolean
+    - direction: boolean (true = swiping right/prev)
+    - threshold: number (7px)
+    - startingX: number
+    - startingY: number
+
+behavior:
+  - On DOMContentLoaded:
+      1. Set active slide to defaultStartingPosition (default 1)
+      2. If product-video element exists, call generateElement(product.embededVideo) and inject HTML
+  - On touch start: record startingX, startingY; reset drag to false
+  - On touch move: if movement exceeds 7px threshold, set drag=true and record direction
+  - On touch end: if drag is true, call handleCarouselButtonClick(-1) for right swipe (prev) or +1 for left swipe (next)
+  - handleCarouselButtonClick:
+      1. Wraps from last slide back to index 0 when direction < 0 at index 0
+      2. Emits Matomo CLICK_IMAGE_CAROUSEL event with image URL
+      3. Calls changeActiveSlide with the new index
+  - Thumbnail/dot click: emits Matomo event, calls changeActiveSlide with the clicked index
+  - Price tag on mount (useTask$): if showPriceTag=true, call processProductPageData to find preselectedFilter or cheapestFilter and set priceTag signal
+
+styling:
+  - Section: overflow-hidden w-full relative product_page_carousel_wrapper
+  - Slides container: each slide uses translateX(-100% * activeIndex) transition
+  - Active thumbnail: after:: pseudo-element with brand color bar at bottom
+  - Active dot: bg-[#f02084]; inactive dot: bg-[rgba(0,0,0,.2)]
+  - Scoped CSS loaded from style.css via useStylesScoped$
+
+api_calls: []
+
+dependencies:
+  qwik:
+    - component$, useContext, useOnDocument, useSignal, useStore, useStylesScoped$, useTask$, $ from @builder.io/qwik
+  external:
+    - Image from @unpic/qwik
+    - isBrowser from @builder.io/qwik/build
+    - inlineTranslate from qwik-speak
+  services:
+    - processProductPageData from ~/services/product-page-service
+  contexts:
+    - ProductContext from ~/context/product-category-context
+  utilities:
+    - formatPrice, getPriceOff from ~/utility/format
+    - pushMatomoEvent, MatomoCategory, MatomoEvent from ~/utility/matomo
+  types:
+    - Filter from ~/data/option-data
+    - ProductPageData from ~/services/product-page-service
+    - PlatinumProductTypeEnum from ~/services/product-category-service
+
+used_by:
+  - ProductPageBaseTemplate
+  - ProductPageBasicTemplate
+  - ProductPageFixedTemplate
+  - ProductPageFixedThemeTemplate
+  - ProductPageHubTemplate
+  - PhotoCanvasPrintsNewTemplate
+  - PhotoCanvasPrintsNewTemplateV3
+  - PhotoCanvasPrintsBundledTemplate
+  - PhotoCanvasPrintsHubBundledTemplate
+  - PhotoCanvasPrintsTemplateV2
+  - PhotoCanvasPrintsBaseTemplate
+  - PhotoCalendarsBaseTemplate
+  - PhotoCalendarsBalooRadioTemplate
+  - PhotoCalendarsDaisyTemplate
+  - PhotoCalendarsJbc2024Template
+  - ProductPageContainer
+
+security:
+  - dangerouslySetInnerHTML used for video embed — only renders product.embededVideo which is server-sourced API data
+  - generateElement runs only in browser (isBrowser guard)
+
+edge_cases:
+  - Images with empty url are filtered out before render and count
+  - If no productImages have a valid url, the carousel renders an empty slides container
+  - Video slide only shows when embededVideoIcon is present in productImages; falls back to empty string if src extraction fails
+  - defaultStartingPosition=0 is respected (falsy check avoided by undefined check)
+  - Wrap-around: navigating prev at index 0 jumps to last valid slide
+
+notes:
+  - NudgeData sub-component is commented out (not active in this version)
+  - The carousel is a controlled component — activeIndex state lives in the parent
+
+types:
+  ProductCarouseImage:
+    description: Single carousel image entry
+    fields:
+      - name: url
+        type: string
+      - name: altText
+        type: string
+
+  IProductCarouselProps:
+    description: Props for the ProductCarousel component
+    fields:
+      - name: productImages
+        type: "Array<ProductCarouseImage>"
+      - name: changeActiveSlide
+        type: "PropFunction<(index: number) => void>"
+      - name: carousel
+        type: "{ activeIndex: number }"
+      - name: product
+        type: ProductPageData
+      - name: showPriceTag
+        type: boolean
+        optional: true
+      - name: preselectedRefId
+        type: string
+        optional: true
+      - name: productType
+        type: PlatinumProductTypeEnum
+      - name: displayDotOnMoble
+        type: boolean
+        optional: true
+      - name: displayDotOnDesktop
+        type: boolean
+        optional: true
+      - name: displayDotBellow
+        type: boolean
+        optional: true
+      - name: displayFullWidthOnMobile
+        type: boolean
+        optional: true
+      - name: dotSize
+        type: number
+        optional: true
+      - name: defaultStartingPosition
+        type: number
+        optional: true
+
+  PriceTagProps:
+    description: Props for the internal PriceTag sub-component
+    fields:
+      - name: priceTag
+        type: Filter
+      - name: showPriceTag
+        type: boolean
+      - name: productType
+        type: PlatinumProductTypeEnum
+
+  CarouselStatusStore:
+    description: Internal touch gesture tracking store
+    fields:
+      - name: drag
+        type: boolean
+      - name: direction
+        type: boolean
+      - name: threshold
+        type: number
+      - name: startingX
+        type: number
+      - name: startingY
+        type: number
+
+field_consumption:
+  ProductContext.product:
+    consumed:
+      - embededVideo: Passed to generateElement to produce video HTML
+      - embededVideoIcon: Used to identify which slide index is the video placeholder
+      - optionData.filters: Passed to processProductPageData for price tag calculation
+    ignored:
+      - All other ProductPageData fields are not read by this component directly
+
+implementation_logic:
+  video_generation:
+    rule: |
+      generateElement parses the HTML string in product.embededVideo to extract a src attribute.
+      If src contains "youtube", an iframe with autoplay=0&mute=1&enablejsapi=1&controls=1&loop=0 is produced.
+      Otherwise a <video playsinline controls muted loop> tag is produced.
+      This runs client-side only (isBrowser guard).
+    critical: true
+
+  price_tag_selection:
+    rule: |
+      If showPriceTag=true, processProductPageData is called with filters and preselectedRefId.
+      If preselectedFilter is found, it wins over cheapestFilter.
+      The selected filter is stored in the priceTag signal and passed to PriceTag.
+    critical: false
+
+  prev_wrap_around:
+    rule: |
+      When handleCarouselButtonClick is called with direction=-1 and activeIndex is 0,
+      the carousel wraps to the last valid slide index (images filtered to non-empty urls).
+    critical: false
+
+  price_tag_canvas_style:
+    rule: |
+      PlatinumProductTypeEnum.Canvas uses a charcoal-grey tag image with white discount percentage
+      on left third and name/price on right. All other product types use the pink tag image
+      with name, regular price, and sale price stacked.
+    critical: false
+
+visibility_map:
+  price_tag_overlay:
+    condition: "priceTag.value is non-null AND showPriceTag prop is true"
+    default: hidden
+
+  dot_indicators:
+    condition: "displayDotOnMoble=true (mobile) OR displayDotOnDesktop=true (desktop)"
+    default: hidden (thumbnails shown by default)
+
+  thumbnail_strip:
+    condition: "displayDotOnMoble=false (mobile) OR displayDotOnDesktop=false (desktop)"
+    default: visible
+
+  video_slide:
+    condition: "image.url === product.embededVideoIcon"
+    default: hidden (only shown when product has an embedded video)

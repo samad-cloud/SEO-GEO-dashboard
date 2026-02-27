@@ -1,0 +1,456 @@
+name: ReminderCreationModal
+source: src/components/reminders/reminder-creation-modal.tsx
+description: |
+  Modal dialog for creating a single reminder. Renders a full-screen overlay
+  with a two-section layout: a scrollable form body (ReminderFormModular)
+  and a fixed footer with a submit button. Handles both authenticated and
+  anonymous user flows. Authenticated users: submits via the reminders API
+  and redirects to the new reminder's detail page. Anonymous users: saves
+  reminder data to sessionStorage and redirects to login with a returnUrl
+  of /account/reminders. Resets all form state each time the modal opens.
+  Renders null when isOpen is false.
+
+exports:
+  - name: default
+    type: "component$<ReminderCreationModalProps>"
+    description: Default Qwik component export
+
+props:
+  - name: isOpen
+    type: boolean
+    required: true
+    description: Whether the modal is visible; renders null when false
+  - name: onClose
+    type: "QRL<() => void>"
+    required: true
+    description: Callback invoked when user dismisses the modal
+  - name: onSuccess
+    type: "QRL<() => void>"
+    required: false
+    description: Optional callback invoked after a successful reminder creation (before redirect)
+  - name: maxReminders
+    type: number
+    required: true
+    description: Maximum number of reminders allowed (1 for logged-in users, 3 for anonymous users per Header spec)
+  - name: isAuthenticated
+    type: boolean
+    required: true
+    description: Whether the user is currently authenticated
+  - name: authLoading
+    type: boolean
+    required: false
+    description: Indicates auth state is still loading (currently unused in render logic)
+  - name: machineToken
+    type: string
+    required: false
+    description: User session token (accepted but passed down; actual API calls use service layer directly)
+  - name: userEmail
+    type: string
+    required: false
+    description: User email (accepted but not directly used in current implementation)
+
+context_consumed:
+  - name: ToastContext
+    source: ~/context/toast-context
+    fields:
+      - showError: QRL to show an error toast message
+
+component_structure:
+  guard: "if (!isOpen) return null"
+  root: "div.fixed.inset-0.z-[9999] (overlay)"
+  children:
+    - dialog_panel: "div.bg-white.rounded-lg.shadow-xl.max-w-2xl.w-full.max-h-[90vh] (modal card)"
+      children:
+        - header: "flex items-center justify-between p-6 border-b"
+          contains: "h2 (title: t('create_reminders')), close button (SVGIcon 'close')"
+        - body: "flex-1 overflow-y-auto p-6"
+          contains: "ReminderFormModular"
+        - footer: "border-t px-6 py-4"
+          contains: "Submit button (t('creating') when submitting, t('create') otherwise)"
+
+child_components:
+  - name: ReminderFormModular
+    path: "~/components/reminders/reminder-form-modular"
+    props:
+      - index: 0 (always the first/only reminder)
+      - initialData: "reminders[0] || EMPTY_REMINDER"
+      - onSubmit: handleSubmitData (QRL — receives ReminderFormData, triggers final submit)
+      - clearPhotos: clearPhotos.value
+      - shouldReset: shouldResetForm.value
+      - submitBtnId: '"reminder-submit-1"'
+  - name: SVGIcon
+    path: "~/components/svg-icon/svg-icon"
+    usage: close button icon (name="close", 24x24)
+
+data_structure:
+  SerializableReminderData:
+    description: "ReminderFormData without the photoFile field (non-serializable File excluded for cross-boundary safety)"
+    fields:
+      - personName: string (default "")
+      - occasionTypeId: string (default "")
+      - eventDate: "{ day: number; month: number } (default { day: 0, month: 0 })"
+      - eventYear: "number | undefined"
+      - relationshipId: string (default "")
+      - customMessage: string (default "")
+      - photoUpload: "PhotoUploadResult | undefined"
+      - photoUploads: "PhotoUploadResult[] (default [])"
+
+behavior:
+  - If isOpen is false: return null immediately (no DOM rendered)
+  - On isOpen change to true (useTask$): call resetModalState()
+  - resetModalState:
+      1. Set isSubmitting=false, clearPhotos=false
+      2. Set shouldResetForm=true, then after 100ms set it back to false (pulse signal to ReminderFormModular)
+      3. Reset reminders[0] to EMPTY_REMINDER
+      4. Delete all keys from currentErrors store
+  - User clicks close button:
+      1. Set clearPhotos=true
+      2. After 100ms: set clearPhotos=false, call resetModalState(), call onClose()
+  - User clicks submit button:
+      1. Programmatically clicks the hidden submit button inside ReminderFormModular (id="reminder-submit-1")
+      2. ReminderFormModular validates and calls handleSubmitData with the validated ReminderFormData
+  - handleSubmitData:
+      1. Copy data into reminders[0]
+      2. Immediately call handleFinalSubmit()
+  - handleFinalSubmit (authenticated):
+      1. Set isSubmitting=true
+      2. Filter reminders for non-empty personName
+      3. If none, show error toast t("your_data_is_empty"), return
+      4. Call transformReminderData on each valid reminder to get CreateReminderDto[]
+      5. Call createReminders(dtos) via POST /reminders
+      6. On success (result.reminders.length > 0):
+           - Push Matomo CREATE_REMINDER event
+           - Call onSuccess callback if provided
+           - Redirect to /reminders/{result.reminders[0].id}
+      7. On failure (no reminders in response):
+           - Push Matomo CREATE_REMINDER_FAILED event
+           - Show error toast t("failed_to_process_saved_reminders")
+  - handleFinalSubmit (anonymous):
+      1. Set isSubmitting=true
+      2. Filter reminders for non-empty personName
+      3. If none, show error toast t("your_data_is_empty"), return
+      4. Build tempReminderData object (first valid reminder, excludes photoFile)
+      5. Save [tempReminderData] to sessionStorage under StorageKey.TEMP_REMINDERS
+      6. Push Matomo CREATE_REMINDER event
+      7. Call onSuccess callback if provided
+      8. Redirect to /login/signin?destinationUrl=/account/reminders (URL-encoded)
+  - On any exception in handleFinalSubmit:
+      - Show error toast t("an_unexpected_error_occurred")
+      - finally block: set isSubmitting=false
+
+api_calls:
+  - POST /reminders
+    service: createReminders (from ~/services/reminder-service)
+    base: "${getSiteSetting().baseAPIEndpoint}/user/reminders/v1"
+    full_path: "${baseAPIEndpoint}/user/reminders/v1/reminders"
+    payload: "CreateReminderDto[]"
+    response: CreateRemindersResponse
+    auth: via baseCustomerReminderAPI (axios instance; auth headers configured in http.ts)
+    triggered_when: isAuthenticated === true
+
+dependencies:
+  qwik:
+    - type QRL, component$, useSignal, useStore, useTask$, $ from @builder.io/qwik
+  qwik-speak:
+    - inlineTranslate
+  components:
+    - SVGIcon from ~/components/svg-icon/svg-icon
+    - ReminderFormModular from ~/components/reminders/reminder-form-modular
+  contexts:
+    - useToast from ~/context/toast-context
+  services:
+    - createReminders, transformReminderData from ~/services/reminder-service
+  utilities:
+    - saveDataToSessionStorage, StorageKey from ~/utility/storage
+    - MatomoCategory, MatomoEvent, pushMatomoEvent from ~/utility/matomo
+  types:
+    - ReminderFormData, ReminderFormErrors from ~/context/reminder-context
+
+used_by:
+  - Header
+  - RemindersContainer
+
+session_storage:
+  write:
+    - StorageKey.TEMP_REMINDERS: "[tempReminderData]" (anonymous user flow only, before login redirect)
+
+analytics:
+  matomo:
+    - "MatomoCategory.REMINDERS / MatomoEvent.CREATE_REMINDER (on successful creation)"
+    - "MatomoCategory.REMINDERS / MatomoEvent.CREATE_REMINDER_FAILED (on API failure for authenticated users)"
+
+security:
+  - Anonymous users do not call the API; data is saved to sessionStorage only
+  - The API call (createReminders) is only made when isAuthenticated === true
+  - Session storage key is StorageKey.TEMP_REMINDERS (not a raw string)
+  - No machineToken is manually passed to the API call; the axios instance handles auth internally
+
+edge_cases:
+  - isOpen=false: renders null; no DOM, no event listeners, no state
+  - Empty personName: validation in handleFinalSubmit filters out empty reminders; shows toast and returns
+  - API returns empty reminders array: treated as failure (shows error toast, fires CREATE_REMINDER_FAILED Matomo event)
+  - Network error in createReminders: caught by outer try/catch; shows generic error toast
+  - Double-click on submit: isSubmitting disables the submit button (disabled attribute)
+  - authLoading prop: accepted but not used in current render logic — reserved for future loading state
+
+notes:
+  - The submit button in the footer does not directly submit the form; it programmatically clicks a hidden button inside ReminderFormModular (id="reminder-submit-1") to trigger that component's own validation
+  - maxReminders prop is accepted but not used in the current implementation (single-reminder-at-a-time modal)
+  - The 100ms timeout in handleClose is a coordination delay to let photo cleanup signals propagate before resetting state
+
+# ── NEW SECTIONS ────────────────────────────────────────────────────────────
+
+types:
+  ReminderCreationModalProps:
+    description: Component props interface
+    fields:
+      - name: isOpen
+        type: boolean
+      - name: onClose
+        type: "QRL<() => void>"
+      - name: onSuccess
+        type: "QRL<() => void>"
+        optional: true
+      - name: maxReminders
+        type: number
+      - name: isAuthenticated
+        type: boolean
+      - name: authLoading
+        type: boolean
+        optional: true
+      - name: machineToken
+        type: string
+        optional: true
+      - name: userEmail
+        type: string
+        optional: true
+
+  SerializableReminderData:
+    description: "ReminderFormData without the non-serializable photoFile field"
+    fields:
+      - name: personName
+        type: string
+      - name: occasionTypeId
+        type: string
+      - name: eventDate
+        type: "{ day: number; month: number }"
+      - name: eventYear
+        type: "number | undefined"
+        optional: true
+      - name: relationshipId
+        type: string
+      - name: customMessage
+        type: string
+      - name: photoUpload
+        type: "PhotoUploadResult | undefined"
+        optional: true
+      - name: photoUploads
+        type: "PhotoUploadResult[]"
+
+  ReminderFormData:
+    description: Full form data including non-serializable File (from reminder-context.ts)
+    source: ~/context/reminder-context
+    fields:
+      - name: personName
+        type: string
+      - name: occasionTypeId
+        type: string
+      - name: eventDate
+        type: "{ day: number; month: number }"
+      - name: eventYear
+        type: "number | undefined"
+        optional: true
+      - name: relationshipId
+        type: "string | undefined"
+        optional: true
+      - name: customMessage
+        type: "string | undefined"
+        optional: true
+      - name: photoFile
+        type: "File | undefined"
+        optional: true
+        notes: Excluded from SerializableReminderData for Qwik cross-boundary safety
+      - name: photoUpload
+        type: "PhotoUploadResult | undefined"
+        optional: true
+      - name: photoUploads
+        type: "PhotoUploadResult[] | undefined"
+        optional: true
+      - name: productCategories
+        type: "string[] | undefined"
+        optional: true
+
+  ReminderFormErrors:
+    description: Validation error map for reminder form fields
+    source: ~/context/reminder-context
+    fields:
+      - name: personName
+        type: "string | undefined"
+        optional: true
+      - name: occasionTypeId
+        type: "string | undefined"
+        optional: true
+      - name: eventDate
+        type: "string | undefined"
+        optional: true
+      - name: eventYear
+        type: "string | undefined"
+        optional: true
+      - name: relationshipType
+        type: "string | undefined"
+        optional: true
+      - name: customMessage
+        type: "string | undefined"
+        optional: true
+
+  CreateReminderDto:
+    description: API request body shape for a single reminder (produced by transformReminderData)
+    source: ~/context/reminder-context
+    fields:
+      - name: personName
+        type: string
+      - name: occasionTypeId
+        type: string
+      - name: eventDate
+        type: "{ day: number; month: number } | undefined"
+        optional: true
+        notes: Only included when day > 0 && month > 0
+      - name: eventYear
+        type: "number | undefined"
+        optional: true
+      - name: relationshipId
+        type: "string | undefined"
+        optional: true
+      - name: customMessage
+        type: "string | undefined"
+        optional: true
+      - name: photoUrls
+        type: "string[] | undefined"
+        optional: true
+        notes: Used when photo IDs are not available (anonymous photo uploads)
+      - name: photo_ids
+        type: "string[] | undefined"
+        optional: true
+        notes: Used when photos were uploaded to authenticated storage (have non-empty id)
+
+  CreateRemindersResponse:
+    description: API response from POST /reminders
+    source: ~/context/reminder-context
+    fields:
+      - name: reminders
+        type: "ReminderResponse[]"
+      - name: count
+        type: number
+
+  ReminderResponse:
+    description: Single reminder as returned by the create API
+    source: ~/context/reminder-context
+    fields:
+      - name: id
+        type: string
+        notes: Used for redirect URL /reminders/{id}
+      - name: personName
+        type: string
+      - name: occasionTypeId
+        type: string
+      - name: eventDate
+        type: "{ day: number; month: number } | undefined"
+        optional: true
+      - name: eventYear
+        type: "number | undefined"
+        optional: true
+      - name: relationshipType
+        type: "string | undefined"
+        optional: true
+      - name: customMessage
+        type: "string | undefined"
+        optional: true
+      - name: photoUrls
+        type: "string[] | undefined"
+        optional: true
+      - name: createdAt
+        type: string
+      - name: updatedAt
+        type: string
+
+field_consumption:
+  ReminderFormData:
+    consumed:
+      - personName: Used as validation check (non-empty) and copied to SerializableReminderData
+      - occasionTypeId: Copied to SerializableReminderData and passed to transformReminderData
+      - eventDate: Copied to SerializableReminderData; transformReminderData only includes it if day>0 && month>0
+      - eventYear: Copied to SerializableReminderData and passed to transformReminderData
+      - relationshipId: Copied to SerializableReminderData and passed to transformReminderData
+      - customMessage: Copied to SerializableReminderData and passed to transformReminderData
+      - photoUploads: Copied to SerializableReminderData; used by transformReminderData for photo_ids or photoUrls
+      - productCategories: Copied into anonymous tempReminderData only
+    ignored:
+      - photoFile: Excluded from SerializableReminderData (non-serializable for Qwik cross-boundary)
+      - photoUpload: Kept in SerializableReminderData but not used in API submission logic
+
+  CreateRemindersResponse:
+    consumed:
+      - reminders: Checked for length > 0 to determine success; reminders[0].id used for redirect URL
+      - count: Not consumed
+    ignored:
+      - count: Present in response but not read
+
+wire_format:
+  "POST ${baseAPIEndpoint}/user/reminders/v1/reminders":
+    description: Creates one reminder for an authenticated user
+    payload_type: "CreateReminderDto[] (JSON array)"
+    content_type: application/json
+    mapping:
+      "reminders[0].personName (from ReminderFormData)": personName
+      "reminders[0].occasionTypeId": occasionTypeId
+      "reminders[0].eventDate (only if day>0 && month>0)": eventDate
+      "reminders[0].eventYear (only if provided)": eventYear
+      "reminders[0].relationshipId": relationshipId
+      "reminders[0].customMessage": customMessage
+      "photo IDs (if uploaded to authenticated storage)": photo_ids
+      "photo URLs (if anonymous upload only)": photoUrls
+    notes:
+      - transformReminderData handles the conditional logic for eventDate, eventYear, photo_ids vs photoUrls
+      - Only called when isAuthenticated === true
+
+visibility_map:
+  entire_modal:
+    condition: props.isOpen === true
+    default: hidden (returns null)
+
+  submit_button:
+    condition: always visible when modal is open
+    disabled_when: isSubmitting.value === true
+
+  submit_button_text:
+    condition: isSubmitting.value === true
+    shows: "t('creating')"
+    default: "t('create')"
+
+implementation_logic:
+  indirect_form_submission:
+    rule: |
+      The footer submit button does NOT directly submit the form. Instead it
+      programmatically clicks the hidden submit button rendered by
+      ReminderFormModular (id="reminder-submit-1"). This delegates validation
+      to ReminderFormModular's internal logic, which then calls the onSubmit
+      QRL (handleSubmitData) only if validation passes.
+    critical: true
+
+  authenticated_vs_anonymous_split:
+    rule: |
+      When isAuthenticated=true: data goes to the API via createReminders(),
+      and the user is redirected to /reminders/{id} on success.
+      When isAuthenticated=false: data is saved to sessionStorage under
+      StorageKey.TEMP_REMINDERS, and the user is redirected to
+      /login/signin?destinationUrl=%2Faccount%2Freminders for post-login
+      reminder creation. No API call is made for anonymous users.
+    critical: true
+
+  photo_id_priority:
+    rule: |
+      transformReminderData gives priority to photo_ids (authenticated uploads
+      with non-empty IDs) over photoUrls (anonymous/URL-based uploads).
+      If photoUploads contains any items with a non-empty id, photo_ids is used.
+      Otherwise, photoUrls is used. Never both.
+    critical: false

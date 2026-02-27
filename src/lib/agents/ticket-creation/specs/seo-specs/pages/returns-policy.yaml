@@ -1,0 +1,45 @@
+page_id: returns-policy
+description: "Returns/exchange policy page with fully i18n-localized content."
+
+url:
+  pattern: "/returns-policy"
+  layout: "default"
+  i18n_rewrites:
+    NL: "/retourneerbeleid"
+    DE: "/ruckgaberecht"
+    IT: "/termini-di-restituzione"
+    ES: "/cambios-y-devoluciones"
+
+seo_contract:
+  title:
+    source: "i18n key: returns_policy.meta.title"
+    generating_mechanism: "inlineTranslate (qwik-speak)"
+  meta_description:
+    source: "i18n key: returns_policy.meta.description"
+  meta_keywords:
+    source: "i18n key: returns_policy.meta.keywords"
+  canonical:
+    pattern: "{domain}/returns-policy"
+  robots:
+    value: "Standard"
+  structured_data: "None"
+  hreflang:
+    count: 8
+    known_issues:
+      - "Hreflang incorrect for NL, DE, IT, ES rewritten URLs"
+  heading_hierarchy:
+    h1: "i18n key: returns_policy.title"
+
+file_chain:
+  route:
+    file: "src/routes/returns-policy/index.tsx"
+    spec: "../migration-specs/frontend/routes/returns-policy.yaml"
+  layout:
+    file: "src/routes/layout.tsx"
+    spec: "../migration-specs/frontend/layouts/layout-default.yaml"
+  middleware:
+    ref: "_architecture.yaml → middleware_pipeline"
+
+region_variations:
+  IT: "Policy item 4 is hidden"
+  NL: "Policy item 4 is hidden"

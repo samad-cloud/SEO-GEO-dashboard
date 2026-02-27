@@ -1,0 +1,183 @@
+name: AccordionHeader
+source: components/share/accordion/accordion-header.tsx
+description: >
+  Accordion header/trigger component that serves as the clickable area to expand or
+  collapse an accordion section. Displays slotted content (typically a heading) alongside
+  a chevron icon that rotates when expanded. Supports keyboard interaction (Enter and Space),
+  customizable styling for active/inactive states, and optional custom header icons.
+
+exports:
+  default:
+    type: component
+    description: AccordionHeader component (default export)
+
+props:
+  expanded:
+    type: boolean
+    required: true
+    description: Whether this accordion section is currently expanded
+  onChange:
+    type: "(id: number) => void"
+    required: true
+    description: >
+      Callback function invoked when the header is clicked or activated via keyboard.
+      Receives the numeric id of this section.
+  id:
+    type: number
+    required: true
+    description: Numeric identifier for this accordion section, passed to onChange callback
+  wrapperClass:
+    type: string
+    required: false
+    description: >
+      CSS classes applied when the section is collapsed.
+      Default: "px-3 lg:px-4 py-4 min-h-[44px] lg:min-h-[56px] cursor-pointer border-b"
+  activeWrapperClass:
+    type: string
+    required: false
+    description: >
+      CSS classes applied when the section is expanded.
+      Default: "px-3 lg:px-4 py-4 min-h-[44px] lg:min-h-[56px] cursor-pointer"
+  headerIcon:
+    type: JSXChildren
+    required: false
+    description: >
+      Optional custom icon to replace the default chevron arrow. If not provided,
+      the default SVGIcon "arrow-down" is rendered.
+  ariaControls:
+    type: string
+    required: false
+    description: >
+      ID of the controlled panel. When provided, the header gets id="{ariaControls}-header"
+      and aria-controls="{ariaControls}".
+
+component_structure:
+  root: div
+  attributes:
+    id: "'{ariaControls}-header' if ariaControls provided, otherwise undefined"
+    role: tab
+    tabIndex: 0
+    class: "activeWrapperClass when expanded, wrapperClass when collapsed"
+    aria-expanded: "string 'true' or 'false'"
+    aria-controls: ariaControls value
+  inner_layout:
+    container: div (flex justify-between items-center)
+    children:
+      - slot: Projected content (typically heading text)
+      - icon: headerIcon prop OR default SVGIcon "arrow-down"
+
+child_components:
+  - name: Slot
+    source: "@builder.io/qwik"
+    description: Content projection for header label/title
+  - name: SVGIcon
+    source: "~/components/svg-icon/svg-icon"
+    description: >
+      SVG icon component. Default renders "arrow-down" icon at 20x20px
+      with rotation animation on expand/collapse.
+
+data_structure: {}
+
+behavior:
+  click_handling:
+    - onClick calls onChange(id) to toggle this section
+  keyboard_handling:
+    - onKeyDown listens for Enter and Space keys
+    - Both keys call event.preventDefault() then onChange(id)
+    - Provides keyboard accessibility for the accordion trigger
+  icon_rotation:
+    - Default arrow icon rotates 180 degrees when expanded (rotate-180)
+    - Rotation uses 300ms duration CSS transition
+    - When collapsed, rotation is 0 degrees (rotate-0)
+  styling_toggle:
+    - Expanded state uses activeWrapperClass (defaults to no bottom border)
+    - Collapsed state uses wrapperClass (defaults to with bottom border)
+  accessibility:
+    - role="tab" identifies this as a tab-like trigger
+    - tabIndex={0} makes it focusable
+    - aria-expanded reflects current state as string "true"/"false"
+    - aria-controls links to the associated content panel
+
+styling:
+  framework: Tailwind CSS
+  default_collapsed: "px-3 lg:px-4 py-4 min-h-[44px] lg:min-h-[56px] cursor-pointer border-b"
+  default_expanded: "px-3 lg:px-4 py-4 min-h-[44px] lg:min-h-[56px] cursor-pointer"
+  inner_flex: "flex justify-between items-center text-[18px] font-bold text-[#333]"
+  icon_classes: "duration-300 flex-[0_0_20px] ml-4 lg:ml-8 fill-[#333]"
+  icon_rotation:
+    expanded: "rotate-180"
+    collapsed: "rotate-0"
+
+dependencies:
+  - "@builder.io/qwik": Slot, component$, PropFunction, JSXChildren types
+  - "~/components/svg-icon/svg-icon": SVGIcon component
+
+used_by:
+  - components/footer/footer-containerless.tsx
+  - components/footer/footer.tsx
+  - components/footer/footer-product-category.tsx
+  - components/footer/footer-canvas.tsx
+  - components/footer/footer-auth.tsx
+  - Various FAQ and product detail sections using accordion pattern
+
+security:
+  - No security concerns -- pure UI interaction component
+  - No user input handling beyond click/keyboard events
+
+notes:
+  - aria-expanded is passed as a template string which produces a string value, not boolean attribute
+  - The default wrapperClass includes a bottom border which is removed in the activeWrapperClass default
+  - The SVGIcon uses the name "arrow-down" and is expected to be a downward-pointing chevron
+  - The inner flex container has hardcoded text styling (18px, bold, #333) which affects slotted content
+  - The icon has flex-basis 20px (flex-[0_0_20px]) to prevent shrinking
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  IAccordionHeader:
+    description: Component props interface
+    fields:
+      - name: expanded
+        type: boolean
+      - name: onChange
+        type: "PropFunction<(id: number) => void>"
+      - name: id
+        type: number
+      - name: wrapperClass
+        type: string
+        optional: true
+      - name: activeWrapperClass
+        type: string
+        optional: true
+      - name: headerIcon
+        type: JSXChildren
+        optional: true
+      - name: ariaControls
+        type: string
+        optional: true
+
+visibility_map:
+  active_wrapper_class:
+    condition: "expanded === true"
+    default: hidden
+    notes: "Applies activeWrapperClass (default: no border-b) when expanded"
+  collapsed_wrapper_class:
+    condition: "expanded === false"
+    default: visible
+    notes: "Applies wrapperClass (default: includes border-b) when collapsed"
+  dom_id_attribute:
+    condition: "ariaControls is provided (truthy)"
+    default: hidden
+    notes: "id='{ariaControls}-header' only rendered when ariaControls prop is set"
+  custom_header_icon:
+    condition: "headerIcon prop is provided (truthy)"
+    default: hidden
+    notes: Renders the custom headerIcon instead of the default SVGIcon
+  default_arrow_icon:
+    condition: "headerIcon prop is falsy"
+    default: visible
+    notes: Default SVGIcon arrow-down rendered only when no headerIcon is provided
+  icon_rotate_180:
+    condition: "expanded === true"
+    default: hidden
+    notes: rotate-180 class applied to arrow icon when expanded; rotate-0 when collapsed

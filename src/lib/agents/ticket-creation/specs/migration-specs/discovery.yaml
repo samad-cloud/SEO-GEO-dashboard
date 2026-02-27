@@ -1,0 +1,761 @@
+repository: ecommerce-frontend-qwik
+source_path: C:\Users\JawadSaad\source\repos\ecommerce-frontend-qwik
+source_branch: releases/2025.12.22.1
+target_path: F:\ecommerce-frontend-qwik-specs
+analyzed_at: 2026-02-17T18:00:00Z
+scope: "Scoped analysis - specific routes and their full dependency trees"
+
+scope_definition:
+  routes:
+    - src/routes/[...productCategory]/index@categoryproduct.tsx
+    - src/routes/payment-methods/index.tsx
+    - src/routes/shipping-policy/index.tsx
+    - src/routes/delivery-rates/index.tsx
+    - src/routes/photo-quality/index.tsx
+    - src/routes/image-resolution/index.tsx
+    - src/routes/why-choose-printerpix/index.tsx
+    - src/routes/about-us/index.tsx
+    - src/routes/terms-and-conditions/index.tsx
+    - src/routes/track-my-order/index.tsx
+    - src/routes/contact-us/index.tsx
+    - src/routes/returns-policy/index.tsx
+    - src/routes/satisfaction-guarantee/index.tsx
+    - src/routes/bulk-ordering/index@bulkorder.tsx
+    - src/routes/sitemap-index.xml/index.tsx
+    - src/routes/sitemap-pages.xml/index.tsx
+    - src/routes/sitemap-products.xml/index.tsx
+    - src/routes/sitemap-categories.xml/index.tsx
+  rewrite_routes:
+    nl: [payment-methods, shipping-policy, delivery-rates, photo-quality, why-choose-printerpix, about-us, terms-and-conditions, track-my-order, contact-us, returns-policy]
+    de: [payment-methods, shipping-policy, photo-quality, image-resolution, why-choose-printerpix, about-us, terms-and-conditions, track-my-order, contact-us, returns-policy]
+    fr: [delivery-rates, satisfaction-guarantee]
+    it: [payment-methods, shipping-policy, delivery-rates, photo-quality, image-resolution, why-choose-printerpix, about-us, terms-and-conditions, contact-us, track-my-order, returns-policy]
+    es: [payment-methods, shipping-policy, delivery-rates, photo-quality, image-resolution, why-choose-printerpix, about-us, terms-and-conditions, track-my-order, contact-us, returns-policy]
+
+categories:
+  routes:
+    count: 18
+    path: src/routes/
+  layouts:
+    count: 3
+    path: src/routes/
+  components:
+    count: 90
+    path: src/components/
+  services:
+    count: 27
+    path: src/services/
+  utilities:
+    count: 11
+    path: src/utility/
+  contexts:
+    count: 3
+    path: src/context/
+  config:
+    count: 2
+    path: src/config/
+  data:
+    count: 3
+    path: src/data/
+
+analyzed_files:
+  # === LAYOUTS (3) ===
+  - file: src/routes/layout.tsx
+    category: layouts
+    estimated_complexity: complex
+    spec_path: frontend/layouts/layout-default.yaml
+  - file: src/routes/layout-categoryproduct.tsx
+    category: layouts
+    estimated_complexity: complex
+    spec_path: frontend/layouts/layout-categoryproduct.yaml
+  - file: src/routes/layout-bulkorder.tsx
+    category: layouts
+    estimated_complexity: simple
+    spec_path: frontend/layouts/layout-bulkorder.yaml
+
+  # === ROUTE PAGES (18) ===
+  - file: src/routes/[...productCategory]/index@categoryproduct.tsx
+    category: routes
+    estimated_complexity: simple
+    spec_path: frontend/routes/product-category.yaml
+  - file: src/routes/payment-methods/index.tsx
+    category: routes
+    estimated_complexity: simple
+    spec_path: frontend/routes/payment-methods.yaml
+  - file: src/routes/shipping-policy/index.tsx
+    category: routes
+    estimated_complexity: moderate
+    spec_path: frontend/routes/shipping-policy.yaml
+  - file: src/routes/delivery-rates/index.tsx
+    category: routes
+    estimated_complexity: complex
+    spec_path: frontend/routes/delivery-rates.yaml
+  - file: src/routes/photo-quality/index.tsx
+    category: routes
+    estimated_complexity: simple
+    spec_path: frontend/routes/photo-quality.yaml
+  - file: src/routes/image-resolution/index.tsx
+    category: routes
+    estimated_complexity: simple
+    spec_path: frontend/routes/image-resolution.yaml
+  - file: src/routes/why-choose-printerpix/index.tsx
+    category: routes
+    estimated_complexity: simple
+    spec_path: frontend/routes/why-choose-printerpix.yaml
+  - file: src/routes/about-us/index.tsx
+    category: routes
+    estimated_complexity: simple
+    spec_path: frontend/routes/about-us.yaml
+  - file: src/routes/terms-and-conditions/index.tsx
+    category: routes
+    estimated_complexity: simple
+    spec_path: frontend/routes/terms-and-conditions.yaml
+  - file: src/routes/track-my-order/index.tsx
+    category: routes
+    estimated_complexity: simple
+    spec_path: frontend/routes/track-my-order.yaml
+  - file: src/routes/contact-us/index.tsx
+    category: routes
+    estimated_complexity: simple
+    spec_path: frontend/routes/contact-us.yaml
+  - file: src/routes/returns-policy/index.tsx
+    category: routes
+    estimated_complexity: simple
+    spec_path: frontend/routes/returns-policy.yaml
+  - file: src/routes/satisfaction-guarantee/index.tsx
+    category: routes
+    estimated_complexity: simple
+    spec_path: frontend/routes/satisfaction-guarantee.yaml
+  - file: src/routes/bulk-ordering/index@bulkorder.tsx
+    category: routes
+    estimated_complexity: moderate
+    spec_path: frontend/routes/bulk-ordering.yaml
+  - file: src/routes/sitemap-index.xml/index.tsx
+    category: routes
+    estimated_complexity: simple
+    spec_path: frontend/routes/sitemap-index.yaml
+  - file: src/routes/sitemap-pages.xml/index.tsx
+    category: routes
+    estimated_complexity: simple
+    spec_path: frontend/routes/sitemap-pages.yaml
+  - file: src/routes/sitemap-products.xml/index.tsx
+    category: routes
+    estimated_complexity: simple
+    spec_path: frontend/routes/sitemap-products.yaml
+  - file: src/routes/sitemap-categories.xml/index.tsx
+    category: routes
+    estimated_complexity: simple
+    spec_path: frontend/routes/sitemap-categories.yaml
+
+  # === COMPONENTS - Category Page (2) ===
+  - file: src/components/category-page/containers/category-page-factory.tsx
+    category: components
+    estimated_complexity: complex
+    spec_path: frontend/components/category-page/category-page-factory.yaml
+  - file: src/components/category-page/containers/common-category-container.tsx
+    category: components
+    estimated_complexity: complex
+    spec_path: frontend/components/category-page/common-category-container.yaml
+
+  # === COMPONENTS - Product Page (13) ===
+  - file: src/components/product-page/containers/product-page-selection.tsx
+    category: components
+    estimated_complexity: complex
+    spec_path: frontend/components/product-page/product-page-selection.yaml
+  - file: src/components/product-page/containers/instant-product-page-container.tsx
+    category: components
+    estimated_complexity: complex
+    spec_path: frontend/components/product-page/instant-product-page-container.yaml
+  - file: src/components/product-page/containers/templates/product-page-hub-chilld-template.tsx
+    category: components
+    estimated_complexity: complex
+    spec_path: frontend/components/product-page/product-page-hub-child-template.yaml
+  - file: src/components/product-page/containers/templates/product-page-fixed-template.tsx
+    category: components
+    estimated_complexity: complex
+    spec_path: frontend/components/product-page/product-page-fixed-template.yaml
+  - file: src/components/product-page/containers/templates/product-page-base-template.tsx
+    category: components
+    estimated_complexity: complex
+    spec_path: frontend/components/product-page/product-page-base-template.yaml
+  - file: src/components/product-page/containers/templates/product-page-hub-template.tsx
+    category: components
+    estimated_complexity: complex
+    spec_path: frontend/components/product-page/product-page-hub-template.yaml
+  - file: src/components/product-page/containers/templates/product-page-fixed-theme-template.tsx
+    category: components
+    estimated_complexity: complex
+    spec_path: frontend/components/product-page/product-page-fixed-theme-template.yaml
+  - file: src/components/product-page/containers/templates/product-page-basic-template.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/product-page/product-page-basic-template.yaml
+  - file: src/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-new-template.tsx
+    category: components
+    estimated_complexity: complex
+    spec_path: frontend/components/product-page/photo-canvas-prints-new-template.yaml
+  - file: src/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-bundled-template.tsx
+    category: components
+    estimated_complexity: complex
+    spec_path: frontend/components/product-page/photo-canvas-prints-bundled-template.yaml
+  - file: src/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-hub-bundled-template.tsx
+    category: components
+    estimated_complexity: complex
+    spec_path: frontend/components/product-page/photo-canvas-prints-hub-bundled-template.yaml
+  - file: src/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-template-v2.tsx
+    category: components
+    estimated_complexity: complex
+    spec_path: frontend/components/product-page/photo-canvas-prints-template-v2.yaml
+  - file: src/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-new-template-v3.tsx
+    category: components
+    estimated_complexity: complex
+    spec_path: frontend/components/product-page/photo-canvas-prints-new-template-v3.yaml
+
+  # === COMPONENTS - Info Page Containers (6) ===
+  - file: src/components/payment-methods-page/containers/payment-methods-container.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/info-pages/payment-methods-container.yaml
+  - file: src/components/photo-quality-page/containers/photo-quality-container.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/info-pages/photo-quality-container.yaml
+  - file: src/components/image-resolution-page/containers/image-resolution-container.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/info-pages/image-resolution-container.yaml
+  - file: src/components/terms-and-conditions-page/containers/terms-and-conditions-container.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/info-pages/terms-and-conditions-container.yaml
+  - file: src/components/track-my-order-page/containers/track-my-order-container.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/info-pages/track-my-order-container.yaml
+  - file: src/components/contact-us/containers/contact-us-container.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/info-pages/contact-us-container.yaml
+
+  # === COMPONENTS - Bulk Order (2) ===
+  - file: src/components/bulk-order/bulk-order-page.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/bulk-order/bulk-order-page.yaml
+  - file: src/components/bulk-order/bulk-order-page-old.tsx
+    category: components
+    estimated_complexity: simple
+    spec_path: frontend/components/bulk-order/bulk-order-page-old.yaml
+
+  # === COMPONENTS - Header (2) ===
+  - file: src/components/header/header-wrapper.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/header/header-wrapper.yaml
+  - file: src/components/header/header.tsx
+    category: components
+    estimated_complexity: complex
+    spec_path: frontend/components/header/header.yaml
+
+  # === COMPONENTS - Footer (3) ===
+  - file: src/components/footer/footer.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/footer/footer.yaml
+  - file: src/components/footer/footer-product-category.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/footer/footer-product-category.yaml
+  - file: src/components/footer/footer-shipping-banner.tsx
+    category: components
+    estimated_complexity: simple
+    spec_path: frontend/components/footer/footer-shipping-banner.yaml
+
+  # === COMPONENTS - Banner (2) ===
+  - file: src/components/banner/strip-banner.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/banner/strip-banner.yaml
+  - file: src/components/banner/dynamic-promo-banner-v2.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/banner/dynamic-promo-banner-v2.yaml
+
+  # === COMPONENTS - Shared (10) ===
+  - file: src/components/cross-domain-notification/cross-domain-notification.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/shared/cross-domain-notification.yaml
+  - file: src/components/share/breadcrumbs/breadcrumbs.tsx
+    category: components
+    estimated_complexity: simple
+    spec_path: frontend/components/shared/breadcrumbs.yaml
+  - file: src/components/share/accordion/accordion.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/shared/accordion.yaml
+  - file: src/components/share/accordion/accordion-header.tsx
+    category: components
+    estimated_complexity: simple
+    spec_path: frontend/components/shared/accordion-header.yaml
+  - file: src/components/share/accordion/accordion-details.tsx
+    category: components
+    estimated_complexity: simple
+    spec_path: frontend/components/shared/accordion-details.yaml
+  - file: src/components/share/large-orders/large-orders.tsx
+    category: components
+    estimated_complexity: simple
+    spec_path: frontend/components/shared/large-orders.yaml
+  - file: src/components/share/how-it-works/how-it-works.tsx
+    category: components
+    estimated_complexity: simple
+    spec_path: frontend/components/shared/how-it-works.yaml
+  - file: src/components/share/our-help/our-help.tsx
+    category: components
+    estimated_complexity: simple
+    spec_path: frontend/components/shared/our-help.yaml
+  - file: src/components/share/trust-indication/trust-indicator.tsx
+    category: components
+    estimated_complexity: simple
+    spec_path: frontend/components/shared/trust-indicator.yaml
+  - file: src/components/svg-icon/svg-icon.tsx
+    category: components
+    estimated_complexity: simple
+    spec_path: frontend/components/shared/svg-icon.yaml
+
+  # === COMPONENTS - Other (4) ===
+  - file: src/components/guideline-section/guideline-section.tsx
+    category: components
+    estimated_complexity: simple
+    spec_path: frontend/components/shared/guideline-section.yaml
+  - file: src/components/product-type-table/product-type-table.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/shared/product-type-table.yaml
+  - file: src/components/homepage/home-bottom-banner.tsx
+    category: components
+    estimated_complexity: simple
+    spec_path: frontend/components/shared/home-bottom-banner.yaml
+  - file: src/components/customer-service-components/fresh-desk-widget.tsx
+    category: components
+    estimated_complexity: simple
+    spec_path: frontend/components/shared/fresh-desk-widget.yaml
+  - file: src/components/customer-review/customer-review.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/shared/customer-review.yaml
+
+  # === SERVICES (27) ===
+  - file: src/services/json-service.ts
+    category: services
+    estimated_complexity: complex
+    spec_path: backend/services/json-service.yaml
+  - file: src/services/category-service.ts
+    category: services
+    estimated_complexity: complex
+    spec_path: backend/services/category-service.yaml
+  - file: src/services/product-category-service.ts
+    category: services
+    estimated_complexity: complex
+    spec_path: backend/services/product-category-service.yaml
+  - file: src/services/product-page-service.ts
+    category: services
+    estimated_complexity: complex
+    spec_path: backend/services/product-page-service.yaml
+  - file: src/services/middle-ware-service.ts
+    category: services
+    estimated_complexity: moderate
+    spec_path: backend/services/middle-ware-service.yaml
+  - file: src/services/common-service.ts
+    category: services
+    estimated_complexity: moderate
+    spec_path: backend/services/common-service.yaml
+  - file: src/services/markdown-service.ts
+    category: services
+    estimated_complexity: simple
+    spec_path: backend/services/markdown-service.yaml
+  - file: src/services/cart-services/gtm/data-layer-mapper.ts
+    category: services
+    estimated_complexity: complex
+    spec_path: backend/services/cart-services/gtm/data-layer-mapper.yaml
+  - file: src/services/cart-services/gtm/data-layer-base.ts
+    category: services
+    estimated_complexity: moderate
+    spec_path: backend/services/cart-services/gtm/data-layer-base.yaml
+  - file: src/services/cart-services/cookie.ts
+    category: services
+    estimated_complexity: moderate
+    spec_path: backend/services/cart-cookie-service.yaml
+  - file: src/services/cart-services/console-log.ts
+    category: services
+    estimated_complexity: simple
+    spec_path: backend/services/console-log-service.yaml
+  - file: src/services/server.ts
+    category: services
+    estimated_complexity: complex
+    spec_path: backend/services/server.yaml
+  - file: src/services/accounts-service.ts
+    category: services
+    estimated_complexity: moderate
+    spec_path: backend/services/accounts-service.yaml
+  - file: src/services/themes-service.ts
+    category: services
+    estimated_complexity: moderate
+    spec_path: backend/services/themes-service.yaml
+  - file: src/services/home-service.ts
+    category: services
+    estimated_complexity: moderate
+    spec_path: backend/services/home-service.yaml
+  - file: src/services/product-page-web-content-service.ts
+    category: services
+    estimated_complexity: moderate
+    spec_path: backend/services/product-page-web-content-service.yaml
+  - file: src/services/marketing-page-web-content-service.ts
+    category: services
+    estimated_complexity: moderate
+    spec_path: backend/services/marketing-page-web-content-service.yaml
+  - file: src/services/static-page-service.ts
+    category: services
+    estimated_complexity: moderate
+    spec_path: backend/services/static-page-service.yaml
+  - file: src/services/shop-page-service.ts
+    category: services
+    estimated_complexity: moderate
+    spec_path: backend/services/shop-page-service.yaml
+  - file: src/services/navigation-v3-service.ts
+    category: services
+    estimated_complexity: complex
+    spec_path: backend/services/navigation-v3-service.yaml
+  - file: src/services/shop-by-category-service.ts
+    category: services
+    estimated_complexity: moderate
+    spec_path: backend/services/shop-by-category-service.yaml
+  - file: src/services/shop-by-budget-service.ts
+    category: services
+    estimated_complexity: moderate
+    spec_path: backend/services/shop-by-budget-service.yaml
+  - file: src/services/holiday-delivery-service.ts
+    category: services
+    estimated_complexity: moderate
+    spec_path: backend/services/holiday-delivery-service.yaml
+  - file: src/services/web-component-service.ts
+    category: services
+    estimated_complexity: moderate
+    spec_path: backend/services/web-component-service.yaml
+  - file: src/services/klaviyo-service.ts
+    category: services
+    estimated_complexity: moderate
+    spec_path: backend/services/klaviyo-service.yaml
+  - file: src/services/add-to-cart-service.ts
+    category: services
+    estimated_complexity: moderate
+    spec_path: backend/services/add-to-cart-service.yaml
+  - file: src/services/delivery-rates.service.ts
+    category: services
+    estimated_complexity: moderate
+    spec_path: backend/services/delivery-rates-service.yaml
+
+  # === UTILITIES (11) ===
+  - file: src/utility/http.ts
+    category: utilities
+    estimated_complexity: moderate
+    spec_path: shared/utilities/http.yaml
+  - file: src/utility/device.ts
+    category: utilities
+    estimated_complexity: simple
+    spec_path: shared/utilities/device.yaml
+  - file: src/utility/country-region.ts
+    category: utilities
+    estimated_complexity: moderate
+    spec_path: shared/utilities/country-region.yaml
+  - file: src/utility/homepage-contents.ts
+    category: utilities
+    estimated_complexity: moderate
+    spec_path: shared/utilities/homepage-contents.yaml
+  - file: src/utility/share-content/share-contents.ts
+    category: utilities
+    estimated_complexity: simple
+    spec_path: shared/utilities/share-contents.yaml
+  - file: src/utility/format.ts
+    category: utilities
+    estimated_complexity: simple
+    spec_path: shared/utilities/format.yaml
+  - file: src/utility/element.ts
+    category: utilities
+    estimated_complexity: simple
+    spec_path: shared/utilities/element.yaml
+  - file: src/utility/google-tag-manager-extension.ts
+    category: utilities
+    estimated_complexity: moderate
+    spec_path: shared/utilities/google-tag-manager-extension.yaml
+  - file: src/utility/backup-json/backup-json-utilities.ts
+    category: utilities
+    estimated_complexity: simple
+    spec_path: shared/utilities/backup-json-utilities.yaml
+  - file: src/utility/matomo.ts
+    category: utilities
+    estimated_complexity: simple
+    spec_path: shared/utilities/matomo.yaml
+  - file: src/utility/about-us/about-us-content.ts
+    category: utilities
+    estimated_complexity: simple
+    spec_path: shared/utilities/about-us-content.yaml
+
+  # === CONTEXTS (3) ===
+  - file: src/context/product-category-context.ts
+    category: contexts
+    estimated_complexity: simple
+    spec_path: shared/context/product-category-context.yaml
+  - file: src/context/device-detector-context.ts
+    category: contexts
+    estimated_complexity: simple
+    spec_path: shared/context/device-detector-context.yaml
+  - file: src/context/web-content-context.ts
+    category: contexts
+    estimated_complexity: simple
+    spec_path: shared/context/web-content-context.yaml
+
+  # === CONFIG (2) ===
+  - file: src/config/http.ts
+    category: config
+    estimated_complexity: moderate
+    spec_path: shared/config/http.yaml
+  - file: src/config/settings.ts
+    category: config
+    estimated_complexity: moderate
+    spec_path: shared/config/settings.yaml
+
+  # === DATA (3) ===
+  - file: src/data/option-data.ts
+    category: data
+    estimated_complexity: simple
+    spec_path: shared/data/option-data.yaml
+  - file: src/data/review-data.ts
+    category: data
+    estimated_complexity: simple
+    spec_path: shared/data/review-data.yaml
+  - file: src/data/marketing-content-data.ts
+    category: data
+    estimated_complexity: simple
+    spec_path: shared/data/marketing-content-data.yaml
+
+  # === NEW COMPONENTS: Phase 1 Gap Fill (2026-02-24) ===
+
+  # === COMPONENTS - Banner sub-components (3) ===
+  - file: src/components/product-page/banner-flip-clock/banner-flip-clock.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/banner/banner-flip-clock.yaml
+  - file: src/components/banner/dynamic-promo-banner-v2.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/banner/floating-banner.yaml
+    note: "named sub-export FloatingBanner from dynamic-promo-banner-v2.tsx"
+  - file: src/components/banner/dynamic-promo-banner-v2.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/banner/main-banner.yaml
+    note: "named sub-export MainBanner from dynamic-promo-banner-v2.tsx"
+
+  # === COMPONENTS - Carousel sub-components (1) ===
+  - file: src/components/carousels/static-carousel.tsx
+    category: components
+    estimated_complexity: simple
+    spec_path: frontend/components/carousels/static-carousel.yaml
+
+  # === COMPONENTS - Category Page (8) ===
+  - file: src/components/category-page/category-banner.tsx
+    category: components
+    estimated_complexity: simple
+    spec_path: frontend/components/category-page/category-banner.yaml
+  - file: src/components/category-page/category-cards.tsx
+    category: components
+    estimated_complexity: simple
+    spec_path: frontend/components/category-page/category-card.yaml
+    note: "CategoryCard is an internal sub-component of category-cards.tsx"
+  - file: src/components/category-page/category-page-top-banner-v2.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/category-page/category-page-top-banner-v2.yaml
+  - file: src/components/category-page/category-quick-links.tsx
+    category: components
+    estimated_complexity: simple
+    spec_path: frontend/components/category-page/category-quick-links.yaml
+  - file: src/components/shop-page/components/collection-slider.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/category-page/collection-slider.yaml
+  - file: src/components/category-page/global-category-banner.tsx
+    category: components
+    estimated_complexity: simple
+    spec_path: frontend/components/category-page/global-category-banner.yaml
+  - file: src/components/category-page/product-sections.tsx
+    category: components
+    estimated_complexity: simple
+    spec_path: frontend/components/category-page/product-sections.yaml
+  - file: src/components/shop-page/components/shop-page-cards.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/category-page/shop-page-cards.yaml
+
+  # === COMPONENTS - Header (4) ===
+  - file: src/components/global-search/global-search.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/header/global-search.yaml
+  - file: src/components/navigation-v4/navigation-menu.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/header/navigation-menu-4.yaml
+  - file: src/components/reminders/reminder-creation-modal.tsx
+    category: components
+    estimated_complexity: complex
+    spec_path: frontend/components/header/reminder-creation-modal.yaml
+  - file: src/components/reminders/reminder-provider.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/header/reminder-provider.yaml
+
+  # === COMPONENTS - Homepage (1) ===
+  - file: src/components/homepage/homepagecategorycard.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/homepage/home-page-category-card.yaml
+
+  # === COMPONENTS - Info Pages (6) ===
+  - file: src/components/track-my-order-page/containers/track-my-order-container.tsx
+    category: components
+    estimated_complexity: simple
+    spec_path: frontend/components/info-pages/multi-order-select.yaml
+    note: "MultiOrderSelect is an internal sub-component"
+  - file: src/components/photo-quality-page/containers/photo-quality-container.tsx
+    category: components
+    estimated_complexity: simple
+    spec_path: frontend/components/info-pages/photo-quality.yaml
+    note: "PhotoQuality is an internal sub-component"
+  - file: src/components/image-resolution-page/containers/image-resolution-container.tsx
+    category: components
+    estimated_complexity: simple
+    spec_path: frontend/components/info-pages/photo-tips.yaml
+    note: "PhotoTips is an internal sub-component"
+  - file: src/components/track-my-order-page/containers/track-my-order-container.tsx
+    category: components
+    estimated_complexity: simple
+    spec_path: frontend/components/info-pages/shipment-detail.yaml
+    note: "ShipmentDetail is an internal sub-component"
+  - file: src/components/terms-and-conditions-page/containers/terms-and-conditions-container.tsx
+    category: components
+    estimated_complexity: simple
+    spec_path: frontend/components/info-pages/terms-and-conditions.yaml
+    note: "TermsAndConditions is an internal sub-component"
+  - file: src/components/account-detail/tracking-history.tsx
+    category: components
+    estimated_complexity: simple
+    spec_path: frontend/components/info-pages/tracking-history.yaml
+
+  # === COMPONENTS - Product Page (13) ===
+  - file: src/components/product-page/bulk-pricing-v4.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/product-page/bulk-pricing-v4.yaml
+  - file: src/components/product-page/option-panel.tsx
+    category: components
+    estimated_complexity: complex
+    spec_path: frontend/components/product-page/option-panel.yaml
+  - file: src/components/product-page/product-carousel/product-carousel.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/product-page/product-carousel.yaml
+  - file: src/components/product-page/product-delivery-date-v2.tsx
+    category: components
+    estimated_complexity: simple
+    spec_path: frontend/components/product-page/product-delivery-date-v2.yaml
+  - file: src/components/product-page/product-description-v2.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/product-page/product-description-v2.yaml
+  - file: src/components/product-page/product-countdown-timer/product-flip-clock-v2.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/product-page/product-flip-clock.yaml
+  - file: src/components/product-page/product-option-type-4.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/product-page/product-option-type-4.yaml
+  - file: src/components/product-page/product-page-content-basic.tsx
+    category: components
+    estimated_complexity: complex
+    spec_path: frontend/components/product-page/product-page-content-basic.yaml
+  - file: src/components/product-page/product-page-content-v2.tsx
+    category: components
+    estimated_complexity: complex
+    spec_path: frontend/components/product-page/product-page-content-component-v2.yaml
+    note: "ProductPageContentComponentV2 is a named sub-export from product-page-content-v2.tsx"
+  - file: src/components/product-page/product-page-content-v2.tsx
+    category: components
+    estimated_complexity: complex
+    spec_path: frontend/components/product-page/product-page-content-v2.yaml
+  - file: src/components/product-page/product-page-top-banner-v2.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/product-page/product-page-top-banner-v2.yaml
+  - file: src/components/product-page/product-shop-design.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/product-page/product-shop-design.yaml
+  - file: src/components/product-page/product-trust-indicator-v6.tsx
+    category: components
+    estimated_complexity: simple
+    spec_path: frontend/components/product-page/product-trust-indicator-v6.yaml
+
+  # === COMPONENTS - Shared (1) ===
+  - file: src/components/customer-review/star-rating.tsx
+    category: components
+    estimated_complexity: simple
+    spec_path: frontend/components/shared/star-rating.yaml
+
+  # === COMPONENTS - Uploadcare (2) ===
+  - file: src/components/uploadcare/uploadcare.tsx
+    category: components
+    estimated_complexity: simple
+    spec_path: frontend/components/uploadcare/upload-input.yaml
+    note: "UploadInput is an internal sub-component of uploadcare.tsx"
+  - file: src/components/uploadcare/uploadcare.tsx
+    category: components
+    estimated_complexity: simple
+    spec_path: frontend/components/uploadcare/upload-modal.yaml
+    note: "UploadModal is an internal sub-component of uploadcare.tsx"
+
+  # === COMPONENTS - Web Component (6) ===
+  - file: src/components/web-component/faq.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/web-component/faq.yaml
+  - file: src/components/web-component/ugc-section.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/web-component/flip-ugc.yaml
+    note: "FlipUGC is a named sub-export from ugc-section.tsx"
+  - file: src/components/web-component/shop-by-budget.tsx
+    category: components
+    estimated_complexity: simple
+    spec_path: frontend/components/web-component/shop-by-budget.yaml
+  - file: src/components/web-component/shop-by-category.tsx
+    category: components
+    estimated_complexity: simple
+    spec_path: frontend/components/web-component/shop-by-category.yaml
+  - file: src/components/web-component/shopping-guide-slider.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/web-component/shopping-guide-slider.yaml
+  - file: src/components/web-component/ugc-section.tsx
+    category: components
+    estimated_complexity: moderate
+    spec_path: frontend/components/web-component/slider-ugc.yaml
+    note: "SliderUGC is a named sub-export from ugc-section.tsx"
+
+analysis_plan:
+  total_files: 157
+  parallel_agents: 157
+  max_concurrent: 10
+  estimated_duration: "~10 minutes (parallel analysis)"

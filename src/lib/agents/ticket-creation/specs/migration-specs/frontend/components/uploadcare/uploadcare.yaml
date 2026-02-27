@@ -1,0 +1,561 @@
+name: Uploadcare
+source: components/uploadcare/uploadcare.tsx
+description: >
+  File upload component integrating with the Uploadcare service for image
+  uploads. Handles single and multiple file uploads, uploads files to Uploadcare
+  CDN, then sends file metadata to the Printerpix backend API which transfers
+  them to S3 and returns S3 object keys. Supports multiple operation modes:
+  upload-and-navigate (redirect to designer), upload-and-return (return S3 keys
+  to parent), and upload-replaced-image (replace existing image). Includes
+  optional AI-powered face and object detection for uploaded images. Shows a
+  validation modal for file type and quantity errors.
+
+exports:
+  default:
+    type: component
+    description: "Uploadcare - main file upload component"
+  useSendPhotos:
+    type: global_action
+    description: >
+      Qwik global action for sending photo metadata to backend.
+      Accepts fileInfoModels and machineToken.
+  uploadBase64Image:
+    type: function
+    description: >
+      Standalone async function that uploads a base64-encoded image to
+      Uploadcare, sends metadata to the backend, and returns the S3 object key.
+    params:
+      base64Image: "string - base64 data URL of the image"
+      name: "string (default 'base64Image') - filename for the upload"
+    returns: "string - S3 object key of the uploaded image"
+
+props:
+  id:
+    type: string
+    required: false
+    description: "HTML id for the file input element. Defaults to 'upload'."
+  classes:
+    type: string
+    required: true
+    description: "CSS classes applied to the file input or upload button element."
+  type:
+    type: string
+    required: true
+    description: >
+      Determines upload behavior after completion.
+      Values: 'upload_and_navigate', 'upload_and_addcart',
+      'upload_and_navigate_newcanvas', 'upload_and_return',
+      'upload_replaced_image'
+  handleNewS3:
+    type: "(s3Keys: string[]) => void"
+    required: false
+    description: "Callback receiving S3 object keys after upload. Used with 'upload_and_return' type."
+  handleAddToCart:
+    type: "() => void"
+    required: false
+    description: "Callback invoked before file selection when type is 'upload_and_addcart'."
+  uploadProgress:
+    type: "{ fileSize: number; progress: number; started: boolean }"
+    required: false
+    description: "Shared store for tracking upload progress. Updated during upload."
+  onClose:
+    type: "() => void"
+    required: false
+    description: "Callback invoked when upload completes or is cancelled."
+  onSave:
+    type: "(newS3Key: string, newSrc: string) => void"
+    required: false
+    description: "Callback invoked with S3 key and CDN URL after single file upload."
+  file:
+    type: any
+    required: false
+    description: "Pre-selected file for 'upload_replaced_image' mode."
+  originalS3key:
+    type: string
+    required: false
+    description: "Original S3 key of the image being replaced."
+  refCode:
+    type: string
+    required: false
+    description: "Product reference code for designer redirect URL."
+  multipleFileUpload:
+    type: "Signal<boolean>"
+    required: false
+    description: "Signal indicating whether multiple files are being uploaded."
+  validation:
+    type: "{ uploadQTY?: number; uploadType?: boolean }"
+    required: false
+    description: >
+      Validation rules. uploadQTY enforces exact file count.
+      uploadType flags unsupported file type errors.
+  platinumProductType:
+    type: PlatinumProductTypeEnum
+    required: false
+    description: "Product type enum for determining redirect module/path."
+  preselectedRefCode:
+    type: string
+    required: false
+    description: "Pre-selected reference code for designer redirect."
+  aiPrediction:
+    type: boolean
+    required: false
+    description: >
+      When true, loads TensorFlow.js models (COCO-SSD and BlazeFace) for
+      object and face detection on uploaded images. Results stored in session.
+  productId:
+    type: string
+    required: false
+    description: "Product ID (declared but not used in upload logic)."
+  couponProductId:
+    type: string
+    required: false
+    description: "Coupon product ID appended to redirect URL."
+  vc:
+    type: string
+    required: false
+    description: "Voucher code appended to redirect URL."
+  affCoupon:
+    type: string
+    required: false
+    description: "Affiliate coupon code appended to redirect URL."
+
+component_structure:
+  conditional_rendering:
+    - condition: "type === 'upload_replaced_image'"
+      renders: "Button that triggers handleUploadFiles (uploads pre-selected file)"
+    - condition: "else"
+      renders: "UploadInput (file input with multiple attribute)"
+  sub_components:
+    - name: UploadInput
+      description: >
+        Internal component rendering an HTML file input element with
+        multiple attribute, aria-label, onClick handler (resets value),
+        and onChange handler (triggers upload).
+    - name: UploadModal
+      description: >
+        Validation error modal overlay with shake animation. Shows
+        validation message title and description, close button, and
+        an "Upload Photos" button with embedded UploadInput. Modal
+        locks body scroll when open and restores on close.
+
+child_components:
+  - name: UploadInput
+    type: internal_component
+    props:
+      id: "string (defaults to 'upload')"
+      classes: string
+      handleClick: "QRL callback"
+      handleChangeMultipleFiles: "QRL callback"
+  - name: UploadModal
+    type: internal_component
+    condition: "showUploadModal.value is true"
+    props:
+      closeDialog: "QRL callback"
+      handleClick: "QRL callback"
+      handleChangeMultipleFiles: "QRL callback"
+      classes: string
+      validationMsg: "{ title: string; description: string }"
+      errorAnimation: "Signal<boolean>"
+
+data_structure:
+  fileInfoModel:
+    uuid: string
+    cdnUrl: string
+    name: string
+    sourceInfo_source: "'local'"
+    mimeType: string
+    size: number
+    originalImageInfo_height: number
+    originalImageInfo_width: number
+    originalImageInfo_orientation: number
+    originalImageInfo_format: string
+    originalImageInfo_datetime_original: string
+    originalImageInfo_geo_location: any
+  sendPhotos_response:
+    isCorrect: boolean
+    s3ObjectKeys: "string[]"
+    message: "string | null"
+
+behavior:
+  upload_flow_single_file:
+    trigger: "handleUploadFiles (for 'upload_replaced_image' type)"
+    steps:
+      - Sets uploadProgress.started to true
+      - Calculates file size in MB
+      - Uploads file to Uploadcare via uploadFile() with public key
+      - Tracks progress via onProgress callback
+      - Constructs fileInfoModel from upload result
+      - Gets machineToken from cookie
+      - Sends fileInfoModels to backend API (sendPhotos or globalAction)
+      - Calls onSave callback with S3 key and CDN URL
+      - Sets uploadProgress.started to false
+      - Calls onClose callback
+    error_handling: >
+      Catches Uploadcare errors. If error message includes
+      "Uploading of these file types is not allowed", shows validation
+      modal with unsupported type message.
+
+  upload_flow_multiple_files:
+    trigger: "handleChangeMultipleFiles (from file input onChange)"
+    steps:
+      - Validates file count against validation.uploadQTY if set
+      - Shows validation modal if count mismatch
+      - Calculates total file size across all files
+      - Sets multipleFileUpload signal based on file count
+      - Uploads all files as group via uploadFileGroup()
+      - If aiPrediction enabled, loads TensorFlow models in parallel with upload
+      - Gets machineToken from cookie
+      - Sends all fileInfoModels to backend API
+      - If aiPrediction, runs face and object detection on each image and stores in session
+      - Redirects based on type prop
+    error_handling: Same as single file flow
+
+  upload_flow_base64:
+    trigger: "uploadBase64Image() exported function"
+    steps:
+      - Converts base64 data URL to File object via dataURLtoFile helper
+      - Uploads to Uploadcare via uploadFile()
+      - Constructs fileInfoModel
+      - Gets machineToken
+      - Sends to backend API via sendPhotos()
+      - Returns first S3 object key
+
+  redirect_logic:
+    upload_and_navigate:
+      url_pattern: "/designer-q/?module={module}&type=single&... (single file)"
+      url_pattern_multi: "/gallery-q/?module={module}&type=single&... (multiple files)"
+      params: "ppageId, prod, couponProductId, vc, affCoupon, photos, preselectedPopular, preselectedRefId"
+      module_resolution: "getSingleModuleByPlatinumProductType(platinumProductType, existingModule, refCode)"
+    upload_and_navigate_newcanvas:
+      url_pattern: "/designer-q/?module={module}&type={split|multi}&refCode={refCode}&ppageId={ppageId}&prod=&photos={keys}"
+      type_resolution: "SPLIT if refCode contains 'split', otherwise MULTI"
+      module_resolution: "getBundleModuleByPlatinumProductType(platinumProductType)"
+    upload_and_return:
+      action: "Calls handleNewS3(s3ObjectKeys), sets progress to false"
+    upload_and_addcart:
+      action: "Calls handleAddToCart() before file selection"
+
+  backend_api_calls:
+    get_customer_info:
+      endpoint: "Artwrap/GetCustomerInfo?machineToken={machineToken}"
+      method: GET
+      returns: "{ customerPK36: string }"
+    post_file_info:
+      endpoint: "vendor02/PostUCareFileGroupInfoModel/"
+      method: POST
+      body: "{ cid: customerPK36, fileInfoModels: fileInfoModel[] }"
+      returns: "{ status: 'OK', data: string[] (S3 keys), ExMsg: string }"
+
+  dev_mode_handling:
+    detection: "useLocation().url.hostname === 'localhost'"
+    difference: >
+      In dev mode, uses globalAction (server-side action via useSendPhotos)
+      instead of direct client-side sendPhotos call. This is because the
+      API proxy configuration differs between dev and production.
+
+  validation_modal:
+    file_count_mismatch:
+      title: "Upload {N} images to continue"
+      description: "You can change the photos during the next step."
+    unsupported_file_type:
+      title: "Translated 'uploadcare.file_type' text"
+      description: "Translated 'uploadcare.image_file' text"
+    animation: >
+      Title text has shake animation (3px horizontal oscillation, 300ms)
+      triggered on modal show. Red text color (#E80042) during shake.
+    body_scroll_lock: >
+      When modal opens, body position set to fixed to prevent background
+      scrolling. Scroll position preserved and restored on close.
+
+  ai_prediction:
+    condition: "aiPrediction prop is true"
+    models_loaded:
+      - "TensorFlow.js (@tensorflow/tfjs@4.2.0)"
+      - "COCO-SSD object detection (@tensorflow-models/coco-ssd@2.2.3)"
+      - "BlazeFace face detection (@tensorflow-models/blazeface)"
+    loading: "Scripts loaded via CDN script tags in component output"
+    processing: >
+      After upload, each image file is loaded into an HTMLImageElement,
+      then both object and face detection run. Results stored in
+      sessionStorage via setObjectPredictionSession and setFacePredictionSession.
+
+styling:
+  upload_modal:
+    overlay: "fixed z-[1000] full-screen rgba(0,0,0,0.8) background"
+    dialog: "z-[1001] bg-white rounded-md w-[90%] sm:w-[600px] centered"
+    close_button: "50px x 50px absolute top-right with X character"
+    upload_button: "bg-[#F02480] rounded-md w-[150px] text-white font-bold"
+  shake_animation:
+    keyframes: "translate(3px, 0) -> translate(-3px, 0) -> translate(0, 0)"
+    duration: "150ms, repeats 2x"
+    color: "#E80042 (pink/red)"
+
+dependencies:
+  external:
+    - "@uploadcare/upload-client (uploadFile, uploadFileGroup)"
+    - "@uploadcare/blocks (UploadcareGroup type)"
+    - "qwik-speak (inlineTranslate for i18n)"
+  internal:
+    - "services/cart-services/machine-token (getMachineToken)"
+    - "utility/http (handleMultipleAPIRequests, HTTP_METHODS)"
+    - "services/image-ai-crop-service (face/object detection functions)"
+    - "config/http (NewAPIResponse type)"
+    - "services/product-category-service (PlatinumProductTypeEnum)"
+    - "services/bundle-designer-service (getBundleModuleByPlatinumProductType, getBundleProductId)"
+    - "services/single-designer-service (getSingleModuleByPlatinumProductType, SingleModuleEnum)"
+    - "components/editor/designers-shared/designer-module-selector (TypeSelectionEnum)"
+    - "services/common-service (isDataReady)"
+
+used_by:
+  - "40+ files across product pages, option panels, canvas size tables, go-quick widgets, editor pages, designer layouts"
+  - "Key consumers: product-page/option-panel*.tsx, go-quick/*.tsx, editor/designers/*"
+
+security:
+  - Uploadcare public key is hardcoded (852db29564c103105d6f) - this is a public key, safe to expose
+  - Machine token obtained from cookie via getMachineToken()
+  - File type validation catches unsupported types from Uploadcare error messages
+  - No file size limit enforced client-side (Uploadcare may enforce server-side)
+  - Customer PK36 obtained from authenticated API call using machine token
+  - AI model scripts loaded from CDN (tensorflow.js) - external dependency trust
+
+notes:
+  - The Uploadcare public key appears twice (as UPLOAD_CARE_PUBLIC_KEY constant and uploadCarePublicKey local variable) - they have the same value
+  - The sendPhotos function has a large commented-out block for a different UK API path
+  - Dev mode detection via hostname === 'localhost' is fragile for staging environments
+  - The component uses window.document.location.href for navigation (full page reload, not SPA navigation)
+  - AI prediction loads ~5MB of TensorFlow.js models via CDN script tags in JSX
+  - The file input has multiple attribute always set, even for single file upload scenarios
+  - Body scroll lock uses position:fixed technique which can cause layout shift
+  - Error handling logs to console.log in sendPhotos catch block
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  OptionCanvasPrintsProps:
+    description: Component props interface (the exported interface — used by all consumers)
+    fields:
+      - name: id
+        type: string
+        optional: true
+        default: '"upload"'
+      - name: classes
+        type: string
+      - name: type
+        type: string
+        notes: "One of: upload_and_navigate | upload_and_addcart | upload_and_navigate_newcanvas | upload_and_return | upload_replaced_image"
+      - name: handleNewS3
+        type: "PropFunction<(arg: string[]) => void>"
+        optional: true
+      - name: handleAddToCart
+        type: "PropFunction<() => void>"
+        optional: true
+      - name: uploadProgress
+        type: UploadProgressType
+        optional: true
+      - name: onClose
+        type: "PropFunction<() => void>"
+        optional: true
+      - name: onSave
+        type: "PropFunction<(newS3Key: string, newSrc: string) => void>"
+        optional: true
+      - name: file
+        type: any
+        optional: true
+      - name: originalS3key
+        type: string
+        optional: true
+      - name: refCode
+        type: string
+        optional: true
+      - name: multipleFileUpload
+        type: "Signal<boolean>"
+        optional: true
+      - name: validation
+        type: ValidationType
+        optional: true
+      - name: platinumProductType
+        type: PlatinumProductTypeEnum
+        optional: true
+      - name: preselectedRefCode
+        type: string
+        optional: true
+      - name: aiPrediction
+        type: boolean
+        optional: true
+      - name: productId
+        type: string
+        optional: true
+      - name: couponProductId
+        type: string
+        optional: true
+      - name: vc
+        type: string
+        optional: true
+      - name: affCoupon
+        type: string
+        optional: true
+
+  UploadProgressType:
+    description: Upload progress tracking object (passed as a reactive store reference)
+    fields:
+      - name: fileSize
+        type: number
+        notes: "Total file size in MB"
+      - name: progress
+        type: number
+        notes: "0.0 to 1.0 range; reported by Uploadcare onProgress callback"
+      - name: started
+        type: boolean
+
+  ValidationType:
+    description: File validation rules
+    fields:
+      - name: uploadQTY
+        type: number
+        optional: true
+        notes: "If set, file count must equal exactly this number"
+      - name: uploadType
+        type: boolean
+        optional: true
+        notes: "If true, signals an unsupported file type error"
+
+  ValidationMsgType:
+    description: Validation error message displayed in the upload modal
+    fields:
+      - name: title
+        type: string
+      - name: description
+        type: string
+
+  FileInfoModel:
+    description: Metadata object sent to the backend for each uploaded file
+    fields:
+      - name: uuid
+        type: string
+      - name: cdnUrl
+        type: "string | null"
+      - name: name
+        type: "string | null"
+      - name: sourceInfo_source
+        type: string
+        notes: 'Always "local"'
+      - name: mimeType
+        type: "string | null"
+      - name: size
+        type: number
+      - name: originalImageInfo_height
+        type: "number | undefined"
+      - name: originalImageInfo_width
+        type: "number | undefined"
+      - name: originalImageInfo_orientation
+        type: "number | undefined"
+      - name: originalImageInfo_format
+        type: "string | undefined"
+      - name: originalImageInfo_datetime_original
+        type: "string | undefined"
+      - name: originalImageInfo_geo_location
+        type: any
+
+  SendPhotosResponse:
+    description: Response from the sendPhotos / useSendPhotos action
+    fields:
+      - name: isCorrect
+        type: boolean
+      - name: s3ObjectKeys
+        type: "string[]"
+      - name: message
+        type: "string | null"
+
+field_consumption:
+  OptionCanvasPrintsProps:
+    consumed:
+      - classes: Applied to the file input element or the replace-image button
+      - type: Controls which upload flow runs and which redirect/callback to invoke after upload
+      - handleNewS3: Called with s3ObjectKeys when type is "upload_and_return"
+      - handleAddToCart: Called before file selection dialog opens when type is "upload_and_addcart"
+      - uploadProgress: Mutated during upload (fileSize, progress, started fields)
+      - onClose: Called after upload_replaced_image flow completes
+      - onSave: Called with (s3Key, cdnUrl) after upload_replaced_image flow completes
+      - file: Pre-selected file used in upload_replaced_image flow
+      - refCode: Used in redirect URL for upload_and_navigate; also used for split/multi type determination in upload_and_navigate_newcanvas
+      - multipleFileUpload: Signal mutated by component to true/false based on how many files were selected
+      - validation: Controls file count and type validation before upload proceeds
+      - platinumProductType: Used to compute designer module and ppageId for redirects
+      - preselectedRefCode: Appended to designer redirect URL as preselectedRefId
+      - couponProductId: Appended to designer redirect URL
+      - vc: Voucher code appended to redirect URL
+      - affCoupon: Affiliate coupon code appended to redirect URL
+      - aiPrediction: When true, loads TensorFlow models and runs face/object detection post-upload; also renders CDN script tags
+      - id: Applied as id attribute on the file input (defaults to "upload")
+    ignored:
+      - originalS3key: Declared in interface but not used in any upload flow in the current implementation
+      - productId: Declared in interface but not used in any upload logic
+
+wire_format:
+  POST vendor02/PostUCareFileGroupInfoModel/:
+    description: Sends Uploadcare file metadata to the Printerpix backend which transfers files to S3 and returns S3 object keys
+    function: sendPhotos (client-side) / useSendPhotos globalAction$ (dev mode only)
+    notes:
+      - In production (hostname != localhost), sendPhotos is called directly on the client
+      - In development (hostname === localhost), the useSendPhotos Qwik globalAction$ is used instead
+    prereq:
+      - GET Artwrap/GetCustomerInfo?machineToken={machineToken}
+      - Returns customerPK36 (customer identifier) required in the POST body
+    mapping:
+      customerPK36 (from GetCustomerInfo response): cid
+      fileInfoModels (array of FileInfoModel): fileInfoModels
+    content_type: application/json
+    response_fields:
+      - status: '"OK"' if successful
+      - data: "string[] — S3 object keys"
+      - ExMsg: "string — error message if any"
+
+implementation_logic:
+  dev_vs_prod_api_path:
+    rule: |
+      The component detects development mode via useLocation().url.hostname === 'localhost'.
+      In dev mode it uses the Qwik globalAction$ (useSendPhotos) for server-side proxying.
+      In production it calls the sendPhotos$ function directly from the client.
+      Both paths call the same backend endpoint; the difference is the routing mechanism.
+    critical: false
+
+  redirect_type_routing:
+    rule: |
+      After a successful upload, navigation is determined by the type prop:
+        "upload_and_navigate" or "upload_and_addcart":
+          → Redirects to /designer-q/ (single file) or /gallery-q/ (multiple files)
+          → Module resolved via getSingleModuleByPlatinumProductType()
+        "upload_and_navigate_newcanvas":
+          → Redirects to /designer-q/ with type=split or type=multi
+          → Module resolved via getBundleModuleByPlatinumProductType()
+          → type=split when refCode contains the substring "split"
+        "upload_and_return":
+          → Calls handleNewS3(s3ObjectKeys) callback; no page redirect
+        "upload_replaced_image":
+          → Calls onSave(s3Key, cdnUrl) and onClose() callbacks; no page redirect
+      All navigation uses window.document.location.href (full page reload), NOT Qwik's useNavigate.
+    critical: true
+
+  file_count_validation:
+    rule: |
+      If validation.uploadQTY is set, the selected file count must equal EXACTLY that number.
+      Any deviation (more or fewer files) shows the validation modal and aborts upload.
+      If validation is absent or undefined, no count restriction is applied.
+    critical: false
+
+visibility_map:
+  file_input_element:
+    condition: 'type is not "upload_replaced_image"'
+    default: visible (file input is the default render path)
+
+  replace_image_button:
+    condition: 'type === "upload_replaced_image"'
+    default: hidden (only rendered in replace-image mode)
+
+  upload_modal:
+    condition: "showUploadModal.value is true (triggered by validation failure)"
+    default: hidden
+
+  ai_model_script_tags:
+    condition: "aiPrediction prop is true"
+    default: hidden (script tags not injected unless AI prediction is enabled)

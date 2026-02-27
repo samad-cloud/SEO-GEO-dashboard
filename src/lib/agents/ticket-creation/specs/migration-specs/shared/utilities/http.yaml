@@ -1,0 +1,330 @@
+name: http
+description: HTTP utilities for URL manipulation, API requests, domain management, and product ID resolution across multi-region sites
+
+source:
+  path: utility/http.ts
+  lines: 1-692
+  type: utility
+
+exports:
+  - name: getUrlParams
+    type: function
+    signature: "(location: RouteLocation, key: string) => string | null"
+    description: Extracts query parameter from RouteLocation URL
+    parameters:
+      - name: location
+        type: RouteLocation
+        description: Qwik City RouteLocation object
+      - name: key
+        type: string
+        description: Query parameter name
+    returns: Query parameter value or null
+
+  - name: getDynamicDomains
+    type: function
+    signature: "() => string"
+    description: Returns domain name based on current site setting (US, GB, FR, DE)
+    returns: Domain string with trailing slash
+
+  - name: getSingleCanvasPrintsProductId
+    type: function
+    signature: "() => string"
+    description: Returns UUID for single canvas prints product based on region
+
+  - name: getFramedCanvasPrintsProductId
+    type: function
+    signature: "() => string"
+
+  - name: getPuzzleBoardProductId
+    type: function
+    signature: "() => string"
+
+  - name: getPuzzleWoodenProductId
+    type: function
+    signature: "() => string"
+
+  - name: getCoastersProductId
+    type: function
+    signature: "() => string"
+
+  - name: getAluminiumDibondProductId
+    type: function
+    signature: "() => string"
+
+  - name: getMousePadProductId
+    type: function
+    signature: "() => string"
+
+  - name: getPlaceMatProductId
+    type: function
+    signature: "() => string"
+
+  - name: getPosterProductId
+    type: function
+    signature: "() => string"
+
+  - name: getMetalPrintsProductId
+    type: function
+    signature: "() => string"
+
+  - name: getFramedPrintsProductId
+    type: function
+    signature: "() => string"
+
+  - name: getMultiCanvasProductId
+    type: function
+    signature: "() => string"
+
+  - name: getCushionPillowSSDSProductId
+    type: function
+    signature: "() => string"
+
+  - name: getPhotoTileProductId
+    type: function
+    signature: "() => string"
+
+  - name: getBottleSteelProductId
+    type: function
+    signature: "() => string"
+
+  - name: getBottleAluminumProductId
+    type: function
+    signature: "() => string"
+
+  - name: getCushionProductId
+    type: function
+    signature: "() => string"
+
+  - name: getMagnetSquareProductId
+    type: function
+    signature: "() => string"
+
+  - name: getSingleMagnetSquareProductId
+    type: function
+    signature: "() => string"
+
+  - name: getMagnetPolaroidProductId
+    type: function
+    signature: "() => string"
+
+  - name: getMagnetStripProductId
+    type: function
+    signature: "() => string"
+
+  - name: getSlatesProductId
+    type: function
+    signature: "() => string"
+
+  - name: getSamsungProductId
+    type: function
+    signature: "() => string"
+
+  - name: getIphoneProductId
+    type: function
+    signature: "() => string"
+
+  - name: getBeachTowelProductId
+    type: function
+    signature: "() => string"
+
+  - name: getKitchenTowelProductId
+    type: function
+    signature: "() => string"
+
+  - name: getGolfTowelProductId
+    type: function
+    signature: "() => string"
+
+  - name: getHandTowelProductId
+    type: function
+    signature: "() => string"
+
+  - name: getTeddyProductId
+    type: function
+    signature: "() => string"
+
+  - name: getDeskMatGamingProductId
+    type: function
+    signature: "() => string"
+
+  - name: getDeskMatBasicProductId
+    type: function
+    signature: "() => string"
+
+  - name: getDurableBannerProductId
+    type: function
+    signature: "() => string"
+
+  - name: getNapkinProductId
+    type: function
+    signature: "() => string"
+
+  - name: getPillowProductId
+    type: function
+    signature: "() => string"
+
+  - name: getWristRestKeyboardProductId
+    type: function
+    signature: "() => string"
+
+  - name: getYardSignProductId
+    type: function
+    signature: "() => string"
+
+  - name: getCanvasPanelProductId
+    type: function
+    signature: "() => string"
+
+  - name: getMetalPanelProductId
+    type: function
+    signature: "() => string"
+
+  - name: getSplitMetalPanelProductId
+    type: function
+    signature: "() => string"
+
+  - name: generateAllPossibleString
+    type: function
+    signature: "(input: string) => string[]"
+    description: Generates all case permutations of a string (lowercase, uppercase combinations)
+    parameters:
+      - name: input
+        type: string
+    returns: Array of all possible case variants
+
+  - name: getQueryParamsInsensitiveCaseValue
+    type: function
+    signature: "(query: URLSearchParams, key: string) => string"
+    description: Gets query param value case-insensitively by trying all case permutations
+
+  - name: convertKeysToCamelCase
+    type: function
+    signature: "(obj: any) => any"
+    description: Recursively converts object keys from PascalCase to camelCase
+
+  - name: isExcludedRoute
+    type: function
+    signature: "(url: URL) => boolean"
+    description: Checks if URL path matches excluded routes (media, static assets, blog, cart)
+
+  - name: buildQueryParams
+    type: function
+    signature: "(input: Record<string, string>) => string"
+    description: Builds query string from key-value object
+
+  - name: handleMultipleAPIRequests
+    type: function
+    signature: "<T>(endpoint: string, method: HTTP_METHODS, apiData?: APIData, type?: 'soft' | 'hard', shouldLogInfo?: boolean) => Promise<NewAPIResponse<T> | DefaultError>"
+    description: Retries API requests up to MAX_API_ATTEPMTS times, logs errors to Sentry
+    parameters:
+      - name: endpoint
+        type: string
+      - name: method
+        type: HTTP_METHODS
+        description: GET or POST
+      - name: apiData
+        type: APIData
+        optional: true
+        description: Params, body, headers, timeout
+      - name: type
+        type: "'soft' | 'hard'"
+        optional: true
+        description: Error handling mode (hard shows popup)
+      - name: shouldLogInfo
+        type: boolean
+        optional: true
+    returns: API response or error object
+
+  - name: isQADomain
+    type: function
+    signature: "(hostname: string) => boolean"
+    description: Checks if hostname contains 'qa.printerpix'
+
+  - name: isWWWDomain
+    type: function
+    signature: "(hostname: string) => boolean"
+    description: Checks if hostname contains 'www.printerpix'
+
+  - name: toAbsoluteUrl
+    type: function
+    signature: "(url: string | null | undefined) => string"
+    description: Converts relative URL to absolute using site settings
+    behavior:
+      - Returns empty string if URL is null/undefined/empty
+      - Returns as-is if URL starts with http:// or https://
+      - Prepends https: if URL starts with //
+      - Prepends website domain from settings if URL starts with /
+      - Prepends website domain + / otherwise
+
+types:
+  - name: APIData
+    kind: interface
+    fields:
+      - name: params
+        type: any
+        optional: true
+      - name: bodyPayload
+        type: any
+        optional: true
+      - name: headers
+        type: any
+        optional: true
+      - name: timeout
+        type: number
+        optional: true
+
+  - name: DefaultError
+    kind: interface
+    fields:
+      - name: showPopup
+        type: boolean
+      - name: message
+        type: string
+      - name: status
+        type: string
+
+  - name: HTTP_METHODS
+    kind: enum
+    values:
+      - GET: "get"
+      - POST: "post"
+
+dependencies:
+  internal:
+    - "@builder.io/qwik-city": RouteLocation type
+    - "~/config/http": baseNewAPI, MAX_API_ATTEPMTS, NewAPIResponse
+    - "~/config/settings": settings function
+    - "~/services/common-service": activateCookieIssuePopup
+    - "~/services/server": getSiteSetting
+    - "./sentry": ESentryEvent, ESentryType, logHTTPDataToSentry
+  external:
+    - "axios": AxiosError type
+    - "@builder.io/qwik/build": isBrowser
+
+behavior:
+  multi_region_product_mapping:
+    description: Each getXProductId function returns region-specific UUID based on settings().website
+    regions: [US, GB, FR, DE, NL, IT, ES]
+    fallback: Returns GB product ID for most products if region not specified
+
+  api_retry_logic:
+    max_attempts: MAX_API_ATTEPMTS (from config)
+    on_failure:
+      - Logs to Sentry with error code
+      - Shows cookie issue popup if type === "hard"
+      - Returns DefaultError object
+    on_success: Returns response.data
+
+  case_insensitive_params:
+    description: getQueryParamsInsensitiveCaseValue generates all case permutations and tries each
+
+security:
+  - API errors logged to Sentry with sanitized data
+  - No secrets in code (uses environment config)
+
+edge_cases:
+  - Empty/null URLs handled in toAbsoluteUrl
+  - Network errors caught and retried
+  - Invalid JSON handled in convertKeysToCamelCase
+
+used_by: []

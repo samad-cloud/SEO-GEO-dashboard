@@ -1,0 +1,1643 @@
+name: Product Page Service
+source:
+  file: src/services/product-page-service.ts
+  line_count: 2445
+  type: service
+
+description: |
+  Core service for product page data management. Handles fetching product details,
+  processing filters/variants, managing product metadata (SEO, JSON-LD schema),
+  GTM/Matomo/Klaviyo analytics, product bundles, instant products, and trust indicators
+  for multi-region support. Orchestrates product selection logic, theme handling,
+  delivery deadlines, and campaign data.
+
+exports:
+  types:
+    - name: Nullable<T>
+      signature: "T | null"
+
+    - name: SIZE_KEYWORDS
+      signature: "readonly ['size', 'größe', 'tamaño', 'taille', 'dimension', 'format', 'dimensione', 'taglia', 'maat']"
+      description: Size keywords for all supported locales (EN, DE, ES, FR, IT, NL)
+
+    - name: ProductData
+      signature: |
+        interface ProductData {
+          Id: string;
+          ImageCaption: string;
+          FriendlyUrl: string;
+          BannerUrl: string;
+          MetaDescription: string;
+          Images: Images[];
+          OptionData: OptionData | undefined;
+          ReviewData: ReviewData | undefined;
+          MarketingContentData: MarketingContentData | undefined;
+          ButtonText: string;
+        }
+
+    - name: Data
+      signature: |
+        interface Data {
+          ProductData: ProductData;
+        }
+
+    - name: Images
+      signature: |
+        interface Images {
+          url: string;
+          altText?: string;
+        }
+
+    - name: AboutUs
+      signature: |
+        interface AboutUs {
+          why_printerpix: string;
+          contents: string[];
+          price_promise: string;
+          lowest_price: string;
+          million_custom_gifts: string;
+          sold_in_2021: string;
+          high_rated_service: string;
+          happy_customers: string;
+          shop_with_confidence: string;
+          satisfaction_guarantee: string;
+        }
+
+    - name: LargeOrders
+      signature: |
+        interface LargeOrders {
+          large_orders_title: string;
+          large_orders_part_1: string;
+          large_orders_page: string;
+          large_orders_part_2: string;
+          click_to_chat: string;
+        }
+
+    - name: EachTrust
+      signature: |
+        interface EachTrust {
+          url: string;
+          des: string;
+        }
+
+    - name: DeliveryTime
+      signature: |
+        interface DeliveryTime {
+          title: string;
+          contents: string[];
+        }
+
+    - name: DataLayerModel
+      signature: |
+        interface DataLayerModel {
+          detail: {
+            currencyCode: string;
+            detailProduct: {
+              name: string;
+              marketingName: string;
+              id: string;
+              sku: string;
+              productAttributes: {
+                type: string;
+                subType: string;
+                layout: string;
+                size: string;
+                brand: string;
+                category: string;
+              };
+              priceAttributes: {
+                discount: number;
+                price: number;
+              };
+              googleId: string;
+            };
+          };
+          productConfiguration: {
+            configuredProductMeta: {
+              name: string;
+              marketingName: string;
+              id: string;
+              sku: string;
+              productAttributes: {
+                type: string;
+                subType: string;
+                layout: string;
+                size: string;
+                brand: string;
+                category: string;
+              };
+              priceAttributes: {
+                discount: number;
+                price: number;
+              };
+            };
+          };
+        }
+
+    - name: AccordionDetail
+      signature: |
+        interface AccordionDetail {
+          title: string;
+          paragraphs: string;
+        }
+
+    - name: ProductDetails
+      signature: |
+        interface ProductDetails {
+          title: string;
+          bullets: Array<string>;
+          paragraphs: Array<string>;
+          order: number;
+          accordionDetails: Array<AccordionDetail> | null;
+        }
+
+    - name: ProductPageViewNameEnum
+      signature: |
+        enum ProductPageViewNameEnum {
+          Unknown = 0,
+          RyzanGoV2 = 1,
+          Buttons2020Q1 = 2,
+          ButtonsForAquisition2020Q1 = 3,
+          BasicTemplate = 4,
+          StickyWithClockAndThemes2020Q4 = 5,
+          NonCustomizableThemes2021Q1 = 6,
+          SpareTwo2020Q4 = 7,
+          RyzanGoMulti = 8,
+          RyzanGoV3 = 9,
+          TestButtons2020Q1 = 10,
+          Pluto2021Q4 = 14,
+          Buttons2020Q1Html5 = 0xf,
+          BalooRadio2021Q4 = 0x10,
+          JbcTemplate2021Q4 = 17,
+          DaisySticky2021Q4 = 18,
+          CopyCanvasDiscountTemplate = 20,
+          FixedTheme = 21,
+          CopyPhotobox = 22,
+          FixedThemeCards = 23,
+          RyzanGo = 24,
+          CanvasDiscountBundledExperience = 26,
+          CanvasHub = 27,
+          HubTemplate = 28,
+          HubChild = 29,
+          BaseTemplateMarketing = 25,
+          BaseTemplate = 99,
+        }
+
+    - name: ProductMetaData
+      signature: |
+        interface ProductMetaData {
+          title: string;
+          description: string;
+          keywords: string;
+          themeColor: string;
+          googleSigninScope: string;
+          googleSigninClientId: string;
+          distribution: string;
+          rating: string;
+          author: string;
+          copyright: string;
+          ogTitle: string;
+          ogType: string;
+          ogUrl: string;
+          ogDescription: string;
+          ogSitename: string;
+          ogLocale: string;
+          ogAppId: string;
+          ogImage: string;
+          twitterCard: string;
+          twitterSite: string;
+          twitterTitle: string;
+          twitterDescription: string;
+          twitterImage: string;
+          isIndex: boolean;
+        }
+
+    - name: ProductOptionType1
+      signature: |
+        interface ProductOptionType1 {
+          heading: string;
+          descr: string;
+          ctaText: string;
+          ctaUrl: string;
+          containerClass?: string;
+          itemClass?: string;
+        }
+
+    - name: TypeOption1
+      signature: |
+        interface TypeOption1 {
+          heading: string;
+          descr: string;
+          imgMobile: Nullable<string>;
+          imgDesktop: Nullable<string>;
+          types: Array<ProductOptionType1>;
+          order: number | null;
+        }
+
+    - name: ProductOptionType2
+      signature: |
+        interface ProductOptionType2 {
+          heading: string;
+          descr: Nullable<string>;
+          imgMobile: string;
+          imgDesktop: string;
+          bullets: Nullable<Array<string>>;
+          href?: string;
+          ctaUrl?: string;
+          ctaText?: string;
+          isPopular?: boolean;
+          isPremium?: boolean;
+        }
+
+    - name: TypeOption2
+      signature: |
+        interface TypeOption2 {
+          heading: string;
+          descr: string;
+          imgMobile: Nullable<string>;
+          imgDesktop: Nullable<string>;
+          types: Array<ProductOptionType2>;
+          order?: number;
+          expandDescriptionText?: string;
+          expandDescriptionIsUrl?: boolean;
+          showIcon?: boolean;
+        }
+
+    - name: ProductOptionType3
+      signature: |
+        interface ProductOptionType3 {
+          heading: string;
+          descr: string;
+          img: string;
+          ctaUrl?: string;
+          ctaText?: string;
+          isPopular?: boolean;
+          isPremium?: boolean;
+        }
+
+    - name: TypeOption3
+      signature: |
+        interface TypeOption3 {
+          heading: string;
+          descr: string;
+          ctaImg: string;
+          ctaText: string;
+          ctaUrl: string;
+          types: Array<ProductOptionType3>;
+          order: number | null;
+        }
+
+    - name: ProductUpsellOption
+      signature: |
+        interface ProductUpsellOption {
+          heading: string;
+          descr: string;
+          imgMobile: string;
+          imgDesktop: string;
+        }
+
+    - name: ProductUpsells
+      signature: |
+        interface ProductUpsells {
+          heading: string;
+          upsells: Array<ProductUpsellOption>;
+          order: number | null;
+        }
+
+    - name: ProductFinalSalePitch
+      signature: |
+        interface ProductFinalSalePitch {
+          heading: string;
+          img: string;
+          ctaText: string;
+          paragraphs: Array<string>;
+          order: number | null;
+        }
+
+    - name: ProductFloatingBanner
+      signature: |
+        interface ProductFloatingBanner {
+          floatingId: string;
+          mainId: string;
+          floatingOrder: number[];
+          main: MainBannerSection | null;
+          floating: FloatingBannerSection | null;
+        }
+
+    - name: ProductPageContent
+      signature: |
+        interface ProductPageContent {
+          typeOption1: TypeOption1;
+          typeOption2: TypeOption2;
+          typeOption3: TypeOption3;
+          typeOption4: TypeOption2;
+          upsells: ProductUpsells;
+          finalSalePitch: ProductFinalSalePitch;
+          featuresSlideshow: CategoryFeaturesSlides;
+          floatingBanner: ProductFloatingBanner;
+          guidelineSectionOrder: number;
+          webComponents: Array<WebComponent> | null;
+        }
+
+    - name: TypeOptionSection
+      signature: |
+        interface TypeOptionSection {
+          typeOptionSection: [data: TypeOption2];
+        }
+
+    - name: ThemeProduct
+      signature: |
+        interface ThemeProduct {
+          refCode: string;
+          listImageUrl: string[];
+          name: string;
+          description: string;
+          discountedPrice: string;
+          price: string;
+          ctaUrl: string;
+          readyCroppie: false;
+          themeUrl: string;
+          packOfQty: string;
+          preselectedSvgThemeId: string;
+          ryzanSettings: string;
+        }
+
+    - name: ProductPageBundleInfo
+      signature: |
+        interface ProductPageBundleInfo {
+          breadcrumbs: Nullable<BreadCrumb>;
+          bottomPageCta: Nullable<BottomPageCta>;
+        }
+
+    - name: CampaignCta
+      signature: |
+        interface CampaignCta {
+          text: string;
+          textColor: string;
+          ctaColor: string;
+          href: string;
+        }
+
+    - name: CampaignBanner
+      signature: |
+        interface CampaignBanner {
+          promoAppliedText: string;
+          offerEndsText: string;
+          bgColor: string;
+          textColor: string;
+        }
+
+    - name: CampaignInfo
+      signature: |
+        interface CampaignInfo {
+          offer: string;
+          stripBannerContent: string;
+          image: string;
+          expiryDateTime: string;
+          clockColor: string;
+          ctas: CampaignCta[];
+          banner: CampaignBanner;
+        }
+
+    - name: ProductPageData
+      signature: |
+        interface ProductPageData {
+          id: string;
+          webPageType: WebPageTypeEnum;
+          platinumProductType: PlatinumProductTypeEnum;
+          platinumProductTypeGroup: PlatinumProductTypeEnum;
+          platinumProductTypeName: string;
+          imageCaption: string;
+          friendlyurl: string;
+          url: string;
+          attribute01: string;
+          attribute02: string;
+          attribute03: string;
+          pageTitle: string;
+          canonicalUrl: string;
+          seoTitle: string;
+          seoHeader: string;
+          metaKeywords: string;
+          metaDescription: string;
+          marketingContent: string;
+          marketingContent2: string;
+          marketingContent3: string;
+          textSelectProduct: string;
+          buttonText: string;
+          showColourOptions?: any;
+          filterSubTypeCaption: string;
+          filterSubTypeShow: boolean;
+          filterLayoutCaption: string;
+          filterLayoutShow: boolean;
+          filterAttribute01Caption: string;
+          filterAttribute01Show: boolean;
+          filterAttribute02Caption: string;
+          filterAttribute02Show: boolean;
+          filterAttribute03Caption: string;
+          filterAttribute03Show: boolean;
+          mediaclipThemeUrl: string;
+          skipThemeSelection: boolean;
+          guid: string;
+          pk: number;
+          categoryPageGroup: number;
+          extraCopyMessage: string;
+          h1: string;
+          metaTitle: string;
+          css: string;
+          tags: any[];
+          images: Images[];
+          themeImages?: Images[];
+          optionData: OptionData;
+          reviewData: ReviewData | undefined;
+          marketingContents: Marketingcontents[] | undefined;
+          optionStore: OptionStore | undefined;
+          trust_pilot: string;
+          save_allday: string;
+          couponCode: string;
+          percentDiscountCoupon: number;
+          about_us: AboutUs;
+          interest_free_payments: string;
+          with: string;
+          off_ends: string;
+          large_orders: LargeOrders;
+          trust: EachTrust[];
+          delivery_time: DeliveryTime;
+          productExtendedDetails: ProductDetails | null;
+          embededVideo: string;
+          embededVideoIcon: string;
+          productPageViewName: ProductPageViewNameEnum;
+          metaData: ProductMetaData;
+          productPageContent: ProductPageContent | null;
+          reviewsCollection: CustomerReview | null;
+          themeSubjectFilter: string | null;
+          productBundleGroup: Nullable<TypeOptionSection>;
+          seoContent: Nullable<SeoContent>;
+          seoAndFaqContent: Nullable<{
+            seoContent: Nullable<SeoContent>;
+            faqSection: Nullable<FAQSection>;
+            display: boolean;
+          }>;
+          themedProducts: Nullable<Array<ThemeProduct>>;
+          productPageBundleInfo: Nullable<ProductPageBundleInfo>;
+          listHubChilds: Nullable<Array<TypeOption2>>;
+          campaignInfo: CampaignInfo | null;
+          deliveryDeadline: ProductDynamicData | null;
+          standardShippingPrice: number;
+          breadcrumbs: Nullable<Array<BreadCrumb>>;
+        }
+      description: Complete product page data structure with all metadata, filters, reviews, SEO, and campaign info
+
+    - name: ProductPageJsonRequest
+      signature: |
+        interface ProductPageJsonRequest {
+          url: string;
+          couponCode: string;
+          preselectedRefId: string | null;
+          themeId: string;
+          editor: string;
+          gclId: string;
+          pixId: string;
+          utm_id: string;
+          utm_source: string;
+          utm_medium: string;
+          utm_campaign: string;
+          utm_term: string;
+          utm_content: string;
+          utm_creative_format: string;
+          utm_marketing_tactic: string;
+          utm_source_platform: string;
+          wbraid: string;
+          gbraid: string;
+          unixTimestamp?: string;
+        }
+      description: Request payload for product page API with UTM params and tracking IDs
+
+    - name: ExtractProductData
+      signature: |
+        interface ExtractProductData {
+          product: ProductPageData;
+          couponCode: string;
+          friendlyUrl: string;
+          preselectedRefId: string;
+          machineToken: string;
+          refCode: string;
+          firstSlideUrl: string;
+          themeUrl: string;
+          filterIndex: number[];
+          editor: string;
+          selectedFilter: Filter | null;
+        }
+      description: Extracted and processed product data with selected filter and indices
+
+    - name: ProductBundle
+      signature: |
+        type ProductBundle = {
+          refCode: string;
+          imageUrl: Nullable<string>;
+          name: Nullable<string>;
+          discountedPrice: string;
+          price: string;
+          description: string;
+          readyCroppie: boolean;
+          isBestSeller: false;
+          isPremium: false;
+          isNew: false;
+          ctaUrl: string;
+          overrideImageUrl: Nullable<string>;
+          overrideName: Nullable<string>;
+          overrideDescription: Nullable<string>;
+          packOfQty: Nullable<number>;
+          productFriendlyUrl: Nullable<string>;
+          preselectedSvgThemeId?: Nullable<string>;
+        }
+
+    - name: BundleMetaData
+      signature: "type BundleMetaData = ProductMetaData"
+
+    - name: ProductBundleResponse
+      signature: |
+        type ProductBundleResponse = {
+          name: string;
+          description: string;
+          options: ProductBundle[];
+          banner: {
+            title: string;
+            desc: string;
+            mobileImageUrl: string;
+            desktopImageUrl: string;
+            cta: {
+              ctaText: string;
+              ctaColor: string;
+              ctaBackgroundColor: string;
+              href: string;
+            };
+          };
+          breadcrumbs: BreadCrumb;
+          seoContent: SeoContent;
+          faqSection: FAQSection;
+          bottomPageCta: BottomPageCta | null;
+          theme: CategoryTheme | null;
+          metaData: Nullable<BundleMetaData>;
+        }
+
+    - name: ProductPageComponentPositions
+      signature: |
+        interface ProductPageComponentPositions {
+          typeOption1Order?: number;
+          typeOption2Order?: number;
+          typeOption3Order?: number;
+          typeOption4Order?: number;
+          upsellsOrder?: number;
+          finalSalePitchOrder?: number;
+          popularSizeTableOrder?: number;
+          productDeliveryDateOrder?: number;
+          highlightReviewOrder?: number;
+          productTrustIndicatorOrder?: number;
+          bulkPricingOrder?: number;
+          productDescriptionOrder?: number;
+          customerReviewOrder?: number;
+          faqOrder?: number;
+          seoContentOrder?: number;
+          listHubChildsOrder?: number;
+          mobileBannersOverrideOrder?: number[];
+          desktopBannersOverrideOrder?: number[];
+          mobileBannersDisplay?: boolean;
+          desktopBannersDisplay?: boolean;
+        }
+      description: Configuration for ordering product page components
+
+    - name: OptionPanelLayout
+      signature: |
+        interface OptionPanelLayout {
+          priceWidth: string;
+          labelWidth: string;
+          discountWidth: string;
+        }
+      description: Layout configuration for tier pricing option panel
+
+    - name: FreeShippingMinimumQuantityData
+      signature: |
+        interface FreeShippingMinimumQuantityData {
+          productType: PlatinumProductTypeEnum;
+          productTypeGroup?: PlatinumProductTypeEnum;
+          module?: string;
+          minimumQuantityFreeShipping: number;
+          freeShippingLabel: string;
+        }
+
+  constants:
+    - name: ryzanProducts
+      signature: "PlatinumProductTypeEnum[]"
+      description: Array of product types that support Ryzan editor (MetalPrint, Canvas, Frame, etc.)
+
+    - name: popularTagByRegions
+      signature: "string[]"
+      description: "['popular', 'top ventes', 'populair', 'bestseller', 'beliebt', 'superventas', 'popolare']"
+
+    - name: DEFAULT_COMPONENT_POSITION
+      signature: "number = 10"
+
+    - name: productTrustIndicatorData
+      signature: "Array of region-specific trust indicators"
+      description: Trust badges and highlight features for US, GB, FR, DE, IT, ES, NL, IN, AE regions
+
+    - name: TierPricingOptionLayoutConfig
+      signature: "Record<string, OptionPanelLayout>"
+      description: Layout configs for FR, DE, US, and default regions
+
+  functions:
+    - name: getProductPage
+      signature: "(friendlyUrl: string, controller?: AbortController) => Promise<ProductPageData>"
+      description: "Legacy function - fetches product page data from qa-webpageapi (hardcoded URL)"
+      deprecated: true
+
+    - name: getProductPageJson
+      signature: "(request: ProductPageJsonRequest) => Promise<ProductPageData>"
+      description: Fetches product page data using handleMultipleAPIRequests with full tracking params
+
+    - name: handleSeletedProductChange
+      signature: "(url: string, selectedFilter: Filter, couponCode?: string, preselectedRefId?: string) => Promise<void>"
+      description: Handles product variant selection, pushes GTM/Matomo/Klaviyo events with product config
+
+    - name: getProductDynamicTitle
+      signature: "(productData: ProductPageData, url: URL) => string"
+      description: Generates dynamic product title from URL pathname segments
+
+    - name: processProductPageData
+      signature: |
+        (filters: Filter[], preselectedRefId?: string) => {
+          cheapestFilter: Filter | null;
+          highestFilter: Filter | null;
+          allPossbileFilters: Filter[];
+          preselectedFilter: Filter | null;
+        }
+      description: Processes filters to find cheapest, highest price, all variants, and preselected
+
+    - name: getProductPageJsonSchema
+      signature: "(productPageData: ProductPageData, url: URL) => object"
+      description: Generates Schema.org JSON-LD for ProductGroup with offers, reviews, variants, breadcrumbs
+
+    - name: getProductHeadData
+      signature: "(productPageData: ProductPageData, url: URL) => object"
+      description: Generates head metadata (title, meta tags, OG tags, Twitter cards, canonical, scripts)
+
+    - name: getInstantProductHeadData
+      signature: "(productPageData: ProductPageData, url: URL) => object"
+      description: Generates head metadata for instant products (similar to getProductHeadData)
+
+    - name: staticFilterProductTypes
+      signature: "(platinumProductType: PlatinumProductTypeEnum, refCode: string, currentPath: string) => { displayUploader: boolean; isMulti: boolean; }"
+      description: Determines if product should display uploader and support multi-image based on static rules
+
+    - name: dynamicFilterProductTypes
+      signature: "(platinumProductType: PlatinumProductTypeEnum, refCode: string, currentPath: string) => { displayUploader: boolean; isMulti: boolean; }"
+      description: Determines if product should display uploader and support multi-image based on dynamic rules
+
+    - name: getCookieValueFromKey
+      signature: "(key: string) => Promise<string>"
+      description: Retrieves cookie value by key from server-side cookie data
+
+    - name: extractProductData
+      signature: |
+        (productData: ProductPageData, preselectedRefId: string, quantity: number, friendlyUrl: string, machineToken: string, editor: string) => ExtractProductData
+      description: Extracts and processes product data, finds selected filter by refId or popular tag or default
+
+    - name: loadProductData
+      signature: "(event: RequestEventLoader<QwikCityPlatform>) => Promise<ExtractProductData | DefaultError>"
+      description: Qwik loader function - parses query params, fetches product data, extracts selected filter
+
+    - name: extractProductInstantProductData
+      signature: "(product: ProductPageData) => Promise<{ sizeOptions: Filter[]; instantProductThemeData: any; }>"
+      description: Extracts size options (sorted by price) and fetches instant product themes
+
+    - name: loadInstantProductData
+      signature: "(event: RequestEventLoader<QwikCityPlatform>) => Promise<object | DefaultError>"
+      description: Qwik loader for instant products - fetches product data, size options, and themes
+
+    - name: getProductBundle
+      signature: "(url: string, groupBundleName: string, couponCode?: string) => Promise<NewAPIResponse<ProductBundleResponse> | null>"
+      description: Fetches product bundle data by URL and group name
+
+    - name: getProductBundleHeadData
+      signature: "(data: ProductBundleResponse, href: string) => object"
+      description: Generates head metadata for product bundle pages
+
+    - name: buildCtaUrl
+      signature: "(ctaUrl: string, designUrl: string, location: RouteLocation) => string"
+      description: Builds CTA URL by parsing JSON ctaUrl and merging with design URL params
+
+    - name: getProductJSonData
+      signature: "(productType: PlatinumProductTypeEnum, productJsonData: DeliveryDeadlineJSON | null) => any"
+      description: Selects appropriate delivery deadline JSON based on product type (photobooks, blankets, calendars, canvas, default)
+
+    - name: getBreakpointByScreen
+      signature: "(breakpoint: 'default' | 'sm' | 'md' | 'lg' | 'xl' | '2xl') => string"
+      description: Converts breakpoint name to pixel value (640px, 768px, 1024px, 1280px, 1536px)
+
+    - name: convertObjectToCSS
+      signature: "(input: Record<string, string>) => string"
+      description: Converts object of CSS properties to CSS string
+
+    - name: generateContainerItemCSS
+      signature: "(data: ProductWebContentBreakpoint[], breakpoint: 'default' | 'sm' | 'md' | 'lg' | 'xl' | '2xl') => string"
+      description: Generates CSS for container and item classes with media query wrapping
+
+    - name: generateTypeOption1CSS
+      signature: "(input: ProductWebContentResponse, productType: PlatinumProductTypeEnum) => string"
+      description: Generates complete CSS for TypeOption1 across all breakpoints
+
+    - name: getFilterIndexBasedOnIndex
+      signature: "(filters: Filter[], selectedFilter: Filter) => number[]"
+      description: Finds filter index path based on selected filter price (next higher or highest lower)
+
+    - name: getTierPricingOptionLayout
+      signature: "(region: string) => OptionPanelLayout"
+      description: Returns tier pricing layout config for region (FR, DE, US, or default)
+
+    - name: getFreeShippingMinimumQuantityData
+      signature: "(productType?: PlatinumProductTypeEnum, productTypeGroup?: PlatinumProductTypeEnum) => Promise<FreeShippingMinimumQuantityData | undefined>"
+      description: Fetches free shipping minimum quantity data from web content, matches by type and type group
+
+api_contracts:
+  - endpoint: "http://qa-webpageapi.printerpix.com/api/product/geturl?url=%2F{friendlyUrl}%2F"
+    method: GET
+    description: "Legacy product page fetch (hardcoded QA URL, deprecated)"
+    request:
+      params:
+        friendlyUrl: string (URL-encoded)
+    response:
+      type: ProductPageData
+    used_by:
+      - getProductPage
+    deprecated: true
+
+  - endpoint: "/ProductPage/GetByFriendlyUrlForQwikV2"
+    method: POST
+    description: "Primary product page data API - returns full product details with filters, reviews, SEO, campaigns"
+    request:
+      params:
+        url: string
+        couponCode: string
+        preselectedRefId: string | null
+        themeId: string
+        editor: string
+        gclId: string
+        pixId: string
+        utm_id: string
+        utm_source: string
+        utm_medium: string
+        utm_campaign: string
+        utm_term: string
+        utm_content: string
+        utm_creative_format: string
+        utm_marketing_tactic: string
+        utm_source_platform: string
+        wbraid: string
+        gbraid: string
+        unixTimestamp: string (optional)
+    response:
+      type: NewAPIResponse<ProductPageData>
+      structure: "{ success: boolean, data: ProductPageData, error?: any }"
+    used_by:
+      - getProductPageJson
+      - loadProductData
+      - loadInstantProductData
+    timeout: settings().READ_API_TIMEOUT
+    cache_strategy: hard
+
+  - endpoint: "/ProductPage/GetDataLayarProductConfigStep1_Detail"
+    method: GET
+    description: "Fetches data layer product configuration for GTM tracking on filter change"
+    request:
+      params:
+        friendlyUrl: string
+        couponCode: string (optional)
+        preselectedRefId: string (optional)
+    response:
+      structure: |
+        {
+          productConfiguration: {
+            configuredProductMeta: {
+              name, marketingName, id, sku,
+              productAttributes: { type, subType, layout, size, brand, category },
+              priceAttributes: { discount, price }
+            }
+          },
+          detail: {
+            currencyCode: string,
+            detailProduct: { same structure as configuredProductMeta + googleId }
+          }
+        }
+    used_by:
+      - handleSeletedProductChange
+    cache_strategy: soft
+
+  - endpoint: "/ProductPage/GetProductBundle"
+    method: GET
+    description: "Fetches product bundle data (options, banner, seo, faq)"
+    request:
+      params:
+        url: string
+        groupBundleName: string
+        couponCode: string (optional)
+    response:
+      type: NewAPIResponse<ProductBundleResponse>
+    used_by:
+      - getProductBundle
+    cache_strategy: soft
+
+types:
+  imported:
+    - Filter (from ~/data/option-data)
+    - OptionData (from ~/data/option-data)
+    - OptionStore (from ~/data/option-data)
+    - ReviewData (from ~/data/review-data)
+    - MarketingContentData (from ~/data/marketing-content-data)
+    - Marketingcontents (from ~/data/marketing-content-data)
+    - CustomerReview (from ~/components/customer-review/customer-review)
+    - DefaultError (from ~/utility/http)
+    - NewAPIResponse (from ~/config/http)
+    - BreadCrumb (from ./category-service)
+    - BottomPageCta (from ./category-service)
+    - CategoryFeaturesSlides (from ./category-service)
+    - CategoryTheme (from ./category-service)
+    - FAQSection (from ./category-service)
+    - SeoContent (from ./category-service)
+    - WebPageTypeEnum (from ./product-category-service)
+    - PlatinumProductTypeEnum (from ./product-category-service)
+    - DeliveryDeadlineJSON (from ./json-service)
+    - FloatingBannerSection (from ./json-service)
+    - MainBannerSection (from ./json-service)
+    - ProductDynamicData (from ./json-service)
+    - ProductWebContentBreakpoint (from ./json-service)
+    - ProductWebContentResponse (from ./json-service)
+    - WebComponent (from ./web-component-service)
+    - RequestEventLoader (from @builder.io/qwik-city)
+    - RouteLocation (from @builder.io/qwik-city)
+
+dependencies:
+  internal:
+    - path: ~/data/option-data
+      imports: [Filter, OptionData, OptionStore]
+    - path: ~/data/review-data
+      imports: [ReviewData]
+    - path: ~/data/marketing-content-data
+      imports: [MarketingContentData, Marketingcontents]
+    - path: ~/services/server
+      imports: [getSiteSetting]
+    - path: ~/utility/google-tag-manager-extension
+      imports: [pushDataIntoDataLayer]
+    - path: ~/components/customer-review/customer-review
+      imports: [CustomerReview]
+    - path: ~/utility/http
+      imports: [handleMultipleAPIRequests, HTTP_METHODS, toAbsoluteUrl, DefaultError]
+    - path: ~/config/http
+      imports: [NewAPIResponse]
+    - path: ~/services/category-service
+      imports: [BottomPageCta, BreadCrumb, CategoryFeaturesSlides, CategoryTheme, FAQSection, SeoContent]
+    - path: ~/services/themes-service
+      imports: [getInstantProductThemes]
+    - path: ~/services/product-category-service
+      imports: [WebPageTypeEnum, PlatinumProductTypeEnum]
+    - path: ~/services/json-service
+      imports: [loadWebContent, WebContentType, DeliveryDeadlineJSON, FloatingBannerSection, MainBannerSection, ProductDynamicData, ProductWebContentBreakpoint, ProductWebContentResponse]
+    - path: ~/utility/element
+      imports: [toTitleCase]
+    - path: ~/services/common-service
+      imports: [isDataReady]
+    - path: ~/services/cart-services/cookie
+      imports: [getCookieDataOnServer]
+    - path: ~/services/web-component-service
+      imports: [WebComponent]
+    - path: ~/utility/matomo
+      imports: [MatomoCategory, pushMatomoEvent, MatomoEvent]
+    - path: ~/services/klaviyo-service
+      imports: [KlaviyoEvent, trackKlaviyoEvent]
+    - path: ~/config/settings
+      imports: [settings]
+    - path: ~/services/cart-services/gtm/data-layer-base
+      imports: [extractGCLCookieData]
+    - path: ~/services/cart-services/gtm/data-layer-mapper
+      imports: [cookieKey]
+
+  external:
+    - "@builder.io/qwik-city": [RequestEventLoader, RouteLocation]
+
+data_flow:
+  1_fetch_product_data:
+    description: "API fetches product data with filters, reviews, SEO, campaigns"
+    flow: |
+      getProductPageJson(request)
+        -> POST /ProductPage/GetByFriendlyUrlForQwikV2
+        -> handleMultipleAPIRequests (with timeout)
+        -> returns NewAPIResponse<ProductPageData>
+
+  2_process_filters:
+    description: "Process filters to find cheapest/highest/preselected variants"
+    flow: |
+      processProductPageData(filters, preselectedRefId)
+        -> recursive traversal of nested Filter[] tree
+        -> accumulates all leaf filters with refCode
+        -> identifies cheapest (min price), highest (max price), preselected (matching refId)
+        -> returns { cheapestFilter, highestFilter, allPossbileFilters, preselectedFilter }
+
+  3_extract_selected_filter:
+    description: "Extract product data and determine selected filter"
+    flow: |
+      extractProductData(productData, preselectedRefId, quantity, ...)
+        -> if preselectedRefId: search filters for matching refCode
+        -> else if no match: search for popular tag (regionalPopularTags)
+        -> else if no popular: find default filter (_default = true)
+        -> builds filterIndex array (reversed path to selected filter)
+        -> sets firstSlideUrl, themeUrl from selected filter
+        -> returns ExtractProductData with selectedFilter
+
+  4_qwik_loader:
+    description: "Qwik route loader orchestration"
+    flow: |
+      loadProductData(event)
+        -> parse query params (couponCode, preselectedRefId, themeId, etc.)
+        -> read cookies (MACHINE_TOKEN, MODI_COUPON, editor, GCLAW, pixId, utm_*)
+        -> call getProductPageJson(request)
+        -> if success: extractProductData() and return
+        -> if error: return DefaultError
+
+  5_filter_change_tracking:
+    description: "Track filter changes via analytics"
+    flow: |
+      handleSeletedProductChange(url, selectedFilter, couponCode, preselectedRefId)
+        -> GET /ProductPage/GetDataLayarProductConfigStep1_Detail
+        -> construct data layer objects (productConfiguration, productDetailSnippet)
+        -> pushDataIntoDataLayer (GTM)
+        -> pushMatomoEvent (Matomo)
+        -> trackKlaviyoEvent (Klaviyo VIEW_PRODUCT)
+
+  6_bundle_fetch:
+    description: "Fetch product bundle data"
+    flow: |
+      getProductBundle(url, groupBundleName, couponCode)
+        -> GET /ProductPage/GetProductBundle
+        -> returns ProductBundleResponse with options, banner, seo, faq
+
+  7_instant_product:
+    description: "Load instant product with themes"
+    flow: |
+      loadInstantProductData(event)
+        -> parse query params (preselectedRefId, svgThemeId)
+        -> getProductPageJson(request)
+        -> extractProductInstantProductData(product)
+          -> extract all leaf filters as sizeOptions (sorted by price)
+          -> getInstantProductThemes(product.id)
+        -> return { product, sizeOptions, svgThemeId, instantProductThemeData }
+
+  8_metadata_generation:
+    description: "Generate SEO metadata and JSON-LD"
+    flow: |
+      getProductHeadData(productPageData, url)
+        -> builds title, meta tags (OG, Twitter), canonical, scripts
+        -> calls getProductPageJsonSchema() for JSON-LD
+          -> generates ProductGroup schema with offers, reviews, variants, breadcrumbs
+        -> returns { title, meta[], links[], scripts[] }
+
+business_logic:
+  filter_selection_priority:
+    description: "Order of precedence for selecting default product variant"
+    logic: |
+      1. If preselectedRefId provided: match refCode (case-insensitive)
+      2. Else: find filter with popular tag (regional variants: 'popular', 'top ventes', etc.)
+      3. Else: find filter with _default = true (recursive search)
+      4. Fallback: first available filter
+
+  price_range_calculation:
+    description: "Calculate cheapest and highest prices across all variants"
+    logic: |
+      - Recursively traverse Filter[] tree to find all leaf filters (refCode present, no sub-filters)
+      - Track min and max discountedPrice
+      - Used for Schema.org AggregateOffer (lowPrice, highPrice)
+
+  uploader_display_logic:
+    description: "Determine if product should show file uploader and support multiple images"
+    logic: |
+      staticFilterProductTypes():
+        - MetalPrint: show uploader if refCode includes 'metalprint', multi if 'cluster'/'split'
+        - Canvas: show uploader unless path includes 'collage'/'pele-mele'
+        - PhotoTile: show uploader if not 'Alu', multi if 'cluster'
+        - Coaster: show uploader, multi if 'packof'
+        - Bottle: hide uploader if 'engrave'
+        - MagneticPrint: show uploader if not 'magnetpolaroid'/'magnetstrip', multi if 'packof' or not 'square'
+        - Cushion/Pillow: hide if 'sham'/'spun', else show multi
+        - Puzzle: show uploader
+        - Other Ryzan products: show uploader
+
+      dynamicFilterProductTypes():
+        - Similar logic but filters out 'collage'/'pele-mele' paths first
+        - Falls back to static rules if Ryzan product or puzzle
+
+  dynamic_title_generation:
+    description: "Generate SEO title from URL path segments"
+    logic: |
+      - If FixedTheme product: extract path segments, replace hyphens with spaces, title case
+      - If path has 4+ segments: "{segment[3]} {segment[2]} {imageCaption}"
+      - If path has 3 segments: "{segment[2]} {imageCaption}"
+      - Else: use imageCaption
+
+  schema_org_generation:
+    description: "Generate structured data for product pages"
+    logic: |
+      ProductGroup with:
+        - name, image[], url, description, brand (Printerpix)
+        - AggregateOffer: priceCurrency, lowPrice, highPrice, offerCount
+        - shippingDetails: shippingRate, shippingDestination (country)
+        - MerchantReturnPolicy: 30-day return, FreeReturn
+        - aggregateRating: ratingValue, reviewCount
+        - review[]: individual reviews
+        - hasVariant[]: each Filter as Product with own Offer
+      BreadcrumbList: Home + breadcrumbs from API
+
+  tier_pricing_layout:
+    description: "Region-specific layout widths for tier pricing panel"
+    logic: |
+      FR: price 40%, label 35%, discount 25%
+      DE: price 30%, label 40%, discount 30%
+      US: price 35%, label 35%, discount 30%
+      Default: price 40%, label 30%, discount 30%
+
+  trust_indicators:
+    description: "Region-specific trust badges and features"
+    logic: |
+      Each region (US, GB, FR, DE, IT, ES, NL, IN, AE) has:
+        - trustIndicators[]: 6 badges (satisfaction, privacy, delivery, made-in, payment, mobile)
+        - highlightFeatures[]: 3 features (gift, bulk discount, quality)
+      Localized text for each region
+
+  free_shipping_lookup:
+    description: "Find free shipping minimum quantity by product type"
+    logic: |
+      1. First try exact match: productType AND productTypeGroup
+      2. If not found: match productType only (productTypeGroup undefined)
+      3. Load data from WebContentType.FREE_SHIPPING_LABELS_TP
+
+error_handling:
+  api_failures:
+    description: "API call failures return DefaultError or null"
+    handling: |
+      - getProductPageJson: returns NewAPIResponse<ProductPageData> or error object
+      - handleSeletedProductChange: catches errors, logs to console, returns void
+      - getProductBundle: returns null on failure (soft error)
+      - loadProductData: returns DefaultError if isDataReady() fails
+      - loadInstantProductData: returns DefaultError if isDataReady() fails
+
+  missing_data:
+    description: "Handle missing filters, metadata, or content"
+    handling: |
+      - extractProductData: falls back to default filter if preselected/popular not found
+      - processProductPageData: returns null for cheapest/highest if no filters
+      - getProductJSonData: returns undefined if productType not matched
+      - getFreeShippingMinimumQuantityData: returns undefined if no match
+
+  cookie_access:
+    description: "Server-side cookie reading"
+    handling: |
+      - getCookieValueFromKey: returns empty string if cookie not found
+      - loadProductData/loadInstantProductData: use cookie.get()?.value || "" pattern
+
+integration_points:
+  analytics:
+    gtm:
+      - pushDataIntoDataLayer for product configuration events
+      - trackEvent on filter change with MatomoCategory.PRODUCT
+    matomo:
+      - pushMatomoEvent with category, action, label, value
+    klaviyo:
+      - trackKlaviyoEvent for VIEW_PRODUCT with full product metadata
+
+  server_utilities:
+    - getSiteSetting: provides currencyCode, countryCode2, website URL
+    - getCookieDataOnServer: reads server-side cookies
+    - extractGCLCookieData: parses Google Click ID from cookie
+
+  theme_service:
+    - getInstantProductThemes: fetches themes for instant products
+
+  json_content:
+    - loadWebContent: fetches web content by type (FREE_SHIPPING_LABELS_TP, delivery deadlines)
+
+  product_category:
+    - PlatinumProductTypeEnum: enum of product types
+    - WebPageTypeEnum: enum of page types
+
+security_considerations:
+  - All API calls use handleMultipleAPIRequests (centralizes error handling, timeouts)
+  - Sensitive cookies (MACHINE_TOKEN, GCLAW, pixId) read server-side only
+  - User input (friendlyUrl, preselectedRefId) passed as params (no direct SQL injection risk)
+  - No client-side secret exposure
+
+performance_notes:
+  - Recursive filter traversal can be expensive for deeply nested filters
+  - processProductPageData iterates all filters multiple times (could be optimized)
+  - getProductPageJson uses hard cache strategy for product data
+  - API timeout controlled by settings().READ_API_TIMEOUT
+
+multi_region_support:
+  - SIZE_KEYWORDS supports 9 locales (EN, DE, ES, FR, IT, NL)
+  - popularTagByRegions supports 7 regional variants
+  - productTrustIndicatorData for 9 regions (US, GB, FR, DE, IT, ES, NL, IN, AE)
+  - TierPricingOptionLayoutConfig for FR, DE, US, default
+
+behavior:
+  - name: getProductPage
+    steps:
+      - DEPRECATED. Fetches product page from hardcoded QA URL (http://qa-webpageapi.printerpix.com)
+      - Constructs URL with URL-encoded friendlyUrl parameter
+      - Accepts optional AbortController for request cancellation
+      - Logs multiple console.log debug messages
+      - Returns parsed JSON as ProductPageData
+
+  - name: getProductPageJson
+    steps:
+      - Calls handleMultipleAPIRequests with POST to /ProductPage/GetByFriendlyUrlForQwikV2
+      - Passes the full ProductPageJsonRequest (url, couponCode, tracking params) as params
+      - Uses settings().READ_API_TIMEOUT for request timeout
+      - Uses "hard" error type with retry enabled
+      - Returns NewAPIResponse<ProductPageData> or DefaultError
+
+  - name: handleSeletedProductChange
+    steps:
+      - Calls handleMultipleAPIRequests with GET to /ProductPage/GetDataLayarProductConfigStep1_Detail
+      - Passes friendlyUrl, couponCode, preselectedRefId as params with "soft" error type
+      - If response is valid (isDataReady), constructs productConfiguration and productDetailSnippet objects
+      - Pushes productConfiguration to GTM data layer via pushDataIntoDataLayer
+      - Pushes productDetailSnippet to GTM data layer
+      - Pushes Matomo event (trackEvent, PRODUCT, SELECT_PRODUCT_OPTION, preselectedRefId, discount)
+      - Tracks Klaviyo VIEW_PRODUCT event with product name, ID, SKU, categories, image URL, price, compareAtPrice
+      - Wraps everything in try/catch, logs errors to console
+
+  - name: getProductDynamicTitle
+    steps:
+      - Splits URL pathname into segments, filters out empty strings
+      - If 4+ segments, returns "{segment[3]} {segment[2]} {imageCaption}" with hyphens replaced by spaces
+      - If exactly 3 segments, returns "{segment[2]} {imageCaption}" with hyphens replaced by spaces
+      - Otherwise returns productData.imageCaption as-is
+
+  - name: processProductPageData
+    steps:
+      - Recursively traverses the nested Filter[] tree
+      - For each leaf filter (has refCode, no sub-filters), compares discountedPrice to track cheapest and highest
+      - If filter refCode matches preselectedRefId (case-insensitive), marks as preselectedFilter
+      - Collects all leaf filters into allPossbileFilters array
+      - Returns object with cheapestFilter, highestFilter, allPossbileFilters, preselectedFilter
+
+  - name: getProductPageJsonSchema
+    steps:
+      - Calls processProductPageData to get price range and all variants
+      - Builds Schema.org JSON-LD @graph array
+      - First item is ProductGroup with name, images, URL, description, brand (Printerpix)
+      - Includes AggregateOffer with lowPrice/highPrice, shipping details (region-specific country), and 30-day return policy
+      - Includes aggregateRating from reviewsCollection
+      - Maps individual reviews to Schema.org Review objects
+      - Maps all variant filters as hasVariant Product entries with individual Offers
+      - Second item is BreadcrumbList starting with Home, then API breadcrumbs
+      - Returns the complete JSON-LD object
+
+  - name: getProductHeadData
+    steps:
+      - For FixedTheme products, generates dynamic title via getProductDynamicTitle with toTitleCase
+      - Otherwise uses metaData.title
+      - Constructs complete HTML head metadata including title, meta tags (OG, Twitter, robots, theme-color, Google signin)
+      - Sets canonical link using getSiteSetting().website as origin
+      - Includes JSON-LD script from getProductPageJsonSchema
+      - Returns { title, meta[], links[], scripts[] }
+
+  - name: getInstantProductHeadData
+    steps:
+      - Similar to getProductHeadData but always uses metaData.title (no dynamic title)
+      - Sets robots to "index" always (no noindex option)
+      - Otherwise generates same meta tags, canonical link, and JSON-LD script
+
+  - name: staticFilterProductTypes
+    steps:
+      - Determines displayUploader and isMulti based on product type and refCode patterns
+      - MetalPrint: display if refCode includes "metalprint", multi if "cluster" or "split"
+      - Canvas (non-cluster): display unless path includes "collage"/"pele-mele"
+      - Float frames: always display
+      - PhotoTile (non-Alu): display, multi if "cluster"
+      - Canvas cluster: display + multi
+      - Puzzle: display uploader
+      - Coaster: display, multi if "packof"
+      - Bottle: hide if "engrave", otherwise display
+      - MagneticPrint (non-polaroid/strip): display, multi if "packof" or not "square"
+      - Cushion/Pillow: hide if "sham"/"spun", otherwise display + multi
+      - Other Ryzan products (non-polaroid/strip): display
+      - Default: hide uploader
+
+  - name: dynamicFilterProductTypes
+    steps:
+      - If refCode includes "puzzle" or product is a Ryzan product type
+      - First checks collage/pele-mele path (hide uploader)
+      - Then applies Cushion/Pillow sham/spun check
+      - PhotoTile: display, multi if "cluster"
+      - Coaster: display, multi if "pack"
+      - MagneticPrint: display, multi if "packof" or not "square"
+      - Puzzle: display, no multi
+      - Non-cluster/split: display, no multi
+      - Cluster/split: display + multi
+      - Non-Ryzan/puzzle products: no uploader
+
+  - name: getCookieValueFromKey
+    steps:
+      - Calls getCookieDataOnServer() to get all server-side cookies
+      - Searches cookieData array for matching key
+      - Returns the cookie value or empty string if not found
+
+  - name: extractProductData
+    steps:
+      - If preselectedRefId is provided, recursively searches optionData.filters for matching refCode (case-insensitive)
+      - If not found by refCode, searches for filter with popular tag (regional variants like "popular", "top ventes", etc.)
+      - If neither found, falls back to recursive search for filter with _default=true
+      - Builds filterIndex array (path of indices to selected filter, reversed)
+      - Extracts firstSlideUrl, themeUrl from selected filter
+      - Sets default quantity from optionData.defaultTierPricingQuantity if query quantity is 0
+      - Returns ExtractProductData with product, couponCode, friendlyUrl, refCode, filterIndex, selectedFilter
+
+  - name: loadProductData
+    steps:
+      - Qwik route loader function
+      - Extracts query params (couponcode, preselectedrefid, themeid, quantity, editor) from URL
+      - Reads cookies (MACHINE_TOKEN, MODI_COUPON, editor, GCLAW, pixId, utm_*, pixIdUnixTimestamp)
+      - Builds ProductPageJsonRequest with all tracking/marketing params
+      - Calls getProductPageJson(request)
+      - If response fails isDataReady check, returns DefaultError
+      - Otherwise calls extractProductData and returns ExtractProductData
+
+  - name: extractProductInstantProductData
+    steps:
+      - Recursively traverses optionData.filters to collect all leaf filters with refCode as sizeOptions
+      - Fetches instant product themes via getInstantProductThemes(product.id)
+      - Sorts sizeOptions by discountedPrice ascending
+      - Returns { sizeOptions, instantProductThemeData }
+
+  - name: loadInstantProductData
+    steps:
+      - Qwik route loader for instant product pages
+      - Extracts query params (couponcode, preselectedrefid, preselectedsvgthemeid, themeid, editor)
+      - Uses params.instantProductUrl as friendlyUrl
+      - Calls getProductPageJson and extractProductInstantProductData
+      - Returns { product, sizeOptions (sorted by price), svgThemeId, preselectedRefId, instantProductThemeData }
+
+  - name: getProductBundle
+    steps:
+      - Calls handleMultipleAPIRequests with GET to /ProductPage/GetProductBundle
+      - Passes url, groupBundleName, couponCode as params with "soft" error type
+      - Returns NewAPIResponse<ProductBundleResponse> if data is ready, null otherwise
+
+  - name: getProductBundleHeadData
+    steps:
+      - Generates HTML head metadata for bundle pages using ProductBundleResponse.metaData
+      - Similar structure to getProductHeadData but without JSON-LD script
+      - Returns { title, meta[] }
+
+  - name: buildCtaUrl
+    steps:
+      - Parses ctaUrl as JSON to extract refCode and themeUrl
+      - Parses designUrl to get existing search params
+      - Merges refCode into productId param and themeUrl into themeUrl param (set or append)
+      - Returns constructed URL path with decoded query string
+
+  - name: getProductJSonData
+    steps:
+      - Maps PlatinumProductTypeEnum to DeliveryDeadlineJSON category key
+      - Photobook -> photobooks, Blanket -> blankets, Calendar -> calendars, Canvas -> canvas
+      - Default: returns the "default" category data
+      - Returns the ProductDynamicData for the matched category or undefined
+
+  - name: getBreakpointByScreen
+    steps:
+      - Maps breakpoint name to pixel value (sm=640px, md=768px, lg=1024px, xl=1280px, 2xl=1536px, default="")
+
+  - name: convertObjectToCSS
+    steps:
+      - Converts Record<string, string> to CSS string by joining "key: value;" pairs
+
+  - name: generateContainerItemCSS
+    steps:
+      - For each ProductWebContentBreakpoint, generates .container-N and .item-N CSS classes
+      - Wraps in @media (min-width: {pixel}) for non-default breakpoints
+      - Returns concatenated CSS string
+
+  - name: generateTypeOption1CSS
+    steps:
+      - Looks up product type key in ProductWebContentResponse
+      - Falls back to "Unknown" key if product type not found
+      - Generates CSS for all breakpoints (default, sm, md, lg, xl, 2xl) via generateContainerItemCSS
+      - Returns concatenated CSS string
+
+  - name: getFilterIndexBasedOnIndex
+    steps:
+      - Collects all leaf filters and checks if any has price >= selectedFilter price
+      - If yes, finds the filter with the next higher price (smallest price >= selected price)
+      - If no, finds the filter with the highest price below selected price
+      - Recursively builds filter index path to the found filter
+      - Returns the reversed index path array
+
+  - name: getTierPricingOptionLayout
+    steps:
+      - Looks up TierPricingOptionLayoutConfig by region key (FR, DE, US)
+      - Falls back to default config if region not found
+      - Returns OptionPanelLayout with priceWidth, labelWidth, discountWidth
+
+  - name: getFreeShippingMinimumQuantityData
+    steps:
+      - Returns undefined if productType is undefined
+      - Loads free shipping data from WebContentType.FREE_SHIPPING_LABELS_TP via loadWebContent
+      - First tries exact match by both productType AND productTypeGroup
+      - If no exact match, tries match by productType only (where productTypeGroup is undefined)
+      - Returns matching FreeShippingMinimumQuantityData or undefined
+
+used_by:
+  - backend/services/product-category-service.yaml # Imports ProductPageData type
+  - shared/context/product-category-context.yaml # Uses ProductPageData, ExtractProductData types
+  - frontend/layouts/layout-categoryproduct.yaml # Calls loadProductData, loadInstantProductData loaders
+  - frontend/components/product-page/product-page-base-template.yaml # Uses ProductPageData, filter functions, trust indicators
+  - frontend/components/product-page/photo-canvas-prints-template-v2.yaml # Uses product page types and functions
+  - frontend/components/product-page/photo-canvas-prints-new-template.yaml # Uses product page types and filter logic
+  - frontend/components/product-page/photo-canvas-prints-new-template-v3.yaml # Uses product page types and filter logic
+  - frontend/components/product-page/product-page-fixed-template.yaml # Uses ProductPageData, filter functions
+  - frontend/components/product-page/product-page-fixed-theme-template.yaml # Uses ProductPageData, ThemeProduct
+  - frontend/components/product-page/product-page-hub-template.yaml # Uses ProductPageData, bundle functions
+  - frontend/components/product-page/product-page-hub-child-template.yaml # Uses ProductPageData
+  - frontend/components/product-page/photo-canvas-prints-bundled-template.yaml # Uses ProductPageData, bundle types
+  - frontend/components/product-page/photo-canvas-prints-hub-bundled-template.yaml # Uses ProductPageData
+  - frontend/components/product-page/product-page-basic-template.yaml # Uses ProductPageData, trust indicators
+  - frontend/components/product-page/product-page-selection.yaml # Uses filter-related types and functions
+  - shared/data/option-data.yaml # References Filter type used by processProductPageData
+  - backend/services/category-service.yaml # Imports product page types (BreadCrumb, SeoContent used bidirectionally)
+  - backend/services/themes-service.yaml # References ProductPageData for theme data
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  ProductPageJsonRequest:
+    description: Full request payload for POST /api/v2.0/webpageapi/productpagejson
+    fields:
+      - name: url
+        type: string
+      - name: couponCode
+        type: string
+      - name: preselectedRefId
+        type: "string | null"
+      - name: themeId
+        type: string
+      - name: editor
+        type: string
+      - name: gclId
+        type: string
+      - name: pixId
+        type: string
+      - name: utm_id
+        type: string
+      - name: utm_source
+        type: string
+      - name: utm_medium
+        type: string
+      - name: utm_campaign
+        type: string
+      - name: utm_term
+        type: string
+      - name: utm_content
+        type: string
+      - name: utm_creative_format
+        type: string
+      - name: utm_marketing_tactic
+        type: string
+      - name: utm_source_platform
+        type: string
+      - name: wbraid
+        type: string
+      - name: gbraid
+        type: string
+      - name: unixTimestamp
+        type: string
+        optional: true
+
+  ProductPageData:
+    description: Complete product page data structure returned by the API
+    fields:
+      - name: id
+        type: string
+      - name: webPageType
+        type: WebPageTypeEnum
+      - name: platinumProductType
+        type: PlatinumProductTypeEnum
+      - name: platinumProductTypeGroup
+        type: PlatinumProductTypeEnum
+      - name: platinumProductTypeName
+        type: string
+      - name: friendlyurl
+        type: string
+      - name: url
+        type: string
+      - name: pageTitle
+        type: string
+      - name: canonicalUrl
+        type: string
+      - name: seoTitle
+        type: string
+      - name: metaDescription
+        type: string
+      - name: h1
+        type: string
+      - name: metaTitle
+        type: string
+      - name: images
+        type: "Images[]"
+      - name: optionData
+        type: OptionData
+      - name: reviewData
+        type: "ReviewData | undefined"
+      - name: productPageViewName
+        type: ProductPageViewNameEnum
+      - name: metaData
+        type: ProductMetaData
+      - name: productPageContent
+        type: "ProductPageContent | null"
+      - name: campaignInfo
+        type: "CampaignInfo | null"
+      - name: deliveryDeadline
+        type: "ProductDynamicData | null"
+      - name: breadcrumbs
+        type: "Nullable<Array<BreadCrumb>>"
+      - name: couponCode
+        type: string
+      - name: percentDiscountCoupon
+        type: number
+      - name: themedProducts
+        type: "Nullable<Array<ThemeProduct>>"
+      - name: trust
+        type: "EachTrust[]"
+      - name: seoContent
+        type: "Nullable<SeoContent>"
+      - name: seoAndFaqContent
+        type: "Nullable<{seoContent: Nullable<SeoContent>; faqSection: Nullable<FAQSection>; display: boolean;}>"
+      - name: productBundleGroup
+        type: "Nullable<TypeOptionSection>"
+      - name: productPageBundleInfo
+        type: "Nullable<ProductPageBundleInfo>"
+      - name: listHubChilds
+        type: "Nullable<Array<TypeOption2>>"
+      - name: standardShippingPrice
+        type: number
+      - name: "(50+ additional fields)": see full interface in source
+
+  ExtractProductData:
+    description: Processed product data after filter extraction
+    fields:
+      - name: product
+        type: ProductPageData
+      - name: couponCode
+        type: string
+      - name: friendlyUrl
+        type: string
+      - name: preselectedRefId
+        type: string
+      - name: machineToken
+        type: string
+      - name: refCode
+        type: string
+      - name: firstSlideUrl
+        type: string
+      - name: themeUrl
+        type: string
+      - name: filterIndex
+        type: "number[]"
+      - name: editor
+        type: string
+      - name: selectedFilter
+        type: "Filter | null"
+
+  ProductPageViewNameEnum:
+    description: Enum controlling which product page template is rendered
+    kind: enum
+    values:
+      - Unknown: 0
+      - BasicTemplate: 4
+      - FixedTheme: 21
+      - FixedThemeCards: 23
+      - HubTemplate: 28
+      - HubChild: 29
+      - BaseTemplate: 99
+      - "(+ 20 other values)": see full enum in source
+
+  DataLayerModel:
+    description: GTM data layer model for product detail and configuration events
+    fields:
+      - name: detail.currencyCode
+        type: string
+      - name: detail.detailProduct.name
+        type: string
+      - name: detail.detailProduct.id
+        type: string
+      - name: detail.detailProduct.sku
+        type: string
+      - name: detail.detailProduct.productAttributes
+        type: "{type, subType, layout, size, brand, category}"
+      - name: detail.detailProduct.priceAttributes
+        type: "{discount: number, price: number}"
+      - name: productConfiguration.configuredProductMeta
+        type: "(same shape as detailProduct)"
+
+  FreeShippingMinimumQuantityData:
+    description: Free shipping threshold data per product type
+    fields:
+      - name: productType
+        type: PlatinumProductTypeEnum
+      - name: productTypeGroup
+        type: PlatinumProductTypeEnum
+        optional: true
+      - name: module
+        type: string
+        optional: true
+      - name: minimumQuantityFreeShipping
+        type: number
+      - name: freeShippingLabel
+        type: string
+
+field_consumption:
+  ProductPageData:
+    consumed:
+      - id: Used as product identifier in analytics and schema
+      - webPageType: Determines page rendering path (product vs category)
+      - platinumProductType: Used for analytics grouping, trust indicators, and uploader logic
+      - friendlyurl: Used for canonical URL and routing
+      - optionData: Source of all product filters/variants
+      - reviewData: Rendered in reviews section (if present)
+      - productPageViewName: Routes to appropriate template component
+      - metaData: Used by getProductHeadData for all SEO head tags
+      - productPageContent: Used for content section ordering and web components
+      - campaignInfo: Rendered if non-null (promo banners, countdown clocks)
+      - deliveryDeadline: Rendered in delivery deadline section if non-null
+      - breadcrumbs: Used for schema.org breadcrumb and UI
+      - couponCode: Passed through to theme/cart calls
+      - themedProducts: Used by fixed-theme templates
+      - trust: Rendered as trust signal badges
+      - seoContent: Rendered in SEO text section if non-null
+      - seoAndFaqContent: Rendered in combined SEO+FAQ section if non-null
+      - standardShippingPrice: Displayed in shipping info
+    ignored:
+      - css: Present but not used in Qwik render path
+      - tags: Present but not referenced in current templates
+      - embededVideo: Present but rendering depends on template
+      - "(many legacy fields)": marketingContent, marketingContent2, marketingContent3 are legacy
+
+wire_format:
+  POST /api/v2.0/webpageapi/productpagejson:
+    description: Fetches full product page data with tracking parameters
+    function: getProductPageJson
+    mapping:
+      request.url: url
+      request.couponCode: couponCode
+      request.preselectedRefId: preselectedRefId
+      request.themeId: themeId
+      request.editor: editor
+      request.gclId: gclId
+      request.pixId: pixId
+      request.utm_source: utm_source
+      request.utm_medium: utm_medium
+      request.utm_campaign: utm_campaign
+      "(+ all other utm_ and tracking fields)": "(same field names in body)"
+    content_type: application/json
+    notes:
+      - machineToken is NOT in this payload — it is passed separately via cookie or header
+
+implementation_logic:
+  size_keyword_locale_detection:
+    rule: |
+      SIZE_KEYWORDS is a readonly tuple of size-related words in all supported languages
+      (EN: "size", DE: "größe", ES: "tamaño", FR: "taille", NL: "maat", IT: "dimensione"/"taglia").
+      Filter options whose caption matches any keyword are treated as "size" filters and
+      rendered with a different UI layout. This enables locale-aware size detection without
+      per-region config.
+    critical: false
+
+  free_shipping_two_stage_lookup:
+    rule: |
+      getFreeShippingMinimumQuantityData performs a two-stage lookup:
+        Stage 1: Match by BOTH productType AND productTypeGroup (exact combination match)
+        Stage 2: If no exact match found, match by productType only (where productTypeGroup is undefined)
+      This allows product-type-group-specific overrides to take precedence over generic
+      product-type defaults, while still falling back gracefully.
+    critical: false
+
+  process_product_page_data_preselected_filter:
+    rule: |
+      processProductPageData finds the preselected filter using preselectedRefId:
+      It scans all filters for one whose refCode matches preselectedRefId.
+      If no match found, preselectedFilter is null (caller uses cheapestFilter as default).
+      This enables deep-linking to a specific product variant via URL parameter.
+    critical: true
+
+  tier_pricing_layout_region_fallback:
+    rule: |
+      getTierPricingOptionLayout looks up OptionPanelLayout by region code in TierPricingOptionLayoutConfig.
+      If the current region is not in the config (e.g., IN, AE), falls back to the "default" entry.
+      This ensures consistent layout even for regions without explicit configuration.
+    critical: false

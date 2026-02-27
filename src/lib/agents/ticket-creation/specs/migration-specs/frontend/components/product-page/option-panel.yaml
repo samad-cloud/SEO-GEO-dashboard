@@ -1,0 +1,322 @@
+name: OptionPanel
+source: src/components/product-page/option-panel.tsx
+description: |
+  The primary product configuration panel on the product page. Renders all option
+  selection rows (size, finish, quantity tiers, calendar month/year, orientation,
+  add-ons), the upload button/progress, Klarna/Afterpay placement widgets, and
+  the CTA "Design & Buy" button. Manages the full interaction loop from option
+  selection through CTA URL construction. Also controls a sticky floating CTA
+  button that appears when the main CTA scrolls out of view.
+
+exports:
+  - name: default
+    type: component$<optionProps>
+    description: Default Qwik component export
+
+props:
+  - name: optionData
+    type: "OptionData | undefined"
+    required: true
+    description: Option tree data (filters, add-ons, tiered pricing, orientation)
+  - name: productData
+    type: "ProductPageData | undefined"
+    required: true
+    description: Full product data (platinumProductType, mediaclipThemeUrl, etc.)
+  - name: optionStore
+    type: OptionStore
+    required: true
+    description: Mutable shared store holding selection state (filterIndex, refCode, ctaURL, etc.)
+  - name: couponCode
+    type: string
+    required: true
+    description: Active coupon code shown in the panel
+  - name: productType
+    type: PlatinumProductTypeEnum
+    required: true
+    description: Product category enum controlling display logic
+  - name: onChangeSelectedOption
+    type: "PropFunction<(imageUrl: string, themeUrl?: string) => void>"
+    required: true
+    description: Callback fired when a filter option is selected (updates carousel image)
+  - name: onChangeDesignUrl
+    type: "PropFunction<(url: string) => void>"
+    required: true
+    description: Callback fired when the CTA design URL changes
+  - name: onChangeSelectedFilter
+    type: "PropFunction<(filter: Filter) => void>"
+    required: true
+    description: Callback fired when the selected filter changes (for price tag update)
+  - name: customCtaUrl
+    type: string
+    required: false
+    description: Override URL template for the CTA button (used by some product types)
+
+context_consumed:
+  - name: ProductContext
+    source: ~/context/product-category-context
+    fields:
+      - product: Full product data including id and freeShipping flags
+      - freeShippingMinimumQuantityData: Free shipping threshold data for display
+  - name: DeviceDetectorContext
+    source: ~/context/device-detector-context
+    fields:
+      - os: User OS (used for buildUrlBasedOnDeviceAndOS for in-app browser redirect)
+      - isInAppBrowser: Boolean for in-app browser detection
+
+component_structure:
+  - OptionRows: For each caption in optionData.captions, renders a horizontal scroll slider (mobile) and flex-wrap grid (desktop) of ProductRefIdOption buttons
+  - OrientationSelector: Renders orientation option buttons when optionData.orientation.options exist
+  - TierPricingDropdown: Quantity/price tier selector (dropdown or pills layout depending on tierPricingOptionLayout)
+  - MonthSelectionDropdown: Calendar start month picker (Calendar products only)
+  - YearSelectionDropdown: Calendar start year picker (Calendar products only)
+  - AddOnsSection: Per add-on option rows
+  - KlarnaPlacement: BNPL widget below pricing
+  - AfterpayPlacement: BNPL widget below pricing
+  - UploadButton: Uploadcare photo upload trigger (displayUploader=true)
+  - UploadProgress: Upload progress overlay
+  - CTAButton: Primary "Design & Buy" anchor with ctaDesignUrl
+  - BottomCTAButton: Floating sticky CTA (visible when main CTA is scrolled out of view)
+  - Portal: Used to render the sticky bottom CTA outside normal flow
+
+child_components:
+  - name: ProductRefIdOption
+    purpose: Individual selectable option chip/tile for a filter value
+    props:
+      - filter: Filter
+      - name, title, refCode: strings from filter
+      - optionStore, optionData, productData: shared state
+      - filterOrder, index: position identifiers
+      - startingMonth, startingYear: calendar state
+      - onChangeSelectedOption, onChangeDesignUrl, onChangeSelectedFilter: callbacks
+      - isSizeOption: boolean
+  - name: KlarnaPlacement
+    source: ~/components/product-page/klarna-placement
+    purpose: Klarna on-site messaging widget
+  - name: AfterpayPlacement
+    source: ~/components/product-page/afterpay-placement
+    purpose: Afterpay on-site messaging widget
+  - name: Uploadcare
+    source: ~/components/uploadcare/uploadcare
+    purpose: Photo upload widget
+  - name: Uploadprogress
+    source: ~/components/uploadcare/uploadprogress
+    purpose: Upload progress indicator
+  - name: SVGIcon
+    source: ~/components/svg-icon/svg-icon
+    purpose: Arrow/chevron icon for option rows
+  - name: Portal
+    source: ~/components/portal/portal
+    purpose: Renders sticky bottom CTA outside the normal DOM flow
+
+data_structure:
+  OptionStore:
+    - refCode: string (currently selected product refCode)
+    - ctaURL: string (current design/buy URL)
+    - filterIndex: number[] (selected index per caption level)
+    - addonIndex: number[] (selected index per add-on)
+    - tierOptionIndex: number (selected tier pricing index)
+    - orientationIndex: number (selected orientation index)
+    - noOfLevel: number (number of active filter caption levels)
+    - optionData: OptionData | undefined
+
+  UploadProgressStore:
+    - fileSize: number
+    - progress: number (0.0–1.0)
+    - started: boolean
+
+behavior:
+  - On product.id change (useTask$):
+      1. Call staticFilterProductTypes to determine displayUploader and isMulti
+      2. Call initializeDropdownOptions to set up months/years/tiersPricing dropdown state
+      3. Set noOfLevel from captions count + orientation presence
+      4. Set orientationIndex from default option
+      5. Populate filterIndex for each caption (default 0)
+      6. Set addonIndex from availableFor.default lookups
+      7. Set tierOptionIndex from defaultTierPricingQuantity or 0
+      8. Call updateOptionData and updateStore to sync selection state
+  - On optionStore.refCode change (useTask$):
+      1. Reset all dropdown isActive flags
+      2. Call dynamicFilterProductTypes to re-evaluate displayUploader and isMulti
+  - On scroll (useOnDocument): track CTA button visibility; show/hide sticky bottom CTA
+  - On ctaDesignUrl change (useVisibleTask$): call onChangeDesignUrl with new URL
+  - ctaDesignUrl computation:
+      1. Rose products: redirect to /promotions/AddProductToCart?productRef={refCode}
+      2. customCtaUrl present: merge prod_ref and calendar starting_month params
+      3. Default: merge themeUrl, quantity (from tier or defaultTierPricingQuantity or 1), startYear, startMonth, prodType into /themes/ URL
+  - changeTierPricingSelection: updates tierOptionIndex, calls updateStore, fires Matomo event, closes dropdown
+  - handleChangeMonthSelection / handleChangeYearSelection: update selected values, close dropdowns
+
+api_calls: []
+
+dependencies:
+  qwik:
+    - component$, useComputed$, useContext, useOnDocument, useSignal, useStore, useStylesScoped$, useTask$, useVisibleTask$, $ from @builder.io/qwik
+  routing:
+    - useLocation, RouteLocation from @builder.io/qwik-city
+  i18n:
+    - inlineTranslate from qwik-speak
+  contexts:
+    - ProductContext from ~/context/product-category-context
+    - DeviceDetectorContext from ~/context/device-detector-context
+  services:
+    - dynamicFilterProductTypes, getFilterIndexBasedOnIndex, handleSeletedProductChange, staticFilterProductTypes, getTierPricingOptionLayout, SIZE_KEYWORDS, ProductPageData from ~/services/product-page-service
+  utilities:
+    - formatPrice, getPriceOff from ~/utility/format
+    - monthOptions, yearOptions from ~/utility/date
+    - isElementNearBottom, isElementVisible from ~/utility/element
+    - pushMatomoEvent, MatomoCategory, MatomoEvent from ~/utility/matomo
+    - buildUrlBasedOnDeviceAndOS, MobileOS from ~/utility/device
+  components:
+    - KlarnaPlacement from ~/components/product-page/klarna-placement
+    - AfterpayPlacement from ~/components/product-page/afterpay-placement
+    - SVGIcon from ~/components/svg-icon/svg-icon
+    - Uploadcare from ~/components/uploadcare/uploadcare
+    - Uploadprogress from ~/components/uploadcare/uploadprogress
+    - Portal from ~/components/portal/portal
+    - Image from @unpic/qwik
+  config:
+    - settings from ~/config/settings
+  types:
+    - Caption, Filter, Filter2, Filter3, OptionData, OptionStore from ~/data/option-data
+    - PlatinumProductTypeEnum from ~/services/product-category-service
+
+used_by:
+  - ProductPageBaseTemplate
+  - ProductPageBasicTemplate
+  - ProductPageFixedTemplate
+  - ProductPageFixedThemeTemplate
+  - ProductPageHubTemplate
+  - PhotoCanvasPrintsBaseTemplate
+  - PhotoCalendarsBaseTemplate
+  - ProductPageContainer
+
+security:
+  - ctaURL sourced from optionStore (server-initialised); never from user text input
+  - customCtaUrl is passed from parent (server-sourced CMS data); params are merged, not raw-appended
+
+edge_cases:
+  - Calendar products: selectedMonth defaults to 1, selectedYear defaults to 2026; these are merged into the CTA URL
+  - Photo tile cluster (refCode contains "PhotoTileCluster"): isMulti=true, multi-file upload mode
+  - If upload is started, the sticky panel loses stickyForDesktop CSS class to prevent layout overlap
+  - noOfLevel < 2 AND filters.length < 2: the option rows container is not rendered (single-option products)
+  - When no tier pricing exists, quantity defaults to defaultTierPricingQuantity or 1
+
+notes:
+  - OptionPanel is the most complex component on the product page; it orchestrates most of the add-to-design flow
+  - tierPricingOptionLayout is region-specific (read from settings().website)
+
+types:
+  optionProps:
+    description: Props interface for OptionPanel
+    fields:
+      - name: optionData
+        type: "OptionData | undefined"
+      - name: productData
+        type: "ProductPageData | undefined"
+      - name: optionStore
+        type: OptionStore
+      - name: couponCode
+        type: string
+      - name: productType
+        type: PlatinumProductTypeEnum
+      - name: onChangeSelectedOption
+        type: "PropFunction<(imageUrl: string, themeUrl?: string) => void>"
+      - name: onChangeDesignUrl
+        type: "PropFunction<(url: string) => void>"
+      - name: onChangeSelectedFilter
+        type: "PropFunction<(filter: Filter) => void>"
+      - name: customCtaUrl
+        type: string
+        optional: true
+
+  urlProps:
+    description: Props for the URL sub-helper (internal use)
+    fields:
+      - name: optionData
+        type: "OptionData | undefined"
+      - name: optionStore
+        type: OptionStore
+
+  UploadProgressStore:
+    description: Internal upload progress tracking store
+    fields:
+      - name: fileSize
+        type: number
+      - name: progress
+        type: number
+      - name: started
+        type: boolean
+
+field_consumption:
+  ProductContext:
+    consumed:
+      - product.id: Tracked to re-initialize option state on product change
+      - freeShippingMinimumQuantityData: Displayed in the panel (passed to child)
+    ignored:
+      - Other product fields not directly consumed here
+
+  DeviceDetectorContext:
+    consumed:
+      - os: Passed to buildUrlBasedOnDeviceAndOS for in-app browser redirect
+      - isInAppBrowser: Controls whether app-redirect logic is used
+    ignored: []
+
+  OptionData:
+    consumed:
+      - captions: Used to render option rows and set noOfLevel
+      - filters: Passed to renderOption helper
+      - orientation: Used for orientation selector and orientationIndex
+      - addOns: Used for add-on row rendering and addonIndex initialisation
+      - tieredPricing: Used for tier pricing dropdown/pills
+      - defaultTierPricingQuantity: Fallback quantity for CTA URL
+    ignored: []
+
+implementation_logic:
+  cta_url_construction:
+    rule: |
+      Three branches for CTA URL:
+      1. refCode includes "rose" (case-insensitive): /promotions/AddProductToCart?productRef={refCode}
+      2. customCtaUrl provided: merge prod_ref from current ctaURL's productId param, and
+         starting_month as YYYY-MM for Calendar products.
+      3. Default: take ctaURL base, inject themeUrl (from mediaclipThemeUrl if absent),
+         quantity (tier or default or 1), startYear, startMonth, prodType into /themes/ URL.
+    critical: true
+
+  sticky_cta_visibility:
+    rule: |
+      On every scroll event, check the bounding rect of the primary CTA button.
+      showBottomCTAButton = true only when the CTA is not visible AND has already scrolled
+      past the bottom of the viewport (boundingElement.bottom <= 0).
+      This prevents the sticky CTA from showing before the user has scrolled past the primary CTA.
+    critical: false
+
+  dropdown_positioning:
+    rule: |
+      When a dropdown is toggled, isElementNearBottom is called on the anchor element.
+      If near bottom, dropdownPosition is set to "top" (opens upward); otherwise "bottom".
+    critical: false
+
+visibility_map:
+  option_rows_container:
+    condition: "NOT (noOfLevel < 2 AND filters.length < 2)"
+    default: hidden for single-option products
+
+  tier_pricing_dropdown:
+    condition: "optionData.tieredPricing exists and has entries"
+    default: hidden
+
+  month_year_selectors:
+    condition: "productType === PlatinumProductTypeEnum.Calendar"
+    default: hidden (non-calendar products)
+
+  upload_button:
+    condition: "displayUploader.value is true"
+    default: hidden
+
+  upload_progress:
+    condition: "uploadProgress.started is true"
+    default: hidden
+
+  bottom_cta_button:
+    condition: "showBottomCTAButton.value is true (primary CTA scrolled out of view past bottom)"
+    default: hidden

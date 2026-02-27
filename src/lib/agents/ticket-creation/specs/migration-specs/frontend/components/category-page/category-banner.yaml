@@ -1,0 +1,171 @@
+name: CategoryBanner
+source: src/components/category-page/category-banner.tsx
+description: |
+  Displays the standard category banner with responsive desktop and mobile images.
+  Optionally overlays a content box containing markdown-converted HTML from topPageContent.
+  The overlay text box is absolutely positioned over the banner at vertical center-left.
+  On mobile the overlay box is collapsed to 48px height; on desktop it expands fully.
+  No API calls are made — all data is received via props.
+
+exports:
+  - name: default
+    type: component$<CategoryBannerProps>
+    description: Default Qwik component export
+  - name: CategoryBannerProps
+    type: interface
+    description: Props interface exported for consumer use
+
+props:
+  - name: banner
+    type: Banner
+    required: true
+    description: Banner data including desktop/mobile image URLs and alt text
+  - name: topPageContent
+    type: "string | null"
+    required: false
+    description: Optional markdown string rendered as HTML overlay over the banner image
+
+component_structure:
+  - root: div
+  - banner_wrapper:
+      element: div
+      class: "relative flex items-center justify-start w-full mb-0 md:mb-8"
+      children:
+        - desktop_image:
+            component: Image (from @unpic/qwik)
+            class: "hidden lg:block w-full h-auto mx-auto"
+            dimensions: "1920x250, aspectRatio 1920/250, priority=true"
+        - mobile_image:
+            component: Image (from @unpic/qwik)
+            class: "lg:hidden w-full h-auto"
+            dimensions: "767x164, aspectRatio 767/164, priority=true"
+        - content_overlay:
+            condition: topPageContent is truthy
+            element: div
+            class: "top-1/2 -translate-y-1/2 left-0 absolute w-full items-center"
+            children:
+              - container: "container mx-auto px-4 lg:px-0"
+              - style_tag: inline markdownContentStyles CSS block
+              - banner_container:
+                  class: "banner-container bg-white opacity-95 lg:opacity-85 rounded-md"
+                  inner:
+                    element: div
+                    class: "max-h-[48px] lg:max-h-fit overflow-hidden transition-all duration-300"
+                    content: dangerouslySetInnerHTML from convertMarkdownToHtml(topPageContent)
+
+data_structure:
+  Banner:
+    source: "~/services/category-service"
+    fields:
+      - imageUrl: string (desktop image URL)
+      - imageMobileUrl: string (mobile image URL)
+      - alt: "string | null"
+      - title: "string | null"
+      - order: number
+      - display: boolean
+
+behavior:
+  - Always renders both desktop and mobile images (CSS classes control visibility)
+  - Desktop image (1920x250) is hidden on mobile (lg:block hidden)
+  - Mobile image (767x164) is hidden on desktop (lg:hidden)
+  - If topPageContent is provided, converts markdown to HTML via convertMarkdownToHtml and renders in overlay
+  - Overlay is hidden on mobile (max-h-[48px] clips content); visible with full height on desktop (lg:max-h-fit)
+  - Inline CSS via <style> tag controls .banner-container, heading, paragraph, link, and responsive sizing
+  - Both images are marked priority=true for above-the-fold LCP optimization
+
+styling:
+  banner_container_css: |
+    Injected via <style> tag (markdownContentStyles):
+    - h1/h2: font-size 1.5rem (mobile), 2.5rem (lg+), 2rem (1536px+); font-weight 700
+    - p: font-size 1rem; hidden on mobile (display:none), block on lg+
+    - a: hidden mobile, block lg+; pink CTA button (#f02084), border-radius 64px, padding 16px 48px
+    - .banner-container: padding 0.5rem 1rem mobile; opacity 0.85, max-width 50% on xl+
+    - Mobile collapse: .content-wrapper max-height 25px, expands to 300px with .expanded class
+  tailwind_classes:
+    - "hidden lg:block": desktop image
+    - "lg:hidden": mobile image
+    - "top-1/2 -translate-y-1/2 left-0 absolute": overlay positioning
+    - "banner-container bg-white opacity-95 lg:opacity-85 rounded-md": content box
+    - "max-h-[48px] lg:max-h-fit overflow-hidden transition-all duration-300": height clamp
+
+dependencies:
+  qwik:
+    - component$ from "@builder.io/qwik"
+  external:
+    - Image from "@unpic/qwik"
+  services:
+    - Banner (type) from "~/services/category-service"
+    - convertMarkdownToHtml from "~/services/markdown-service"
+
+used_by:
+  - CommonCategoryContainer
+
+security:
+  - topPageContent is rendered via dangerouslySetInnerHTML after conversion by convertMarkdownToHtml
+  - Content originates from CMS; assumed to be sanitized server-side before storage
+  - No user-supplied input is rendered directly
+
+edge_cases:
+  - topPageContent is null/undefined: overlay is not rendered, no dangerouslySetInnerHTML call
+  - banner.alt is null: alt attribute passed as null to Image component (no alt text on image)
+  - banner.imageMobileUrl missing or empty: Image renders with empty src (broken image)
+
+notes:
+  - The inline <style> tag approach means styles are global-scoped despite being written inline
+  - The .content-wrapper.expanded class is defined in the CSS but no JavaScript toggles it in this component — it appears to be dead code from a removed sticky quick-links feature
+  - markdownContentStyles is defined as a template literal string directly inside the component function body (not a module-level constant)
+
+types:
+  CategoryBannerProps:
+    description: Component props interface
+    fields:
+      - name: banner
+        type: Banner
+      - name: topPageContent
+        type: "string | null"
+        optional: true
+
+  Banner:
+    description: Category banner configuration from category-service
+    source: "~/services/category-service"
+    fields:
+      - name: imageUrl
+        type: string
+      - name: imageMobileUrl
+        type: string
+      - name: alt
+        type: "string | null"
+      - name: title
+        type: "string | null"
+      - name: order
+        type: number
+      - name: display
+        type: boolean
+
+field_consumption:
+  Banner:
+    consumed:
+      - imageUrl: Passed as src to desktop Image component
+      - imageMobileUrl: Passed as src to mobile Image component
+      - alt: Passed as alt to both Image components
+    ignored:
+      - title: Present in type but not rendered by this component
+      - order: Not used; ordering is handled by CommonCategoryContainer
+      - display: Not checked; caller (CommonCategoryContainer) guards display
+
+visibility_map:
+  content_overlay:
+    condition: topPageContent is truthy (non-null, non-empty string)
+    default: hidden (not rendered)
+
+  desktop_image:
+    condition: CSS — always in DOM, visible at lg+ breakpoint
+    default: visible on desktop, hidden on mobile
+
+  mobile_image:
+    condition: CSS — always in DOM, visible below lg breakpoint
+    default: visible on mobile, hidden on desktop
+
+  content_text_links_paragraphs:
+    condition: CSS — display:none on mobile, display:block on lg+
+    default: hidden on mobile

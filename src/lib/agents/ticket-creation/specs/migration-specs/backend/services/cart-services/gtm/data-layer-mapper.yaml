@@ -1,0 +1,180 @@
+name: GtmDataLayerMapper
+source: services/cart-services/gtm/data-layer-mapper.ts
+description: |
+  GTM data layer mapping utilities for cookie-based user identification and
+  analytics tracking. Manages cookie keys for Emarsys email tracking, customer
+  identification, Google Click IDs, and Printerpix pixel tracking. Provides
+  functions to push user login/logout events and email data to window.dataLayer.
+
+exports:
+  - name: cookieKey
+    type: constant
+    description: |
+      Cookie key constants used across the application:
+        email: "emarsysEmail" - Base64-encoded email for Emarsys
+        cart: "emarsysCart" - Emarsys cart tracking
+        customerGuid: "customerGuid" - Customer GUID identifier
+        isAnonymous: "isAnonymous" - Anonymous user flag
+        GCLAW: "_gcl_aw" - Google Click ID (auto-tagged)
+        pixId: "pixid" - Printerpix tracking pixel ID
+        pixIdUnixTimestamp: "pixid_unix_timestamp" - Pixel ID timestamp
+
+  - name: setEmailCommand
+    type: function
+    signature: "(email?: string) => void"
+    description: |
+      Sets or retrieves email for GTM data layer.
+      If email provided: Base64-encodes it, stores in emarsysEmail cookie, pushes to dataLayer.
+      If not provided: Reads from cookie, decodes, and pushes to dataLayer.
+      Lowercases email before encoding.
+
+  - name: pushUserLogin
+    type: function
+    signature: "(customerId: string) => void"
+    description: Pushes user_login event with user_id to dataLayer
+
+  - name: pushUserLogout
+    type: function
+    signature: "() => void"
+    description: Pushes user_logout event with null user_id to dataLayer
+
+  - name: pushAlreadyLoggedIn
+    type: function
+    signature: "(customerId: string) => void"
+    description: Pushes user_id to dataLayer without event (for already-authenticated sessions)
+
+behavior:
+  - setEmailCommand normalizes email to lowercase before Base64 encoding
+  - Email stored in cookie on base domain for cross-subdomain access
+  - All dataLayer pushes initialize window.dataLayer as empty array if not present
+  - pushUserLogout explicitly sets user_id to null (important for GTM to clear user context)
+  - pushAlreadyLoggedIn omits event key (just sets user_id in dataLayer)
+
+dependencies:
+  internal:
+    - getBaseDomainName from ../cookie
+    - getCookie from ../cookie
+    - setCookie from ../cookie
+
+used_by:
+  - home-page route (cookieKey.GCLAW, cookieKey.pixId, cookieKey.pixIdUnixTimestamp)
+  - cart-cookie-service (cookieKey.customerGuid)
+  - authentication flow (pushUserLogin, pushUserLogout, pushAlreadyLoggedIn)
+  - email subscription (setEmailCommand)
+  - checkout flow (cookieKey references)
+
+security:
+  - Email is Base64-encoded (NOT encrypted) - provides obfuscation only
+  - Cookie domain set to base domain for cross-subdomain sharing
+  - customer GUID exposed in cookies - ensure HTTPS-only access
+  - window.btoa/atob used for encoding - browser-only (fails on server)
+
+notes:
+  - Emarsys is the email marketing platform used by Printerpix
+  - _gcl_aw cookie is set by Google Ads auto-tagging
+  - pixid is a first-party Printerpix tracking identifier
+  - Base64 email encoding is for cookie transport, not security
+  - In Next.js migration, all functions remain client-side only
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  cookieKey:
+    description: Constant object mapping logical names to cookie name strings
+    kind: const_object
+    fields:
+      - name: email
+        type: string
+        notes: "Value: \"emarsysEmail\" — Base64-encoded email for Emarsys"
+      - name: cart
+        type: string
+        notes: "Value: \"emarsysCart\" — Emarsys cart tracking"
+      - name: customerGuid
+        type: string
+        notes: "Value: \"customerGuid\" — customer GUID identifier"
+      - name: isAnonymous
+        type: string
+        notes: "Value: \"isAnonymous\" — anonymous user flag"
+      - name: GCLAW
+        type: string
+        notes: "Value: \"_gcl_aw\" — Google Click ID (auto-tagged by Google Ads)"
+      - name: pixId
+        type: string
+        notes: "Value: \"pixid\" — Printerpix first-party tracking pixel ID"
+      - name: pixIdUnixTimestamp
+        type: string
+        notes: "Value: \"pixid_unix_timestamp\" — timestamp for pixel ID event"
+
+  DataLayerEmailPush:
+    description: Shape of the dataLayer push from setEmailCommand
+    fields:
+      - name: customerData
+        type: "{email: string}"
+        notes: email is lowercase decoded value; pushed without event key
+
+  DataLayerUserLoginPush:
+    description: Shape of the dataLayer push from pushUserLogin
+    fields:
+      - name: event
+        type: string
+        notes: "Value: \"user_login\""
+      - name: user_id
+        type: string
+        notes: customerId
+
+  DataLayerUserLogoutPush:
+    description: Shape of the dataLayer push from pushUserLogout
+    fields:
+      - name: event
+        type: string
+        notes: "Value: \"user_logout\""
+      - name: user_id
+        type: "null"
+        notes: Explicitly null to clear user context in GTM
+
+  DataLayerAlreadyLoggedInPush:
+    description: Shape of the dataLayer push from pushAlreadyLoggedIn (no event key)
+    fields:
+      - name: user_id
+        type: string
+        notes: customerId — no event key so GTM does not fire triggers
+
+field_consumption:
+  emarsysEmail cookie:
+    consumed:
+      - encoded value: Read via getCookie(cookieKey.email), decoded via window.atob, pushed to dataLayer as customerData.email
+    ignored: []
+
+implementation_logic:
+  set_email_command_encode_decode:
+    rule: |
+      setEmailCommand has two modes based on whether email parameter is provided:
+        WITH email:
+          1. Lowercase the email
+          2. Base64-encode via window.btoa
+          3. Store encoded value in emarsysEmail cookie on base domain
+          4. Push {customerData: {email: lowercased}} to dataLayer
+        WITHOUT email:
+          1. Read emarsysEmail cookie
+          2. Base64-decode via window.atob
+          3. Push {customerData: {email: decoded}} to dataLayer
+      The cookie stores Base64 for obfuscation during transport, not encryption.
+      Email is always lowercased before encoding.
+    critical: false
+
+  push_user_logout_sets_null_user_id:
+    rule: |
+      pushUserLogout explicitly pushes {event: "user_logout", user_id: null}.
+      Setting user_id to null (not undefined, not omitting the field) is important
+      for GTM — it signals that the user context should be cleared from all subsequent
+      GTM events. Omitting user_id would leave the previous user_id in GTM's data layer
+      persist state.
+    critical: true
+
+  push_already_logged_in_omits_event:
+    rule: |
+      pushAlreadyLoggedIn pushes {user_id: customerId} WITHOUT an event key.
+      This updates the dataLayer's persistent user_id for session identification
+      without triggering any GTM tags (which fire on event pushes). This is used
+      for sessions where the user is already authenticated on page load.
+    critical: false

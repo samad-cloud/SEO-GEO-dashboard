@@ -1,0 +1,962 @@
+name: AccountsService
+source:
+  path: services/accounts-service.ts
+  lines: 1-473
+  type: service
+
+description: |
+  Comprehensive authentication and account management service.
+  Handles login (email, Google, Facebook), registration, password reset,
+  session management, email/password updates, and customer verification.
+  Integrates with external OAuth providers and internal API endpoints.
+
+exports:
+  functions:
+    - name: getNewMachineToken
+      signature: "async (url?: string): Promise<string | null>"
+      description: "Fetches a new machine token from API"
+      params:
+        - name: url
+          type: string
+          optional: true
+          description: "User-Agent header value"
+      returns:
+        type: "string | null"
+      api: "/Account/GetNewMachineToken"
+
+    - name: thirdPartyLogin
+      signature: "async (session: any): Promise<ThirdPartyLoginResponse | null>"
+      description: "Handles Google/Facebook OAuth login"
+      params:
+        - name: session
+          type: object
+          fields:
+            - provider (string - "google" or "facebook")
+            - domain (string)
+            - payload (object)
+      returns:
+        type: "ThirdPartyLoginResponse | null"
+      api:
+        - "/Account/GoogleLoginForQwik"
+        - "/Account/FacebookLoginForQwik"
+      behavior:
+        - Sets MACHINE_TOKEN cookie on success
+        - Calls updateUserInfo with new token
+        - Returns response data or null on failure
+
+    - name: signInWithEmail
+      signature: "async (payload: any): Promise<Response<LoginResponse>>"
+      description: "Email/password login"
+      api: "/Account/Login/"
+      method: POST
+      returns: "LoginResponse (destinationUrl, customerId, machineToken)"
+
+    - name: redirectDestinationUrl
+      signature: "(destinationUrl: string): void"
+      description: "Redirects to destination after login, normalizing paths"
+      behavior:
+        - Converts ProjectListing → /account/project-listing/
+        - Converts account/edit → /account/edit/
+        - Converts order-tracking → /account/order-tracking/
+        - Preserves query strings
+
+    - name: handleCredentialResponse
+      signature: "async (response, handleIsLoading, domainName, location, isRyzan): Promise<void>"
+      description: "Processes Google OAuth credential response"
+      params:
+        - response (OAuth credential)
+        - handleIsLoading (QRL callback)
+        - domainName (string)
+        - location (RouteLocation)
+        - isRyzan (boolean)
+      external_api: "https://oauth2.googleapis.com/tokeninfo?id_token={token}"
+      behavior:
+        - Fetches user info from Google
+        - Creates session object
+        - Calls thirdPartyLogin
+        - Redirects or reloads based on isRyzan flag
+
+    - name: handleFacebookAuth
+      signature: "(location, handleIsLoading, domainName, isRyzan): void"
+      description: "Initiates Facebook OAuth flow"
+      behavior:
+        - Initializes Facebook SDK (appId: 1552749851635286)
+        - Triggers FB.login
+        - Fetches user data via FB.api
+        - Calls thirdPartyLogin
+      permissions: "public_profile, email, user_gender, user_age_range, etc."
+
+    - name: expressEmailRegister
+      signature: "async (payload: ExpressEmailPayloadV1): Promise<Response<RegisterResponse> | null>"
+      description: "Quick registration with just email and machineToken"
+      api: "/Account/ExpressRegistration/"
+      method: POST
+
+    - name: expressEmailRegisterV2
+      signature: "async (payload: ExpressEmailPayloadV2): Promise<Response<RegisterResponse> | null>"
+      description: "External source registration (e.g., Klaviyo) with UTM tracking"
+      api: "/api/v2.0/account/expressExternalRegistration"
+      method: POST
+      params:
+        - email, machineToken, destinationUrl
+        - gclId, pixId, accountType
+        - utmId, utmSource, utmMedium, utmCampaign, utmTerm, utmContent
+        - utmCreativeFormat, utmMarketingTactic, utmSourcePlatform
+        - wbraId, gbraId, unixTimestamp
+
+    - name: signUpWithEmail
+      signature: "async (payload: any): Promise<Response<RegisterResponse> | null>"
+      description: "Full registration with email and password"
+      api: "/Account/Register/"
+      method: POST
+
+    - name: SendPassword
+      signature: "async (email: string): Promise<ForgotPasswordResponse | null>"
+      description: "Sends password reset email"
+      api: "/api/v2.0/account/sendpassword?email={email}"
+      method: GET
+      returns: "successUrl, customerId, resetPasswordUrl, firstName"
+
+    - name: getCurrentLoginSession
+      signature: "async (machineToken: string): Promise<LoginSessionData | null>"
+      description: "Fetches current session info"
+      api: "/cartProcess/GetCurrentLoginSession/"
+      method: POST
+      returns: "machineToken, customerGuid, btCustomerId, emailAddress, firstName, lastName, phoneNumber, isPasswordSupplied, isGuest, isAnonymous, isLoginSocial"
+
+    - name: updateEmail
+      signature: "async (payload: UpdateEmailPayload): Promise<Response<any>>"
+      description: "Updates user email address"
+      api: "/Account/UpdateEmail"
+      method: POST
+      params:
+        - machineToken, currentEmail, newEmail, password
+
+    - name: updatePassword
+      signature: "async (payload: UpdatePasswordPayload): Promise<Response<any>>"
+      description: "Updates user password"
+      api: "/Account/UpdatePassword"
+      method: POST
+      params:
+        - MachineToken, ChangePassword_Email, ChangePassword_NewPassword
+
+    - name: fetchEmailChangePassword
+      signature: "async (customerId: string, machineToken: string): Promise<Response<FetchEmailChangePasswordResponse>>"
+      description: "Fetches email/password change data"
+      api: "Account/FetchEmailChangePassword"
+      method: GET
+      params:
+        - customerId, machineToken (query params)
+      returns: "email, newMachineToken"
+
+    - name: getEncryptedCustomerInfo
+      signature: "async (machineToken: string): Promise<Response<string>>"
+      description: "Gets encrypted customer token"
+      api: "/Account/GetEncryptedCustomerInfo"
+      method: POST
+
+    - name: verifyEncryptedCustomerInfo
+      signature: "async (machineToken: string, token: string): Promise<Response<string>>"
+      description: "Verifies encrypted customer token"
+      api: "/Account/VerifyEncryptedCustomerInfo"
+      method: POST
+
+    - name: getVerifyLink
+      signature: "async (machineToken: string, redirectUrl: string): Promise<string>"
+      description: "Generates verification link with encrypted token"
+      returns: "{website}/auth?token={encryptedToken}&redirectUrl={redirectUrl}"
+      behavior:
+        - Calls getEncryptedCustomerInfo
+        - URL-encodes token and redirectUrl
+        - Uses getSiteSetting().website as base
+
+  interfaces:
+    - name: CurrentLoginSession
+      fields:
+        - machineToken (string)
+        - customerGuid (string)
+        - btCustomerId (string | null)
+        - emailAddress (string)
+        - firstName (string)
+        - lastName (string)
+        - phoneNumber (string)
+        - isPasswordSupplied (boolean)
+        - isGuest (boolean)
+        - isAnonymous (boolean)
+        - isLoginSocial (boolean)
+
+    - name: ThirdPartyLoginResponse
+      fields:
+        - result (string)
+        - isSuccess (boolean)
+        - machineToken (string)
+        - destinationUrl (string)
+        - customerId (string)
+
+    - name: LoginRequest
+      fields:
+        - machineToken, email, password, destinationUrl, rememberMe
+
+    - name: LoginResponse
+      fields:
+        - success (boolean)
+        - message (string)
+        - destinationUrl (string)
+        - customerId (string)
+        - machineToken (string)
+
+    - name: RegisterResponse
+      fields:
+        - destinationUrl (string)
+        - customerId (string)
+        - machineToken (string)
+        - email (string)
+
+    - name: ExpressEmailPayloadV1
+      fields:
+        - email (string)
+        - machineToken (string)
+
+    - name: ExpressEmailPayloadV2
+      extends: ExpressEmailPayloadV1
+      fields:
+        - destinationUrl, gclId, pixId, accountType
+        - utmId, utmSource, utmMedium, utmCampaign, utmTerm, utmContent
+        - utmCreativeFormat, utmMarketingTactic, utmSourcePlatform
+        - wbraId, gbraId, unixTimestamp
+
+    - name: ForgotPasswordResponse
+      fields:
+        - successUrl, customerId, resetPasswordUrl, firstName
+
+    - name: LoginSessionData
+      fields:
+        - machineToken, customerGuid, btCustomerId
+        - emailAddress, firstName, lastName, phoneNumber
+        - isPasswordSupplied, isGuest, isAnonymous, isLoginSocial
+
+    - name: UpdateEmailPayload
+      fields:
+        - machineToken, currentEmail, newEmail, password
+
+    - name: UpdatePasswordPayload
+      fields:
+        - MachineToken, ChangePassword_Email, ChangePassword_NewPassword
+
+    - name: FetchEmailChangePasswordResponse
+      fields:
+        - email, newMachineToken
+
+  types:
+    - name: InfoType
+      fields:
+        - first, last, email, password (all strings)
+        - eTrigger (Array<string>)
+
+    - name: NamesDataType
+      fields:
+        - label, id, type, value (strings)
+        - setValue$ (QRL callback)
+        - required (boolean)
+
+    - name: CredentialsNamesDataType
+      extends: NamesDataType
+      fields:
+        - customError (string, optional)
+        - customValidate (QRL callback, optional)
+
+  constants: []
+
+api_contracts:
+  - endpoint: /Account/GetNewMachineToken
+    method: GET
+    headers:
+      User-Agent: "{url}"
+    response: string (machine token)
+
+  - endpoint: /Account/GoogleLoginForQwik
+    method: POST
+    body: Google OAuth payload
+    response: ThirdPartyLoginResponse
+
+  - endpoint: /Account/FacebookLoginForQwik
+    method: POST
+    body: Facebook OAuth payload
+    response: ThirdPartyLoginResponse
+
+  - endpoint: /Account/Login/
+    method: POST
+    body: LoginRequest
+    response: LoginResponse
+
+  - endpoint: /Account/ExpressRegistration/
+    method: POST
+    body: ExpressEmailPayloadV1
+    response: RegisterResponse
+
+  - endpoint: /api/v2.0/account/expressExternalRegistration
+    method: POST
+    body: ExpressEmailPayloadV2
+    response: RegisterResponse
+
+  - endpoint: /Account/Register/
+    method: POST
+    body: Registration payload
+    response: RegisterResponse
+
+  - endpoint: /api/v2.0/account/sendpassword
+    method: GET
+    params:
+      email: string
+    response: ForgotPasswordResponse
+
+  - endpoint: /cartProcess/GetCurrentLoginSession/
+    method: POST
+    body:
+      machineToken: string
+    response: LoginSessionData
+
+  - endpoint: /Account/UpdateEmail
+    method: POST
+    body: UpdateEmailPayload
+    response: any
+
+  - endpoint: /Account/UpdatePassword
+    method: POST
+    body: UpdatePasswordPayload
+    response: any
+
+  - endpoint: Account/FetchEmailChangePassword
+    method: GET
+    params:
+      customerId: string
+      machineToken: string
+    response: FetchEmailChangePasswordResponse
+
+  - endpoint: /Account/GetEncryptedCustomerInfo
+    method: POST
+    body:
+      machineToken: string
+    response: string (encrypted token)
+
+  - endpoint: /Account/VerifyEncryptedCustomerInfo
+    method: POST
+    body:
+      machineToken: string
+      token: string
+    response: string
+
+  external_apis:
+    - url: https://oauth2.googleapis.com/tokeninfo?id_token={token}
+      description: "Google OAuth token validation"
+      response:
+        - sub (user ID)
+        - email, given_name, family_name
+        - typ, kid, iss, iat, exp, nbf
+
+    - url: Facebook SDK (FB.init, FB.login, FB.api)
+      app_id: "1552749851635286"
+      version: "v6.0"
+      api: "/me?fields=name,email,gender"
+
+types:
+  - See interfaces section for full type definitions
+
+dependencies:
+  external:
+    - name: "@builder.io/qwik-city"
+      purpose: "RouteLocation type"
+    - name: "@builder.io/qwik"
+      purpose: "QRL type for callbacks"
+  internal:
+    - name: "~/config/http"
+      purpose: "NewAPIResponse type"
+    - name: "./cart-services/cookie"
+      purpose: "setCookie function"
+    - name: "~/utility/http"
+      purpose: "handleMultipleAPIRequests, HTTP_METHODS"
+    - name: "./common-service"
+      purpose: "isDataReady validation"
+    - name: "~/utility/storage"
+      purpose: "updateUserInfo function"
+    - name: "./server"
+      purpose: "getSiteSetting function"
+
+data_flow:
+  inputs:
+    - User credentials (email, password)
+    - OAuth responses (Google, Facebook)
+    - Machine tokens
+    - Customer IDs
+  processing:
+    - API calls to auth endpoints
+    - Cookie management (MACHINE_TOKEN)
+    - OAuth flow handling
+    - Token encryption/verification
+  outputs:
+    - Login responses with machineToken
+    - Registration responses
+    - Session data
+    - Redirect URLs
+
+business_logic:
+  - Machine token is primary auth mechanism
+  - MACHINE_TOKEN stored in cookie for persistence
+  - OAuth providers: Google and Facebook
+  - Express registration for quick signups
+  - V2 express registration includes UTM tracking
+  - Password reset via email
+  - Destination URLs normalized to internal routes
+  - Ryzan flag determines reload vs redirect behavior
+  - btCustomerId is Braintree customer ID
+
+error_handling:
+  - Most functions catch errors and return null
+  - Uses "soft" vs "hard" retry strategies in API calls
+  - isDataReady checks before accessing response.data
+  - No validation of input payloads
+  - No user-friendly error messages
+
+security:
+  - MACHINE_TOKEN is primary auth token (not JWT)
+  - Cookies not HttpOnly or Secure by default
+  - No rate limiting mentioned
+  - Password stored in plain text in UpdatePasswordPayload
+  - OAuth tokens passed through API (not direct to backend)
+  - Encrypted customer info for verification links
+
+performance:
+  - Async functions for all API calls
+  - No caching of session data
+  - Multiple API calls for OAuth flow
+  - handleMultipleAPIRequests provides retry logic
+
+behavior:
+  - name: getNewMachineToken
+    steps:
+      - Calls GET /Account/GetNewMachineToken with optional User-Agent header
+      - Uses "soft" error handling mode
+      - If isDataReady returns true, returns the machine token string
+      - Otherwise returns null
+
+  - name: thirdPartyLogin
+    steps:
+      - Determines auth URL based on session.provider ("google" -> GoogleLoginForQwik, "facebook" -> FacebookLoginForQwik)
+      - POSTs to /Account/{authUrl} with session.payload
+      - Checks isDataReady AND result === "success" AND isSuccess === true
+      - On success, sets MACHINE_TOKEN cookie via setCookie with session.domain
+      - Calls updateUserInfo with the new machineToken
+      - Returns response data on success, null on failure or error
+
+  - name: signInWithEmail
+    steps:
+      - POSTs payload to /Account/Login/ with "soft" error handling
+      - Returns the raw API response (caller must check isDataReady)
+
+  - name: redirectDestinationUrl
+    steps:
+      - If destinationUrl is falsy, does nothing
+      - Splits URL on "?" to separate path from query string
+      - If path contains "projectlisting" (case-insensitive), replaces path with /account/project-listing/
+      - If path contains "account/edit", replaces path with /account/edit/
+      - If path contains "order-tracking", replaces path with /account/order-tracking/
+      - Rejoins path and query string, sets window.location.href
+
+  - name: handleCredentialResponse
+    steps:
+      - Fetches user info from Google tokeninfo endpoint using response.credential
+      - Constructs session object with provider "google", domain, and payload containing user data
+      - Maps Google fields (sub, email, given_name, family_name, typ, kid, iss, iat, exp, nbf)
+      - Extracts destinationUrl from location.url.searchParams (defaults to "")
+      - Calls handleIsLoading(true)
+      - Calls thirdPartyLogin with session
+      - If response has destinationUrl and NOT isRyzan, calls redirectDestinationUrl
+      - If isRyzan, calls window.location.reload()
+      - Calls handleIsLoading(false)
+
+  - name: handleFacebookAuth
+    steps:
+      - Initializes Facebook SDK with appId "1552749851635286", version "v6.0"
+      - Triggers FB.login with extensive permissions (public_profile, email, user_gender, etc.)
+      - On "connected" status, calls FB.api("/me?fields=name,email,gender")
+      - Attaches destinationUrl from location URL params and authResponse to api_response
+      - Constructs session with provider "facebook" and merged payload
+      - Calls thirdPartyLogin, then redirects or reloads based on isRyzan flag
+
+  - name: expressEmailRegister
+    steps:
+      - POSTs ExpressEmailPayloadV1 (email, machineToken) to /Account/ExpressRegistration/
+      - Returns raw response on success, null on error (try-catch)
+
+  - name: expressEmailRegisterV2
+    steps:
+      - POSTs ExpressEmailPayloadV2 (email, machineToken, UTM tracking fields) to /api/v2.0/account/expressExternalRegistration
+      - Returns raw response on success, null on error (try-catch)
+
+  - name: signUpWithEmail
+    steps:
+      - POSTs payload to /Account/Register/ with "soft" error handling
+      - Returns raw response on success, null on error (try-catch)
+
+  - name: SendPassword
+    steps:
+      - GETs /api/v2.0/account/sendpassword?email={email}
+      - If isDataReady, returns data (successUrl, customerId, resetPasswordUrl, firstName)
+      - Otherwise returns null; catches errors and returns null
+
+  - name: getCurrentLoginSession
+    steps:
+      - POSTs { machineToken } to /cartProcess/GetCurrentLoginSession/
+      - If isDataReady, returns LoginSessionData
+      - Otherwise returns null; catches errors and returns null
+
+  - name: updateEmail
+    steps:
+      - POSTs UpdateEmailPayload to /Account/UpdateEmail with "soft" error handling
+      - Returns raw response (no isDataReady check, no try-catch)
+
+  - name: updatePassword
+    steps:
+      - POSTs UpdatePasswordPayload to /Account/UpdatePassword with "soft" error handling
+      - Returns raw response (no isDataReady check, no try-catch)
+
+  - name: fetchEmailChangePassword
+    steps:
+      - GETs Account/FetchEmailChangePassword with query params { customerId, machineToken }
+      - Uses "hard" error handling mode (unlike most other functions which use "soft")
+      - Returns raw response
+
+  - name: getEncryptedCustomerInfo
+    steps:
+      - POSTs { machineToken } to /Account/GetEncryptedCustomerInfo
+      - Returns raw response
+
+  - name: verifyEncryptedCustomerInfo
+    steps:
+      - POSTs { machineToken, token } to /Account/VerifyEncryptedCustomerInfo
+      - Returns raw response
+
+  - name: getVerifyLink
+    steps:
+      - Calls getEncryptedCustomerInfo with machineToken
+      - If isDataReady, extracts encrypted token from response data
+      - Constructs URL: {getSiteSetting().website}/auth?token={encoded_token}&redirectUrl={encoded_redirectUrl}
+      - Returns the constructed URL, or empty string if response not ready
+
+used_by:
+  - backend/services/klaviyo-service.yaml - imports getNewMachineToken for Klaviyo integration
+  - backend/services/middle-ware-service.yaml - imports getCurrentLoginSession, getNewMachineToken for middleware auth
+  - frontend/components/header/header.yaml - imports getCurrentLoginSession, LoginSessionData for session display
+  - frontend/components/info-pages/contact-us-container.yaml - imports getCurrentLoginSession for contact form auth
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  CurrentLoginSession:
+    description: Shape of session data returned by /cartProcess/GetCurrentLoginSession/
+    fields:
+      - name: machineToken
+        type: string
+      - name: customerGuid
+        type: string
+      - name: btCustomerId
+        type: "string | null"
+      - name: emailAddress
+        type: string
+      - name: firstName
+        type: string
+      - name: lastName
+        type: string
+      - name: phoneNumber
+        type: string
+      - name: isPasswordSupplied
+        type: boolean
+      - name: isGuest
+        type: boolean
+      - name: isAnonymous
+        type: boolean
+      - name: isLoginSocial
+        type: boolean
+
+  ThirdPartyLoginResponse:
+    description: Response from Google/Facebook OAuth login endpoints
+    fields:
+      - name: result
+        type: string
+        notes: Must equal "success" for login to be considered successful
+      - name: isSuccess
+        type: boolean
+        notes: Must be true for login to be considered successful
+      - name: machineToken
+        type: string
+      - name: destinationUrl
+        type: string
+      - name: customerId
+        type: string
+
+  LoginRequest:
+    description: Payload for POST /Account/Login/
+    fields:
+      - name: machineToken
+        type: string
+      - name: email
+        type: string
+      - name: password
+        type: string
+      - name: destinationUrl
+        type: string
+      - name: rememberMe
+        type: boolean
+
+  LoginResponse:
+    description: Response from POST /Account/Login/
+    fields:
+      - name: success
+        type: boolean
+      - name: message
+        type: string
+      - name: destinationUrl
+        type: string
+      - name: customerId
+        type: string
+      - name: machineToken
+        type: string
+
+  RegisterResponse:
+    description: Response from registration endpoints
+    fields:
+      - name: destinationUrl
+        type: string
+      - name: customerId
+        type: string
+      - name: machineToken
+        type: string
+      - name: email
+        type: string
+
+  ExpressEmailPayloadV1:
+    description: Minimal payload for POST /Account/ExpressRegistration/
+    fields:
+      - name: email
+        type: string
+      - name: machineToken
+        type: string
+
+  ExpressEmailPayloadV2:
+    description: Extended payload for POST /api/v2.0/account/expressExternalRegistration (includes UTM tracking)
+    extends: ExpressEmailPayloadV1
+    fields:
+      - name: destinationUrl
+        type: string
+        optional: true
+      - name: gclId
+        type: string
+        optional: true
+      - name: pixId
+        type: string
+        optional: true
+      - name: accountType
+        type: string
+        optional: true
+      - name: utmId
+        type: string
+        optional: true
+      - name: utmSource
+        type: string
+        optional: true
+      - name: utmMedium
+        type: string
+        optional: true
+      - name: utmCampaign
+        type: string
+        optional: true
+      - name: utmTerm
+        type: string
+        optional: true
+      - name: utmContent
+        type: string
+        optional: true
+      - name: utmCreativeFormat
+        type: string
+        optional: true
+      - name: utmMarketingTactic
+        type: string
+        optional: true
+      - name: utmSourcePlatform
+        type: string
+        optional: true
+      - name: wbraId
+        type: string
+        optional: true
+      - name: gbraId
+        type: string
+        optional: true
+      - name: unixTimestamp
+        type: number
+        optional: true
+
+  ForgotPasswordResponse:
+    description: Response from GET /api/v2.0/account/sendpassword
+    fields:
+      - name: successUrl
+        type: string
+      - name: customerId
+        type: string
+      - name: resetPasswordUrl
+        type: string
+      - name: firstName
+        type: string
+
+  UpdateEmailPayload:
+    description: Payload for POST /Account/UpdateEmail
+    fields:
+      - name: machineToken
+        type: string
+      - name: currentEmail
+        type: string
+      - name: newEmail
+        type: string
+      - name: password
+        type: string
+
+  UpdatePasswordPayload:
+    description: Payload for POST /Account/UpdatePassword
+    fields:
+      - name: MachineToken
+        type: string
+      - name: ChangePassword_Email
+        type: string
+      - name: ChangePassword_NewPassword
+        type: string
+
+  FetchEmailChangePasswordResponse:
+    description: Response from GET Account/FetchEmailChangePassword
+    fields:
+      - name: email
+        type: string
+      - name: newMachineToken
+        type: string
+
+  GoogleTokenInfoResponse:
+    description: Response from Google OAuth2 tokeninfo endpoint (external)
+    fields:
+      - name: sub
+        type: string
+        notes: Google user ID
+      - name: email
+        type: string
+      - name: given_name
+        type: string
+      - name: family_name
+        type: string
+      - name: typ
+        type: string
+        optional: true
+      - name: kid
+        type: string
+        optional: true
+      - name: iss
+        type: string
+        optional: true
+      - name: iat
+        type: string
+        optional: true
+      - name: exp
+        type: string
+        optional: true
+      - name: nbf
+        type: string
+        optional: true
+
+field_consumption:
+  ThirdPartyLoginResponse:
+    consumed:
+      - result: Checked against literal "success" — login fails if not equal
+      - isSuccess: Checked as boolean true — both result AND isSuccess must pass
+      - machineToken: Written to MACHINE_TOKEN cookie and passed to updateUserInfo
+      - destinationUrl: Returned to caller for redirect after OAuth login
+      - customerId: Returned to caller for session establishment
+    ignored: []
+
+  LoginSessionData:
+    consumed:
+      - machineToken: Returned as part of session data
+      - customerGuid: Returned as part of session data
+      - btCustomerId: Returned (Braintree customer ID for payment integration)
+      - emailAddress: Returned for display in header/profile
+      - firstName: Returned for personalisation
+      - lastName: Returned for display
+      - phoneNumber: Returned for account edit
+      - isPasswordSupplied: Returned (used to show/hide password fields)
+      - isGuest: Returned to determine guest vs registered session
+      - isAnonymous: Returned to determine anonymous vs identified session
+      - isLoginSocial: Returned to distinguish OAuth vs email sessions
+    ignored: []
+
+  ForgotPasswordResponse:
+    consumed:
+      - successUrl: Returned to caller (redirect after password reset email sent)
+      - customerId: Returned to caller
+      - resetPasswordUrl: Returned to caller (deep-link in reset email)
+      - firstName: Returned to caller (personalisation in reset email)
+    ignored: []
+
+  FetchEmailChangePasswordResponse:
+    consumed:
+      - email: Returned to caller for display in change-email form
+      - newMachineToken: Returned to caller (token may be refreshed by this endpoint)
+    ignored: []
+
+  GoogleTokenInfoResponse:
+    consumed:
+      - sub: Mapped into OAuth session payload as user ID
+      - email: Mapped into OAuth session payload
+      - given_name: Mapped into OAuth session payload as first name
+      - family_name: Mapped into OAuth session payload as last name
+      - typ: Passed through in payload
+      - kid: Passed through in payload
+      - iss: Passed through in payload
+      - iat: Passed through in payload
+      - exp: Passed through in payload
+      - nbf: Passed through in payload
+    ignored: []
+
+wire_format:
+  POST /Account/GoogleLoginForQwik:
+    description: OAuth login via Google credential token
+    function: thirdPartyLogin (when session.provider === "google")
+    mapping:
+      session.payload (from handleCredentialResponse): full body — contains Google tokeninfo fields
+    content_type: application/json
+    notes:
+      - Payload structure comes from Google tokeninfo response (sub, email, given_name, etc.)
+
+  POST /Account/FacebookLoginForQwik:
+    description: OAuth login via Facebook SDK response
+    function: thirdPartyLogin (when session.provider === "facebook")
+    mapping:
+      session.payload (from handleFacebookAuth): full body — contains FB.api response + authResponse
+    content_type: application/json
+
+  POST /Account/Login/:
+    description: Email/password login
+    function: signInWithEmail
+    mapping:
+      payload.machineToken: machineToken
+      payload.email: email
+      payload.password: password
+      payload.destinationUrl: destinationUrl
+      payload.rememberMe: rememberMe
+    content_type: application/json
+
+  POST /Account/ExpressRegistration/:
+    description: Quick registration with email only
+    function: expressEmailRegister
+    mapping:
+      payload.email: email
+      payload.machineToken: machineToken
+    content_type: application/json
+
+  POST /api/v2.0/account/expressExternalRegistration:
+    description: External-source registration with UTM tracking
+    function: expressEmailRegisterV2
+    mapping:
+      payload.email: email
+      payload.machineToken: machineToken
+      payload.destinationUrl: destinationUrl
+      payload.gclId: gclId
+      payload.pixId: pixId
+      payload.utmSource: utmSource
+      "(+ all other UTM fields)": "(same field names in body)"
+    content_type: application/json
+
+  POST /Account/Register/:
+    description: Full registration with password
+    function: signUpWithEmail
+    mapping:
+      payload (any): passed as bodyPayload directly
+    content_type: application/json
+
+  POST /cartProcess/GetCurrentLoginSession/:
+    description: Fetches current session for a machine token
+    function: getCurrentLoginSession
+    mapping:
+      machineToken (param): machineToken
+    content_type: application/json
+
+  POST /Account/UpdateEmail:
+    description: Updates authenticated user's email address
+    function: updateEmail
+    mapping:
+      payload.machineToken: machineToken
+      payload.currentEmail: currentEmail
+      payload.newEmail: newEmail
+      payload.password: password
+    content_type: application/json
+
+  POST /Account/UpdatePassword:
+    description: Updates authenticated user's password
+    function: updatePassword
+    mapping:
+      payload.MachineToken: MachineToken
+      payload.ChangePassword_Email: ChangePassword_Email
+      payload.ChangePassword_NewPassword: ChangePassword_NewPassword
+    content_type: application/json
+
+  POST /Account/GetEncryptedCustomerInfo:
+    description: Fetches encrypted token for customer verification links
+    function: getEncryptedCustomerInfo
+    mapping:
+      machineToken (param): machineToken
+    content_type: application/json
+
+  POST /Account/VerifyEncryptedCustomerInfo:
+    description: Verifies an encrypted customer token
+    function: verifyEncryptedCustomerInfo
+    mapping:
+      machineToken (param): machineToken
+      token (param): token
+    content_type: application/json
+
+implementation_logic:
+  dual_success_check_for_oauth:
+    rule: |
+      thirdPartyLogin requires BOTH result === "success" AND isSuccess === true to
+      treat the response as a successful login. A response with isSuccess=true but
+      result="error" (or vice versa) is treated as a failed login and returns null.
+      This dual check exists because the backend returns both a string result field
+      and a boolean isSuccess field.
+    critical: true
+
+  machine_token_cookie_on_oauth_success:
+    rule: |
+      On successful OAuth login, thirdPartyLogin calls setCookie("MACHINE_TOKEN", token, domain)
+      before returning. The domain is taken from session.domain (caller-supplied hostname),
+      not auto-detected. This ensures the token cookie is scoped to the correct domain
+      for cross-subdomain access.
+    critical: true
+
+  destination_url_normalization:
+    rule: |
+      redirectDestinationUrl normalizes legacy URL formats to current internal paths:
+        "projectlisting" (case-insensitive) → /account/project-listing/
+        "account/edit"                       → /account/edit/
+        "order-tracking"                     → /account/order-tracking/
+      Query strings are preserved by splitting on "?" before path replacement.
+      If destinationUrl is falsy, the function does nothing (no redirect).
+    critical: false
+
+  ryzan_vs_standard_post_oauth_flow:
+    rule: |
+      After OAuth login, if isRyzan=true the page calls window.location.reload() instead
+      of redirectDestinationUrl(). This is because the Ryzan site has a different SPA
+      routing model where a full reload re-initialises the correct session state.
+    critical: false
+
+  verify_link_construction:
+    rule: |
+      getVerifyLink builds a URL in the format:
+        {getSiteSetting().website}/auth?token={encodeURIComponent(encryptedToken)}&redirectUrl={encodeURIComponent(redirectUrl)}
+      Both token and redirectUrl are URL-encoded to prevent injection. Returns empty
+      string if getEncryptedCustomerInfo does not return a ready response.
+    critical: true

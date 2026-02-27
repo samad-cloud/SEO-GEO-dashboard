@@ -1,0 +1,380 @@
+name: ReviewData
+source:
+  path: src/data/review-data.ts
+  lines: 1-70
+  type: data
+  language: typescript
+
+description: |
+  Customer review data structures for product and category pages.
+  Defines types for 5-star and 4-star reviews, product-specific review collections,
+  and category review aggregations with scores and ratings.
+
+exports:
+  - name: FiveStars
+    type: interface
+    description: Individual 5-star review structure
+  - name: FourStars
+    type: interface
+    description: Individual 4-star review structure
+  - name: canvas
+    type: interface
+    description: Canvas product review collection
+  - name: card
+    type: interface
+    description: Card product review collection
+  - name: blanket
+    type: interface
+    description: Blanket product review collection
+  - name: photobook
+    type: interface
+    description: Photobook product review collection
+  - name: calendar
+    type: interface
+    description: Calendar product review collection
+  - name: ReviewData
+    type: interface
+    description: Product review data container
+  - name: review
+    type: interface
+    description: Individual category review
+  - name: CategoryReview
+    type: interface
+    description: Category review aggregation with score and reviews
+
+data_structures:
+  FiveStars:
+    fields:
+      name:
+        type: string
+        required: true
+        description: Reviewer name
+      title:
+        type: string
+        required: true
+        description: Review title/headline
+      review:
+        type: string
+        required: true
+        description: Review text content
+      reviewID:
+        type: string
+        required: true
+        description: Unique review identifier
+      rating:
+        type: number
+        required: true
+        description: Star rating (should be 5 for FiveStars)
+      date:
+        type: string
+        required: true
+        description: Review date (formatted string)
+
+  FourStars:
+    fields:
+      name:
+        type: string
+        required: true
+        description: Reviewer name
+      title:
+        type: string
+        required: true
+        description: Review title/headline
+      review:
+        type: string
+        required: true
+        description: Review text content
+      reviewID:
+        type: string
+        required: true
+        description: Unique review identifier
+      rating:
+        type: number
+        required: true
+        description: Star rating (should be 4 for FourStars)
+      date:
+        type: string
+        required: true
+        description: Review date (formatted string)
+
+  canvas:
+    fields:
+      FiveStars:
+        type: FiveStars[]
+        required: true
+        description: Array of 5-star reviews for canvas products
+      FourStars:
+        type: FourStars[]
+        required: true
+        description: Array of 4-star reviews for canvas products
+
+  card:
+    fields:
+      FiveStars:
+        type: FiveStars[]
+        required: true
+        description: Array of 5-star reviews for card products
+      FourStars:
+        type: FourStars[]
+        required: true
+        description: Array of 4-star reviews for card products
+
+  blanket:
+    fields:
+      FiveStars:
+        type: FiveStars[]
+        required: true
+        description: Array of 5-star reviews for blanket products
+      FourStars:
+        type: FourStars[]
+        required: true
+        description: Array of 4-star reviews for blanket products
+
+  photobook:
+    fields:
+      FiveStars:
+        type: FiveStars[]
+        required: true
+        description: Array of 5-star reviews for photobook products
+      FourStars:
+        type: FourStars[]
+        required: true
+        description: Array of 4-star reviews for photobook products
+
+  calendar:
+    fields:
+      FiveStars:
+        type: FiveStars[]
+        required: true
+        description: Array of 5-star reviews for calendar products
+      FourStars:
+        type: FourStars[]
+        required: true
+        description: Array of 4-star reviews for calendar products
+
+  ReviewData:
+    fields:
+      productType:
+        type: string
+        required: true
+        description: Product type identifier (e.g., "canvas", "card")
+      title:
+        type: string
+        required: true
+        description: Review section title
+      fiveStars:
+        type: FiveStars[]
+        required: true
+        description: Collection of 5-star reviews
+      fourStars:
+        type: FourStars[]
+        required: true
+        description: Collection of 4-star reviews
+
+  review:
+    fields:
+      heading:
+        type: string
+        required: true
+        description: Review heading/title
+      review:
+        type: string
+        required: true
+        description: Review text content
+      reviewer:
+        type: string
+        required: true
+        description: Reviewer name
+      reviewDate:
+        type: string
+        required: true
+        description: Review date (formatted string)
+
+  CategoryReview:
+    fields:
+      order:
+        type: number
+        required: true
+        description: Display order for this category review
+      score:
+        type: string
+        required: true
+        description: Overall review score (e.g., "4.8")
+      starsImage:
+        type: string
+        required: true
+        description: URL to star rating image
+      reviewCount:
+        type: string
+        required: true
+        description: Number of reviews (formatted string, e.g., "1,234")
+      reviews:
+        type: review[]
+        required: true
+        description: Array of individual reviews for this category
+
+types:
+  FiveStars:
+    description: Individual 5-star review entry with reviewer info and content
+    fields:
+      - name: name
+        type: string
+        description: Reviewer name
+      - name: title
+        type: string
+        description: Review title or headline
+      - name: review
+        type: string
+        description: Review text content
+      - name: reviewID
+        type: string
+        description: Unique review identifier
+      - name: rating
+        type: number
+        description: Star rating (expected value 5)
+      - name: date
+        type: string
+        description: Review date as formatted string
+
+  FourStars:
+    description: Individual 4-star review entry with reviewer info and content
+    fields:
+      - name: name
+        type: string
+        description: Reviewer name
+      - name: title
+        type: string
+        description: Review title or headline
+      - name: review
+        type: string
+        description: Review text content
+      - name: reviewID
+        type: string
+        description: Unique review identifier
+      - name: rating
+        type: number
+        description: Star rating (expected value 4)
+      - name: date
+        type: string
+        description: Review date as formatted string
+
+  canvas:
+    description: Canvas product review collection grouping 5-star and 4-star reviews
+    fields:
+      - name: FiveStars
+        type: "FiveStars[]"
+      - name: FourStars
+        type: "FourStars[]"
+
+  card:
+    description: Card product review collection grouping 5-star and 4-star reviews
+    fields:
+      - name: FiveStars
+        type: "FiveStars[]"
+      - name: FourStars
+        type: "FourStars[]"
+
+  blanket:
+    description: Blanket product review collection grouping 5-star and 4-star reviews
+    fields:
+      - name: FiveStars
+        type: "FiveStars[]"
+      - name: FourStars
+        type: "FourStars[]"
+
+  photobook:
+    description: Photobook product review collection grouping 5-star and 4-star reviews
+    fields:
+      - name: FiveStars
+        type: "FiveStars[]"
+      - name: FourStars
+        type: "FourStars[]"
+
+  calendar:
+    description: Calendar product review collection grouping 5-star and 4-star reviews
+    fields:
+      - name: FiveStars
+        type: "FiveStars[]"
+      - name: FourStars
+        type: "FourStars[]"
+
+  ReviewData:
+    description: Generic product review data container with productType identifier and rated review arrays
+    fields:
+      - name: productType
+        type: string
+        description: Product type identifier (e.g., "canvas", "card")
+      - name: title
+        type: string
+        description: Review section title
+      - name: fiveStars
+        type: "FiveStars[]"
+        description: Collection of 5-star reviews
+      - name: fourStars
+        type: "FourStars[]"
+        description: Collection of 4-star reviews
+
+  review:
+    description: Simplified individual category review entry
+    fields:
+      - name: heading
+        type: string
+        description: Review heading or title
+      - name: review
+        type: string
+        description: Review text content
+      - name: reviewer
+        type: string
+        description: Reviewer name
+      - name: reviewDate
+        type: string
+        description: Review date as formatted string
+
+  CategoryReview:
+    description: Category-level review aggregation with score, star image, count, and individual reviews
+    fields:
+      - name: order
+        type: number
+        description: Display order for this category review block
+      - name: score
+        type: string
+        description: Overall review score (e.g., "4.8")
+      - name: starsImage
+        type: string
+        description: URL to star rating image
+      - name: reviewCount
+        type: string
+        description: Number of reviews as formatted string (e.g., "1,234")
+      - name: reviews
+        type: "review[]"
+        description: Array of individual review entries for this category
+
+behavior:
+  - step: 1
+    action: "Export TypeScript interfaces defining customer review data structures for product and category pages"
+  - step: 2
+    action: "FiveStars and FourStars interfaces define individual review entries with reviewer name, title, review text, reviewID, numeric rating, and formatted date string"
+  - step: 3
+    action: "Product-specific interfaces (canvas, card, blanket, photobook, calendar) group reviews into FiveStars[] and FourStars[] collections per product type"
+  - step: 4
+    action: "ReviewData interface provides a generic product review container with productType identifier, section title, and both fiveStars and fourStars review arrays — used to render star-rated review sections on product pages"
+  - step: 5
+    action: "CategoryReview interface aggregates category-level review data with display order, overall score string, star rating image URL, formatted review count, and an array of individual review entries"
+  - step: 6
+    action: "The review interface (lowercase) defines a simplified category review entry with heading, review text, reviewer name, and reviewDate"
+  - step: 7
+    action: "Consumed by review carousel components, customer review sections on product/category/home pages, and the product-page-service for data loading"
+
+dependencies:
+  imports: []
+
+used_by:
+  - "~/services/product-page-service.ts"
+  - "~/components/carousels/static-carousel.tsx"
+  - "~/components/carousels/static-carousel1.tsx"
+  - "~/components/carousels/review-carousel.tsx"
+  - "~/components/canvas-prints/canvas-customer-review.tsx"
+  - "~/components/category-page/customer-reviews.tsx"
+  - "~/components/photo-books/customer-reviews.tsx"
+  - "~/components/homepage/home-customer-reviews.tsx"
+  - "~/components/product-page/customer-reviews.tsx"

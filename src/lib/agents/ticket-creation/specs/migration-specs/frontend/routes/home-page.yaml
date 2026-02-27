@@ -1,0 +1,569 @@
+name: HomePage
+source:
+  path: routes/index@containerless.tsx
+  lines: 1-321
+  type: route
+
+description: |
+  The main homepage route for the Printerpix storefront. Uses the @containerless layout suffix
+  to render without a product-category sidebar. Fetches homepage data server-side via routeLoader$
+  including coupon codes, UTM tracking parameters, and GCL cookie data. Renders a dynamic,
+  ordered set of homepage sections including banners, carousels, customer reviews, category
+  containers, a guideline section (lazy-loaded on scroll), a GoQuick widget, and CMS-driven
+  web components. Section ordering is driven by a webComponent config (HOME_PAGE_ITEMS_ORDER)
+  with a fallback to DEFAULT_HOMEPAGE_ITEMS_ORDER. Includes comprehensive SEO metadata with
+  OpenGraph, Twitter Cards, Schema.org structured data, canonical URLs, hreflang alternates,
+  and image preloads.
+
+url_pattern: /
+layout: "@containerless"
+
+exports:
+  - name: useGetHomepageData
+    type: routeLoader
+    description: |
+      Server-side data loader that fetches all homepage content. Extracts coupon code
+      from query params or MODI_COUPON cookie, GCL cookie data, pixId, and all UTM
+      tracking parameters. Passes them to getHomepage() from home-service.
+
+  - name: default
+    type: component
+    description: |
+      Main homepage component that renders all homepage sections in a dynamic flex-order layout.
+
+  - name: head
+    type: DocumentHead
+    description: |
+      Returns full SEO metadata including page title, meta description, keywords, OpenGraph
+      tags, Twitter Card tags, Schema.org WebPage+WebSite JSON-LD, canonical URL, hreflang
+      links, and preloads for banner images.
+
+component_structure:
+  root_element: Fragment (<>)
+  wrapper: div.flex.flex-col.flex-wrap.home_page_wrapper (conditional on homePageData)
+  scroll_handler: |
+    Attached to wrapper div via window:onScroll$. Calls lazyLoading("[data-lazy]", handleComponentVisible)
+    to progressively load sections as user scrolls into view.
+
+child_components:
+  - name: MainBanner
+    source: "~/components/banner/dynamic-promo-banner-v2"
+    condition: homePageData.mainPromoBanner exists
+    rendering: |
+      Rendered TWICE with different visibility:
+      1. Desktop only (class="hidden lg:block") - appears above carousel
+      2. Mobile only (class="block lg:hidden") - appears below carousel
+    props:
+      data: homePageData.mainPromoBanner
+      type: "home"
+
+  - name: DynamicCarousel
+    source: "~/components/carousels/dynamic-carousel"
+    condition: homePageData.data.homepageBanners.length > 0
+    wrapper: div.container.mx-auto
+    props:
+      mobileDimensions: "{width: 751, height: 301}"
+      desktopDimensions: "{width: 1516, height: 631.66}"
+      images: homePageData.data.homepageBanners
+      controls: true
+      autoplay: true
+      enableGoQuickWidget: false
+
+  - name: FloatingBanner
+    source: "~/components/banner/dynamic-promo-banner-v2"
+    condition: homePageData.floatingPromoBanner exists
+    props:
+      data: homePageData.floatingPromoBanner
+
+  - name: CustomerReview
+    source: "~/components/customer-review/customer-review"
+    condition: homePageData.reviewsCollection is truthy (API returns review collection)
+    wrapper: div.container.mx-auto with CSS order from reviewsCollection.order
+    props: spread of homePageData.reviewsCollection
+
+  - name: HomeCustomerReviews
+    source: "~/components/homepage/home-customer-reviews"
+    condition: |
+      homePageData.reviewsCollection is falsy AND settings().website is NOT "NL" AND NOT "GB"
+    wrapper: div.container.mx-auto with CSS order from homePageItemsOrder.value.reviews
+    props:
+      reviewData: jsonReviews.reviewData
+      title: jsonReviews.title
+      ratingText: jsonReviews.ratingText
+      ratingValue: jsonReviews.ratingValue
+      reviewCount: jsonReviews.reviewCount
+      reviewString: jsonReviews.reviewString
+      verified: jsonReviews.verified
+
+  - name: GuidelineSection
+    source: "~/components/guideline-section/guideline-section"
+    condition: Lazy-loaded when scrolled into viewport (data-lazy attribute, tracked by lazyLoadedComponents signal)
+    wrapper: div#home-holiday-delivery.container.mx-auto with CSS order guidelineSection
+    lazy_loading: true
+
+  - name: HomepageCategoryContainer
+    source: "~/components/homepage/homepage-category-container"
+    wrapper: div.container.mx-auto.home_page_categories_wrapper with CSS order categories, minHeight 220px
+    props:
+      initialCount: 1
+      data: homePageData.data.homepageAssociations.slice(1)
+      shopCollectionCtaText: jsonHome.shopCollectionCtaText
+
+  - name: GoQuickHomepageWidget
+    source: "~/components/go-quick/go-quick-homepage-widget"
+    wrapper: div.container.mx-auto.home_page_categories_wrapper with CSS order goQuickWidget
+    props: none
+
+  - name: WebContentsComponent
+    source: "~/components/web-component/web-contents-component"
+    condition: homePageData.webComponents exists and has length > 0
+    props:
+      data: homePageData.webComponents
+
+data_structure:
+  routeLoader_input:
+    description: Parameters extracted from URL query params and cookies
+    fields:
+      - couponCode: string (from ?couponcode= query param or MODI_COUPON cookie)
+      - gclId: string (extracted from _gcl_aw cookie via extractGCLCookieData)
+      - pixId: string (from pixId cookie)
+      - utm_id: string (from query param)
+      - utm_source: string (from query param)
+      - utm_medium: string (from query param)
+      - utm_campaign: string (from query param)
+      - utm_term: string (from query param)
+      - utm_content: string (from query param)
+      - utm_creative_format: string (from query param)
+      - utm_marketing_tactic: string (from query param)
+      - utm_source_platform: string (from query param)
+      - wbraid: string (from query param)
+      - gbraid: string (from query param)
+      - unixTimestamp: string (from pixIdUnixTimestamp cookie)
+
+  routeLoader_output:
+    description: Homepage data returned by getHomepage() from home-service
+    fields:
+      - data: HomepageViewModel (pageTitle, metaDescription, metaKeywords, homepageBanners, homepageAssociations, etc.)
+      - mainPromoBanner: MainBannerSection | null
+      - floatingPromoBanner: FloatingBannerSection | null
+      - webComponents: WebComponent[] | null
+      - reviewsCollection: CustomerReview | null
+
+  computed_signals:
+    - name: homePageItemsOrder
+      description: |
+        Computed from webComponents array. Finds component with wcTemplateName starting with
+        "Home Page Items Order", processes it via processHomePageItemsOrderData(). Falls back
+        to DEFAULT_HOMEPAGE_ITEMS_ORDER if not found.
+      fallback_value: "{trustIcons: 2, reviews: 6, categories: 10, guidelineSection: 18, goQuickWidget: 3}"
+
+  local_signals:
+    - name: lazyLoadedComponents
+      type: string[]
+      initial: "[]"
+      description: Tracks IDs of components that have scrolled into view for lazy loading
+
+  static_json_data:
+    - name: jsonHome
+      source: getHome().home from ~/utility/homepage-contents
+      description: Region-specific homepage JSON content (shopCollectionCtaText, etc.)
+    - name: jsonReviews
+      source: getReviews() from ~/utility/homepage-contents
+      description: Region-specific customer review data (reviewData, title, ratingText, ratingValue, reviewCount, reviewString, verified)
+
+behavior:
+  - Route loader fetches all homepage data server-side before component renders
+  - Query params are normalized to lowercase keys before extraction
+  - Coupon code priority: query param > MODI_COUPON cookie > empty string
+  - GCL cookie data extracted using format "GCL.{timestamp}.{pixid}" - third segment onward is gclId
+  - Section ordering is CMS-driven via HOME_PAGE_ITEMS_ORDER web component with hardcoded fallback
+  - MainBanner renders twice (desktop above carousel, mobile below carousel) for responsive layout
+  - Customer reviews have two modes: API-driven (CustomerReview) or static JSON (HomeCustomerReviews)
+  - NL and GB regions skip fallback reviews when reviewsCollection is null
+  - GuidelineSection uses scroll-based lazy loading with IntersectionObserver-like pattern
+  - HomepageCategoryContainer receives associations with first item sliced off (index 1+)
+  - WebContentsComponent renders CMS-driven dynamic content sections
+
+  seo:
+    title: homePageData.data.pageTitle
+    meta_description: homePageData.data.metaDescription
+    meta_keywords: homePageData.data.metaKeywords
+    robots: "index, follow"
+    og_type: "Website"
+    og_site_name: "PrinterPix"
+    og_locale: getSiteSetting().locale with dash replaced by underscore
+    fb_app_id: "127030084070740"
+    twitter_card: "summary_large_image"
+    twitter_site: "@PrinterpixUS"
+    google_notranslate: true
+    google_signin_client_id: "68686562698-qbaal2qdpbe5e16a9t0ms4dp3mtgtogs.apps.googleusercontent.com"
+    google_site_verification: "lop5Y1yJWATbANf6eWBrhs5daBM2r5lHfQbguNwx2s0" (US only)
+    og_image: first banner URL or fallback to hardcoded printerpix.com image
+    canonical: "{origin}/"
+    hreflang: generated by getHreflangLinks("/") for all regions + x-default (UK)
+    preloads:
+      - first desktop banner image
+      - first mobile banner image
+    structured_data:
+      - "@type": WebPage (with potentialAction ReadAction)
+      - "@type": WebSite (with potentialAction SearchAction targeting /search?q={search_term_string})
+
+  fallback:
+    - If homePageData is null/undefined, entire page renders nothing (empty fragment)
+    - If head resolver gets no data, returns simple "{title: 'Printerpix'}"
+
+styling:
+  wrapper: "flex flex-col flex-wrap home_page_wrapper"
+  sections_use_css_order: true (via style={{ order: N }})
+  container_pattern: "container mx-auto"
+  responsive:
+    - MainBanner desktop: "hidden lg:block"
+    - MainBanner mobile: "block lg:hidden"
+  categories_wrapper: "home_page_categories_wrapper" (custom class)
+  min_heights:
+    categories: "220px"
+
+dependencies:
+  internal:
+    - "~/services/home-service": getHomepage, DEFAULT_HOMEPAGE_ITEMS_ORDER
+    - "~/services/homepage-service": lazyLoading
+    - "~/services/web-component-service": processHomePageItemsOrderData, WebComponentType
+    - "~/services/server": getHreflangLinks, getSiteSetting
+    - "~/services/cart-services/gtm/data-layer-base": extractGCLCookieData
+    - "~/services/cart-services/gtm/data-layer-mapper": cookieKey
+    - "~/utility/homepage-contents": getHome, getReviews
+    - "~/config/settings": settings
+    - "~/components/carousels/dynamic-carousel": DynamicCarousel
+    - "~/components/homepage/homepage-category-container": HomepageCategoryContainer
+    - "~/components/homepage/home-customer-reviews": HomeCustomerReviews
+    - "~/components/banner/dynamic-promo-banner-v2": MainBanner, FloatingBanner
+    - "~/components/guideline-section/guideline-section": GuidelineSection
+    - "~/components/customer-review/customer-review": CustomerReview
+    - "~/components/go-quick/go-quick-homepage-widget": GoQuickHomepageWidget
+    - "~/components/web-component/web-contents-component": WebContentsComponent
+  external:
+    - "@builder.io/qwik": component$, $, useComputed$, useSignal
+    - "@builder.io/qwik-city": DocumentHead, routeLoader$
+
+used_by:
+  - layout-containerless.tsx (parent layout)
+
+security:
+  - No authentication required (public homepage)
+  - UTM and tracking parameters passed through to API without sanitization
+  - Google Sign-In client ID exposed in meta tags (public by design)
+  - Coupon codes extracted from cookies and query params
+
+notes:
+  - The route uses @containerless suffix which maps to layout-containerless.tsx
+  - There are TWO different homepage-service files in the codebase:
+    - services/home-service.ts (main, has getHomepage with HomepageRequest, used by routeLoader)
+    - services/homepage-service.ts (legacy, has lazyLoading and debounce QRL functions)
+  - The getHomepage in home-service.ts calls /homepage/getv2 via handleMultipleAPIRequests (POST)
+  - The getHomepage in homepage-service.ts calls http://10.10.30.62:9180/api/Homepage (internal, legacy, not used by this route)
+  - Region-specific static JSON content is loaded synchronously (getHome, getReviews)
+  - CSS order property is used extensively for CMS-driven section ordering
+  - The og:image fallback is a hardcoded printerpix.com URL
+  - origin-trial meta tag is for Google Privacy Sandbox (may be expired)
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  HomepageRequest:
+    description: Request object passed to getHomepage() in home-service
+    fields:
+      - name: couponCode
+        type: string
+      - name: gclId
+        type: string
+      - name: pixId
+        type: string
+      - name: utm_id
+        type: string
+      - name: utm_source
+        type: string
+      - name: utm_medium
+        type: string
+      - name: utm_campaign
+        type: string
+      - name: utm_term
+        type: string
+      - name: utm_content
+        type: string
+      - name: utm_creative_format
+        type: string
+      - name: utm_marketing_tactic
+        type: string
+      - name: utm_source_platform
+        type: string
+      - name: wbraid
+        type: string
+      - name: gbraid
+        type: string
+      - name: unixTimestamp
+        type: string
+        optional: true
+
+  HomepageViewModel:
+    description: Core homepage data returned inside the API response (mapped from data.homepageViewModel)
+    fields:
+      - name: pageTitle
+        type: string
+      - name: metaTitle
+        type: string
+      - name: metaDescription
+        type: string
+      - name: metaKeywords
+        type: string
+      - name: h1
+        type: string
+      - name: cssBox
+        type: string
+      - name: showFlyingAngel
+        type: boolean
+      - name: showFlyingAngelCountDown
+        type: boolean
+      - name: aboutUsTitle
+        type: string
+      - name: aboutUsContent
+        type: string
+      - name: satisfactionTitle
+        type: string
+      - name: satisfactionContent
+        type: string
+      - name: homepageBanners
+        type: "HomepageBanner[]"
+      - name: homepageAssociations
+        type: "ProductSection[]"
+      - name: otherBanners
+        type: OtherBanners
+      - name: storeWideMessages
+        type: "any[]"
+      - name: showCountDown
+        type: boolean
+      - name: timerDateEnd
+        type: Date
+
+  HomepageBanner:
+    description: Single banner item in the homepage carousel
+    fields:
+      - name: mobileBannerUrl
+        type: string
+      - name: bannerUrl
+        type: string
+      - name: bannerAltText
+        type: string
+      - name: bannerNavUrl
+        type: string
+
+  ProductSection:
+    description: One homepage association category with its linked product pages
+    fields:
+      - name: heading
+        type: string
+      - name: subheading
+        type: string
+      - name: categoryPageUrl
+        type: string
+      - name: productPages
+        type: "ProductPage[]"
+      - name: buttonCaption
+        type: string
+
+  HomepageLoaderResult:
+    description: |
+      Shape returned by useGetHomepageData routeLoader. Derived from getHomepage() in
+      home-service which maps the raw API Data object.
+    fields:
+      - name: data
+        type: HomepageViewModel
+      - name: mainPromoBanner
+        type: "MainBannerSection | null"
+      - name: floatingPromoBanner
+        type: "FloatingBannerSection | null"
+      - name: webComponents
+        type: "WebComponent[] | null"
+      - name: reviewsCollection
+        type: "CustomerReview | null"
+
+  HomePageItemsOrder:
+    description: CSS order values for each homepage section (CMS-driven or fallback)
+    fields:
+      - name: trustIcons
+        type: number
+      - name: reviews
+        type: number
+      - name: categories
+        type: number
+      - name: guidelineSection
+        type: number
+      - name: goQuickWidget
+        type: number
+
+  WebComponent:
+    description: CMS-driven web component entry from the API response
+    fields:
+      - name: guid
+        type: string
+      - name: wcTemplateName
+        type: WebComponentType
+      - name: componentType
+        type: string
+      - name: name
+        type: string
+      - name: isActive
+        type: boolean
+      - name: fields
+        type: "WebComponentField[]"
+      - name: customTag
+        type: "CustomTag[]"
+
+field_consumption:
+  HomepageLoaderResult:
+    consumed:
+      - data.pageTitle: Used in <head> title, og:title, twitter:title, name meta, JSON-LD WebPage name, WebSite name
+      - data.metaDescription: Used in description meta, og:description, twitter:description
+      - data.metaKeywords: Used in keywords meta
+      - data.homepageBanners: Renders DynamicCarousel when length > 0; first item bannerUrl/mobileBannerUrl used for og:image and preload links
+      - data.homepageAssociations: Sliced from index 1 onward and passed to HomepageCategoryContainer
+      - mainPromoBanner: Renders MainBanner twice (desktop above carousel, mobile below) when truthy
+      - floatingPromoBanner: Renders FloatingBanner when truthy
+      - reviewsCollection: If truthy, renders CustomerReview with spread props and CSS order from reviewsCollection.order
+      - webComponents: Searched for HOME_PAGE_ITEMS_ORDER template to derive homePageItemsOrder; passed to WebContentsComponent if non-empty
+    ignored:
+      - data.cssBox: Present in HomepageViewModel but never read by route component
+      - data.showFlyingAngel: Not consumed at route level
+      - data.showFlyingAngelCountDown: Not consumed at route level
+      - data.h1: Not rendered at route level
+      - data.aboutUsTitle: Not consumed at route level
+      - data.aboutUsContent: Not consumed at route level
+      - data.satisfactionTitle: Not consumed at route level
+      - data.satisfactionContent: Not consumed at route level
+      - data.otherBanners: Not used by this route
+      - data.storeWideMessages: Not consumed at route level
+      - data.showCountDown: Not consumed at route level
+      - data.timerDateEnd: Not consumed at route level
+
+  JsonReviewsData:
+    consumed:
+      - reviewData: Passed to HomeCustomerReviews as reviewData prop
+      - title: Passed to HomeCustomerReviews as title prop
+      - ratingText: Passed to HomeCustomerReviews as ratingText prop
+      - ratingValue: Passed to HomeCustomerReviews as ratingValue prop
+      - reviewCount: Passed to HomeCustomerReviews as reviewCount prop
+      - reviewString: Passed to HomeCustomerReviews as reviewString prop
+      - verified: Passed to HomeCustomerReviews as verified prop
+    ignored: []
+
+  JsonHomeData:
+    consumed:
+      - shopCollectionCtaText: Passed to HomepageCategoryContainer as shopCollectionCtaText prop
+    ignored: []
+
+implementation_logic:
+  section_ordering_via_cms:
+    rule: |
+      Section rendering order on the page is controlled by CSS `order` property on wrapper
+      divs, not by DOM position. The order values come from a CMS web component whose
+      wcTemplateName starts with "Home Page Items Order" (WebComponentType.HOME_PAGE_ITEMS_ORDER).
+      If that component is present in webComponents, processHomePageItemsOrderData() extracts
+      the numeric order values. If absent, DEFAULT_HOMEPAGE_ITEMS_ORDER is used:
+        { trustIcons: 2, reviews: 6, categories: 10, guidelineSection: 18, goQuickWidget: 3 }
+      The computed signal homePageItemsOrder.value provides these values to wrapper div styles.
+    critical: true
+
+  dual_reviews_source:
+    rule: |
+      Customer reviews are rendered from one of two sources, never both:
+      1. If homePageData.reviewsCollection is truthy: renders <CustomerReview> with API-driven
+         data (spread props) and CSS order from reviewsCollection.order.
+      2. If homePageData.reviewsCollection is falsy AND settings().website is NOT "NL" AND
+         NOT "GB": renders <HomeCustomerReviews> with static JSON data from getReviews().
+      NL and GB regions show no reviews section when reviewsCollection is null/falsy.
+    critical: true
+
+  mainbanner_dual_render:
+    rule: |
+      MainBanner is rendered TWICE in the DOM when homePageData.mainPromoBanner is truthy:
+      - First instance: class="hidden lg:block" — visible only on lg+ screens, positioned
+        ABOVE DynamicCarousel in DOM order.
+      - Second instance: class="block lg:hidden" — visible only on mobile, positioned
+        BELOW DynamicCarousel in DOM order.
+      This creates a responsive swap without JS: desktop sees banner above carousel, mobile
+      sees banner below carousel. Both instances receive identical props.
+    critical: true
+
+  scroll_lazy_loading:
+    rule: |
+      GuidelineSection is not rendered on initial page load. Its wrapper div carries the
+      `data-lazy` attribute and id="home-holiday-delivery". A window:onScroll$ handler calls
+      lazyLoading("[data-lazy]", handleComponentVisible) which pushes the element's id into
+      lazyLoadedComponents signal when it enters the viewport. The GuidelineSection JSX is
+      only rendered when lazyLoadedComponents.value.includes("home-holiday-delivery") is true.
+    critical: false
+
+  homepage_category_slice:
+    rule: |
+      HomepageCategoryContainer receives homepageAssociations starting from index 1
+      (slice(1)), not from index 0. The first association (index 0) is intentionally
+      skipped at route level. What it is used for is not visible at this route level.
+    critical: false
+
+  null_guard:
+    rule: |
+      The entire page body (wrapper div and all sections) is wrapped in a conditional
+      `{homePageData && (...)}`. If homePageData is null (API failure), the route renders
+      an empty Fragment with no content. The <head> function separately handles null by
+      returning `{ title: "Printerpix" }` as a minimal fallback.
+    critical: true
+
+visibility_map:
+  entire_page_body:
+    condition: "homePageData !== null && homePageData !== undefined"
+    default: hidden (empty fragment if loader returns null)
+
+  mainbanner_desktop:
+    condition: "homePageData.mainPromoBanner is truthy"
+    default: hidden
+    notes: "class='hidden lg:block' — only visible on lg+ breakpoint when condition met"
+
+  carousel:
+    condition: "homePageData.data.homepageBanners.length > 0"
+    default: hidden
+
+  mainbanner_mobile:
+    condition: "homePageData.mainPromoBanner is truthy"
+    default: hidden
+    notes: "class='block lg:hidden' — only visible below lg breakpoint when condition met"
+
+  floating_banner:
+    condition: "homePageData.floatingPromoBanner is truthy"
+    default: hidden
+
+  customer_review_api_driven:
+    condition: "homePageData.reviewsCollection is truthy"
+    default: hidden
+    notes: "Mutually exclusive with customer_review_static_json"
+
+  customer_review_static_json:
+    condition: "homePageData.reviewsCollection is falsy AND settings().website !== 'NL' AND settings().website !== 'GB'"
+    default: hidden
+    notes: "Mutually exclusive with customer_review_api_driven; NL and GB always skip this fallback"
+
+  guideline_section:
+    condition: "lazyLoadedComponents.value.includes('home-holiday-delivery')"
+    default: hidden
+    notes: "Wrapper div is always in DOM (for IntersectionObserver); inner component only mounts after scroll trigger"
+
+  homepage_category_container:
+    condition: always rendered (no conditional guard)
+    default: visible
+    notes: "Wrapper always present; content visibility depends on HomepageCategoryContainer internals"
+
+  go_quick_widget:
+    condition: always rendered (no conditional guard)
+    default: visible
+
+  web_contents_component:
+    condition: "homePageData.webComponents !== null && homePageData.webComponents !== undefined && homePageData.webComponents.length > 0"
+    default: hidden

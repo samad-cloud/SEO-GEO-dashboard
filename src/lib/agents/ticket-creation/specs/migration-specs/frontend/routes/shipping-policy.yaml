@@ -1,0 +1,290 @@
+name: ShippingPolicyRoute
+source:
+  path: routes/shipping-policy/index.tsx
+  lines: 1-242
+  type: route
+
+description: |
+  Displays shipping policy information including:
+  - Shipping methods table by product
+  - Holiday shipping information
+  - Shipping policy details table
+  - Product range showcase
+  - Satisfaction guarantee and help sections (not shown on NL site)
+
+  Loads content from JSON via routeLoader$ (WebContentType.SHIPPING_POLICY).
+
+url_pattern: /shipping-policy
+layout: default
+
+exports:
+  default: true
+  component: |
+    Renders multi-section page with:
+    - Title from shippingPolicyContent.title
+    - GuidelineSection component
+    - Responsive banner images (desktop/mobile)
+    - Shipping by product table (3-column grid)
+    - Holiday shipping section (image + text)
+    - Shipping policy table (3-column grid with icons)
+    - Note section (centered)
+    - Shop Our Range product grid
+    - Satisfaction guarantee (if not NL)
+    - Help section with contact info (if not NL)
+
+  routeLoader: useShippingPolicyLoader
+  routeLoader_behavior: |
+    Loads shipping policy content via loadWebContent<ShippingPolicyContent>(WebContentType.SHIPPING_POLICY)
+    Returns: ShippingPolicyContent object with all page data
+
+  head: true
+  head_content: |
+    title: "Printerpix | Shipping Policy"
+
+dependencies:
+  - "@builder.io/qwik"
+  - "@builder.io/qwik-city" (routeLoader$, DocumentHead)
+  - "@unpic/qwik" (Image)
+  - "~/components/guideline-section/guideline-section"
+  - "~/config/settings"
+  - "~/services/json-service" (loadWebContent, WebContentType, ShippingPolicyContent type)
+
+data_dependencies:
+  - JSON content file via loadWebContent
+  - settings().website for NL region check
+
+behavior:
+  - Loads content asynchronously via routeLoader$
+  - Renders banner conditionally based on shippingPolicyContent.banner.display
+  - Renders shipping by product table conditionally based on shippingPolicyContent.shippingByProductTable.display
+  - Holiday shipping image can be clickable (if href exists)
+  - Shipping policy table includes icons (imgSrc) for each row
+  - NL region hides satisfaction guarantee and help sections
+  - Product grid displays shop range products (6 items per row on desktop, 3 on mobile)
+
+i18n_keys: []
+
+rewrite_routes:
+  NL: /bezorgmethoden
+  DE: /lieferbedingungen
+  IT: /politica-di-spedizione
+  ES: /politica-de-envio
+
+used_by: []
+
+types:
+  ShippingPolicyBanner:
+    description: Banner image configuration for the top of the shipping policy page
+    source: "~/services/json-service"
+    fields:
+      - name: display
+        type: boolean
+        description: Whether the banner should be rendered
+      - name: imgMobile
+        type: string
+        description: URL of the mobile banner image
+      - name: imgMobileAspectRatio
+        type: string
+        description: Aspect ratio string for the mobile banner image (e.g. "4/1")
+      - name: imgDesktop
+        type: string
+        description: URL of the desktop banner image
+      - name: imgDesktopAspectRatio
+        type: string
+        description: Aspect ratio string for the desktop banner image
+
+  ItemContent:
+    description: A single cell in the shippingByProductTable grid; may be a plain text cell or a linked cell
+    source: "~/services/json-service"
+    fields:
+      - name: text
+        type: string
+        description: Display text for the cell
+      - name: href
+        type: string
+        description: Optional link URL; if non-empty the cell renders as an anchor element
+      - name: textColor
+        type: string
+        description: CSS color value applied to the text
+
+  ProductRowContent:
+    description: A single row in the shippingByProductTable
+    source: "~/services/json-service"
+    fields:
+      - name: product
+        type: ItemContent
+        description: Product name cell
+      - name: deliveryTime
+        type: ItemContent
+        description: Delivery time cell
+      - name: info
+        type: ItemContent
+        description: Additional information cell
+
+  ShippingByProductTable:
+    description: The optional "Shipping by Product" table section
+    source: "~/services/json-service"
+    fields:
+      - name: display
+        type: boolean
+        description: Whether to render this table section
+      - name: header
+        type: "string[]"
+        description: Column heading labels (3 columns)
+      - name: content
+        type: "ProductRowContent[]"
+        description: Array of data rows
+
+  Content:
+    description: A single row in the shippingPolicyTable (the main shipping methods table)
+    source: "~/services/json-service"
+    fields:
+      - name: name
+        type: string
+        description: Shipping method name (also used as row key)
+      - name: imgSrc
+        type: string
+        description: Icon image URL rendered in the first column
+      - name: deliveryTime
+        type: string
+        description: Delivery timeframe text
+      - name: info
+        type: string
+        description: Additional information text
+
+  ShippingPolicyTable:
+    description: The main shipping policy table with icon rows
+    source: "~/services/json-service"
+    fields:
+      - name: header
+        type: "string[]"
+        description: Column heading labels (3 columns)
+      - name: content
+        type: "Content[]"
+        description: Array of shipping method rows
+
+  Note:
+    description: The note block displayed below the shipping policy table
+    source: "~/services/json-service"
+    fields:
+      - name: title
+        type: string
+        description: Bold note label
+      - name: content
+        type: string
+        description: Note body text
+
+  Product:
+    description: A single product entry in the "Shop Our Range" grid
+    source: "~/services/json-service"
+    fields:
+      - name: name
+        type: string
+        description: Product display name (also used as alt text)
+      - name: imgSrc
+        type: string
+        description: Product image URL
+      - name: url
+        type: string
+        description: Link URL to the product page
+
+  ShopOurRange:
+    description: The "Shop Our Range" product grid section
+    source: "~/services/json-service"
+    fields:
+      - name: title
+        type: string
+        description: Section heading
+      - name: products
+        type: "Product[]"
+        description: Array of product items (6 per row on desktop, 3 on mobile)
+
+  SatisfactionGuarantee:
+    description: The satisfaction guarantee info card (hidden on NL)
+    source: "~/services/json-service"
+    fields:
+      - name: title
+        type: string
+        description: Card heading
+      - name: description
+        type: string
+        description: Card body text
+      - name: ctaText
+        type: string
+        description: Link anchor text
+      - name: ctaLink
+        type: string
+        description: Link URL
+
+  OurHelp:
+    description: The "Need Help?" contact info card (hidden on NL)
+    source: "~/services/json-service"
+    fields:
+      - name: questionTitle
+        type: string
+        description: Card heading
+      - name: content
+        type: string
+        description: Introductory support text
+      - name: phoneNumberTitle
+        type: string
+        description: Label for the phone number
+      - name: phoneNumberValue
+        type: string
+        description: Phone number (also used in tel: href)
+      - name: emailTitle
+        type: string
+        description: Label for the email address
+      - name: emailValue
+        type: string
+        description: Email address (also used in mailto: href)
+      - name: talkToAgent
+        type: string
+        description: Link text for agent chat CTA
+      - name: agentLink
+        type: string
+        description: URL for agent chat / support link
+
+  ShippingPolicyContent:
+    description: Full page data shape returned by loadWebContent<ShippingPolicyContent>(WebContentType.SHIPPING_POLICY)
+    source: "~/services/json-service"
+    fields:
+      - name: title
+        type: string
+        description: Page heading
+      - name: holidayShippingTitle
+        type: string
+        description: Holiday shipping section heading
+      - name: holidayShippingDescription
+        type: string
+        description: Holiday shipping section body text
+      - name: holidayShippingImageDesktopSrc
+        type: string
+        description: Desktop holiday shipping image URL
+      - name: holidayShippingImageMobileSrc
+        type: string
+        description: Mobile holiday shipping image URL
+      - name: href
+        type: string
+        description: Optional link URL; if non-empty the holiday shipping image renders as an anchor
+      - name: banner
+        type: ShippingPolicyBanner
+        description: Top-of-page banner configuration
+      - name: shippingByProductTable
+        type: ShippingByProductTable
+        description: Optional "Shipping by Product" table section
+      - name: shippingPolicyTable
+        type: ShippingPolicyTable
+        description: Main shipping methods table
+      - name: note
+        type: Note
+        description: Note block below the main table
+      - name: shopOurRange
+        type: ShopOurRange
+        description: "Shop Our Range" product grid
+      - name: satisfactionGuarantee
+        type: SatisfactionGuarantee
+        description: Satisfaction guarantee card (hidden on NL)
+      - name: ourHelp
+        type: OurHelp
+        description: Help/contact card (hidden on NL)

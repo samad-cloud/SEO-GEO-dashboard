@@ -1,0 +1,244 @@
+name: TrackingHistory
+source: src/components/account-detail/tracking-history.tsx
+description: |
+  Visual order tracking timeline component. Renders two parallel ordered lists:
+  the first (visible on all viewports) shows a horizontal icon-and-title timeline
+  on large screens and a vertical bordered list on mobile; the second (hidden on
+  mobile, shown on lg+) shows date/time/body text beneath the icon row.  Each
+  tracking step is represented by a pink circle with a checkmark (completed) or
+  a black circle (most recent pending step). A terminal "Delivered" placeholder
+  node is appended unless the order is already delivered. Below the timeline,
+  a carrier-link section shows the tracking code and an external carrier button,
+  or falls back to a plain tracking message. A "Go back to orders" link is always
+  rendered beneath the carrier section.  This component is used in the account
+  order-detail flow and differs from the inline TrackingHistory variant defined
+  inside track-my-order-container.tsx, which omits the carrier link section.
+
+exports:
+  - name: TrackingHistory
+    type: "component$<any>"
+    description: Named export (not default). Accepts trackingValue as a plain prop (not a computed signal wrapper).
+
+props:
+  - name: trackingValue
+    type: TrackingValueShape
+    required: true
+    description: |
+      Object containing the computed tracking data. In the account-detail usage
+      the value is passed directly (not wrapped in a ComputedSignal). Access pattern
+      is trackingValue?.trackingHistory, trackingValue?.isOrderDeliverd,
+      trackingValue?.shipmentDetails.
+
+component_structure:
+  - TopTimelineList: |
+      <ol class="relative lg:flex lg:items-start pt-10 pl-4 pb-5 lg:pb-0 w-full">
+        - Iterates trackingValue.trackingHistory
+        - Each <li>: left border on mobile (dashed for last pending), flex-1 on lg
+        - Connector lines (hidden on mobile, visible on lg) between nodes
+        - Node circle: pink (#E40080) with checkmark SVG for all completed steps;
+          black (#000000) filled (no checkmark) for the last pending step
+        - Message title (capitalized) visible on all viewports
+        - Date/time/body div visible on mobile only (lg:hidden)
+        - Terminal "Delivered" placeholder <li> appended when isOrderDeliverd is false
+  - BottomDateList: |
+      <ol class="hidden relative lg:flex lg:items-start w-[100%]">
+        - Hidden on mobile, flex on lg
+        - Iterates same trackingHistory
+        - Each <li>: shows dayInWeek, fullDate, messageBody
+        - messageBody: shown as block when history.length <= 4; hidden xl:block
+          (condensed tooltip mode) when length > 4 or (length > 3 and not delivered)
+        - Hover tooltip (<div> with "i" label): visible when condensed mode active,
+          shows full messageBody on mouse-enter
+        - Terminal "Delivered" empty placeholder <li> when isOrderDeliverd is false
+  - CarrierSection: |
+      <div class="pb-8 flex flex-col items-center">
+        - If shipmentDetails.carrierLink is truthy:
+            Shows tracking number text + follow text + external carrier button (pink)
+        - Else if shipmentDetails.trackingMessage:
+            Shows plain tracking message paragraph
+  - GoBackLink: |
+      <a href="/account/order-tracking/" ...>
+        {t("tracking_order.go_back_orders")}
+      </a>
+      Always rendered below carrier section.
+
+types:
+  TrackingHistoryDataType:
+    description: Shape of each item in the trackingHistory array
+    fields:
+      - name: dayInWeek
+        type: string
+        description: Day abbreviation, e.g. "Monday"
+      - name: fullDate
+        type: string
+        description: Formatted full date string, e.g. "27 January 2026"
+      - name: messageTitle
+        type: string
+        description: Status title; rendered lower-cased with capitalize CSS class
+      - name: messageBody
+        type: string
+        description: Descriptive status message
+      - name: timeStatus
+        type: string
+        description: Composite time + timezone + body string (built by container, not rendered here)
+      - name: location
+        type: string
+        description: Physical location string (built by container, not rendered here)
+      - name: isDeliveredItem
+        type: boolean
+        description: True only when this is the first item and has deliveredStatus class
+
+  TrackingValueShape:
+    description: Shape of the trackingValue prop object
+    fields:
+      - name: trackingHistory
+        type: "TrackingHistoryDataType[]"
+      - name: isOrderDeliverd
+        type: boolean
+        description: "Note: misspelled 'Deliverd' in source — preserve this spelling in props/signals"
+      - name: shipmentDetails
+        type: ShipmentDetails
+
+  ShipmentDetails:
+    description: Shipment information extracted by tracking service
+    fields:
+      - name: trackingCode
+        type: string
+      - name: carrierLink
+        type: string
+        description: External carrier URL; empty string when not available
+      - name: trackingMessage
+        type: "string | undefined"
+
+field_consumption:
+  trackingValue:
+    consumed:
+      - trackingHistory: Iterated in both timeline lists
+      - isOrderDeliverd: Controls border style, node color, terminal node visibility, tooltip condensing threshold
+      - shipmentDetails.trackingCode: Displayed as tracking number text and in span#tracking-code
+      - shipmentDetails.carrierLink: Checked for truthiness and "https://" inclusion to decide carrier section rendering
+      - shipmentDetails.trackingMessage: Shown when carrierLink is falsy but message exists
+    ignored:
+      - progressBarValue: Present in the computed value from the container but not rendered here
+      - trackingHistory[*].timeStatus: Built into the data but not displayed in this component
+      - trackingHistory[*].location: Built into the data but not displayed in this component
+      - trackingHistory[*].isDeliveredItem: Present in data but not read in this component's render
+
+behavior:
+  - On render: If trackingValue is undefined or null, trackingValue?.trackingHistory map returns nothing (empty lists render)
+  - Top timeline list renders one <li> per history item plus an appended "Delivered" node when isOrderDeliverd is false
+  - Node styling rules:
+      - Last history item AND isOrderDeliverd is false: node is black (no checkmark hidden)
+      - All other items: node is pink with white checkmark
+  - Left connector line (first item only) has opacity-0
+  - Right connector line of last item: opacity-0 when delivered; fades to white when pending
+  - Mobile view (lg:hidden div inside each li): shows dayInWeek, fullDate, messageBody directly
+  - Bottom date list (lg+ only): shows dayInWeek, fullDate, and messageBody per item
+  - Condensed mode triggers when history.length > 4 OR (history.length > 3 AND NOT isOrderDeliverd):
+      - messageBody paragraph changes to "hidden xl:block"
+      - Tooltip div changes from "hidden" to "block xl:hidden"
+  - Tooltip: showDescriptionIndex signal tracks hovered item index; onMouseEnter$ sets it, onMouseLeave$ clears it
+  - Tooltip popup scales from scale-0 to scale-100 via CSS transform when active
+  - Carrier section: if carrierLink is truthy, shows enter_tracking_number translation, tracking code span, follow_order translation, and external <a> button; else if trackingMessage shows it as gray centered <p>
+  - "Go back" link always points to /account/order-tracking/
+
+styling:
+  top_timeline:
+    list: "relative lg:flex lg:items-start pt-10 pl-4 pb-5 lg:pb-0 w-full"
+    item: "relative pb-10 lg:pb-0 ps-6 border-s-2 border-[#000000] lg:flex-1 lg:border-s-0 lg:ps-0"
+    item_last_pending: border-dashed
+    item_last_delivered: border-s-0
+    connector_line: "hidden lg:flex w-full bg-[#000000] bg-gradient-to-r h-0.5 from-[#000000] to-50% sm:bg-[length:15px_1px] xl:bg-[length:15px_1px] 2xl:bg-[length:16px_1px]"
+    node_pink: "absolute -start-3 top-0 z-10 flex items-center justify-center w-6 h-6 rounded-full shrink-0 lg:relative lg:-start-0 bg-[#E40080]"
+    node_black: "absolute -start-3 top-0 z-10 flex items-center justify-center w-6 h-6 rounded-full shrink-0 lg:relative lg:-start-0 bg-[#000000]"
+    terminal_node: "absolute -start-3 top-0 z-10 flex items-center justify-center w-6 h-6 rounded-full shrink-0 lg:relative lg:-start-0 border-2 border-[#000000] bg-[#FFFFFF]"
+    message_title: "text-lg font-semibold text-gray-900 pb-3 lg:text-center capitalize"
+  bottom_date_list:
+    list: "hidden relative lg:flex lg:items-start w-[100%]"
+    item: "relative pb-10 ps-6 border-s-2 border-[#000000] lg:flex-1 lg:border-s-0 lg:ps-0 lg:mb-6"
+    message_body_normal: "text-base font-normal text-gray-500 block"
+    message_body_condensed: "text-base font-normal text-gray-500 hidden xl:block"
+    tooltip_container_condensed: "relative mt-5 mb-16 block xl:hidden"
+    tooltip_icon: "absolute z-10 flex w-[40px] h-[40px] justify-center items-center rounded-full bg-[#FFFFFF] border border-[#FBF6F7] cursor-pointer"
+    tooltip_popup: "z-[5] w-[200px] absolute bg-[#FFFFFF] border border-[#FBF6F7] pl-5 py-4 pr-3 rounded top-[38px] text-[14px] transition duration-300 origin-top-left block"
+  carrier_section:
+    wrapper: "pb-8 flex flex-col items-center"
+    tracking_code_span: id="tracking-code"
+    carrier_button: "my-2 capitalize bg-[#E40080] text-white decoration-none font-bold rounded-md w-100 py-2 block text-center min-w-[400px]"
+    message_fallback: "text-gray-500 text-center mb-4"
+  go_back_link: "my-2 capitalize border-solid border-[#D2D2D2] decoration-none rounded-md border-2 w-100 py-2 block text-center min-w-[400px]"
+
+visibility_map:
+  terminal_delivered_node_top:
+    condition: "!trackingValue?.isOrderDeliverd"
+    default: visible (appended when not yet delivered)
+  terminal_delivered_node_bottom:
+    condition: "!trackingValue?.isOrderDeliverd"
+    default: visible (appended when not yet delivered)
+  checkmark_svg:
+    condition: "NOT (index === lastIndex AND !isOrderDeliverd)"
+    default: visible (checkmark hidden only on last-pending node)
+  mobile_date_block:
+    condition: always (shown via lg:hidden — visible below lg, hidden at lg+)
+    default: visible on mobile
+  bottom_date_list:
+    condition: always (hidden on mobile, lg:flex on desktop)
+    default: hidden below lg
+  message_body_paragraph:
+    condition: "trackingHistory.length <= 4 AND (trackingHistory.length <= 3 OR isOrderDeliverd)"
+    default: block (visible) — switches to hidden xl:block when condensed threshold met
+  tooltip_hover_area:
+    condition: "trackingHistory.length > 4 OR (trackingHistory.length > 3 AND !isOrderDeliverd)"
+    default: hidden — shown only in condensed mode
+  tooltip_popup:
+    condition: "showDescriptionIndex.value === index"
+    default: scale-0 (invisible) — scales to scale-100 on hover
+  carrier_link_block:
+    condition: "shipmentDetails.carrierLink is truthy"
+    default: hidden when no carrier link
+  tracking_message_fallback:
+    condition: "!shipmentDetails.carrierLink AND shipmentDetails.trackingMessage"
+    default: hidden when carrier link present or no message
+
+i18n:
+  translation_keys:
+    - track_your_order.enter_tracking_number
+    - track_your_order.follow_order
+    - tracking_order.view_courier
+    - tracking_order.go_back_orders
+
+dependencies:
+  qwik:
+    - component$, useSignal from @builder.io/qwik
+  components:
+    - SVGIcon from ~/components/svg-icon/svg-icon
+  i18n:
+    - inlineTranslate from qwik-speak
+
+used_by:
+  - CustomerTrackingOrder
+
+notes:
+  - A near-identical TrackingHistory component is defined inline inside
+    src/components/track-my-order-page/containers/track-my-order-container.tsx.
+    That inline version accesses props as trackingValue.value (ComputedSignal wrapper)
+    whereas this account-detail version accesses props directly as trackingValue?.
+    The inline version also omits the CarrierSection and GoBackLink — those sections
+    only appear in this account-detail variant.
+  - The "Delivered" hardcoded string in the terminal node is not translated.
+  - "isOrderDeliverd" is a deliberate typo in the source — preserve spelling exactly.
+  - isDeliveredItem on TrackingHistoryDataType is built by the container but not
+    consumed anywhere in this component's render path.
+
+security:
+  - No user input accepted; all data flows in via props from the parent container
+  - dangerouslySetInnerHTML is NOT used in this component
+  - Carrier link is rendered as a plain href <a> — no sanitization in source; target="_blank" is NOT set on the carrier <a> in this component (it is set in the inline container variant)
+  - External link: carrier button uses target="_blank" in this component (line 200)
+
+edge_cases:
+  - trackingValue is undefined: optional chaining on trackingValue? prevents crash; empty lists rendered
+  - carrierLink present but does not contain "https://": carrier button not rendered in the inline variant; this component only checks carrierLink truthiness for the section, but the <a> is shown regardless
+  - trackingMessage is undefined and carrierLink is falsy: carrier section renders empty (nothing shown)
+  - history.length is 0: both lists render empty plus the terminal node
+  - history.length exactly 4 with isOrderDeliverd false: condensed mode triggers (length > 3 AND NOT delivered)

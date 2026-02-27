@@ -1,0 +1,244 @@
+name: HeaderWrapper
+source:
+  path: src/components/header/header-wrapper.tsx
+  lines: 1-103
+  type: component
+
+description: |
+  Wrapper component that manages fixed/sticky header behavior on scroll.
+  Monitors scroll position and toggles between normal and fixed header states.
+  Shows a fixed header that slides in when user scrolls past the header's initial position.
+
+exports:
+  - type: default
+    name: HeaderWrapper
+    kind: component
+
+props:
+  - name: showMenu
+    type: boolean
+    optional: true
+    default: true
+    description: Controls whether the navigation menu is displayed
+
+component_structure:
+  root: fragment
+  children:
+    - conditional:
+        condition: showFixedHeader.value
+        trueBranch:
+          - element: div
+            className: "bg-white fixed top-0 left-0 right-0 z-[3000] shadow-md transition-all duration-300 ease-in-out"
+            id: header-fixed
+            children:
+              - element: div
+                className: "container mx-auto lg:px-[10px] relative bg-white"
+                children:
+                  - conditional:
+                      condition: location.url.searchParams?.get("showHeader") !== "0"
+                      trueBranch:
+                        - component: Header
+                          props:
+                            - showMenu: props.showMenu
+                            - isFixed: true
+        falseBranch:
+          - element: div
+            className: "bg-white relative"
+            id: header-container
+            children:
+              - element: div
+                className: "container mx-auto lg:px-[10px] relative bg-white"
+                children:
+                  - conditional:
+                      condition: location.url.searchParams?.get("showHeader") !== "0"
+                      trueBranch:
+                        - component: Header
+                          props:
+                            - showMenu: props.showMenu
+                            - isFixed: false
+    - conditional:
+        condition: showFixedHeader.value
+        trueBranch:
+          - element: div
+            purpose: spacer to prevent content jump
+            style: "height: ${headerHeight.value}px"
+            ariaHidden: true
+
+child_components:
+  - name: Header
+    path: "./header"
+    props:
+      - showMenu: boolean
+      - isFixed: boolean
+
+context_consumed: []
+
+state_management:
+  signals:
+    - name: headerInitialTop
+      type: number
+      default: 0
+      description: Initial top position of header container
+    - name: headerHeight
+      type: number
+      default: 0
+      description: Height of header container
+    - name: showFixedHeader
+      type: boolean
+      default: false
+      description: Controls fixed header visibility
+    - name: isTransitioning
+      type: boolean
+      default: false
+      description: Prevents multiple transitions at once
+    - name: showTimeout
+      type: number | undefined
+      default: undefined
+      description: Timeout ID for delayed show animation
+    - name: transitionTimeout
+      type: number | undefined
+      default: undefined
+      description: Timeout ID for transition completion
+
+event_handlers:
+  - event: DOMContentLoaded
+    description: Measures header container dimensions on page load
+    implementation: |
+      Gets header-container element, calculates initial top position and height.
+      Stores values in headerInitialTop and headerHeight signals.
+
+  - event: scroll
+    description: Monitors scroll position and toggles fixed header
+    implementation: |
+      Compares window scrollTop to headerInitialTop threshold.
+      When scrolling down past threshold:
+        - Sets isTransitioning to true
+        - After 50ms delay, shows fixed header
+        - After 300ms, completes transition
+      When scrolling back up:
+        - Clears any pending timeouts
+        - Hides fixed header immediately
+
+responsive_behavior:
+  mobile:
+    - Fixed header appears when scrolling down
+    - Smooth fade-in animation
+  desktop:
+    - Same behavior as mobile
+    - Container width constrained with mx-auto
+
+animations:
+  - name: fixed-header-slide
+    trigger: showFixedHeader becomes true
+    duration: 300ms
+    properties:
+      - opacity: "0 → 100"
+      - transform: "translateY(-2) → translateY(0)"
+
+dependencies:
+  qwik:
+    - component$
+    - useOnDocument
+    - useSignal
+    - $
+  qwik-city:
+    - useLocation
+  local:
+    - ./header (Header component)
+
+security:
+  - Query parameter showHeader can hide header (used in iframes/embeds)
+
+edge_cases:
+  - Query string ?showHeader=0 hides header completely
+  - Rapid scrolling up/down clears pending timeouts
+  - Fixed header z-index (3000) ensures it stays above content
+
+behavior:
+  - step: 1
+    action: "Initialize component with showMenu prop (default true)"
+  - step: 2
+    action: "Create signals for headerInitialTop (0), headerHeight (0), showFixedHeader (false), isTransitioning (false), showTimeout (undefined), transitionTimeout (undefined)"
+  - step: 3
+    action: "On DOMContentLoaded, measure the header-container element's bounding rect to capture its initial top position (accounting for page scroll offset) and height"
+  - step: 4
+    action: "Register scroll event listener on document that compares current scrollTop to the headerInitialTop threshold"
+  - step: 5
+    action: "When user scrolls DOWN past the threshold and fixed header is not already showing and not transitioning: set isTransitioning=true, then after 50ms delay show the fixed header, then after 300ms mark transition complete"
+  - step: 6
+    action: "When user scrolls UP back above the threshold: immediately clear any pending timeouts, hide fixed header, and reset transitioning state"
+  - step: 7
+    action: "Check query parameter showHeader; if showHeader=0, do not render the Header component (used for iframe/embed scenarios)"
+  - step: 8
+    action: "When showFixedHeader is false, render the normal header inside a relative-positioned container with id='header-container'"
+  - step: 9
+    action: "When showFixedHeader is true, render the fixed header in a div with position:fixed, top:0, z-index:3000, and shadow; apply opacity/translateY transition classes based on isTransitioning state"
+  - step: 10
+    action: "When fixed header is visible, also render a spacer div with height equal to headerHeight to prevent content from jumping up behind the fixed header"
+  - step: 11
+    action: "Pass showMenu and isFixed props through to the child Header component"
+
+used_by: []
+
+types:
+  HeaderWrapperProps:
+    description: Props accepted by the HeaderWrapper component
+    fields:
+      - name: showMenu
+        type: boolean
+        optional: true
+
+implementation_logic:
+  scroll_threshold_with_debounce:
+    rule: |
+      When scroll position exceeds headerInitialTop, the fixed header is NOT shown
+      immediately. Instead:
+        1. isTransitioning is set to true
+        2. After a 50ms delay (showTimeout), showFixedHeader becomes true
+        3. After a further 300ms (transitionTimeout), isTransitioning is reset to false
+      This produces an opacity/translateY fade-in effect.
+      When scrolling back above the threshold, ALL pending timeouts are cancelled
+      synchronously and showFixedHeader + isTransitioning are both reset to false
+      immediately. The guard condition (isTransitioning.value) prevents re-entrancy:
+      a new show sequence cannot start while one is already in progress.
+    critical: true
+  header_height_measurement:
+    rule: |
+      headerInitialTop is calculated as rect.top + window.pageYOffset from the
+      'header-container' element on DOMContentLoaded. This accounts for any
+      initial page scroll offset so the threshold is absolute, not viewport-relative.
+      headerHeight captures rect.height and is used only for the spacer div when
+      the fixed header is active.
+    critical: false
+
+field_consumption:
+  HeaderWrapperProps:
+    consumed:
+      - showMenu: Passed directly as a prop to the child Header component in both the fixed and normal header branches
+    ignored: []
+  LocationUrl:
+    consumed:
+      - url.searchParams (get("showHeader")): Read once per render to decide whether to render the Header child at all; value "0" suppresses rendering
+    ignored:
+      - All other searchParams fields: Not accessed
+      - pathname, hostname, href, etc.: Not accessed in this component
+
+visibility_map:
+  fixed_header_div:
+    condition: "showFixedHeader.value === true"
+    default: hidden
+  normal_header_div:
+    condition: "showFixedHeader.value === false"
+    default: visible
+  header_child_in_fixed_branch:
+    condition: "location.url.searchParams.get('showHeader') !== '0'"
+    default: visible
+  header_child_in_normal_branch:
+    condition: "location.url.searchParams.get('showHeader') !== '0'"
+    default: visible
+  spacer_div:
+    condition: "showFixedHeader.value === true"
+    default: hidden
+  fixed_header_transition_classes:
+    condition: "isTransitioning.value === true → opacity-0 and -translate-y-2; isTransitioning.value === false → opacity-100 and translate-y-0"
+    default: opacity-100 translate-y-0

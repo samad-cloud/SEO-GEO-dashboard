@@ -1,0 +1,130 @@
+name: Format
+description: Currency, number, percentage formatting, price calculations, CSS grid utilities, and JSON validation
+
+source:
+  path: utility/format.ts
+  lines: 1-123
+  type: utility
+
+exports:
+  - name: formatPrice
+    type: function
+    signature: "(value: number | string) => string"
+    description: Formats number as currency using site locale and currency code
+    parameters:
+      - name: value
+        type: number | string
+    returns: Localized currency string (e.g., "$19.99", "£19.99", "19,99 €")
+    uses: Intl.NumberFormat with getSiteSetting().locale and currencyCode
+
+  - name: formatPercent
+    type: function
+    signature: "(value: number) => string"
+    description: Formats decimal as percentage with site locale
+    parameters:
+      - name: value
+        type: number
+        description: Decimal value (e.g., 0.25 for 25%)
+    returns: Localized percentage string (e.g., "25%")
+
+  - name: getPriceOff
+    type: function
+    signature: "(discount: number | undefined, original: number | undefined) => string"
+    description: Calculates and formats discount percentage with region-specific text
+    parameters:
+      - name: discount
+        type: number | undefined
+        description: Discounted price
+      - name: original
+        type: number | undefined
+        description: Original price
+    returns: Formatted discount string
+    behavior:
+      - FR → "- {percentage}"
+      - DE → "{percentage} Rabatt"
+      - Default → "{percentage} OFF"
+      - If discount === 0 → percentage = 1 (100%)
+      - Otherwise → percentage = (original - discount) / original
+
+  - name: formatNumber
+    type: function
+    signature: "(value: number) => string"
+    description: Formats number with site locale (no currency symbol)
+
+  - name: convertCurrencyToNumber
+    type: function
+    signature: "(currency: string) => number"
+    description: Extracts numeric value from currency string
+    behavior:
+      - Replaces commas with dots
+      - Removes all non-numeric characters except . and -
+      - Converts to number
+    example: "€1.234,56" → 1234.56
+
+  - name: getFlexItemClass
+    type: function
+    signature: "(itemsPerRowOnMobile: number, itemsPerRowOnDesktop: number) => string"
+    description: Generates Bootstrap-style grid classes for responsive layouts
+    parameters:
+      - name: itemsPerRowOnMobile
+        type: number
+        description: Items per row on mobile (max 12)
+      - name: itemsPerRowOnDesktop
+        type: number
+        description: Items per row on desktop (max 12)
+    returns: Space-separated CSS classes (e.g., "col-6 lg:col-4")
+    behavior:
+      - Calculates colsInItem = 12 / itemsPerRow
+      - Maps to col-{1|2|3|4|6|12} for mobile
+      - Maps to lg:col-{1|2|3|4|6|12} for desktop
+      - Defaults to col-12/lg:col-12 if invalid
+
+  - name: isJson
+    type: function
+    signature: "(item: string) => boolean"
+    description: Checks if string is valid JSON
+    behavior:
+      - Attempts JSON.parse
+      - Returns true if result is object (not null)
+      - Returns false on parse error or non-object result
+
+  - name: doesNotStartWithNumber
+    type: function
+    signature: "(str: string) => boolean"
+    description: Checks if first character is NOT a digit (0-9)
+    uses: charCodeAt(0) < 48 || > 57
+
+dependencies:
+  internal:
+    - "~/services/server": getSiteSetting (provides locale and currencyCode)
+    - "~/config/settings": settings function (for region detection)
+
+behavior:
+  internationalization:
+    method: Intl.NumberFormat API
+    locale_source: getSiteSetting().locale
+    currency_source: getSiteSetting().currencyCode
+
+  grid_system:
+    framework: Bootstrap-style (12-column grid)
+    breakpoint: lg (desktop)
+    supported_cols: [1, 2, 3, 4, 6, 12]
+
+  currency_parsing:
+    decimal_separator: Converts comma to dot for European formats
+    symbol_removal: Strips all non-numeric except . and -
+
+  discount_calculation:
+    formula: (original - discount) / original
+    special_case: discount === 0 → 100% off
+
+edge_cases:
+  - Empty string in isJson returns false
+  - Invalid JSON in isJson returns false
+  - Division by zero in getPriceOff (if original undefined/0)
+  - Invalid itemsPerRow in getFlexItemClass defaults to col-12
+
+types:
+  notes: "No locally-defined types. Uses primitive types (number, string, boolean) and imports getSiteSetting from ~/services/server."
+
+used_by: []

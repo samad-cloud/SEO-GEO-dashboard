@@ -1,0 +1,40 @@
+name: TermsAndConditionsRoute
+source:
+  path: routes/terms-and-conditions/index.tsx
+  lines: 1-9
+  type: route
+
+description: |
+  Legal page displaying terms and conditions.
+  Renders TermsAndConditionsContainer and uses its Head export.
+
+url_pattern: /terms-and-conditions
+layout: default
+
+exports:
+  default: true
+  component: TermsAndConditionsContainer
+  head: true
+  head_source: "Imported from TermsAndConditionsContainer (Head export)"
+
+dependencies:
+  - "@builder.io/qwik"
+  - "@builder.io/qwik-city" (DocumentHead type)
+  - "~/components/terms-and-conditions-page/containers/terms-and-conditions-container"
+
+behavior:
+  - Renders container component
+  - Head metadata managed by container
+
+i18n_keys: []
+
+rewrite_routes:
+  NL: /voorwaarden
+  DE: /geschaftsbedingungen
+  IT: /termini-e-condizioni
+  ES: /terminos-y-condiciones
+
+used_by: []
+
+types:
+  notes: "Route component. Types defined in associated container component. No locally-defined interfaces."

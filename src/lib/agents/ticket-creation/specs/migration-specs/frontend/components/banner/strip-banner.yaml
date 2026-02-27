@@ -1,0 +1,199 @@
+name: StripBanner
+source:
+  path: src/components/banner/strip-banner.tsx
+  lines: 1-69
+  type: component
+
+description: |
+  Animated strip banner that cycles through multiple text messages. Each banner
+  slides up with animation every 4 seconds. Single banner displays without animation.
+  Supports markdown content rendering. Background and text colors configurable.
+
+exports:
+  - type: default
+    name: StripBanner
+    kind: component
+
+props:
+  - name: data
+    type: StripBanner
+    required: true
+    description: Banner configuration data
+    fields:
+      - banners: string[] (array of banner text messages)
+      - bgColor: string (background color)
+      - textColor: string (text color)
+
+component_structure:
+  root: div
+  className: "flex flex-col overflow-hidden"
+  style: "backgroundColor: data.bgColor"
+  children:
+    - loop: data.banners
+      item: d (banner text)
+      key: k (index)
+      children:
+        - element: div
+          className: dynamic based on imageIndex
+          visibility: "block" if imageIndex === k, else "hidden"
+          animation: "animation_bar" if multiple banners
+          style: "color: data.textColor"
+          content: dangerouslySetInnerHTML with convertMarkdownToHtml(d)
+
+child_components: []
+
+context_consumed: []
+
+state_management:
+  signals:
+    - name: imageIndex
+      type: number
+      default: 0
+      description: Current banner index being displayed
+
+event_handlers: []
+
+async_operations:
+  - name: useVisibleTask$ (banner rotation)
+    trigger: component mount
+    description: Rotates through banners every 4 seconds
+    implementation: |
+      Sets interval that increments imageIndex every 4000ms.
+      Uses modulo to wrap around to 0 after last banner.
+      Cleanup function clears interval on unmount.
+
+animations:
+  - name: move
+    keyframes:
+      - "0%": transform: translateY(100%)
+      - "20%": transform: translateY(0%)
+      - "80%": transform: translateY(0%)
+      - "100%": transform: translateY(-100%)
+    properties:
+      - animation: move 4s ease-in-out
+      - animation-fill-mode: forwards
+    applied_to: .animation_bar class
+    condition: Only when data.banners.length > 1
+
+styling:
+  global_styles:
+    - "@keyframes move" animation definition
+    - ".animation_bar" class with initial translateY(100%) and animation
+
+  dynamic_classes:
+    - "block" or "hidden" based on imageIndex
+    - "animation_bar" only if multiple banners
+    - "font-bold text-center py-2 border-t border-[#fff]"
+    - "text-[13px] md:text-base" (responsive font size)
+
+responsive_behavior:
+  mobile:
+    - Font size: 13px
+  desktop:
+    - Font size: 16px (text-base)
+
+animation_behavior:
+  single_banner:
+    - No animation applied
+    - Static display
+  multiple_banners:
+    - Slides up from bottom
+    - Pauses in center for 60% of duration
+    - Slides out to top
+    - 4 second cycle per banner
+
+markdown_support:
+  - Uses convertMarkdownToHtml() service
+  - Renders markdown as HTML
+  - dangerouslySetInnerHTML for rendering
+
+dependencies:
+  qwik:
+    - component$
+    - useSignal
+    - useStyles$
+    - useVisibleTask$
+  types:
+    - "~/services/json-service" (StripBanner)
+  services:
+    - "~/services/markdown-service" (convertMarkdownToHtml)
+
+timing:
+  interval: 4000ms (4 seconds)
+  animation_duration: 4s
+  pause_percentage: 60% (20%-80% of animation)
+
+edge_cases:
+  - Single banner: no animation applied
+  - Multiple banners: animation applied with 4s cycle
+  - Markdown content: rendered via dangerouslySetInnerHTML
+  - Overflow hidden: prevents banners showing outside container
+
+security:
+  - Uses dangerouslySetInnerHTML (content should be sanitized in markdown service)
+
+behavior:
+  - step: 1
+    action: "Receive StripBanner data as prop containing banners array (text strings), bgColor, and textColor"
+  - step: 2
+    action: "Inject global CSS keyframes for the 'move' animation (translateY 100% to 0% to -100%) and the .animation_bar class via useStyles$"
+  - step: 3
+    action: "Initialize imageIndex signal to 0 to track which banner is currently displayed"
+  - step: 4
+    action: "On component mount (useVisibleTask$), start a setInterval that increments imageIndex every 4000ms, wrapping to 0 using modulo with banners array length"
+  - step: 5
+    action: "Register cleanup function to clear the interval when component unmounts"
+  - step: 6
+    action: "Render a container div with overflow:hidden and background color from data.bgColor"
+  - step: 7
+    action: "Map over all banners: show the banner matching current imageIndex (display:block), hide all others (display:hidden)"
+  - step: 8
+    action: "If there are multiple banners (length > 1), apply the animation_bar CSS class which triggers the slide-up animation on each banner change"
+  - step: 9
+    action: "If there is only a single banner, render it statically without animation"
+  - step: 10
+    action: "Convert each banner's markdown text to HTML using convertMarkdownToHtml service and render via dangerouslySetInnerHTML"
+  - step: 11
+    action: "Apply text color from data.textColor as inline style on each banner; apply responsive font size (13px mobile, 16px desktop)"
+
+used_by:
+  - Layout wrapper (top of page)
+  - Category pages
+  - Product pages
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  StripBannerProps:
+    description: Props interface for the StripBanner component
+    fields:
+      - name: data
+        type: StripBanner
+
+  StripBanner:
+    description: Banner configuration data (from ~/services/json-service)
+    fields:
+      - name: banners
+        type: "string[]"
+      - name: bgColor
+        type: string
+      - name: textColor
+        type: string
+
+field_consumption:
+  StripBannerProps:
+    consumed:
+      - data.banners: Iterated to render each banner div; length checked to determine whether animation class is applied; modulo used in interval rotation
+      - data.bgColor: Applied as inline backgroundColor style on the outer container div
+      - data.textColor: Applied as inline color style on each individual banner div
+
+visibility_map:
+  individual_banner_item:
+    condition: "imageIndex.value === k (current index matches banner position)"
+    default: hidden
+    notes: Only one banner is 'block' at a time; all others are 'hidden'
+
+  animation_class:
+    condition: "data.banners.length > 1"
+    default: absent
+    notes: animation_bar CSS class only applied when there are multiple banners; single banner renders statically with no slide animation

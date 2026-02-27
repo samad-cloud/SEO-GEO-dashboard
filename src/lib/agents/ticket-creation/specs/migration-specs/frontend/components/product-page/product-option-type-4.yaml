@@ -1,0 +1,363 @@
+name: ProductOptionType4
+source: src/components/product-page/product-option-type-4.tsx
+description: |
+  Display and interaction component that renders a grid of product option tiles
+  using the TypeOption2 data shape. Each tile shows an image and a heading; tiles
+  can be plain navigation links or Uploadcare-powered upload entry points.
+  Fires a Matomo analytics event on every tile click. Renders two distinct
+  layouts depending on device width (desktop: horizontal flex row; mobile: two
+  variants controlled by the `friendUrl` route param — a 2-column wrapping grid
+  when `friendUrl === "all"`, or a horizontal scroll carousel otherwise).
+  Shows an upload-progress overlay while a file upload is in progress.
+
+exports:
+  - name: default
+    type: component$<ProductPageOptionType4Props>
+    description: Default Qwik component export
+
+props:
+  - name: data
+    type: TypeOption2
+    required: true
+    description: >
+      Full option-section data including heading, description, ordered list of
+      tile items, and display-control flags (showIcon).
+
+component_structure:
+  - SectionHeading: <h2> with data.heading
+  - SectionDescription: Optional <p> with data.descr (only when data.descr is truthy)
+  - DesktopGrid: Hidden on mobile (lg:flex); horizontal flex row of anchor tiles
+  - MobileFriendUrlAllGrid: Shown on mobile only when friendUrl === "all"; 2-column
+      wrapping flex grid using Image component and overlay CTA badge
+  - MobileScrollCarousel: Shown on mobile only when friendUrl !== "all"; horizontal
+      overflow-x-auto scroll container of fixed-width (170px) card tiles
+  - UploadcareOverlay: Absolutely positioned transparent Uploadcare widget rendered
+      inside each tile whose href is present and does not start with "/"
+  - UploadProgressOverlay: Full-screen upload progress bar rendered when
+      uploadProgress.started is true
+
+child_components:
+  - name: Image
+    source: "@unpic/qwik"
+    purpose: Responsive image for mobile tiles
+    props:
+      - aspectRatio: computed mobileAspectRatio (string ratio or undefined)
+      - src: type.imgMobile
+      - alt: type.heading or "Product option"
+      - class: layout + object-contain classes
+
+  - name: Uploadcare
+    source: ~/components/uploadcare/uploadcare
+    purpose: >
+      Transparent full-tile upload widget. Rendered only for tiles where href is
+      present AND does not start with "/" (i.e., the href encodes a JSON payload
+      rather than a URL path).
+    props:
+      - classes: absolute overlay, opacity-0, cursor-pointer
+      - type: "upload_and_navigate_newcanvas" if parsed href.type === "multi", else "upload_and_navigate"
+      - refCode: parsed from JSON href
+      - uploadProgress: shared uploadProgress store
+      - platinumProductType: parsed from JSON href
+      - multipleFileUpload: shared signal (desktop only)
+
+  - name: Uploadprogress
+    source: ~/components/uploadcare/uploadprogress
+    purpose: Upload progress overlay shown while file upload is active
+    props:
+      - percents: 100 * uploadProgress.progress
+      - fileSize: uploadProgress.fileSize
+      - multipleFileUpload: shared signal
+
+  - name: SVGIcon
+    source: ~/components/svg-icon/svg-icon
+    purpose: Right-pointing arrow decorating the mobile CTA badge
+    props:
+      - name: "arrow-down"
+      - width: 22
+      - height: 22
+      - class: rotate-90 (negative) so it points right; changes fill on group-hover
+
+data_structure:
+  UploadProgressStore:
+    - fileSize: number — byte size of file being uploaded
+    - progress: number — fractional progress 0.0–1.0
+    - started: boolean — whether an upload is in flight
+
+  ParsedHrefPayload:
+    description: >
+      JSON object encoded inside type.href for upload-type tiles (those whose href
+      does NOT start with "/").
+    fields:
+      - type: string — "multi" triggers upload_and_navigate_newcanvas, anything else
+          triggers upload_and_navigate
+      - refCode: string — product reference code passed to Uploadcare
+      - platinumProductType: PlatinumProductTypeEnum — product type enum value
+
+behavior:
+  - On render: reads location.params.friendUrl to branch the mobile layout
+  - calculateMobileAspectRatio() runs synchronously:
+      - 5 or 6 tiles + friendUrl === "all" → "20 / 20" (square)
+      - 5 or 6 tiles + friendUrl !== "all" → "11 / 20" (portrait)
+      - 3 or 4 tiles → "161 / 200" (near-square)
+      - Other counts → undefined (no inline aspect ratio set)
+  - Desktop tiles (lg:flex row):
+      - href attr set only when data.showIcon is true AND type.href is truthy
+      - Tile image uses background-image (CSS) with type.imgDesktop
+      - Uploadcare overlay injected when type.href is non-empty and not a path
+      - On anchor click: pushMatomoEvent fires CLICK_PRODUCT_OPTION_TYPE_4_CTA
+          with the element's href attribute as the label
+  - Mobile friendUrl-all grid (lg:hidden, wrapping 50% columns):
+      - Uses <Image> component with type.imgMobile
+      - Shows overlay badge with type.heading and arrow-right icon
+      - href set by same data.showIcon + type.href rule as desktop
+      - No Uploadcare on this layout variant (upload tiles not rendered here)
+  - Mobile carousel (lg:hidden, overflow-x-auto):
+      - Each tile is 170px wide with fixed box shadow
+      - Tile image uses background-image (CSS) with type.imgMobile
+      - Text heading appears ABOVE the image (unlike desktop where it's below)
+      - Uploadcare overlay injected when applicable
+  - Upload flow: Uploadcare writes into the shared uploadProgress store;
+      when uploadProgress.started becomes true, Uploadprogress overlay appears
+
+styling:
+  - Section heading: text-2xl font-bold text-center mb-2 px-3 lg:px-0
+  - Section description: text-center mb-4 md:mb-8 px-2 lg:px-0 text-lg
+  - Desktop grid container: hidden lg:flex gap-4 px-4 py-4
+  - Desktop tile: rounded-md relative w-full flex flex-col justify-between group
+      box-shadow: rgba(99,99,99,0.5) 0px 2px 8px 0px
+  - Desktop tile image div: aspect-[1/1] bg-center bg-cover rounded-tl-md rounded-tr-md
+      grayscale, group-hover:grayscale-0
+  - Desktop tile heading area: py-5 text-center font-semibold text-base
+  - Mobile carousel container: lg:hidden overflow-x-auto
+  - Mobile carousel item: rounded-md relative mr-4 w-[170px]
+      box-shadow: rgba(99,99,99,0.5) 0px 2px 8px 0px
+  - Mobile grid item: flex-[0_0_50%] group px-1 relative rounded
+  - Mobile CTA badge:
+      w-[85%] z-[5] absolute left-1/2 -translate-x-1/2 bottom-[6px]
+      bg-[#fff] border-[2px] border-[var(--pix-brand-color)] text-[var(--pix-brand-color)]
+      group-hover:bg-[var(--pix-brand-color)] group-hover:text-[#fff]
+  - Scoped responsive overrides (useStylesScoped$):
+      max-width 450px  → .heading: 16px, .explore: 14px
+      451–580px        → .heading: 18px, .explore: 16px
+
+api_calls: []
+
+dependencies:
+  qwik:
+    - component$, useSignal, useStore, useStylesScoped$ from @builder.io/qwik
+    - useLocation from @builder.io/qwik-city
+  components:
+    - Image from @unpic/qwik
+    - Uploadcare from ~/components/uploadcare/uploadcare
+    - Uploadprogress from ~/components/uploadcare/uploadprogress
+    - SVGIcon from ~/components/svg-icon/svg-icon
+  services:
+    - TypeOption2 (type import) from ~/services/product-page-service
+  utilities:
+    - MatomoCategory, MatomoEvent, pushMatomoEvent from ~/utility/matomo
+
+used_by:
+  - PhotoCanvasPrintsNewTemplate
+  - PhotoCanvasPrintsNewTemplateV3
+  - PhotoCanvasPrintsBundledTemplate
+  - PhotoCanvasPrintsHubBundledTemplate
+  - PhotoCanvasPrintsTemplateV2
+  - ProductPageFixedThemeTemplate
+  - ShoppingGuide
+
+edge_cases:
+  - data.descr falsy: description paragraph not rendered
+  - type.href starts with "/": rendered as a plain navigation anchor, no Uploadcare overlay
+  - type.href is a JSON string not starting with "/": Uploadcare overlay rendered;
+      href prop on the anchor is set only if data.showIcon is true
+  - data.showIcon is false: all anchors have href=undefined (no navigation on click)
+  - calculateMobileAspectRatio returns undefined for tile counts other than 3–6:
+      Image aspectRatio prop is undefined; browser/library uses natural image ratio
+  - uploadProgress.started false: Uploadprogress component not rendered at all
+
+notes:
+  - The component file references a large commented-out block for a single-item mobile
+    upload tile that was removed; only the 2-column grid and carousel variants are active
+  - Desktop and mobile carousel both use CSS background-image for tile images (no <img>
+    tag); only the mobile friendUrl-all grid uses the <Image> component
+  - The multipleFileUpload signal is passed to Uploadcare on desktop and carousel
+    layouts; the friendUrl-all grid omits it (no Uploadcare rendered there)
+  - Matomo event fires on every anchor click regardless of whether the tile triggers
+    navigation or upload
+
+types:
+  ProductPageOptionType4Props:
+    description: Component props interface
+    fields:
+      - name: data
+        type: TypeOption2
+
+  TypeOption2:
+    description: Option-section container (imported from product-page-service)
+    source: ~/services/product-page-service
+    fields:
+      - name: heading
+        type: string
+      - name: descr
+        type: string
+      - name: imgMobile
+        type: "string | null"
+      - name: imgDesktop
+        type: "string | null"
+      - name: types
+        type: "Array<ProductOptionType2>"
+      - name: order
+        type: number
+        optional: true
+      - name: expandDescriptionText
+        type: string
+        optional: true
+      - name: expandDescriptionIsUrl
+        type: boolean
+        optional: true
+      - name: showIcon
+        type: boolean
+        optional: true
+
+  ProductOptionType2:
+    description: Individual tile item within a TypeOption2 section
+    source: ~/services/product-page-service
+    fields:
+      - name: heading
+        type: string
+      - name: descr
+        type: "string | null"
+      - name: imgMobile
+        type: string
+      - name: imgDesktop
+        type: string
+      - name: bullets
+        type: "Array<string> | null"
+      - name: href
+        type: string
+        optional: true
+      - name: ctaUrl
+        type: string
+        optional: true
+      - name: ctaText
+        type: string
+        optional: true
+      - name: isPopular
+        type: boolean
+        optional: true
+      - name: isPremium
+        type: boolean
+        optional: true
+
+  UploadProgressStore:
+    description: Reactive store tracking Uploadcare upload progress
+    fields:
+      - name: fileSize
+        type: number
+      - name: progress
+        type: number
+        notes: "fractional 0.0–1.0"
+      - name: started
+        type: boolean
+
+  ParsedHrefPayload:
+    description: >
+      JSON-encoded string stored in ProductOptionType2.href for upload tiles
+      (those whose href does not start with "/").
+    fields:
+      - name: type
+        type: string
+        notes: '"multi" → upload_and_navigate_newcanvas; other → upload_and_navigate'
+      - name: refCode
+        type: string
+      - name: platinumProductType
+        type: PlatinumProductTypeEnum
+
+field_consumption:
+  TypeOption2:
+    consumed:
+      - heading: Rendered in <h2> heading
+      - descr: Rendered in optional <p>; guarded by truthiness check
+      - types: Iterated to render each tile in all three layout variants
+      - showIcon: Controls whether anchor href is set (false → href=undefined on all tiles)
+    ignored:
+      - imgMobile: Present on TypeOption2 but NOT used here (only ProductOptionType2.imgMobile is used)
+      - imgDesktop: Same as imgMobile — only ProductOptionType2.imgDesktop is used
+      - order: Not consumed by this component (managed by parent container)
+      - expandDescriptionText: Not consumed
+      - expandDescriptionIsUrl: Not consumed
+
+  ProductOptionType2:
+    consumed:
+      - heading: Tile label in all three layout variants
+      - imgMobile: Background-image (CSS) for carousel tiles; src for Image in friendUrl-all grid
+      - imgDesktop: Background-image (CSS) for desktop tiles
+      - href: Dual-use — if starts with "/" it is a nav URL; otherwise JSON payload for Uploadcare
+    ignored:
+      - descr: Not displayed in this component
+      - bullets: Not displayed in this component
+      - ctaUrl: Not consumed
+      - ctaText: Not consumed
+      - isPopular: Not consumed
+      - isPremium: Not consumed
+
+implementation_logic:
+  href_routing_decision:
+    rule: |
+      Each tile's href is inspected at render time:
+        1. If data.showIcon is falsy: anchor href is always undefined (no navigation).
+        2. If data.showIcon is truthy AND type.href is truthy AND type.href starts with "/":
+           anchor href = type.href (standard navigation link); no Uploadcare rendered.
+        3. If data.showIcon is truthy AND type.href is truthy AND type.href does NOT start with "/":
+           anchor href is still set to type.href (only on desktop/carousel layouts via the
+           `data.showIcon && type?.href` guard); Uploadcare overlay is ALSO rendered
+           as an absolutely positioned transparent widget covering the entire tile.
+        4. The Uploadcare overlay condition is `type.href && !type.href.startsWith("/")` —
+           independent of data.showIcon.
+    critical: true
+
+  mobile_layout_branch:
+    rule: |
+      The mobile section renders one of two layouts, chosen by location.params.friendUrl:
+        - friendUrl === "all"  → 2-column wrapping grid (flex-wrap, 50% width items)
+          using <Image> component; no Uploadcare overlays
+        - friendUrl !== "all"  → horizontal scroll carousel with fixed 170px-wide cards
+          and Uploadcare overlays where applicable
+      Both branches are wrapped in `lg:hidden`; the desktop layout is `hidden lg:flex`.
+    critical: true
+
+  aspect_ratio_calculation:
+    rule: |
+      calculateMobileAspectRatio() maps tile count to aspect ratio string:
+        5 or 6 tiles + friendUrl === "all" → "20 / 20"
+        5 or 6 tiles + friendUrl !== "all" → "11 / 20"
+        3 or 4 tiles (any friendUrl)       → "161 / 200"
+        Any other count                    → undefined (function returns undefined implicitly)
+      The result is used as the aspectRatio prop on the <Image> component in the
+      friendUrl-all grid only; the carousel uses CSS background-image, not <Image>.
+    critical: false
+
+visibility_map:
+  section_description:
+    condition: "data.descr is truthy"
+    default: hidden
+
+  desktop_grid:
+    condition: "viewport width >= lg breakpoint (1024px)"
+    default: hidden (hidden on mobile via 'hidden lg:flex')
+
+  mobile_friendurl_all_grid:
+    condition: "viewport < lg AND location.params.friendUrl === 'all'"
+    default: hidden
+
+  mobile_scroll_carousel:
+    condition: "viewport < lg AND location.params.friendUrl !== 'all'"
+    default: hidden
+
+  uploadcare_overlay_per_tile:
+    condition: "type.href is truthy AND type.href does not start with '/'"
+    default: hidden (not rendered for nav-link tiles or tiles without href)
+
+  upload_progress_overlay:
+    condition: "uploadProgress.started is true"
+    default: hidden

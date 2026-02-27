@@ -1,0 +1,233 @@
+name: HomeCustomerReviews
+source: components/homepage/home-customer-reviews.tsx
+description: >
+  Homepage customer reviews section that displays a title, a TrustpilotRating
+  summary bar, and a StaticCarousel of individual 5-star customer reviews.
+  Used on the homepage to build social proof and trust. Shows review data
+  filtered to five-star reviews in a horizontally scrollable carousel.
+
+exports:
+  - name: default
+    type: component
+    description: HomeCustomerReviews component (default export)
+  - name: reviewProps
+    type: interface
+    description: Props interface for the component (exported)
+
+props:
+  - name: title
+    type: string
+    required: true
+    description: Section heading text displayed centered above the ratings (e.g., "What Our Customers Say").
+  - name: ratingText
+    type: string
+    required: true
+    description: "Text label before the numeric rating (e.g., 'Excellent')."
+  - name: ratingValue
+    type: number
+    required: true
+    description: "Numeric rating value (e.g., 4.7) displayed next to star icons."
+  - name: reviewCount
+    type: number
+    required: true
+    description: "Total number of reviews (e.g., 15243) displayed in the rating summary."
+  - name: reviewString
+    type: string
+    required: true
+    description: "Text after review count (e.g., 'reviews' or 'avis')."
+  - name: verified
+    type: string
+    required: true
+    description: "Verified review label text passed to carousel items (e.g., 'Verified')."
+  - name: reviewData
+    type: ReviewData | undefined
+    required: true
+    description: >
+      Review data object containing arrays of five-star and four-star reviews.
+      May be undefined (handled gracefully). Only fiveStars array is used.
+
+component_structure:
+  root_element: div
+  root_classes: "w-full text-base mb-6 home_customer_reviews_wrapper"
+  layout: >
+    Vertical stack: centered title, TrustpilotRating bar, and a carousel
+    container with reviews.
+
+  title:
+    element: div
+    classes: "text-center font-semibold text-lg mb-4"
+    content: "props.title"
+
+  rating_bar:
+    component: TrustpilotRating
+    position: "Below title, above carousel"
+
+  carousel_container:
+    element: div
+    classes: "w-full text-base rounded-xl mt-3 px-1 py-4"
+    content: StaticCarousel component
+
+child_components:
+  - name: TrustpilotRating
+    source: components/homepage/trustpilot-rating.tsx
+    description: Displays rating text, numeric value, star icons, and review count in a single row.
+    props_passed:
+      - name: ratingText
+        from: props.ratingText
+      - name: ratingValue
+        from: props.ratingValue
+      - name: reviewCount
+        from: props.reviewCount
+      - name: reviewString
+        from: props.reviewString
+  - name: StaticCarousel
+    source: components/carousels/static-carousel1.tsx
+    description: Horizontal carousel displaying individual review cards.
+    props_passed:
+      - name: slide
+        from: "props.reviewData?.fiveStars (only 5-star reviews)"
+      - name: suffix
+        value: "homepage-review"
+      - name: verifiedText
+        from: "props.verified"
+
+data_structure:
+  ReviewData:
+    productType: string
+    title: string
+    fiveStars: FiveStars[]
+    fourStars: FourStars[]
+  FiveStars:
+    name: string
+    title: string
+    review: string
+    reviewID: string
+    rating: number
+    date: string
+
+behavior:
+  rendering:
+    description: >
+      Renders a title, a TrustpilotRating summary, and a carousel of
+      five-star reviews. The carousel only shows fiveStars from the
+      reviewData. If reviewData is undefined, the carousel receives
+      undefined for its slide prop (graceful degradation).
+
+  carousel_data:
+    source: "props.reviewData?.fiveStars"
+    suffix_id: "homepage-review"
+    description: >
+      Only five-star reviews are displayed in the homepage carousel.
+      The suffix is used for unique CSS class names or IDs within
+      the carousel.
+
+  commented_out_features:
+    description: >
+      The source code contains extensive commented-out code for:
+      1. Product-type-specific review filtering (canvas, blanket, photobook, calendar, card)
+      2. URL-based review selection using friendlyUrl prop
+      3. Individual review display without carousel
+      These are legacy patterns not currently active.
+
+styling:
+  wrapper: "w-full text-base mb-6 home_customer_reviews_wrapper"
+  title: "text-center font-semibold text-lg mb-4"
+  carousel_container: "w-full text-base rounded-xl mt-3 px-1 py-4"
+  custom_classes:
+    - "home_customer_reviews_wrapper (GTM/analytics tracking hook)"
+
+dependencies:
+  internal:
+    - path: components/homepage/trustpilot-rating.tsx
+      purpose: Rating summary display with stars
+    - path: components/carousels/static-carousel1.tsx
+      purpose: Horizontal carousel for review cards
+    - path: data/review-data.ts
+      purpose: ReviewData, FiveStars type definitions
+  external: []
+
+used_by:
+  - path: routes/index@containerless.tsx
+    description: Homepage route renders this as the customer reviews section
+
+security:
+  concerns: none
+  auth_required: false
+  sensitive_data: false
+
+notes:
+  - The component only uses fiveStars from ReviewData; fourStars are ignored
+  - The suffix "homepage-review" distinguishes this carousel instance from others on the site
+  - Extensive commented-out code shows historical product-type-specific filtering that is no longer active
+  - The reviewProps interface is exported, allowing other components to reference the same prop shape
+  - The verified text is used by the carousel to display a "Verified" badge on review cards
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  reviewProps:
+    description: Component props interface (exported)
+    fields:
+      - name: title
+        type: string
+      - name: ratingText
+        type: string
+      - name: ratingValue
+        type: number
+      - name: reviewCount
+        type: number
+      - name: reviewString
+        type: string
+      - name: verified
+        type: string
+      - name: reviewData
+        type: "ReviewData | undefined"
+
+  ReviewData:
+    description: Top-level review data object passed as prop
+    source: ~/data/review-data
+    fields:
+      - name: productType
+        type: string
+      - name: title
+        type: string
+      - name: fiveStars
+        type: "FiveStars[]"
+      - name: fourStars
+        type: "FourStars[]"
+
+  FiveStars:
+    description: Individual five-star review entry
+    source: ~/data/review-data
+    fields:
+      - name: name
+        type: string
+      - name: title
+        type: string
+      - name: review
+        type: string
+      - name: reviewID
+        type: string
+      - name: rating
+        type: number
+      - name: date
+        type: string
+
+field_consumption:
+  reviewProps:
+    consumed:
+      - title: Rendered as centered heading text above the rating bar
+      - ratingText: Passed to TrustpilotRating as ratingText
+      - ratingValue: Passed to TrustpilotRating as ratingValue
+      - reviewCount: Passed to TrustpilotRating as reviewCount
+      - reviewString: Passed to TrustpilotRating as reviewString
+      - verified: Passed to StaticCarousel as verifiedText
+      - reviewData: Optional chained to access reviewData?.fiveStars for the carousel slide prop
+
+  ReviewData:
+    consumed:
+      - fiveStars: Passed as the slide prop to StaticCarousel (only five-star reviews shown)
+    ignored:
+      - productType: Present in type but not read in this component
+      - title: Present in type but not read in this component
+      - fourStars: Explicitly not used; only fiveStars are displayed

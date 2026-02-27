@@ -1,0 +1,555 @@
+name: ProductPageFixedTemplate
+source: components/product-page/containers/templates/product-page-fixed-template.tsx
+description: |
+  Standard fixed product page template for most product types. Shows product carousel,
+  option panels (with support for OptionPanelV3 for DaisySticky2021Q4 view), countdown
+  timer, delivery dates, themes section, bulk pricing, trust indicators, customer reviews,
+  and SEO content injection. Supports both OptionPanel and OptionPanelV3 based on
+  productPageViewName. Injects marketing content (marketingContent2/3) into DOM and
+  sets up accordion behavior for SEO sections.
+
+exports:
+  default: ProductPageFixedTemplate component
+
+component_type: Qwik component$ (QRL)
+
+props:
+  productType:
+    type: PlatinumProductTypeEnum
+    default: PlatinumProductTypeEnum.Unknown
+    description: The type of product being displayed
+
+context_consumed:
+  ProductContext:
+    fields:
+      - product: Full product data
+      - couponCode: Active coupon code
+      - friendlyUrl: Product SEO URL
+      - machineToken: Auth token
+      - filterIndex: Selected filter indices
+      - refCode: Product reference code
+      - firstSlideUrl: Initial carousel image
+      - editor: Editor mode flag
+      - selectedFilter: Currently selected filter
+  DeviceDetectorContext:
+    fields:
+      - deviceInfo: Device type information
+
+component_structure: |
+  <ProductPageTopBannerV2 /> (campaign banner)
+
+  <div.product_page_fixed_template_wrapper>
+    <div.container.mx-auto>
+      <div.flex.flex-wrap> (main grid)
+
+        <!-- Mobile title -->
+        {isMobile && <h1>{product.imageCaption}</h1>}
+
+        <!-- Mobile Trustpilot -->
+        {isMobile && <TrustpilotRating />}
+
+        <!-- LEFT COLUMN (70%) -->
+        <div.product_page_left_container>
+          <ProductCarousel />
+
+          <!-- Mobile Options Panel (3 variants) -->
+          {isMobile && (
+            {productType === GreetingCard ? <OptionPhotoCardsPanel /> :
+             productPageViewName === DaisySticky2021Q4 ? <OptionPanelV3 /> :
+             <OptionPanel />}
+          )}
+
+          <!-- Mobile Countdown & Delivery -->
+          {isMobile && settings().website === "US" && (
+            <div> (border box)
+              <p>{deliveryDeadline.aboveClockText}</p>
+              <ProductFlipClock />
+              <ProductDeliveryDateV2 />
+            </div>
+          )}
+
+          <!-- Themes Section -->
+          <Resource themes> (async loaded)
+            <ProductShopDesign /> (pending/resolved/rejected)
+          </Resource>
+
+          <!-- Mobile Bulk Pricing & Trust Indicators -->
+          {isMobile && (
+            <BulkPricingV4 />
+            <ProductTrustIndicatorV6 />
+          )}
+
+          <!-- Mobile Customer Reviews -->
+          {isMobile && <CustomerReview />}
+
+          <!-- SEO Content Injection Targets -->
+          <div#desktop-seo-content /> (hidden on mobile)
+          <div#mobile-seo-content /> (hidden on desktop)
+        </div>
+
+        <!-- RIGHT COLUMN (30%) - Desktop Sticky Panel -->
+        <div.product_page_right_container.stickyForDesktop>
+          {isDesktop && <h1>{product.imageCaption}</h1>}
+          {isDesktop && <TrustpilotRating />}
+
+          {productType === GreetingCard ? <OptionPhotoCardsPanel /> :
+           productPageViewName === DaisySticky2021Q4 ? <OptionPanelV3 /> :
+           <OptionPanel />}
+
+          <div> (countdown box)
+            <p>{deliveryDeadline.aboveClockText}</p>
+            <ProductFlipClock />
+            <ProductDeliveryDateV2 />
+          </div>
+
+          <BulkPricingV4 />
+
+          <ProductTrustIndicatorV6 shortVersion={true} />
+
+          {product.reviewsCollection && <CustomerReview />}
+        </div>
+      </div>
+    </div>
+  </div>
+
+child_components:
+  - ProductPageTopBannerV2: Campaign banner at top
+  - ProductCarousel: Image carousel
+  - TrustpilotRating: Star rating
+  - OptionPanel: Standard options selector
+  - OptionPhotoCardsPanel: Greeting card options
+  - OptionPanelV3: DaisySticky2021Q4 specific options
+  - ProductFlipClock: Countdown timer with dynamic colors
+  - ProductDeliveryDateV2: Delivery date estimator
+  - BulkPricingV4: Bulk pricing table
+  - ProductShopDesign: Theme selector (async loaded)
+  - ProductTrustIndicatorV6: Trust badges
+  - CustomerReview: Customer review carousel
+
+state_management:
+  local_signals:
+    - designUrl: string (design/customize button URL)
+    - initialCarouselImages: ProductCarouseImage[] (carousel images)
+
+  local_stores:
+    - optionStore: OptionStore (product option selections)
+      - Same fields as hub template
+    - carousel: { activeIndex: number }
+
+  computed_values:
+    - clockColors: Extracts colors from floating banner
+      - clockColor: backgroundColor or default "#2E638A"
+      - textColor: section text color or default "#FFFFFF"
+    - productImages: Prepends selected filter image if filter selected
+
+side_effects:
+  useTask$:
+    - Tracks product.id changes
+    - Updates optionStore with context data
+    - Builds carousel images (includes video icon if embededVideo)
+
+  useResource$:
+    - themes: Fetches ProductTheme[] (no conditional skip like hub template)
+    - Tracks optionStore.refCode
+    - Uses AbortController for cleanup
+
+  useOnDocument:
+    - DOMContentLoaded event
+    - Removes overflow-x-hidden on desktop
+    - Injects product.css into <head>
+
+  useOnWindow:
+    - resize event
+    - Toggles overflow-x-hidden based on window width
+
+  useVisibleTask$ (1):
+    - strategy: "document-ready"
+    - Tracks product, location.url
+    - Injects marketingContent2 into #desktop-seo-content
+    - Injects marketingContent3 into #mobile-seo-content
+    - Sets up accordion behavior for #accordion-marketing and #accordion-marketing2
+    - Accordion logic: toggles .active class, prevents default link behavior
+
+  useVisibleTask$ (2):
+    - strategy: "document-ready"
+    - Tracks product.id
+    - Queries #cta-design-button, sets designUrl
+
+event_handlers:
+  onChangeSelectedOption:
+    params: [imageUrl: string]
+    action: Updates firstSlideUrl, resets carousel to 0
+
+  changeActiveSlide:
+    params: [index: number]
+    action: Updates carousel.activeIndex
+
+  onChangeDesignUrl:
+    params: [url: string]
+    action: Sets designUrl.value
+
+  onChangeRefCode:
+    params: [refCode: string]
+    action: Updates optionStore.refCode
+
+  onChangeSelectedFilter:
+    params: [filter: Filter]
+    action: Updates selectedFilter and refCode in optionStore
+
+styling:
+  scoped: styles from ../styles/index.css?inline
+  global: fixedTemplateStyles from ../styles/product-fixed-template.css?inline
+  classes:
+    - product_page_fixed_template_wrapper: Root wrapper
+    - product_page_left_container: Left column
+    - product_page_right_container: Right column (sticky)
+    - stickyForDesktop: Sticky positioning
+    - product_page_customer_review_wrapper: Review section
+    - product_page_customer_review_wrapper--active: Active state
+
+responsive_behavior:
+  mobile:
+    - Title and Trustpilot at top
+    - Options below carousel
+    - Countdown timer only if settings().website === "US"
+    - Right sidebar hidden
+    - SEO content in #mobile-seo-content
+
+  desktop:
+    - Title in right sidebar
+    - Right sidebar sticky (30% width)
+    - Left column 70% width
+    - Countdown timer always shown
+    - SEO content in #desktop-seo-content
+
+data_dependencies:
+  product:
+    fields:
+      - id: Product identifier
+      - imageCaption: Product title
+      - images: ProductImage[]
+      - embededVideo, embededVideoIcon: Video support
+      - optionData: Product options
+      - deliveryDeadline: { aboveClockText }
+      - reviewsCollection: Review data
+      - campaignInfo: Campaign banner
+      - friendlyurl: SEO URL
+      - css: Custom CSS (injected into DOM)
+      - marketingContent2: Desktop SEO HTML
+      - marketingContent3: Mobile SEO HTML
+      - productPageViewName: View type enum (determines OptionPanel variant)
+      - productPageContent: { floatingBanner }
+
+  settings:
+    - website: Region code (e.g., "US", "GB")
+      - Used to conditionally show countdown timer on mobile
+
+seo_content_injection:
+  desktop:
+    - Target: #desktop-seo-content
+    - Source: product.marketingContent2
+    - Accordion selectors: #accordion-marketing, #accordion-marketing2
+
+  mobile:
+    - Target: #mobile-seo-content
+    - Source: product.marketingContent3
+    - Accordion selectors: #accordion-marketing, #accordion-marketing2
+
+  accordion_behavior:
+    - Queries all .card-marketing items
+    - Finds .card-header-marketing (clickable)
+    - Finds div[role='tabpanel'] (collapsible content)
+    - Sets href="" and prevents default click
+    - Toggles .active class on click
+    - First accordion (#accordion-marketing) opens first item by default
+    - Second accordion (#accordion-marketing2) all closed by default
+    - Removes bootstrap classes: collapse, show, p-2, pb-4
+    - Adds custom class: accordion-content
+
+option_panel_variants:
+  GreetingCard:
+    component: OptionPhotoCardsPanel
+    props: [optionStore, optionData.cardFilterOptions, productData, onChangeSelectedOption, couponCode, onChangeDesignUrl, productType, onChangeRefCode]
+
+  DaisySticky2021Q4:
+    component: OptionPanelV3
+    props: [optionStore, optionData, productData, onChangeSelectedOption, couponCode, onChangeDesignUrl, productType, onChangeSelectedFilter, productCaption]
+
+  default:
+    component: OptionPanel
+    props: [optionStore, optionData, productData, onChangeSelectedOption, couponCode, onChangeDesignUrl, productType, onChangeSelectedFilter]
+
+differences_from_base:
+  unique_features:
+    - OptionPanelV3 support for DaisySticky2021Q4 view
+    - SEO content injection (marketingContent2/3)
+    - Accordion setup for marketing content
+    - Custom CSS injection from product.css
+    - useOnDocument/useOnWindow for DOM manipulation
+    - Conditional countdown timer on mobile (US only)
+    - ProductTrustIndicatorV6 with shortVersion={true} on desktop
+    - Customer reviews in right sidebar on desktop (1 per slide)
+
+  shared_features:
+    - Similar layout to hub template
+    - Clock color extraction from floating banner
+    - ProductShopDesign (theme selector)
+    - BulkPricingV4, ProductDeliveryDateV2
+
+security_notes:
+  - product.css injected directly into DOM (must be sanitized by CMS)
+  - marketingContent2/3 injected as HTML (must be sanitized by CMS)
+  - No user-supplied HTML injection (only CMS content)
+
+behavior:
+  - On mount, reads product data, coupon, friendly URL, machine token, filter index, ref code, first slide URL, editor, and selected filter from ProductContext; reads device info from DeviceDetectorContext; reads current URL from useLocation
+  - Initializes deep reactive optionStore and carousel store (starting at activeIndex 1)
+  - When product.id changes (useTask$), syncs optionStore with latest context values and rebuilds carousel images, appending embedded video icon if present
+  - Computes clockColors from floating banner backgroundColor and section text color, with fallbacks (#2E638A / #FFFFFF)
+  - Fetches product themes asynchronously via getProductThemes whenever optionStore.refCode changes, using AbortController for cleanup
+  - Computes productImages by prepending selected filter image to initial carousel images if a filter is active
+  - Selects option panel variant based on product type and view name: GreetingCard uses OptionPhotoCardsPanel, DaisySticky2021Q4 uses OptionPanelV3 (with productCaption prop), all others use standard OptionPanel
+  - On DOMContentLoaded (useOnDocument), removes overflow-x-hidden from body on desktop (width >= 1024px) and injects product.css as a style element into the document head
+  - On window resize (useOnWindow), toggles overflow-x-hidden class based on viewport width threshold of 1024px
+  - On document-ready (useVisibleTask$), injects product.marketingContent2 HTML into #desktop-seo-content and product.marketingContent3 HTML into #mobile-seo-content; sets up accordion behavior for .card-marketing items under #accordion-marketing (first item open by default) and #accordion-marketing2 (all closed by default); accordion logic removes bootstrap classes (collapse, show, p-2, pb-4) and adds accordion-content class, toggles active class on click, and prevents default link behavior
+  - On document-ready (second useVisibleTask$), extracts CTA URL from #cta-design-button href
+  - Mobile countdown timer with ProductFlipClock only renders when settings().website === "US" (region-specific); desktop always shows countdown timer
+  - Customer reviews render in both mobile (left column, 1 item per slide) and desktop (right sidebar, 1 item per slide) when reviewModels exist
+  - Theme section renders via Qwik Resource with PENDING, COMPLETED, and FAILED states
+  - Uses both scoped styles (index.css) and global styles (product-fixed-template.css)
+  - Desktop right sidebar is sticky (stickyForDesktop class) with trust indicators in short version
+
+used_by:
+  - name: ProductPageSelection
+    reason: Rendered as fallback when product.productPageContent does not exist
+
+dependencies:
+  qwik:
+    - "@builder.io/qwik": [$, component$, Resource, useComputed$, useContext, useOnDocument, useOnWindow, useResource$, useSignal, useStore, useStyles$, useStylesScoped$, useTask$, useVisibleTask$]
+
+  routing:
+    - "@builder.io/qwik-city": [useLocation]
+
+  components:
+    - "~/components/product-page/product-carousel/product-carousel": [ProductCarousel, ProductCarouseImage type]
+    - "~/components/homepage/trustpilot-rating": [TrustpilotRating]
+    - "~/components/product-page/product-shop-design": [ProductShopDesign, ThemeAPIResponseStatus]
+    - "~/components/product-page/option-panel": [OptionPanel]
+    - "~/components/product-page/option-panel-v3": [OptionPanelV3]
+    - "~/components/customer-review/customer-review": [CustomerReview]
+    - "~/components/product-page/option-photo-cards-panel": [OptionPhotoCardsPanel]
+    - "~/components/product-page/product-page-top-banner-v2": [ProductPageTopBannerV2]
+    - "~/components/product-page/product-delivery-date-v2": [ProductDeliveryDateV2]
+    - "~/components/product-page/product-countdown-timer/product-flip-clock-v2": [ProductFlipClock]
+    - "~/components/product-page/product-trust-indicator-v6": [ProductTrustIndicatorV6]
+    - "~/components/product-page/bulk-pricing-v4": [BulkPricingV4]
+
+  context:
+    - "~/context/product-category-context": [ProductContext]
+    - "~/context/device-detector-context": [DeviceDetectorContext]
+
+  services:
+    - "~/services/product-category-service": [PlatinumProductTypeEnum]
+    - "~/services/product-page-service": [ProductPageViewNameEnum]
+    - "~/services/themes-service": [getProductThemes, ProductTheme type]
+
+  config:
+    - "~/config/settings": [settings]
+
+  data:
+    - "~/data/option-data": [Filter type, OptionStore type]
+
+  hooks:
+    - "~/hooks/useDetectScreen": [useDetectScreen]
+
+  styles:
+    - "../styles/index.css?inline": Scoped styles
+    - "../styles/product-fixed-template.css?inline": Global styles
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  ProductPageFixedTemplateProps:
+    description: Component props interface
+    fields:
+      - name: productType
+        type: PlatinumProductTypeEnum
+        optional: true
+        default: PlatinumProductTypeEnum.Unknown
+
+  ProductCarouseImage:
+    description: Single carousel image entry
+    source: ~/components/product-page/product-carousel/product-carousel
+    fields:
+      - name: url
+        type: string
+      - name: altText
+        type: string
+
+  ProductTheme:
+    description: Theme data returned from getProductThemes API
+    source: ~/services/themes-service
+    fields:
+      - name: themeId
+        type: string
+      - name: displayName
+        type: string
+      - name: previewUrl
+        type: string
+
+  OptionStore:
+    description: Central deep-reactive store for all product option selections
+    source: ~/data/option-data
+    fields:
+      - name: optionData
+        type: object
+      - name: productData
+        type: object
+      - name: filterIndex
+        type: "number[]"
+      - name: refCode
+        type: string
+      - name: firstSlideUrl
+        type: string
+      - name: selectedFilter
+        type: "Filter | null"
+
+  ClockColors:
+    description: Computed clock color pair
+    fields:
+      - name: clockColor
+        type: string
+      - name: textColor
+        type: string
+
+  ProductContextValue:
+    description: Shape of ProductContext fields consumed by this template
+    source: ~/context/product-category-context
+    fields:
+      - name: product
+        type: object
+      - name: couponCode
+        type: string
+      - name: friendlyUrl
+        type: string
+      - name: machineToken
+        type: string
+      - name: filterIndex
+        type: "number[]"
+      - name: refCode
+        type: string
+      - name: firstSlideUrl
+        type: string
+      - name: editor
+        type: string
+      - name: selectedFilter
+        type: "Filter | null"
+
+field_consumption:
+  ProductContext:
+    consumed:
+      - product: Full product — id, imageCaption, images, optionData, deliveryDeadline, reviewsCollection, campaignInfo, css, marketingContent2, marketingContent3, productPageViewName, productPageContent.floatingBanner, embededVideo, embededVideoIcon
+      - couponCode: Passed to option panel variant
+      - friendlyUrl: Seeds optionStore.friendlyUrl; passed to theme API
+      - machineToken: Passed to getProductThemes API
+      - filterIndex: Seeds optionStore.filterIndex
+      - refCode: Seeds optionStore.refCode
+      - firstSlideUrl: Seeds optionStore.firstSlideUrl
+      - editor: Passed to getProductThemes API
+      - selectedFilter: Seeds optionStore.selectedFilter; prepended to productImages
+    ignored: []
+
+  DeviceDetectorContext:
+    consumed:
+      - deviceInfo: Used via useDetectScreen to derive isMobile / isDesktop booleans
+    ignored: []
+
+implementation_logic:
+  option_panel_variant_selection:
+    rule: |
+      The option panel is selected based on two conditions in priority order:
+        1. If productType === PlatinumProductTypeEnum.GreetingCard → OptionPhotoCardsPanel
+           (with onChangeRefCode callback instead of onChangeSelectedFilter)
+        2. Else if product.productPageViewName === ProductPageViewNameEnum.DaisySticky2021Q4
+           → OptionPanelV3 (with extra productCaption prop)
+        3. Else → standard OptionPanel
+      This logic runs identically for both mobile and desktop placements.
+    critical: true
+
+  seo_content_injection:
+    rule: |
+      useVisibleTask$ #1 (document-ready) injects CMS HTML into the DOM:
+        - product.marketingContent2 → innerHTML of #desktop-seo-content
+        - product.marketingContent3 → innerHTML of #mobile-seo-content
+      Then sets up accordion behavior for .card-marketing items under
+      #accordion-marketing (first item opened by default) and #accordion-marketing2
+      (all items closed by default). Accordion click toggles .active class and
+      removes Bootstrap classes (collapse, show, p-2, pb-4).
+    critical: true
+
+  mobile_countdown_timer_us_only:
+    rule: |
+      On mobile, the delivery countdown clock (ProductFlipClock) is only rendered
+      when `settings().website === "US"`. On desktop it is always shown.
+      This is a US-region-specific feature gate.
+    critical: true
+
+  css_injection_from_product:
+    rule: |
+      On DOMContentLoaded (useOnDocument), product.css is injected as a <style> element
+      into document.head. Concurrently, overflow-x-hidden is removed from body when
+      viewport width >= 1024px. On resize (useOnWindow), overflow-x-hidden is toggled
+      based on the 1024px threshold.
+    critical: false
+
+  clock_colors_extraction:
+    rule: |
+      clockColors extracted from product.productPageContent.floatingBanner:
+        clockColor = desktopBanner.backgroundColor || mobileBanner.backgroundColor || "#2E638A"
+        textColor  = sections.section1[0].color || sections.section2[0].color || "#FFFFFF"
+    critical: false
+
+visibility_map:
+  mobile_title_and_trustpilot:
+    condition: "isMobile is true"
+    default: hidden
+
+  desktop_right_column:
+    condition: "isDesktop is true (stickyForDesktop)"
+    default: hidden
+
+  desktop_title_in_sidebar:
+    condition: "isDesktop is true"
+    default: hidden
+
+  mobile_option_panel:
+    condition: "isMobile is true"
+    default: hidden
+
+  mobile_countdown_delivery:
+    condition: "isMobile is true AND settings().website === 'US'"
+    default: hidden (only on US mobile)
+
+  mobile_bulk_pricing_and_trust:
+    condition: "isMobile is true"
+    default: hidden
+
+  mobile_customer_reviews:
+    condition: "isMobile is true"
+    default: hidden
+
+  desktop_seo_content:
+    condition: "viewport is desktop (hidden on mobile)"
+    default: hidden
+
+  mobile_seo_content:
+    condition: "viewport is mobile (hidden on desktop)"
+    default: hidden
+
+  delivery_flip_clock:
+    condition: "product.deliveryDeadline.showClock is true"
+    default: hidden
+
+  desktop_customer_reviews:
+    condition: "product.reviewsCollection exists AND isDesktop is true"
+    default: hidden

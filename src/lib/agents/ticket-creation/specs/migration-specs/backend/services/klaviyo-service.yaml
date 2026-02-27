@@ -1,0 +1,486 @@
+name: KlaviyoService
+source: services/klaviyo-service.ts
+description: |
+  Service for integrating with Klaviyo marketing platform. Handles event tracking,
+  user identification, product feed fetching, and server-side event creation.
+  Supports client-side window.klaviyo API and server-side REST API.
+
+exports:
+  enums:
+    - name: KlaviyoEvent
+      exported: true
+      values:
+        - VIEW_PRODUCT: "View Product"
+        - ADDED_TO_CART: "Added to Cart"
+        - SAVED_PROJECT: "SAVED PROJECT"
+
+  interfaces:
+    - name: KlaviyoUserProperties
+      exported: true
+      fields:
+        - name: $email
+          type: string
+        - name: $first_name
+          type: string
+        - name: $last_name
+          type: string
+
+    - name: KlaviyoProduct
+      exported: true
+      description: Product data from Klaviyo product feed
+      fields:
+        - name: id
+          type: string
+          description: Product reference code
+        - name: link
+          type: string
+          description: Product page URL
+        - name: title
+          type: string
+          description: Product name
+        - name: image_link
+          type: string
+          description: Product image URL
+        - name: categories
+          type: string
+          description: Product category
+        - name: description
+          type: string
+          description: Product description
+        - name: inventory_policy
+          type: number
+          description: Inventory management policy
+        - name: price
+          type: number
+          description: Product price
+        - name: c_msrp
+          type: number
+          description: Manufacturer's suggested retail price
+        - name: c_skubase
+          type: string
+          description: Base SKU code
+        - name: c_item_type
+          type: string
+          description: Item type classification
+        - name: c_product_type
+          type: string
+          description: Product type classification
+        - name: c_product_subtype
+          type: string
+          description: Product subtype classification
+
+  functions:
+    - name: createKlaviyoEvent
+      signature: "(data: any) => Promise<void>"
+      exported: true
+      async: true
+      description: Creates Klaviyo event via server-side API
+
+    - name: identifyKlaviyoUser
+      signature: "(properties: KlaviyoUserProperties) => void"
+      exported: true
+      description: Identifies user to Klaviyo via client-side window.klaviyo.identify
+
+    - name: trackKlaviyoEvent
+      signature: "(event: KlaviyoEvent, data: any) => void"
+      exported: true
+      description: Tracks event to Klaviyo via client-side window.klaviyo.track
+
+    - name: trackAddedToCart
+      signature: "(detailProduct: any) => Promise<void>"
+      exported: true
+      async: true
+      description: Comprehensive "Added to Cart" event tracking with cart data
+
+    - name: fetchKlaviyoProductFeed
+      signature: "() => Promise<KlaviyoProduct[]>"
+      exported: true
+      async: true
+      description: Fetches Klaviyo product feed JSON for current region
+
+    - name: getKlaviyoProductFeedBasedOnRefCode
+      signature: "(products: KlaviyoProduct[], refCode: string) => KlaviyoProduct | undefined"
+      exported: true
+      description: Finds product in feed by reference code (case-insensitive)
+
+    - name: trackResetPasswordEvent
+      signature: "server$(async function(email: string, firstName: string, resetPasswordUrl: string))"
+      exported: true
+      async: true
+      description: Server-side function to track password reset event
+
+api_contracts:
+  - endpoint: https://a.klaviyo.com/api/events
+    method: POST
+    headers:
+      - accept: "application/vnd.api+json"
+      - revision: "2025-07-15"
+      - content-type: "application/vnd.api+json"
+      - Authorization: "Klaviyo-API-Key {privateKey}"
+    description: Creates Klaviyo event via REST API
+    body_type: JSON event data
+    auth: API key from klaviyoApiKey() config
+
+  - endpoint: https://admin.printerpix.{region}/KlaviyoProductFeed.json
+    method: GET
+    description: Fetches Klaviyo product feed for region
+    regions:
+      - US: admin.printerpix.com
+      - UK: admin.printerpix.co.uk
+      - FR: admin.printerpix.fr
+      - DE: admin.printerpix.de
+      - IT: admin.printerpix.it
+      - ES: admin.printerpix.es
+      - NL: admin.printerpix.nl
+      - IN: admin.printerpix.in
+      - AE: admin.printerpix.ae
+    response_type: KlaviyoProduct[]
+    error_behavior: Returns empty array on error
+
+dependencies:
+  external:
+    - package: "@builder.io/qwik-city"
+      imports: [server$]
+      usage: Server-side function wrapper
+  internal:
+    - path: ~/config/settings
+      imports: [settings]
+      usage: Get current region/website
+    - path: ~/config/klaviyo
+      imports: [klaviyoApiKey]
+      usage: Get Klaviyo API credentials
+    - path: ~/services/cart-service
+      imports: [loadCartData]
+      usage: Load cart data for tracking
+    - path: ~/services/accounts-service
+      imports: [getVerifyLink]
+      usage: Generate checkout verification link
+    - path: ~/services/cart-services/cookie
+      imports: [getCookie]
+      usage: Get MACHINE_TOKEN cookie
+    - path: ~/utility/http
+      imports: [toAbsoluteUrl]
+      usage: Convert relative URLs to absolute
+
+data_flow:
+  client_side_tracking:
+    - step: 1
+      action: Call identifyKlaviyoUser() with user properties
+    - step: 2
+      action: window.klaviyo.identify() called (if window.klaviyo exists)
+    - step: 3
+      action: Call trackKlaviyoEvent() with event type and data
+    - step: 4
+      action: window.klaviyo.track() called (if window.klaviyo exists)
+
+  server_side_tracking:
+    - step: 1
+      action: Call createKlaviyoEvent() with event data
+    - step: 2
+      action: Gets API key from klaviyoApiKey()
+    - step: 3
+      action: POSTs to https://a.klaviyo.com/api/events
+    - step: 4
+      action: Swallows errors (logs to console)
+
+  added_to_cart_flow:
+    - step: 1
+      action: Call trackAddedToCart(detailProduct)
+    - step: 2
+      action: Load cart data via loadCartData()
+    - step: 3
+      action: Calculate previous cart price (SubTotal + Shipping)
+    - step: 4
+      action: Map all cart items (including instant coupon items)
+    - step: 5
+      action: Find added item by ProductID match
+    - step: 6
+      action: Generate verify link or fallback to signin URL
+    - step: 7
+      action: Call trackKlaviyoEvent with comprehensive cart data
+
+  product_feed_flow:
+    - step: 1
+      action: Call fetchKlaviyoProductFeed()
+    - step: 2
+      action: Determine feed URL based on settings().website
+    - step: 3
+      action: Fetch JSON from admin.printerpix.{region}
+    - step: 4
+      action: Parse and return KlaviyoProduct[]
+    - step: 5
+      action: Call getKlaviyoProductFeedBasedOnRefCode() to find specific product
+
+  reset_password_flow:
+    - step: 1
+      action: Call trackResetPasswordEvent(email, firstName, resetPasswordUrl)
+    - step: 2
+      action: Extract MACHINE_TOKEN from cookies (remove hyphens)
+    - step: 3
+      action: Build event data with profile and metric
+    - step: 4
+      action: Call createKlaviyoEvent() server-side
+
+business_logic:
+  - Client-side tracking requires window.klaviyo to exist (loaded from Klaviyo snippet)
+  - Server-side tracking requires klaviyoApiKey() to return valid key
+  - Added to Cart event includes previous cart state AND newly added item
+  - Cart items include both regular CartItems and CartInstantCouponProductModels items
+  - Product feed URL determined by region (US/UK/FR/DE/IT/ES/NL/IN/AE)
+  - Product lookup is case-insensitive (both lowercase() calls)
+  - Verify link generated for authenticated users, signin URL for guests
+  - MACHINE_TOKEN hyphens removed before use in unique_id
+  - Unix timestamp used in unique_id for reset password events
+  - All image URLs converted to absolute URLs via toAbsoluteUrl()
+
+error_handling:
+  - createKlaviyoEvent: Swallows all errors (console.log only)
+  - identifyKlaviyoUser: Silently fails if window.klaviyo not defined
+  - trackKlaviyoEvent: Silently fails if window.klaviyo not defined
+  - trackAddedToCart: Wrapped in try/catch, swallows all errors
+  - fetchKlaviyoProductFeed: Returns empty array on error
+  - No error key check - assumes klaviyoApiKey() returns null if not configured
+
+security:
+  - API key stored in config (not hardcoded)
+  - API key used in Authorization header for server-side calls
+  - MACHINE_TOKEN cookie accessed server-side only
+  - Client-side window.klaviyo assumed safe (loaded from Klaviyo CDN)
+  - Email addresses passed to Klaviyo for user identification
+
+behavior:
+  - name: createKlaviyoEvent
+    steps:
+      - Gets Klaviyo API key from klaviyoApiKey() config
+      - If no key is available, returns immediately (no-op)
+      - Constructs POST request to https://a.klaviyo.com/api/events with JSON:API headers
+      - Sets Authorization header to "Klaviyo-API-Key {privateKey}"
+      - Sends the event data as JSON body
+      - On error, logs to console and swallows the error
+
+  - name: identifyKlaviyoUser
+    steps:
+      - Checks if window.klaviyo object exists (client-side Klaviyo SDK)
+      - If present, calls window.klaviyo.identify() with the user properties ($email, $first_name, $last_name)
+      - If window.klaviyo is not defined, silently does nothing
+
+  - name: trackKlaviyoEvent
+    steps:
+      - Checks if window.klaviyo object exists
+      - If present, calls window.klaviyo.track() with the event name and data payload
+      - If window.klaviyo is not defined, silently does nothing
+
+  - name: trackAddedToCart
+    steps:
+      - Loads current cart data via loadCartData()
+      - Calculates previous cart price as SubTotal_decimal + first ShippingChargeOptions charge
+      - Maps all CartItems to Klaviyo item format (ProductID lowercased, image URLs made absolute)
+      - Also maps CartInstantCouponProductModels items into the same array
+      - Finds the added item by matching ProductID (case-insensitive) against detailProduct.id
+      - Generates a verify link via getVerifyLink(), falls back to signin URL with email param
+      - Calls trackKlaviyoEvent with ADDED_TO_CART event containing cart value, added item details, checkout URL, and remaining items
+      - Wraps everything in try/catch and swallows errors silently
+
+  - name: fetchKlaviyoProductFeed
+    steps:
+      - Determines feed URL based on settings().website region (US/UK/FR/DE/IT/ES/NL/IN/AE)
+      - Default fallback is UK feed URL
+      - Fetches JSON from the admin.printerpix.{region} URL
+      - Parses response as KlaviyoProduct array
+      - On error, returns empty array
+
+  - name: getKlaviyoProductFeedBasedOnRefCode
+    steps:
+      - Searches products array for a product whose id matches refCode (both lowercased)
+      - Returns the matching KlaviyoProduct or undefined if not found
+
+  - name: trackResetPasswordEvent
+    steps:
+      - Runs server-side via Qwik server$
+      - Extracts MACHINE_TOKEN cookie value and removes hyphens
+      - Generates Unix timestamp in seconds
+      - Builds Klaviyo event data with profile (email), metric (Reset Password), and properties (PasswordResetLink, FirstName)
+      - Sets unique_id as "reset_password_{machineToken}_{unixTime}"
+      - Calls createKlaviyoEvent() with the constructed event data
+
+used_by:
+  - backend/services/product-page-service.yaml # Imports KlaviyoEvent, trackKlaviyoEvent for VIEW_PRODUCT tracking on filter change
+  - frontend/components/header/header.yaml # Uses Klaviyo for user identification
+  - frontend/components/category-page/common-category-container.yaml # Uses Klaviyo for category page tracking
+  - frontend/components/category-page/category-page-factory.yaml # Uses Klaviyo for category page tracking
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  KlaviyoEvent:
+    description: Enum of supported Klaviyo event names
+    kind: enum
+    values:
+      - VIEW_PRODUCT: "View Product"
+      - ADDED_TO_CART: "Added to Cart"
+      - SAVED_PROJECT: "SAVED PROJECT"
+
+  KlaviyoUserProperties:
+    description: User identity payload for window.klaviyo.identify()
+    fields:
+      - name: $email
+        type: string
+      - name: $first_name
+        type: string
+      - name: $last_name
+        type: string
+
+  KlaviyoProduct:
+    description: Single product record from the Klaviyo product feed JSON
+    fields:
+      - name: id
+        type: string
+        notes: Product reference code (refCode)
+      - name: link
+        type: string
+      - name: title
+        type: string
+      - name: image_link
+        type: string
+      - name: categories
+        type: string
+      - name: description
+        type: string
+      - name: inventory_policy
+        type: number
+      - name: price
+        type: number
+      - name: c_msrp
+        type: number
+      - name: c_skubase
+        type: string
+      - name: c_item_type
+        type: string
+      - name: c_product_type
+        type: string
+      - name: c_product_subtype
+        type: string
+
+  KlaviyoApiEventPayload:
+    description: Body sent to POST https://a.klaviyo.com/api/events (JSON:API format)
+    fields:
+      - name: data
+        type: object
+        notes: Top-level JSON:API data wrapper containing type, attributes (metric, profile, properties, unique_id)
+
+  CartItemKlaviyoShape:
+    description: Cart item mapped to Klaviyo format inside trackAddedToCart
+    fields:
+      - name: ProductID
+        type: string
+        notes: ProductReferenceCode lowercased
+      - name: SKU
+        type: string
+      - name: ProductName
+        type: string
+      - name: Quantity
+        type: number
+      - name: ProductURL
+        type: string
+        notes: Always empty string in current implementation
+      - name: ImageURL
+        type: string
+        notes: Absolute URL via toAbsoluteUrl()
+      - name: ItemPrice
+        type: number
+        notes: IndividualPriceIncVat_decimal
+      - name: RowTotal
+        type: number
+        notes: AggregateDiscountedPriceIncVat_decimal
+      - name: DiscountedItemPrice
+        type: number
+        notes: IndividualDiscountedPriceIncVat_decimal
+      - name: ThumbnailImageURL
+        type: string
+        notes: Same as ImageURL
+      - name: Categories
+        type: "string[]"
+        notes: "[item.GAType]" — single-element array
+
+field_consumption:
+  CartData:
+    consumed:
+      - SubTotal_decimal: Used to compute previousCartPrice (SubTotal_decimal + first ShippingChargeOptions charge)
+      - ShippingChargeOptions[0].Charge: Added to SubTotal_decimal for previousCartPrice
+      - CartItems: Mapped to Klaviyo item format for the event payload
+      - CartInstantCouponProductModels: Also mapped and appended to the items array
+    ignored:
+      - (all other CartData fields): Not referenced in trackAddedToCart
+
+  CartItem:
+    consumed:
+      - ProductReferenceCode: Lowercased and used as ProductID; matched against detailProduct.id
+      - Sku: Mapped to SKU
+      - ProductName: Mapped to ProductName
+      - Quantity: Mapped to Quantity
+      - ProductImageUrl: Converted to absolute URL for ImageURL and ThumbnailImageURL
+      - IndividualPriceIncVat_decimal: Mapped to ItemPrice
+      - AggregateDiscountedPriceIncVat_decimal: Mapped to RowTotal
+      - IndividualDiscountedPriceIncVat_decimal: Mapped to DiscountedItemPrice
+      - GAType: Wrapped in array as Categories
+    ignored:
+      - (all other CartItem fields): Not referenced
+
+  KlaviyoProduct:
+    consumed:
+      - id: Lowercased and compared against refCode for product lookup
+    ignored:
+      - link: Not used by getKlaviyoProductFeedBasedOnRefCode
+      - title: Not used by lookup function (caller uses the returned object)
+      - "(all other fields)": Returned in the matched product object but not read by the lookup function itself
+
+wire_format:
+  POST https://a.klaviyo.com/api/events:
+    description: Creates a Klaviyo event server-side via REST API
+    function: createKlaviyoEvent
+    mapping:
+      data (any — caller constructs full JSON:API payload): request body (JSON.stringify)
+    content_type: application/vnd.api+json
+    notes:
+      - Authorization header is "Klaviyo-API-Key {privateKey}" — key from klaviyoApiKey() config
+      - revision header is "2025-07-15"
+      - If klaviyoApiKey() returns null/falsy, the function returns immediately without making the request
+
+implementation_logic:
+  product_feed_case_insensitive_lookup:
+    rule: |
+      getKlaviyoProductFeedBasedOnRefCode lowercases BOTH the product.id from the feed
+      AND the incoming refCode before comparing. This means "ABC123" and "abc123" will
+      match correctly regardless of casing in the feed or in the caller.
+    critical: false
+
+  added_to_cart_includes_coupon_items:
+    rule: |
+      trackAddedToCart maps not only CartItems but also items inside
+      CartInstantCouponProductModels[*].CartItems. Both arrays are merged before
+      the added item is looked up by ProductID. This ensures coupon-bundled products
+      appear in the Klaviyo event alongside regular cart items.
+    critical: true
+
+  machine_token_hyphen_removal:
+    rule: |
+      trackResetPasswordEvent removes all hyphens from the MACHINE_TOKEN before
+      using it as part of the unique_id field. The unique_id is formatted as
+      "reset_password_{tokenWithoutHyphens}_{unixTimestamp}". This is required by
+      the Klaviyo deduplication mechanism which uses unique_id to prevent duplicate events.
+    critical: true
+
+  previous_cart_price_calculation:
+    rule: |
+      The "previous cart value" tracked in the ADDED_TO_CART event is computed as:
+        SubTotal_decimal + ShippingChargeOptions[0].Charge
+      This represents the cart total BEFORE the new item is added, allowing Klaviyo
+      to calculate the delta. If cartData is null (failed to load), previousCartPrice is 0.
+    critical: false
+
+  client_side_window_klaviyo_guard:
+    rule: |
+      Both identifyKlaviyoUser and trackKlaviyoEvent check for window.klaviyo existence
+      before calling. They silently do nothing if the Klaviyo browser SDK has not loaded.
+      This prevents errors during SSR or if Klaviyo is blocked by an ad blocker.
+    critical: false

@@ -1,0 +1,108 @@
+name: Web Content Context (Dynamic Promo Banner)
+source:
+  path: src/context/web-content-context.ts
+  lines: 1-17
+  type: qwik-context
+
+description: |
+  Defines a Qwik context for dynamic promo banners. Provides banner data and configuration
+  for displaying promotional content on product, category, and home pages.
+
+  This context controls:
+  - Which promo banners to show (data)
+  - Banner display order (mobile vs desktop)
+  - Banner visibility (mobile vs desktop)
+  - Product type context (for product pages)
+  - Page type context (product, category, home)
+  - Override to hide banners (via Signal)
+
+exports:
+  - name: DynamicPromoBannerContext
+    type: interface
+    description: Shape of data in promo banner context
+
+  - name: DynamicPromoBannerContext (context)
+    type: ContextId<DynamicPromoBannerContext>
+    description: Context for dynamic promo banner data
+    key: "dynamic-promo-banners"
+
+behavior:
+  description: |
+    Provides banner data and configuration to promo banner components.
+    Allows pages to customize banner display order, visibility, and override behavior.
+
+  usage: |
+    - Provider: Set in layout.tsx or page-level components
+    - Consumers: DynamicPromoBanner, FloatingPromoBanner components
+
+  configuration_options:
+    - promoBannerData: Banner content from API
+    - productType: Product type for product pages (filters banners)
+    - type: Page type (product, category, home) - affects banner selection
+    - mobileBannersOverrideOrder: Custom display order for mobile banners
+    - desktopBannersOverrideOrder: Custom display order for desktop banners
+    - mobileBannersDisplay: Show/hide banners on mobile
+    - desktopBannersDisplay: Show/hide banners on desktop
+    - hidePromoBannerOverride: Reactive Signal to dynamically hide banners
+
+  display_logic:
+    - If mobileBannersDisplay is false, hide all mobile banners
+    - If desktopBannersDisplay is false, hide all desktop banners
+    - If hidePromoBannerOverride.value is true, hide all banners
+    - If banners shown, use override order if provided, else default order
+
+data_flow:
+  - Layout fetches promo banner data via routeLoader$ (getPromoBanners)
+  - Layout or page provides context with data + config
+  - Banner components consume context and render accordingly
+  - hidePromoBannerOverride can be updated reactively (e.g., user dismisses banner)
+
+dependencies:
+  internal:
+    - ~/services/common-service (PromoBannerResponse type)
+    - ~/services/product-category-service (PlatinumProductTypeEnum type)
+
+  external:
+    - "@builder.io/qwik" (createContextId, Signal)
+
+types:
+  DynamicPromoBannerContext:
+    description: Dynamic promo banner context data
+    fields:
+      - promoBannerData: PromoBannerResponse | null (banner content from API)
+      - productType?: PlatinumProductTypeEnum (product type for filtering, optional)
+      - type?: "product" | "category" | "home" (page type, optional)
+      - mobileBannersOverrideOrder?: number[] (custom order for mobile, optional)
+      - desktopBannersOverrideOrder?: number[] (custom order for desktop, optional)
+      - mobileBannersDisplay?: boolean (show mobile banners, optional, default true)
+      - desktopBannersDisplay?: boolean (show desktop banners, optional, default true)
+      - hidePromoBannerOverride?: Signal<boolean> (reactive hide flag, optional)
+
+  PromoBannerResponse:
+    description: Banner data from API (defined in ~/services/common-service)
+    fields:
+      - banners: array of banner objects
+      - (other fields defined in common-service)
+
+  PlatinumProductTypeEnum:
+    description: Product type enum (defined in ~/services/product-category-service)
+    values:
+      - (various product types)
+
+used_by:
+  - "~/routes/layout-shop.tsx"
+  - "~/components/shop-page/containers/shop-page-container.tsx"
+  - "~/components/shop-page/containers/collection-container.tsx"
+
+security:
+  - Banner data is public, no sensitive information
+  - Banner content should be sanitized if rendering HTML
+
+edge_cases:
+  - promoBannerData may be null (no banners available)
+  - productType may be undefined (not a product page)
+  - type may be undefined (fallback to default behavior)
+  - Override orders may be undefined (use default order)
+  - Display flags may be undefined (default to showing banners)
+  - hidePromoBannerOverride may be undefined (no dynamic hiding)
+

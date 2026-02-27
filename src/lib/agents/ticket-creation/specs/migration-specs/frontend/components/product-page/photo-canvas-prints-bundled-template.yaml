@@ -1,0 +1,420 @@
+name: PhotoCanvasPrintsBundledTemplate
+source: ecommerce-frontend-qwik/src/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-bundled-template.tsx
+description: |
+  Canvas bundled product page template featuring a 70/30 layout with bundled product
+  cross-sell section. This template emphasizes bundle offerings with ProductOptionType4
+  component for bundle selection. Uses CanvasSizeTable2 variant for size comparison.
+  Includes a highlighted review section with 5-star Trustpilot display. Desktop layout
+  includes satisfaction guarantee in a separate right panel.
+
+exports:
+  - name: default
+    type: component$
+    props: none
+
+context_consumed:
+  - ProductContext:
+      - product
+      - friendlyUrl
+      - filterIndex
+      - refCode
+      - preselectedRefId
+      - selectedFilter
+  - DeviceDetectorContext:
+      - deviceInfo
+
+component_structure: |
+  <>
+    <ProductPageTopBannerV2 />
+
+    <div.product_page_canvas_template_wrapper>
+      <div.container>
+        <div.flex-wrap>                         # Main two-column grid
+
+          # MOBILE TITLE & RATING
+          {isMobile && (
+            <h1 />
+            <TrustpilotRating />
+          )}
+
+          # LEFT COLUMN (70%)
+          <div.max-w-[70%].product_page_left_container>
+            <ProductCarousel
+              showPriceTag={true}
+              productImages={...}
+            />
+
+            # MOBILE OPTIONS (block lg:hidden)
+            <OptionCanvasPrintsPanel />
+          </div>
+
+          # RIGHT COLUMN (30%, hidden on mobile)
+          <div.max-w-[30%].hidden.lg:flex.product_page_right_container>
+            {isDesktop && <h1 />}
+            <TrustpilotRating />
+
+            <OptionCanvasPrintsPanel />
+
+            <div.border.hidden.md:block>        # Delivery deadline
+              <p>{aboveClockText}</p>
+              <ProductFlipClock
+                clockColor={dynamic}
+                textColor={dynamic}
+              />
+              <ProductDeliveryDateV2 />
+            </div>
+
+            <BulkPricingV4 />
+
+            <div.flex.xl:flex>                  # Satisfaction guarantee (desktop only)
+              <Image src="Satisfaction-100-Guarantee.svg" />
+              <p>{title}</p>
+              <p>{description}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      # BUNDLE SECTION (hidden on mobile, hidden for GB)
+      {product.productBundleGroup?.typeOptionSection.length > 0 &&
+       settings().website != "GB" && (
+        <div.hidden.lg:block.overflow-auto>
+          <ProductOptionType4 />
+        </div>
+      )}
+
+      <div.container.p-3>
+        # MOBILE DELIVERY DEADLINE (lg:hidden)
+        <div.border.lg:hidden>
+          <p>{aboveClockText}</p>
+          <ProductFlipClock />
+          <ProductDeliveryDateV2 />
+        </div>
+
+        # MOBILE BULK PRICING (lg:hidden)
+        <BulkPricingV4 />
+
+        <div.flex-wrap>
+          # HIGHLIGHTED REVIEW SECTION (mobile + desktop)
+          <div.flex-1.lg:hidden>                # Mobile version
+            <p>{highLightReview.title}</p>
+            <p>{highLightReview.content}</p>
+            <Image src="5-stars-trustpilot.svg" />
+            <span>{author} - {date}</span>
+          </div>
+
+          # MOBILE BUNDLE SECTION (block lg:hidden)
+          {product.productBundleGroup && (
+            <div.block.lg:hidden>
+              <ProductOptionType4 />
+            </div>
+          )}
+
+          # SIZE TABLE (LEFT)
+          <div.max-w-[70%]>
+            <CanvasSizeTable2 />
+
+            <div.lg:hidden.mt-8>                # Mobile trust indicator
+              <ProductTrustIndicatorV6 />
+            </div>
+          </div>
+
+          # HIGHLIGHTED REVIEW (DESKTOP RIGHT)
+          <div.max-w-[30%].hidden.lg:flex>
+            <p>{highLightReview.title}</p>
+            <p>{highLightReview.content}</p>
+            <Image src="5-stars-trustpilot.svg" />
+            <span>{author} - {date}</span>
+
+            <ProductTrustIndicatorV6 />         # Desktop trust indicator
+          </div>
+        </div>
+      </div>
+
+      # PRODUCT DESCRIPTION & REVIEWS (dynamic order)
+      <div.flex-col>
+        {product.productExtendedDetails && (
+          <div style={{order: product.productExtendedDetails.order}}>
+            <ProductDescriptionV2 />
+          </div>
+        )}
+
+        {product.reviewsCollection && (
+          <div style={{order: product.reviewsCollection.order}}>
+            <CustomerReview />
+          </div>
+        )}
+
+        <ProductPageContentV2 />
+      </div>
+    </div>
+  </>
+
+child_components:
+  - ProductPageTopBannerV2: Campaign banner
+  - ProductCarousel: Image carousel
+  - TrustpilotRating: Star rating
+  - OptionCanvasPrintsPanel: Main configuration panel
+  - ProductFlipClock: Countdown timer
+  - ProductDeliveryDateV2: Delivery date
+  - BulkPricingV4: Volume discounts
+  - ProductOptionType4: Bundle product selector (from productBundleGroup)
+  - CanvasSizeTable2: Size comparison table (variant 2)
+  - ProductTrustIndicatorV6: Trust badges
+  - ProductDescriptionV2: Product details
+  - CustomerReview: Review carousel
+  - ProductPageContentV2: CMS content
+
+state_management:
+  local_signals:
+    - designUrl: string
+
+  local_stores:
+    - initialCarouselImages: ProductCarouseImage[]
+    - optionStore: OptionStore
+    - carousel: { activeIndex: number }
+
+  reactive_computeds:
+    - productImages: adds selectedFilter to carousel
+    - clockColors: extracts from floatingBanner
+
+side_effects:
+  useTask$:
+    - Tracks product.id
+    - Updates optionStore with product data
+    - Builds carousel images
+
+  qrl_functions:
+    - changeActiveSlide: updates carousel.activeIndex
+
+unique_features:
+  - "Uses CanvasSizeTable2 variant instead of CanvasSizeTable"
+  - "Bundle section via productBundleGroup.typeOptionSection (not listHubChilds)"
+  - "Highlighted review section with 5-star Trustpilot image and hardcoded text from translations"
+  - "Satisfaction guarantee only in desktop right panel (not mobile)"
+  - "Desktop review section positioned in right panel below highlighted review"
+  - "productBundleGroup used for bundled products (vs listHubChilds in other templates)"
+  - "Uses product_page_canvas_template_wrapper, product_page_left_container, product_page_right_container classes"
+  - "Satisfaction guarantee has responsive sizing: xl:flex with 250px/200px image width"
+
+layout_characteristics:
+  desktop:
+    - 70% left column (carousel + mobile options)
+    - 30% right column (options + delivery + bulk pricing + satisfaction guarantee)
+    - Bundle section full-width above main content
+    - Size table 70% width, highlighted review 30% width
+  mobile:
+    - Stacked vertical
+    - Options below carousel
+    - Delivery + bulk pricing below options
+    - Highlighted review section
+    - Bundle section
+    - Size table full-width
+
+dependencies:
+  qwik_core:
+    - "@builder.io/qwik": [$, component$, useComputed$, useContext, useSignal, useStore, useStylesScoped$, useTask$]
+    - "@builder.io/qwik-city": [useLocation]
+
+  external_packages:
+    - "@unpic/qwik": [Image]
+    - "qwik-speak": [inlineTranslate]
+
+  internal_imports:
+    - "~/components/product-page/product-carousel/product-carousel": [ProductCarousel, ProductCarouseImage (type)]
+    - "~/components/homepage/trustpilot-rating": [TrustpilotRating]
+    - "~/components/product-page/canvas-size-table/canvas-size-table2": [CanvasSizeTable2]
+    - "~/components/product-page/option-canvas-prints-panel": [OptionCanvasPrintsPanel]
+    - "~/components/customer-review/customer-review": [CustomerReview]
+    - "~/components/product-page/product-option-type-4": [ProductOptionType4]
+    - "~/components/product-page/product-page-content-v2": [ProductPageContentV2]
+    - "~/components/product-page/product-page-top-banner-v2": [ProductPageTopBannerV2]
+    - "~/components/product-page/product-countdown-timer/product-flip-clock-v2": [ProductFlipClock]
+    - "~/components/product-page/product-delivery-date-v2": [ProductDeliveryDateV2]
+    - "~/components/product-page/product-description-v2": [ProductDescriptionV2]
+    - "~/components/product-page/product-trust-indicator-v6": [ProductTrustIndicatorV6]
+    - "~/components/product-page/bulk-pricing-v4": [BulkPricingV4]
+    - "~/context/product-category-context": [ProductContext]
+    - "~/context/device-detector-context": [DeviceDetectorContext]
+    - "~/services/category-service": [TypeOption2 (type)]
+    - "~/services/product-category-service": [PlatinumProductTypeEnum]
+    - "~/data/option-data": [OptionStore (type)]
+    - "~/config/settings": [settings]
+    - "~/hooks/useDetectScreen": [useDetectScreen]
+
+  styles:
+    - "../styles/index.css?inline": [styles]
+
+behavior:
+  - On mount, reads product data and device info from ProductContext and DeviceDetectorContext
+  - Initializes optionStore with product.optionData, filterIndex, refCode, firstSlideUrl, and selectedFilter
+  - Tracks product.id changes via useTask$ and rebuilds carousel images from product.images; appends embededVideoIcon if embededVideo is present
+  - Computes productImages by prepending selectedFilter image (if a filter is selected) to the carousel image array
+  - Computes clockColors dynamically from product.productPageContent.floatingBanner (desktop/mobile backgroundColor and section text color, with fallback defaults #2E638A/#FFFFFF)
+  - Renders mobile title (product.imageCaption) and TrustpilotRating only when device is mobile
+  - Shows desktop title, TrustpilotRating, and OptionCanvasPrintsPanel in right column only when device is desktop
+  - Conditionally renders delivery deadline section (aboveClockText + ProductFlipClock) only when product.deliveryDeadline.showClock is true
+  - Passes dynamic clockColor and textColor to ProductFlipClock from computed clockColors
+  - Shows bundle section (ProductOptionType4) from product.productBundleGroup.typeOptionSection only when typeOptionSection has items AND region is NOT GB
+  - Desktop bundle section is hidden on mobile (hidden lg:block); mobile bundle section is hidden on desktop (block lg:hidden)
+  - Renders highlighted review section with translated text (product.highLightReview.title/content/author/date) and 5-star Trustpilot SVG; shown on mobile inline and on desktop in right panel
+  - Satisfaction guarantee (image + translated title/description) appears only in desktop right panel (xl:flex), not on mobile
+  - ProductDescriptionV2 and CustomerReview are rendered in dynamic order using CSS order property from product.productExtendedDetails.order and product.reviewsCollection.order
+  - CustomerReview only renders when reviewsCollection.reviewModels.length > 0
+  - ProductPageContentV2 renders at the end only when product.productPageContent exists
+  - CanvasSizeTable2 receives product.optionData; ProductTrustIndicatorV6 shown on mobile below size table and on desktop in right panel
+  - changeActiveSlide QRL updates carousel.activeIndex when user navigates slides
+
+used_by:
+  - product-page-selection (rendered when productPageViewName === CanvasDiscountBundledExperience)
+
+security_notes:
+  - Validate productBundleGroup data before rendering
+  - Sanitize CMS content in ProductPageContentV2
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  ProductCarouseImage:
+    description: Single image entry for the product carousel
+    source: ~/components/product-page/product-carousel/product-carousel
+    fields:
+      - name: url
+        type: string
+      - name: altText
+        type: string
+
+  OptionStore:
+    description: Central reactive store for product option selections
+    source: ~/data/option-data
+    fields:
+      - name: optionData
+        type: object
+      - name: productData
+        type: object
+      - name: filterIndex
+        type: "number[]"
+      - name: refCode
+        type: string
+      - name: firstSlideUrl
+        type: string
+      - name: selectedFilter
+        type: "Filter | null"
+
+  ClockColors:
+    description: Computed clock color pair extracted from floatingBanner CMS data
+    fields:
+      - name: clockColor
+        type: string
+      - name: textColor
+        type: string
+
+  ProductContextValue:
+    description: Shape of ProductContext fields consumed by this template
+    source: ~/context/product-category-context
+    fields:
+      - name: product
+        type: object
+      - name: friendlyUrl
+        type: string
+      - name: filterIndex
+        type: "number[]"
+      - name: refCode
+        type: string
+      - name: preselectedRefId
+        type: "string | undefined"
+      - name: selectedFilter
+        type: "Filter | null"
+
+  DeviceDetectorContextValue:
+    description: Shape of DeviceDetectorContext fields consumed by this template
+    source: ~/context/device-detector-context
+    fields:
+      - name: deviceInfo
+        type: object
+
+field_consumption:
+  ProductContext:
+    consumed:
+      - product: Full product object used throughout (imageCaption, images, optionData, deliveryDeadline, highLightReview, productBundleGroup, productExtendedDetails, reviewsCollection, productPageContent, productPageContent.floatingBanner)
+      - friendlyUrl: Passed to child option panel components
+      - filterIndex: Seeds optionStore.filterIndex on product change
+      - refCode: Seeds optionStore.refCode on product change
+      - preselectedRefId: Used to build carousel images via optionStore
+      - selectedFilter: Seeds optionStore.selectedFilter; prepended to productImages when set
+    ignored:
+      - machineToken: Not read in this template (no direct API calls)
+      - editor: Not used in this template
+      - couponCode: Not read in this template
+
+  DeviceDetectorContext:
+    consumed:
+      - deviceInfo: Used via useDetectScreen hook to derive isMobile / isDesktop booleans
+    ignored: []
+
+implementation_logic:
+  bundle_section_gb_exclusion:
+    rule: |
+      The ProductOptionType4 bundle section (from product.productBundleGroup.typeOptionSection)
+      is suppressed for the "GB" region: the condition is
+      `typeOptionSection.length > 0 && settings().website != "GB"`.
+      Both desktop (hidden lg:block) and mobile (block lg:hidden) bundle sections share
+      this region check.
+    critical: true
+
+  clock_colors_extraction:
+    rule: |
+      clockColors is computed from product.productPageContent.floatingBanner:
+        clockColor = desktopBanner.backgroundColor || mobileBanner.backgroundColor || "#2E638A"
+        textColor  = sections.section1[0].color || sections.section2[0].color || "#FFFFFF"
+      The fallback values are always applied when the banner data is absent or incomplete.
+    critical: false
+
+  dynamic_content_ordering:
+    rule: |
+      ProductDescriptionV2 and CustomerReview are wrapped in divs whose CSS `order`
+      property is set to product.productExtendedDetails.order and
+      product.reviewsCollection.order respectively, enabling CMS-controlled
+      ordering without re-rendering.
+    critical: false
+
+visibility_map:
+  mobile_title_and_trustpilot:
+    condition: "isMobile is true"
+    default: hidden (desktop default)
+
+  desktop_right_column:
+    condition: "isDesktop is true"
+    default: hidden (mobile default — max-w-[30%] hidden lg:flex)
+
+  desktop_title_in_right_column:
+    condition: "isDesktop is true"
+    default: hidden
+
+  desktop_bundle_section:
+    condition: "product.productBundleGroup.typeOptionSection.length > 0 AND settings().website != 'GB'"
+    default: hidden (hidden lg:block — never visible on mobile)
+
+  mobile_bundle_section:
+    condition: "product.productBundleGroup exists AND settings().website != 'GB'"
+    default: hidden (block lg:hidden — never visible on desktop)
+
+  delivery_deadline_section:
+    condition: "product.deliveryDeadline.showClock is true"
+    default: hidden
+
+  satisfaction_guarantee_desktop:
+    condition: "isDesktop is true (xl:flex class)"
+    default: hidden (mobile and non-xl screens)
+
+  product_description_section:
+    condition: "product.productExtendedDetails exists"
+    default: hidden
+
+  customer_review_section:
+    condition: "product.reviewsCollection.reviewModels.length > 0"
+    default: hidden
+
+  product_page_content_section:
+    condition: "product.productPageContent exists"
+    default: hidden

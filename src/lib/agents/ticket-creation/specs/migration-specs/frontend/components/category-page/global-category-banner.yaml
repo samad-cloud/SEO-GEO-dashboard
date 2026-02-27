@@ -1,0 +1,187 @@
+name: GlobalCategoryBanner
+source: src/components/category-page/global-category-banner.tsx
+description: |
+  Displays a full-width responsive category banner image that can optionally be
+  wrapped in an anchor link. Supports separate desktop and mobile image URLs with
+  configurable aspect ratios. Falls back to default aspect ratios if not provided.
+
+  When data.isLink is true, the entire banner (both images) is wrapped in an <a>
+  element that fires a Matomo analytics event on click and navigates to data.link.
+  When data.isLink is false, the images are wrapped in a plain <div>.
+
+  Breakpoint between mobile and desktop images is md (768px).
+
+exports:
+  - name: default
+    type: "component$<GlobalCategoryBannerProps>"
+    description: Default Qwik component export
+  - name: GlobalCategoryBannerProps
+    type: interface
+    description: Props interface exported for consumer use
+
+props:
+  - name: data
+    type: GlobalCategoryBanner
+    required: true
+    description: Banner configuration including image URLs, link status, aspect ratios, and active flag
+
+component_structure:
+  - root: React Fragment (<>)
+  - link_variant:
+      condition: data.isLink === true
+      element: a
+      href: data.link
+      onClick$: Matomo trackEvent
+      children:
+        - desktop_image:
+            component: Image (from @unpic/qwik)
+            class: "hidden md:block"
+            src: data.desktopImageUrl
+            aspectRatio: "data.aspectRatioDesktop ?? '1920 / 251'"
+        - mobile_image:
+            component: Image (from @unpic/qwik)
+            class: "block md:hidden"
+            src: data.mobileImageUrl
+            aspectRatio: "data.aspectRatioMobile ?? '767 / 165'"
+  - div_variant:
+      condition: data.isLink === false
+      element: div
+      children:
+        - desktop_image: (same as link_variant)
+        - mobile_image: (same as link_variant)
+
+data_structure:
+  GlobalCategoryBanner:
+    source: "~/services/category-service"
+    fields:
+      - isActive: boolean (checked by parent; this component does not check it)
+      - desktopImageUrl: string
+      - mobileImageUrl: string
+      - desktopImageAlt: string
+      - mobileImageAlt: string
+      - isLink: boolean
+      - link: string (navigation URL when isLink is true)
+      - type: string
+      - aspectRatioDesktop: "string | undefined (e.g. '1920 / 251')"
+      - aspectRatioMobile: "string | undefined (e.g. '767 / 165')"
+
+behavior:
+  - Defaults: defaultAspectRatioDesktop = "1920 / 251", defaultAspectRatioMobile = "767 / 165"
+  - If data.aspectRatioDesktop is provided, use it; otherwise use defaultAspectRatioDesktop
+  - If data.aspectRatioMobile is provided, use it; otherwise use defaultAspectRatioMobile
+  - If data.isLink is true:
+      - Wrap both images in <a href={data.link}>
+      - onClick$ fires Matomo event: trackEvent, MatomoCategory.CATEGORY, MatomoEvent.CLICK_GLOBAL_CATEGORY_BANNER, data.link
+  - If data.isLink is false: wrap both images in <div>
+  - Desktop image: hidden on mobile (hidden md:block), no alt specified in template
+  - Mobile image: shown on mobile only (block md:hidden), no alt specified in template
+  - The isActive check is performed by the parent (CommonCategoryContainer), not this component
+
+styling:
+  - "hidden md:block": desktop image (md breakpoint = 768px)
+  - "block md:hidden": mobile image
+  - No additional styling classes on the wrapper element
+
+analytics:
+  - event: CLICK_GLOBAL_CATEGORY_BANNER
+    platform: Matomo
+    trigger: Click on banner when isLink is true
+    data:
+      category: MatomoCategory.CATEGORY
+      action: MatomoEvent.CLICK_GLOBAL_CATEGORY_BANNER
+      name: data.link (the banner href URL)
+
+dependencies:
+  qwik:
+    - component$ from "@builder.io/qwik"
+  external:
+    - Image from "@unpic/qwik"
+  types:
+    - GlobalCategoryBanner from "~/services/category-service"
+  utilities:
+    - MatomoCategory, MatomoEvent, pushMatomoEvent from "~/utility/matomo"
+
+used_by:
+  - CommonCategoryContainer
+
+security:
+  - No dangerouslySetInnerHTML
+  - data.link is used as href directly; origin validation is the CMS's responsibility
+  - isActive guard is enforced by the parent (CommonCategoryContainer), not this component
+
+edge_cases:
+  - data.isLink is false: no navigation, banner is purely decorative
+  - data.aspectRatioDesktop is undefined/null: falls back to "1920 / 251"
+  - data.aspectRatioMobile is undefined/null: falls back to "767 / 165"
+  - data.link is empty string when isLink is true: anchor navigates to current page
+  - data.isActive is false: parent should not render this component (not guarded here)
+
+notes:
+  - No alt text is passed to the Image components (alt attribute omitted from JSX) — accessibility gap
+  - The desktopImageAlt and mobileImageAlt fields exist on GlobalCategoryBanner type but are not used in the component
+
+types:
+  GlobalCategoryBannerProps:
+    description: Component props interface
+    fields:
+      - name: data
+        type: GlobalCategoryBanner
+
+  GlobalCategoryBanner:
+    description: Global category banner configuration from category-service
+    source: "~/services/category-service"
+    fields:
+      - name: isActive
+        type: boolean
+      - name: desktopImageUrl
+        type: string
+      - name: mobileImageUrl
+        type: string
+      - name: desktopImageAlt
+        type: string
+      - name: mobileImageAlt
+        type: string
+      - name: isLink
+        type: boolean
+      - name: link
+        type: string
+      - name: type
+        type: string
+      - name: aspectRatioDesktop
+        type: "string | undefined"
+        optional: true
+      - name: aspectRatioMobile
+        type: "string | undefined"
+        optional: true
+
+field_consumption:
+  GlobalCategoryBanner:
+    consumed:
+      - desktopImageUrl: src for desktop Image
+      - mobileImageUrl: src for mobile Image
+      - isLink: determines link vs div wrapper
+      - link: href for the anchor element and Matomo event name
+      - aspectRatioDesktop: aspectRatio for desktop Image (falls back to default if absent)
+      - aspectRatioMobile: aspectRatio for mobile Image (falls back to default if absent)
+    ignored:
+      - isActive: checked by parent (CommonCategoryContainer), not this component
+      - desktopImageAlt: defined in type but not passed to Image
+      - mobileImageAlt: defined in type but not passed to Image
+      - type: not used in rendering logic
+
+visibility_map:
+  link_wrapper:
+    condition: data.isLink === true
+    default: shown as div (non-link)
+
+  div_wrapper:
+    condition: data.isLink === false
+    default: shown
+
+  desktop_image:
+    condition: CSS — always in DOM, visible at md+ (768px+)
+    default: visible on desktop, hidden on mobile
+
+  mobile_image:
+    condition: CSS — always in DOM, visible below md breakpoint
+    default: visible on mobile, hidden on desktop

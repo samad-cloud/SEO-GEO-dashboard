@@ -1,0 +1,561 @@
+name: ProductPageSelection
+type: component
+source:
+  path: src/components/product-page/containers/product-page-selection.tsx
+  lines: 1-85
+  language: typescript
+  framework: qwik
+
+description: |
+  Product page template selector component that dynamically renders the appropriate
+  product page template based on the product's productPageViewName and product data.
+  Acts as a routing component that examines the product context and determines which
+  specialized template component should render the product page.
+
+exports:
+  default:
+    type: qwik-component
+    name: ProductPageSelection (anonymous)
+    signature: "component$(() => JSX.Element | null)"
+
+props:
+  inputs: []
+  description: This component takes no props - it reads all data from ProductContext
+
+rendering_logic:
+  conditions:
+    - condition: "!product.id"
+      result: "return null"
+      description: Early return if no product ID exists
+
+    - condition: "productPageViewName === ProductPageViewNameEnum.HubChild"
+      result: "render ProductPageHubChilldTemplate"
+      priority: 1
+      bypasses_content_check: true
+
+    - condition: "productPageViewName === ProductPageViewNameEnum.FixedTheme"
+      result: "render ProductPageFixedThemeTemplate"
+      priority: 2
+      bypasses_content_check: true
+
+    - condition: "!product.productPageContent"
+      result: "render ProductPageFixedTemplate"
+      description: Fallback when no productPageContent exists
+      priority: 3
+
+    - condition: "product.productPageContent exists"
+      result: "switch on productPageViewName"
+      description: Main template selection logic via switch statement
+      priority: 4
+
+template_mapping:
+  direct_mappings:
+    - view_name: ProductPageViewNameEnum.HubChild
+      component: ProductPageHubChilldTemplate
+      props:
+        - name: productType
+          source: product.platinumProductType
+      key: null
+      bypasses_content_check: true
+
+    - view_name: ProductPageViewNameEnum.FixedTheme
+      component: ProductPageFixedThemeTemplate
+      props:
+        - name: productType
+          source: product.platinumProductType
+      key: product.id
+      bypasses_content_check: true
+
+  switch_mappings:
+    - view_name: ProductPageViewNameEnum.BaseTemplate
+      component: ProductPageBaseTemplate
+      props:
+        - name: productType
+          source: product.platinumProductType
+      key: product.id
+      requires_product_page_content: true
+
+    - view_name: ProductPageViewNameEnum.HubTemplate
+      component: ProductPageHubTemplate
+      props:
+        - name: productType
+          source: product.platinumProductType
+      key: product.id
+      requires_product_page_content: true
+
+    - view_name: ProductPageViewNameEnum.BasicTemplate
+      component: ProductPageBasicTemplate
+      props:
+        - name: productType
+          source: product.platinumProductType
+      key: product.id
+      requires_product_page_content: true
+
+    - view_name: ProductPageViewNameEnum.NonCustomizableThemes2021Q1
+      component: InstantProductPageContainer
+      props: []
+      key: product.id
+      requires_product_page_content: true
+
+    - view_name: ProductPageViewNameEnum.RyzanGo
+      component: PhotoCanvasPrintsNewTemplate
+      props: []
+      key: product.id
+      requires_product_page_content: true
+
+    - view_name: ProductPageViewNameEnum.RyzanGoV2
+      component: PhotoCanvasPrintsTemplateV2
+      props: []
+      key: product.id
+      requires_product_page_content: true
+
+    - view_name: ProductPageViewNameEnum.RyzanGoV3
+      component: PhotoCanvasPrintsNewTemplateV3
+      props: []
+      key: product.id
+      requires_product_page_content: true
+
+    - view_name: ProductPageViewNameEnum.RyzanGoMulti
+      component: PhotoCanvasPrintsNewTemplateV3
+      props:
+        - name: isMulti
+          value: true
+      key: product.id
+      requires_product_page_content: true
+
+    - view_name: ProductPageViewNameEnum.CanvasDiscountBundledExperience
+      component: PhotoCanvasPrintsBundledTemplate
+      props: []
+      key: product.id
+      requires_product_page_content: true
+
+    - view_name: ProductPageViewNameEnum.CanvasHub
+      component: PhotoCanvasPrintsHubBundledTemplate
+      props: []
+      key: product.id
+      requires_product_page_content: true
+
+  fallbacks:
+    - condition: "default case in switch"
+      component: ProductPageBaseTemplate
+      props:
+        - name: productType
+          source: product.platinumProductType
+      key: product.id
+      description: Default template when productPageViewName doesn't match known cases
+
+    - condition: "no product.productPageContent"
+      component: ProductPageFixedTemplate
+      props:
+        - name: productType
+          source: product.platinumProductType
+      key: null
+      description: Fallback when product lacks content data
+
+child_components:
+  templates:
+    - name: ProductPageHubChilldTemplate
+      path: ./templates/product-page-hub-chilld-template
+      when_used: "productPageViewName === HubChild"
+      receives_props:
+        - productType
+
+    - name: ProductPageFixedThemeTemplate
+      path: ./templates/product-page-fixed-theme-template
+      when_used: "productPageViewName === FixedTheme"
+      receives_props:
+        - productType
+        - key
+
+    - name: ProductPageBaseTemplate
+      path: ./templates/product-page-base-template
+      when_used: "productPageViewName === BaseTemplate OR default case"
+      receives_props:
+        - productType
+        - key
+
+    - name: ProductPageHubTemplate
+      path: ./templates/product-page-hub-template
+      when_used: "productPageViewName === HubTemplate"
+      receives_props:
+        - productType
+        - key
+
+    - name: ProductPageBasicTemplate
+      path: ./templates/product-page-basic-template
+      when_used: "productPageViewName === BasicTemplate"
+      receives_props:
+        - productType
+        - key
+
+    - name: ProductPageFixedTemplate
+      path: ./templates/product-page-fixed-template
+      when_used: "no product.productPageContent"
+      receives_props:
+        - productType
+
+  instant_products:
+    - name: InstantProductPageContainer
+      path: ./instant-product-page-container
+      when_used: "productPageViewName === NonCustomizableThemes2021Q1"
+      receives_props:
+        - key
+
+  canvas_prints:
+    - name: PhotoCanvasPrintsNewTemplate
+      path: ./photo-canvas-prints/photo-canvas-prints-new-template
+      when_used: "productPageViewName === RyzanGo"
+      receives_props:
+        - key
+
+    - name: PhotoCanvasPrintsTemplateV2
+      path: ./photo-canvas-prints/photo-canvas-prints-template-v2
+      when_used: "productPageViewName === RyzanGoV2"
+      receives_props:
+        - key
+
+    - name: PhotoCanvasPrintsNewTemplateV3
+      path: ./photo-canvas-prints/photo-canvas-prints-new-template-v3
+      when_used: "productPageViewName === RyzanGoV3 OR RyzanGoMulti"
+      receives_props:
+        - key
+        - isMulti (only for RyzanGoMulti)
+
+    - name: PhotoCanvasPrintsBundledTemplate
+      path: ./photo-canvas-prints/photo-canvas-prints-bundled-template
+      when_used: "productPageViewName === CanvasDiscountBundledExperience"
+      receives_props:
+        - key
+
+    - name: PhotoCanvasPrintsHubBundledTemplate
+      path: ./photo-canvas-prints/photo-canvas-prints-hub-bundled-template
+      when_used: "productPageViewName === CanvasHub"
+      receives_props:
+        - key
+
+context_consumed:
+  - name: ProductContext
+    source: "~/context/product-category-context"
+    properties_used:
+      - name: product
+        required_fields:
+          - id
+          - productPageViewName
+          - platinumProductType
+          - productPageContent
+    description: Primary data source for template selection logic
+
+dependencies:
+  internal:
+    - path: "~/context/product-category-context"
+      imports:
+        - ProductContext
+      usage: "Read product data for template selection"
+
+    - path: "~/services/product-page-service"
+      imports:
+        - ProductPageViewNameEnum
+      usage: "Enum for template view name matching"
+
+    - path: ./templates/product-page-hub-chilld-template
+      imports:
+        - default as ProductPageHubChilldTemplate
+      usage: "Template for hub child products"
+
+    - path: ./templates/product-page-fixed-template
+      imports:
+        - default as ProductPageFixedTemplate
+      usage: "Template for products without content"
+
+    - path: ./templates/product-page-base-template
+      imports:
+        - default as ProductPageBaseTemplate
+      usage: "Base template and default fallback"
+
+    - path: ./templates/product-page-hub-template
+      imports:
+        - default as ProductPageHubTemplate
+      usage: "Template for hub products"
+
+    - path: ./instant-product-page-container
+      imports:
+        - default as InstantProductPageContainer
+      usage: "Template for instant/non-customizable products"
+
+    - path: ./photo-canvas-prints/photo-canvas-prints-new-template
+      imports:
+        - default as PhotoCanvasPrintsNewTemplate
+      usage: "Ryzan Go v1 template"
+
+    - path: ./photo-canvas-prints/photo-canvas-prints-bundled-template
+      imports:
+        - default as PhotoCanvasPrintsBundledTemplate
+      usage: "Canvas bundled discount template"
+
+    - path: ./photo-canvas-prints/photo-canvas-prints-hub-bundled-template
+      imports:
+        - default as PhotoCanvasPrintsHubBundledTemplate
+      usage: "Canvas hub bundled template"
+
+    - path: ./templates/product-page-fixed-theme-template
+      imports:
+        - default as ProductPageFixedThemeTemplate
+      usage: "Fixed theme template"
+
+    - path: ./photo-canvas-prints/photo-canvas-prints-template-v2
+      imports:
+        - default as PhotoCanvasPrintsTemplateV2
+      usage: "Ryzan Go v2 template"
+
+    - path: ./templates/product-page-basic-template
+      imports:
+        - default as ProductPageBasicTemplate
+      usage: "Basic template"
+
+    - path: ./photo-canvas-prints/photo-canvas-prints-new-template-v3
+      imports:
+        - default as PhotoCanvasPrintsNewTemplateV3
+      usage: "Ryzan Go v3 template (single and multi)"
+
+  external:
+    - package: "@builder.io/qwik"
+      imports:
+        - component$
+        - useContext
+      usage: "Qwik component creation and context consumption"
+
+data_flow:
+  flow:
+    - step: 1
+      action: "Read product from ProductContext"
+      source: ProductContext
+      destination: component scope
+
+    - step: 2
+      action: "Check product.id exists"
+      condition: "Early exit if falsy"
+
+    - step: 3
+      action: "Extract productPageViewName and platinumProductType"
+      source: product object
+
+    - step: 4
+      action: "Check for HubChild view"
+      condition: "If true, render ProductPageHubChilldTemplate"
+      bypasses_content_check: true
+
+    - step: 5
+      action: "Check for FixedTheme view"
+      condition: "If true, render ProductPageFixedThemeTemplate"
+      bypasses_content_check: true
+
+    - step: 6
+      action: "Check product.productPageContent exists"
+      branches:
+        - condition: exists
+          result: "Enter switch statement on productPageViewName"
+        - condition: missing
+          result: "Render ProductPageFixedTemplate"
+
+    - step: 7
+      action: "Switch on productPageViewName"
+      cases: 10
+      default_handler: ProductPageBaseTemplate
+
+    - step: 8
+      action: "Pass product.id as key to selected template"
+      description: "Key prop enables React/Qwik reconciliation on product change"
+
+    - step: 9
+      action: "Pass platinumProductType to template components"
+      description: "Templates use this for product type-specific rendering"
+
+business_logic:
+  template_selection_priority:
+    - priority: 1
+      check: "product.id exists"
+      action: "Continue, else return null"
+
+    - priority: 2
+      check: "HubChild view"
+      action: "Immediate render (bypasses content check)"
+
+    - priority: 3
+      check: "FixedTheme view"
+      action: "Immediate render (bypasses content check)"
+
+    - priority: 4
+      check: "product.productPageContent exists"
+      branches:
+        - exists: "Use switch on productPageViewName"
+        - missing: "Use ProductPageFixedTemplate"
+
+    - priority: 5
+      check: "productPageViewName matches known case"
+      action: "Render matching template"
+
+    - priority: 6
+      check: "default case"
+      action: "Render ProductPageBaseTemplate as ultimate fallback"
+
+  view_name_enum_coverage:
+    total_enum_values: "Not specified in file (imported from service)"
+    handled_values:
+      - HubChild
+      - FixedTheme
+      - BaseTemplate
+      - HubTemplate
+      - BasicTemplate
+      - NonCustomizableThemes2021Q1
+      - RyzanGo
+      - RyzanGoV2
+      - RyzanGoV3
+      - RyzanGoMulti
+      - CanvasDiscountBundledExperience
+      - CanvasHub
+    unhandled_values: "Fall through to default case (ProductPageBaseTemplate)"
+
+edge_cases:
+  - scenario: "product.id is falsy"
+    behavior: "Component returns null"
+
+  - scenario: "product.productPageContent is null/undefined"
+    behavior: "Render ProductPageFixedTemplate (outside switch statement)"
+
+  - scenario: "productPageViewName is unknown value"
+    behavior: "Switch default case renders ProductPageBaseTemplate"
+
+  - scenario: "HubChild or FixedTheme without productPageContent"
+    behavior: "Still render their respective templates (bypasses content check)"
+
+  - scenario: "product.platinumProductType is undefined"
+    behavior: "Passed as undefined to child templates (templates must handle)"
+
+behavior:
+  - On render, reads product from ProductContext via useContext
+  - Returns null immediately if product.id is falsy (no product loaded)
+  - Extracts productPageViewName and platinumProductType from product
+  - First checks if productPageViewName is HubChild; if so, renders ProductPageHubChilldTemplate with productType prop (bypasses productPageContent check)
+  - Then checks if productPageViewName is FixedTheme; if so, renders ProductPageFixedThemeTemplate with productType and key=product.id (bypasses productPageContent check)
+  - If product.productPageContent is missing/null, falls back to ProductPageFixedTemplate with productType prop
+  - If product.productPageContent exists, enters switch statement on productPageViewName
+  - Switch cases map to templates: BaseTemplate, HubTemplate, BasicTemplate receive productType and key; NonCustomizableThemes2021Q1 renders InstantProductPageContainer; RyzanGo/RyzanGoV2/RyzanGoV3/CanvasDiscountBundledExperience/CanvasHub render their respective canvas templates with key only
+  - RyzanGoMulti renders PhotoCanvasPrintsNewTemplateV3 with isMulti=true and key
+  - Default switch case falls back to ProductPageBaseTemplate with productType and key
+  - All templates receiving key=product.id enables Qwik reconciliation (full remount) when product changes
+  - No local state or side effects; purely a routing/selection component based on context data
+
+used_by:
+  - frontend/routes/product-category (rendered when WebPageTypeContext === ProductPage)
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  ProductContextValue:
+    description: Shape of ProductContext fields consumed by this component
+    source: ~/context/product-category-context
+    fields:
+      - name: product
+        type: object
+        description: Only id, productPageViewName, platinumProductType, and productPageContent are read
+
+  ProductPageViewNameEnum:
+    description: Enum determining which template to render
+    source: ~/services/product-page-service
+    fields:
+      - name: HubChild
+        type: string
+      - name: FixedTheme
+        type: string
+      - name: BaseTemplate
+        type: string
+      - name: HubTemplate
+        type: string
+      - name: BasicTemplate
+        type: string
+      - name: NonCustomizableThemes2021Q1
+        type: string
+      - name: RyzanGo
+        type: string
+      - name: RyzanGoV2
+        type: string
+      - name: RyzanGoV3
+        type: string
+      - name: RyzanGoMulti
+        type: string
+      - name: CanvasDiscountBundledExperience
+        type: string
+      - name: CanvasHub
+        type: string
+
+field_consumption:
+  ProductContext:
+    consumed:
+      - product.id: Guard clause — returns null if falsy
+      - product.productPageViewName: Primary switch key for template selection
+      - product.platinumProductType: Passed as productType prop to all templates
+      - product.productPageContent: Existence check — if absent, ProductPageFixedTemplate is rendered
+    ignored:
+      - product.images: Not read in this component
+      - product.optionData: Not read in this component
+      - product.reviewsCollection: Not read in this component
+      - All other product fields: Delegated to the selected child template
+
+implementation_logic:
+  template_selection_priority:
+    rule: |
+      Selection follows a strict priority waterfall:
+        1. If product.id is falsy → return null (no render)
+        2. If productPageViewName === HubChild → ProductPageHubChilldTemplate
+           (bypasses productPageContent check; no key prop)
+        3. If productPageViewName === FixedTheme → ProductPageFixedThemeTemplate
+           (bypasses productPageContent check; uses key=product.id)
+        4. If product.productPageContent is falsy → ProductPageFixedTemplate
+           (no key prop)
+        5. Switch on productPageViewName (all require productPageContent):
+             BaseTemplate → ProductPageBaseTemplate (key=product.id)
+             HubTemplate  → ProductPageHubTemplate (key=product.id)
+             BasicTemplate → ProductPageBasicTemplate (key=product.id)
+             NonCustomizableThemes2021Q1 → InstantProductPageContainer (key=product.id, no productType)
+             RyzanGo → PhotoCanvasPrintsNewTemplate (key=product.id, no productType)
+             RyzanGoV2 → PhotoCanvasPrintsTemplateV2 (key=product.id, no productType)
+             RyzanGoV3 → PhotoCanvasPrintsNewTemplateV3 (key=product.id, no productType)
+             RyzanGoMulti → PhotoCanvasPrintsNewTemplateV3 (key=product.id, isMulti=true, no productType)
+             CanvasDiscountBundledExperience → PhotoCanvasPrintsBundledTemplate (key=product.id, no productType)
+             CanvasHub → PhotoCanvasPrintsHubBundledTemplate (key=product.id, no productType)
+             default → ProductPageBaseTemplate (key=product.id)
+    critical: true
+
+  key_prop_for_reconciliation:
+    rule: |
+      Most templates receive key=product.id to force a full Qwik component remount
+      when the product changes (e.g., navigating between products). Exceptions:
+        - ProductPageHubChilldTemplate: no key prop
+        - ProductPageFixedTemplate: no key prop
+      These two bypass the key convention because they handle product changes differently.
+    critical: false
+
+visibility_map:
+  entire_component:
+    condition: "product.id is truthy"
+    default: hidden (returns null when no product is loaded)
+
+  hub_child_template:
+    condition: "productPageViewName === HubChild"
+    default: hidden
+
+  fixed_theme_template:
+    condition: "productPageViewName === FixedTheme"
+    default: hidden
+
+  fixed_template_fallback:
+    condition: "product.productPageContent is falsy AND neither HubChild nor FixedTheme"
+    default: hidden
+
+  switch_templates:
+    condition: "product.productPageContent exists AND productPageViewName matches a known case"
+    default: hidden
+
+  default_base_template_fallback:
+    condition: "product.productPageContent exists AND productPageViewName is unknown"
+    default: hidden

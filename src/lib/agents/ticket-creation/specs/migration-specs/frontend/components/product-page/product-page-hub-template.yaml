@@ -1,0 +1,551 @@
+name: ProductPageHubTemplate
+source: components/product-page/containers/templates/product-page-hub-template.tsx
+description: |
+  Product page template for hub products (main product listings with child products).
+  Shows product carousel, options panel, countdown timer, delivery dates, themes section,
+  product description, trust indicators, and customer reviews. Conditionally loads theme
+  products section and fetches dynamic themes from API. Renders different option panels
+  for greeting cards vs other products.
+
+exports:
+  default: ProductPageHubTemplate component
+
+component_type: Qwik component$ (QRL)
+
+props:
+  productType:
+    type: PlatinumProductTypeEnum
+    default: PlatinumProductTypeEnum.Unknown
+    description: The type of product being displayed (Canvas, GreetingCard, etc.)
+
+context_consumed:
+  ProductContext:
+    fields:
+      - product: Full product data including images, options, reviews, content
+      - couponCode: Active coupon code
+      - friendlyUrl: Product SEO-friendly URL
+      - filterIndex: Selected filter indices
+      - refCode: Product reference code
+      - firstSlideUrl: URL of first carousel slide
+      - machineToken: Authentication token
+      - editor: Editor mode flag
+      - selectedFilter: Currently selected filter option
+  DeviceDetectorContext:
+    fields:
+      - deviceInfo: Device type information (mobile/desktop)
+
+component_structure: |
+  <ProductPageTopBannerV2 /> (campaign banner)
+
+  <div.product_page_hub_template_wrapper>
+    <div.container.mx-auto>
+      <div.flex.flex-wrap> (main grid)
+
+        <!-- Mobile title -->
+        {isMobile && <h1>{product.imageCaption}</h1>}
+
+        <!-- Mobile Trustpilot -->
+        {isMobile && <TrustpilotRating />}
+
+        <!-- LEFT COLUMN (70%) -->
+        <div.product_page_left_container>
+          <ProductCarousel />
+
+          <!-- Mobile Options Panel -->
+          {isMobile && (
+            {productType === GreetingCard ?
+              <OptionPhotoCardsPanel /> :
+              <OptionPanel />
+            }
+          )}
+
+          <!-- Mobile Countdown & Delivery -->
+          {isMobile && (
+            <div> (border box)
+              <p>{deliveryDeadline.aboveClockText}</p>
+              {showClock && <ProductFlipClock />}
+              <ProductDeliveryDateV2 />
+            </div>
+            <BulkPricingV4 />
+          )}
+
+          <!-- Themes Section (conditionally hidden if hub child list exists) -->
+          {!listHubChilds && (
+            <Resource themes> (async loaded)
+              <ProductShopDesign /> (pending/resolved/rejected states)
+            </Resource>
+          )}
+
+          <!-- Desktop Customer Reviews -->
+          {isDesktop && <CustomerReview />}
+        </div>
+
+        <!-- RIGHT COLUMN (30%) - Desktop Sticky Panel -->
+        <div.product_page_right_container.stickyForDesktop>
+          {isDesktop && <h1>{product.imageCaption}</h1>}
+          {isDesktop && <TrustpilotRating />}
+
+          {productType === GreetingCard ?
+            <OptionPhotoCardsPanel /> :
+            <OptionPanel />
+          }
+
+          <div> (countdown box)
+            <p>{deliveryDeadline.aboveClockText}</p>
+            {showClock && <ProductFlipClock />}
+            <ProductDeliveryDateV2 />
+          </div>
+
+          <BulkPricingV4 />
+        </div>
+      </div>
+    </div>
+
+    <!-- Product Description & Trust Indicators (below main grid) -->
+    {product.productExtendedDetails && (
+      <div.product_page_description_wrapper>
+        <ProductDescriptionV2 />
+        <ProductTrustIndicatorV6 />
+      </div>
+    )}
+
+    <!-- Mobile Customer Reviews -->
+    {isMobile && <CustomerReview />}
+
+    <!-- Dynamic Product Page Content (web components) -->
+    {product.productPageContent && (
+      <ProductPageContentV2 />
+    )}
+  </div>
+
+child_components:
+  - ProductPageTopBannerV2: Campaign banner at top
+  - ProductCarousel: Image carousel with video support
+  - TrustpilotRating: Star rating and review count
+  - OptionPanel: Standard product options selector
+  - OptionPhotoCardsPanel: Greeting card specific options
+  - ProductFlipClock: Countdown timer with dynamic colors
+  - ProductDeliveryDateV2: Delivery date estimator
+  - BulkPricingV4: Bulk pricing table
+  - ProductShopDesign: Theme selector with async loading
+  - CustomerReview: Customer review carousel
+  - ProductDescriptionV2: Product description accordion
+  - ProductTrustIndicatorV6: Trust badges (delivery, secure, etc.)
+  - ProductPageContentV2: Dynamic web component renderer
+
+state_management:
+  local_signals:
+    - designUrl: string (URL for design/customize button)
+    - initialCarouselImages: ProductCarouseImage[] (carousel image array)
+
+  local_stores:
+    - optionStore: OptionStore (product option selections)
+      - orientationIndex: number | undefined
+      - filterIndex: number[]
+      - tierOptionIndex: number
+      - tierIndex: number
+      - addonIndex: number[]
+      - optionData: product options
+      - productData: full product
+      - price: number
+      - discountedPrice: number
+      - noOfLevel: number
+      - Url: string
+      - startDate: string
+      - refCode: string
+      - themeIndex: number
+      - ctaURL: string
+      - friendlyUrl: string
+      - firstSlideUrl: string
+      - selectedFilter: Filter | null
+
+    - carousel: { activeIndex: number } (current slide index)
+
+  computed_values:
+    - clockColors: Extracts background and text colors from floating banner data
+      - clockColor: banner backgroundColor or default "#2E638A"
+      - textColor: banner section text color or default "#FFFFFF"
+    - listHubChilds: Filters web components for SHOPPING_GUIDE type with "Slider Medium w/ Greyscale"
+    - productImages: Prepends selected filter image to initial carousel images if filter selected
+
+side_effects:
+  useTask$:
+    - Tracks product.id changes
+    - Updates optionStore with context data (filterIndex, refCode, firstSlideUrl, selectedFilter)
+    - Builds carousel images array (includes video icon if embededVideo exists)
+
+  useResource$:
+    - themes: Fetches ProductTheme[] via getProductThemes API
+    - Tracks optionStore.refCode changes
+    - Returns empty array if listHubChilds exists (skip themes for hub child products)
+    - Uses AbortController for cleanup
+
+  useVisibleTask$:
+    - strategy: "document-ready"
+    - Tracks product.id
+    - Queries DOM for #cta-design-button element
+    - Extracts href attribute and sets designUrl
+
+event_handlers:
+  onChangeSelectedOption:
+    params: [imageUrl: string]
+    action: Updates firstSlideUrl, resets carousel to index 0
+
+  changeActiveSlide:
+    params: [index: number]
+    action: Updates carousel.activeIndex
+
+  onChangeDesignUrl:
+    params: [url: string]
+    action: Sets designUrl.value
+
+  onChangeRefCode:
+    params: [refCode: string]
+    action: Updates optionStore.refCode
+
+  onChangeSelectedFilter:
+    params: [filter: Filter]
+    action: Updates selectedFilter and refCode in optionStore
+
+styling:
+  scoped: styles from ../styles/index.css?inline
+  classes:
+    - product_page_hub_template_wrapper: Root wrapper
+    - product_page_left_container: Left column (70%)
+    - product_page_right_container: Right column (30%, sticky on desktop)
+    - stickyForDesktop: Makes panel sticky on desktop
+    - product_page_customer_review_wrapper: Review section
+    - product_page_customer_review_wrapper--active: Active state for reviews
+    - product_page_description_wrapper: Description section wrapper
+
+responsive_behavior:
+  mobile:
+    - Title shown at top (hidden on desktop)
+    - Trustpilot shown below title
+    - Options panel below carousel
+    - Countdown timer and delivery in card format
+    - Customer reviews shown after description
+    - Right sidebar hidden
+
+  desktop:
+    - Title shown in right sidebar
+    - Right sidebar sticky (stickyForDesktop class)
+    - Options panel in sidebar
+    - Countdown timer in sidebar
+    - Customer reviews after carousel (in left column)
+    - Left column: 70%, Right column: 30%
+
+data_dependencies:
+  product:
+    fields:
+      - id: Product identifier
+      - imageCaption: Product title/heading
+      - images: ProductImage[] (carousel images)
+      - embededVideo: string | null (video URL)
+      - embededVideoIcon: string | null (video thumbnail)
+      - optionData: Product configuration options
+      - deliveryDeadline: { aboveClockText, showClock }
+      - reviewsCollection: { ratingText, ratingValue, reviewCount, reviewString, reviewModels, order }
+      - productExtendedDetails: { order, description data }
+      - productPageContent: { webComponents, floatingBanner }
+      - campaignInfo: Campaign banner data
+      - friendlyurl: SEO URL
+      - css: Custom CSS string (injected into page)
+
+  machineToken: Authentication token for API calls
+  couponCode: Active coupon code
+  filterIndex: Selected filter indices from URL/context
+  refCode: Product reference code
+  firstSlideUrl: Initial carousel image URL
+  editor: Editor mode flag
+  selectedFilter: Pre-selected filter option
+
+external_services:
+  getProductThemes:
+    params: [refCode, machineToken, friendlyurl, editor]
+    returns: Promise<ProductTheme[]>
+    description: Fetches available themes for product customization
+    error_handling: Resource component handles pending/resolved/rejected states
+
+differences_from_base:
+  unique_features:
+    - Hub-specific logic: Checks for listHubChilds (SHOPPING_GUIDE web component)
+    - Conditionally hides themes section if hub child products exist
+    - Does NOT render ProductOptionType4 (bundle options)
+    - Does NOT inject marketingContent2/marketingContent3 SEO content
+    - Resource-based async theme loading with pending/resolved/rejected states
+    - Shows customer reviews in TWO locations (desktop left column + mobile after description)
+
+  shared_features:
+    - ProductCarousel, OptionPanel, countdown timer, delivery dates
+    - BulkPricingV4, ProductTrustIndicatorV6
+    - ProductPageContentV2 for dynamic web components
+    - Responsive left/right column layout
+    - Clock color extraction from floating banner
+
+security_notes:
+  - machineToken passed to API calls (ensure HTTPS)
+  - User-supplied refCode used in API requests (validate server-side)
+  - product.css injected into page (must be sanitized by CMS)
+
+behavior:
+  - On mount, reads product data, coupon code, friendly URL, filter index, ref code, first slide URL, machine token, editor, and selected filter from ProductContext; reads device info from DeviceDetectorContext
+  - Initializes deep reactive optionStore and carousel store (starting at activeIndex 1)
+  - When product.id changes (useTask$), syncs optionStore with latest context values and rebuilds carousel images, appending embedded video icon if product.embededVideo and product.embededVideoIcon both exist
+  - Computes clockColors from floating banner backgroundColor and section text color, with fallbacks (#2E638A / #FFFFFF)
+  - Computes listHubChilds by filtering product.productPageContent.webComponents for items whose wcTemplateName starts with SHOPPING_GUIDE and whose componentType is "Slider Medium w/ Greyscale"; if found, indicates hub child products exist
+  - Fetches product themes via getProductThemes whenever optionStore.refCode changes; returns empty array immediately (skipping API call) if listHubChilds has a value; uses AbortController for cleanup
+  - Theme section (ProductShopDesign via Resource) is hidden when listHubChilds exists (hub child products replace themes)
+  - Computes productImages by prepending selected filter image to initial carousel images when a filter is active
+  - On document-ready (useVisibleTask$), extracts CTA URL from #cta-design-button href
+  - Selects option panel variant: GreetingCard uses OptionPhotoCardsPanel (with onChangeRefCode callback), all others use standard OptionPanel (with onChangeSelectedFilter callback)
+  - ProductFlipClock in mobile view passes productType as PlatinumProductTypeEnum.Canvas (hardcoded, not the actual productType) and useNewStyle={true}; desktop view passes actual productType and useNewStyle={true}
+  - Customer reviews render in TWO locations: desktop-only in left column (hidden on mobile, 3 items per slide, center-aligned title) and mobile-only below the description section (hidden on desktop)
+  - Product description and trust indicators render together in a flex column below the main grid when product.productExtendedDetails exists, with description and trust indicator in different CSS orders on mobile vs desktop (mobile: trust first, description second; desktop: description first, trust second)
+  - ProductPageContentV2 renders at the bottom when product.productPageContent exists
+  - Desktop right sidebar is sticky (stickyForDesktop class) and does NOT include trust indicators (unlike other templates)
+  - Does NOT inject SEO content (marketingContent2/3) or set up accordions
+  - Does NOT render ProductOptionType4 (bundle options)
+
+used_by:
+  - name: ProductPageSelection
+    reason: Rendered when productPageViewName === HubTemplate
+
+dependencies:
+  qwik:
+    - "@builder.io/qwik": [$, component$, Resource, useComputed$, useContext, useResource$, useSignal, useStore, useStylesScoped$, useTask$, useVisibleTask$]
+
+  components:
+    - "~/components/product-page/product-carousel/product-carousel": [ProductCarousel, ProductCarouseImage type]
+    - "~/components/homepage/trustpilot-rating": [TrustpilotRating]
+    - "~/components/product-page/option-panel": [OptionPanel]
+    - "~/components/customer-review/customer-review": [CustomerReview]
+    - "~/components/product-page/option-photo-cards-panel": [OptionPhotoCardsPanel]
+    - "~/components/product-page/product-page-content-v2": [ProductPageContentV2]
+    - "~/components/product-page/product-shop-design": [ProductShopDesign, ThemeAPIResponseStatus]
+    - "~/components/product-page/product-page-top-banner-v2": [ProductPageTopBannerV2]
+    - "~/components/product-page/product-delivery-date-v2": [ProductDeliveryDateV2]
+    - "~/components/product-page/product-countdown-timer/product-flip-clock-v2": [ProductFlipClock]
+    - "~/components/product-page/product-description-v2": [ProductDescriptionV2]
+    - "~/components/product-page/product-trust-indicator-v6": [ProductTrustIndicatorV6]
+    - "~/components/product-page/bulk-pricing-v4": [BulkPricingV4]
+
+  context:
+    - "~/context/product-category-context": [ProductContext]
+    - "~/context/device-detector-context": [DeviceDetectorContext]
+
+  services:
+    - "~/services/product-category-service": [PlatinumProductTypeEnum]
+    - "~/services/themes-service": [getProductThemes, ProductTheme type]
+    - "~/services/web-component-service": [WebComponentType]
+
+  data:
+    - "~/data/option-data": [Filter type, OptionStore type]
+
+  hooks:
+    - "~/hooks/useDetectScreen": [useDetectScreen]
+
+  styles:
+    - "../styles/index.css?inline": Scoped component styles
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  ProductPageHubTemplateProps:
+    description: Component props interface
+    fields:
+      - name: productType
+        type: PlatinumProductTypeEnum
+        optional: true
+        default: PlatinumProductTypeEnum.Unknown
+
+  ProductCarouseImage:
+    description: Single carousel image entry
+    source: ~/components/product-page/product-carousel/product-carousel
+    fields:
+      - name: url
+        type: string
+      - name: altText
+        type: string
+
+  ProductTheme:
+    description: Theme data returned from getProductThemes API
+    source: ~/services/themes-service
+    fields:
+      - name: themeId
+        type: string
+      - name: displayName
+        type: string
+      - name: previewUrl
+        type: string
+
+  OptionStore:
+    description: Central deep-reactive store for all product option selections
+    source: ~/data/option-data
+    fields:
+      - name: orientationIndex
+        type: "number | undefined"
+      - name: filterIndex
+        type: "number[]"
+      - name: tierOptionIndex
+        type: number
+      - name: tierIndex
+        type: number
+      - name: addonIndex
+        type: "number[]"
+      - name: optionData
+        type: object
+      - name: productData
+        type: object
+      - name: price
+        type: number
+      - name: discountedPrice
+        type: number
+      - name: noOfLevel
+        type: number
+      - name: Url
+        type: string
+      - name: startDate
+        type: string
+      - name: refCode
+        type: string
+      - name: themeIndex
+        type: number
+      - name: ctaURL
+        type: string
+      - name: friendlyUrl
+        type: string
+      - name: firstSlideUrl
+        type: string
+      - name: selectedFilter
+        type: "Filter | null"
+
+  ClockColors:
+    description: Computed clock color pair
+    fields:
+      - name: clockColor
+        type: string
+      - name: textColor
+        type: string
+
+  Filter:
+    description: A selectable filter/size option
+    source: ~/data/option-data
+    fields:
+      - name: refCode
+        type: string
+      - name: imageUrl
+        type: string
+      - name: imageAltText
+        type: string
+
+field_consumption:
+  ProductContext:
+    consumed:
+      - product: Full product — id, imageCaption, images, optionData, deliveryDeadline, reviewsCollection, productExtendedDetails, productPageContent (webComponents for listHubChilds check, floatingBanner for clockColors), campaignInfo, embededVideo, embededVideoIcon
+      - couponCode: Passed to option panel
+      - friendlyUrl: Seeds optionStore.friendlyUrl; passed to theme API
+      - machineToken: Passed to getProductThemes API
+      - filterIndex: Seeds optionStore.filterIndex
+      - refCode: Seeds optionStore.refCode
+      - firstSlideUrl: Seeds optionStore.firstSlideUrl
+      - editor: Passed to getProductThemes API
+      - selectedFilter: Seeds optionStore.selectedFilter; prepended to productImages
+    ignored: []
+
+  DeviceDetectorContext:
+    consumed:
+      - deviceInfo: Used via useDetectScreen to derive isMobile / isDesktop booleans
+    ignored: []
+
+implementation_logic:
+  list_hub_childs_detection:
+    rule: |
+      listHubChilds is computed by filtering product.productPageContent.webComponents
+      for items whose wcTemplateName starts with "SHOPPING_GUIDE" AND whose componentType
+      is "Slider Medium w/ Greyscale". If this computed value has a truthy result:
+        1. Theme section (ProductShopDesign) is hidden
+        2. useResource$ returns an empty array immediately (skips getProductThemes API call)
+    critical: true
+
+  option_panel_variant_selection:
+    rule: |
+      Option panel is selected based on productType:
+        - GreetingCard → OptionPhotoCardsPanel (with onChangeRefCode callback)
+        - All others → standard OptionPanel (with onChangeSelectedFilter callback)
+      Mobile FlipClock passes productType as PlatinumProductTypeEnum.Canvas (hardcoded)
+      and useNewStyle={true}. Desktop FlipClock uses actual productType.
+    critical: true
+
+  customer_review_dual_placement:
+    rule: |
+      CustomerReview renders in TWO locations:
+        1. Desktop-only in left column (hidden on mobile): 3 items per slide, title center-aligned
+        2. Mobile-only below description section: hidden on desktop
+      Both placements are conditional on product.reviewsCollection existing.
+    critical: false
+
+  description_trust_order_difference:
+    rule: |
+      In the product_page_description_wrapper section below the main grid:
+        - Mobile: ProductTrustIndicatorV6 renders FIRST, ProductDescriptionV2 SECOND
+          (using CSS order properties — trust has lower order number on mobile)
+        - Desktop: ProductDescriptionV2 renders FIRST, ProductTrustIndicatorV6 SECOND
+      This is controlled via CSS order in the flex column, not conditional rendering.
+    critical: false
+
+  clock_colors_extraction:
+    rule: |
+      clockColors extracted from product.productPageContent.floatingBanner:
+        clockColor = desktopBanner.backgroundColor || mobileBanner.backgroundColor || "#2E638A"
+        textColor  = sections.section1[0].color || sections.section2[0].color || "#FFFFFF"
+    critical: false
+
+visibility_map:
+  mobile_title_and_trustpilot:
+    condition: "isMobile is true"
+    default: hidden
+
+  desktop_right_column:
+    condition: "isDesktop is true (stickyForDesktop)"
+    default: hidden
+
+  desktop_title_in_sidebar:
+    condition: "isDesktop is true"
+    default: hidden
+
+  mobile_option_panel:
+    condition: "isMobile is true"
+    default: hidden
+
+  mobile_delivery_countdown:
+    condition: "isMobile is true AND product.deliveryDeadline.showClock is true"
+    default: hidden
+
+  mobile_bulk_pricing:
+    condition: "isMobile is true"
+    default: hidden
+
+  theme_shop_design_section:
+    condition: "listHubChilds is falsy"
+    default: visible (hidden when hub child products exist)
+
+  desktop_customer_reviews_in_left_column:
+    condition: "isDesktop is true AND product.reviewsCollection exists"
+    default: hidden
+
+  product_description_and_trust_section:
+    condition: "product.productExtendedDetails exists"
+    default: hidden
+
+  mobile_customer_reviews:
+    condition: "isMobile is true AND product.reviewsCollection exists"
+    default: hidden
+
+  product_page_content_section:
+    condition: "product.productPageContent exists"
+    default: hidden
+
+  delivery_flip_clock:
+    condition: "product.deliveryDeadline.showClock is true"
+    default: hidden

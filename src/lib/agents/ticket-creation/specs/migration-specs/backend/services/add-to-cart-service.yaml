@@ -1,0 +1,182 @@
+name: AddToCartService
+source: services/add-to-cart-service.ts
+description: |
+  Service for adding products to cart via multiple API endpoints.
+  Supports legacy v1 API, v2 API with cookie data, album/canvas workflows,
+  and product bundle additions.
+
+exports:
+  functions:
+    - name: getSavedImages
+      signature: "(s3ObjectKeys: string[]) => Promise<any[] | null>"
+      exported: true
+      async: true
+      description: Fetches saved images from S3 via Album/FindPhotos endpoint
+
+    - name: addToCart
+      signature: "(payload: any) => Promise<{res: any | null}>"
+      exported: true
+      async: true
+      description: Adds product to cart via legacy Artwrap/AddToCart endpoint
+
+    - name: addToCartV2
+      signature: "(payload: any, cookieData: any) => Promise<{res: any | null}>"
+      exported: true
+      async: true
+      description: Adds product to cart via v2 API with cookie data
+
+    - name: addToCartProductBundle
+      signature: "(payload: any) => Promise<any | null>"
+      exported: true
+      async: true
+      description: Adds product bundle to cart via Artwrap/AddToCartProductBundle
+
+api_contracts:
+  - endpoint: Album/FindPhotos/
+    method: POST
+    body:
+      keys: string[]
+    description: Fetches saved photos from S3/album by object keys
+    response_type: NewAPIResponse<any[]>
+    error_behavior: Returns null on error (soft failure)
+
+  - endpoint: Artwrap/AddToCart
+    method: POST
+    body: any (product payload)
+    description: Legacy add to cart endpoint (v1)
+    response_type: NewAPIResponse<any>
+    error_behavior: Returns {res: null} on error (soft failure)
+
+  - endpoint: api/v2.0/artwrap/addtocart
+    method: POST
+    body:
+      ...payload: any
+      cookieData: any
+    description: v2 add to cart endpoint with cookie data
+    response_type: NewAPIResponse<any>
+    error_behavior: Returns {res: null} on error (soft failure)
+
+  - endpoint: Artwrap/AddToCartProductBundle
+    method: POST
+    body: any (bundle payload)
+    description: Add product bundle to cart
+    response_type: NewAPIResponse<any>
+    error_behavior: Returns null on error (soft failure)
+
+dependencies:
+  external:
+    - package: N/A
+  internal:
+    - path: ~/config/http
+      imports: [NewAPIResponse]
+      usage: Type for API responses
+    - path: ~/utility/http
+      imports: [handleMultipleAPIRequests, HTTP_METHODS]
+      usage: API request handler and method constants
+    - path: ~/services/common-service
+      imports: [isDataReady]
+      usage: Check if API response is successful
+
+data_flow:
+  get_saved_images:
+    - step: 1
+      action: Call getSavedImages(s3ObjectKeys)
+    - step: 2
+      action: Build payload {keys: s3ObjectKeys}
+    - step: 3
+      action: POST to Album/FindPhotos/ with "soft" error handling
+    - step: 4
+      action: Check isDataReady(response)
+    - step: 5
+      action: Return response.data or null
+
+  add_to_cart_v1:
+    - step: 1
+      action: Call addToCart(payload)
+    - step: 2
+      action: POST to Artwrap/AddToCart with "soft" error handling
+    - step: 3
+      action: Check isDataReady(response)
+    - step: 4
+      action: Return {res: response.data} or {res: null}
+
+  add_to_cart_v2:
+    - step: 1
+      action: Call addToCartV2(payload, cookieData)
+    - step: 2
+      action: Merge cookieData into payload
+    - step: 3
+      action: POST to api/v2.0/artwrap/addtocart with "soft" error handling
+    - step: 4
+      action: Check isDataReady(response)
+    - step: 5
+      action: Return {res: response.data} or {res: null}
+
+  add_to_cart_bundle:
+    - step: 1
+      action: Call addToCartProductBundle(payload)
+    - step: 2
+      action: POST to Artwrap/AddToCartProductBundle with "soft" error handling
+    - step: 3
+      action: Check isDataReady(response)
+    - step: 4
+      action: Return response.data or null
+
+business_logic:
+  - getSavedImages accepts array of S3 object keys
+  - addToCart is legacy endpoint (no cookie data support)
+  - addToCartV2 merges cookieData into payload before sending
+  - All endpoints use "soft" error handling mode
+  - isDataReady checks if API response is successful
+  - Null returns indicate API failure
+  - Product bundle has separate endpoint
+  - V2 API uses lowercase path (api/v2.0)
+  - All functions return wrapped response {res: data} or null
+
+error_handling:
+  - All API calls use "soft" failure mode (handleMultipleAPIRequests)
+  - isDataReady checks for successful response status
+  - Failed requests return null or {res: null}
+  - No error throwing - silent failures
+  - Caller must check for null responses
+
+security:
+  - Cookie data passed in v2 endpoint (MACHINE_TOKEN, etc.)
+  - Payload content not validated in this service
+  - Authentication handled by handleMultipleAPIRequests
+  - S3 keys trusted (no validation)
+
+behavior:
+  - name: getSavedImages
+    steps:
+      - Constructs payload { keys: s3ObjectKeys }
+      - POSTs to Album/FindPhotos/ with "soft" error handling
+      - If isDataReady, returns response.data (array of saved images)
+      - Otherwise returns null
+
+  - name: addToCart
+    steps:
+      - POSTs payload to Artwrap/AddToCart with "soft" error handling
+      - If isDataReady, returns { res: response.data }
+      - Otherwise returns { res: null }
+      - Note: always returns an object with res property, never null itself
+
+  - name: addToCartV2
+    steps:
+      - Mutates payload by assigning cookieData onto it (payload.cookieData = cookieData)
+      - POSTs merged payload to api/v2.0/artwrap/addtocart with "soft" error handling
+      - If isDataReady, returns { res: response.data }
+      - Otherwise returns { res: null }
+
+  - name: addToCartProductBundle
+    steps:
+      - POSTs payload to Artwrap/AddToCartProductBundle with "soft" error handling
+      - If isDataReady, returns response.data directly
+      - Otherwise returns null
+      - Note: return shape differs from addToCart/addToCartV2 (no { res } wrapper)
+
+used_by:
+  - frontend/layouts/layout-default.yaml - imports addToCart, addToCartProductBundle for cart functionality in default layout
+
+types:
+  notes: "No locally-defined types. All function parameters and return values use 'any'. Uses imported types: NewAPIResponse from ~/config/http, handleMultipleAPIRequests/HTTP_METHODS from ~/utility/http, isDataReady from ~/services/common-service."

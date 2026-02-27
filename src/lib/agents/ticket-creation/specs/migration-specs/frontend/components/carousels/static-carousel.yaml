@@ -1,0 +1,233 @@
+name: StaticCarousel
+source: src/components/carousels/static-carousel.tsx
+description: |
+  Simple horizontally-sliding carousel for customer review cards. Renders prev/next
+  arrow buttons and a fixed-height slider with absolutely-positioned slides that
+  transition via CSS translateX. Uses the clone-first-and-last technique for infinite
+  looping: on reaching the last slide, jumps without animation to the second slide;
+  on reaching the first (clone), jumps without animation to the second-to-last.
+  Each slide shows a verified badge (CSS ::before pseudo-element), review title,
+  review body, and a "{name} {N} days ago" label computed from the actual review date.
+  Unlike StaticCarousel1, this component: has no responsive breakpoints (single-column),
+  has no touch/swipe support, infinitely loops (vs. StaticCarousel1 which is bounded),
+  uses actual date diff (not random), renders no SVGIcon (uses text < > buttons),
+  and has no verifiedText prop (hardcodes t("product.verified")).
+
+exports:
+  - name: default
+    type: component$(CarouselProps)
+    description: Default Qwik component export
+
+props:
+  - name: suffix
+    type: string
+    required: true
+    description: >
+      String prefix for slide element id attributes. Used in DOM queries to target slides
+      in this specific carousel instance. Enables multiple instances on one page without conflict.
+  - name: slide
+    type: "FiveStars[] | undefined"
+    required: true
+    description: Array of review data objects. If undefined, carousel renders with empty slides.
+
+component_structure:
+  root:
+    element: div
+    class: "w-full flex"
+    children:
+      - button.btn.btn-prev (< text, onClick$=showPrev)
+      - div.s-slider (overflow: hidden, fixed height)
+        - per-slide div.s-slide (absolutely positioned, transition all 0.5s, id="{suffix}1")
+          children:
+            - div.font-semibold.mb-2.verified (verified badge via CSS ::before)
+            - div.mb-2 (slide.title)
+            - div.mb-2 (slide.review)
+            - div.text-xs (date display: "{slide.name} {diffDays} days ago")
+      - button.btn.btn-next (> text, onClick$=showNext)
+
+child_components: []
+
+data_structure:
+  FiveStars:
+    name:
+      type: string
+      description: Reviewer name, shown before days-ago label
+    title:
+      type: string
+      description: Review title shown in slide
+    review:
+      type: string
+      description: Review body text shown in slide
+    reviewID:
+      type: string
+      description: Unique identifier (not displayed in slide UI)
+    rating:
+      type: number
+      description: Star rating value (not displayed in this carousel)
+    date:
+      type: string
+      description: Review date string (used to compute actual days-ago diff)
+
+  carousel_store:
+    index:
+      type: number
+      default: 1
+      description: Current active slide index (1-based, accounting for cloned first/last)
+    customSlides:
+      type: "FiveStars[]"
+      description: Slides array with cloned last prepended and cloned first appended for infinite loop
+
+behavior:
+  - action: "Initialize carousel with cloned slides"
+    details: >
+      useTask$ (runs once on mount): if customSlides is empty, copies props.slide into customSlides,
+      then unshifts the last element (clone of last) to the front and pushes the second element
+      (index 1 of the new array, which is the original first slide) to the end.
+      This creates: [cloneLast, ...originals, cloneFirst] for seamless infinite looping.
+  - action: "Show next slide"
+    details: >
+      showNext: queries all elements by `[id^="{suffix}"]`. For each slide at index indx,
+      sets transform = translateX({-100 + 100 * (indx - carousel.index)}%).
+      Increments carousel.index. When carousel.index reaches maxSlide (slides.length - 2):
+      resets index to 1, then after 500ms timeout removes transition (transition:none) and
+      resets transforms to display from index 1, then re-enables transition after 100ms.
+  - action: "Show prev slide"
+    details: >
+      showPrev: queries all elements by `[id^="{suffix}"]`. For each slide at index indx,
+      sets transform = translateX({100 + 100 * (indx - carousel.index)}%).
+      Decrements carousel.index. When carousel.index reaches 1:
+      sets index to maxSlide, then after 500ms removes transition and resets to maxSlide position,
+      then re-enables transition after 100ms.
+  - action: "Compute days-ago label from actual date"
+    details: >
+      For each slide: diff = |Date(slide.date) - Date.now()| in milliseconds.
+      diffDays = Math.ceil(diff / (1000 * 3600 * 24)).
+      Rendered as: "{slide.name} {diffDays + ' days ago'}" (always "days ago" — no singular/plural).
+      Unlike StaticCarousel1 which uses random days, this uses the actual review date diff.
+  - action: "Verified badge rendering"
+    details: >
+      The "verified" div uses CSS ::before pseudo-element (useStylesScoped$) to show a colored
+      circle with a white checkmark SVG. Text rendered via t("product.verified") (i18n).
+
+styling:
+  scoped_css_useStylesScoped:
+    ".s-slider":
+      width: "100%; max-width: 800px; height: 180px; max-height: 180px; overflow: hidden; position: relative; margin: 0 20px"
+    ".s-slide":
+      width: "100%; max-width: 800px; height: 180px; max-height: 180px; position: absolute; transition: all 0.5s"
+    ".s-slide img":
+      width: "100%; height: 100%; object-fit: cover"
+    ".btn":
+      width: "20px; height: 20px; padding: 2px; border: none; border-radius: 50%; cursor: pointer; background: transparent; opacity: 0.5; font-size: 18px"
+    ".btn:active":
+      transform: "scale(1.1)"
+    ".verified::before":
+      content: "''"
+      background-color: "#818b95"
+      width: "18px; height: 18px; border-radius: 50%"
+      background-image: "inline SVG checkmark"
+  tailwind_classes:
+    wrapper: "w-full flex"
+    slide: "text-base rounded-xl"
+    verified: "font-semibold mb-2 verified"
+    title: "mb-2"
+    review: "mb-2"
+    days_ago: "text-xs"
+  button_style:
+    prev: 'style="text-shadow: 2px 2px #808080; color: white; font-size: 1.5rem" class="btn btn-prev my-auto"'
+    next: 'style="text-shadow: 2px 2px #808080; color: white; font-size: 1.5rem" class="btn btn-next my-auto"'
+
+dependencies:
+  qwik:
+    - component$, $, useStylesScoped$, useStore, useTask$ from @builder.io/qwik
+  i18n:
+    - inlineTranslate from qwik-speak (for product.verified text)
+  types:
+    - FiveStars from ~/data/review-data
+
+used_by:
+  - ProductPageCustomerReviews
+
+security:
+  - Slide content (title, review, name) comes from static review data — low injection risk
+  - Date calculation uses Date constructor on slide.date string — malformed date strings result in NaN diff
+
+edge_cases:
+  - If props.slide is undefined, customSlides remains empty and no slides render
+  - If props.slide has 0 items, cloning last and unshifting/pushing may produce undefined entries
+  - If props.slide has 1 item, maxSlide = slides.length - 2 = 1, so navigation may behave unexpectedly
+  - All slides share the same id attribute value "{suffix}1" (the template uses suffix + 1 literal — not index), which means all slides have identical ids — DOM query by [id^="{suffix}"] finds all elements correctly, but duplicate ids are invalid HTML
+  - diffDays uses Math.ceil — a review from 1ms ago would show "1 days ago"
+  - No singular/plural handling — always shows "days ago" (unlike StaticCarousel1 which uses i18n strings for 1 day / N days / week)
+
+notes: |
+  KEY DISTINCTIONS from StaticCarousel1:
+  - StaticCarousel: infinite loop (wrap-around), text < > nav buttons, no touch, actual date diff, no responsive breakpoints, no verifiedText prop, single-column only
+  - StaticCarousel1: bounded navigation (buttons hide at ends), SVGIcon arrow buttons, touch swipe support, random days display, responsive (1/2/4 columns), verifiedText prop
+  Both components use the same FiveStars data type and the same suffix + DOM query technique.
+  The id bug (all slides get id="{suffix}1") is present in this component. The query `[id^="{suffix}"]` still finds all slides because it matches any id starting with the suffix string.
+  In Next.js migration, replace direct DOM translateX with React state and CSS transitions.
+
+types:
+  CarouselProps:
+    description: Component props interface
+    fields:
+      - name: suffix
+        type: string
+      - name: slide
+        type: "FiveStars[] | undefined"
+
+  FiveStars:
+    description: Individual review data item
+    source: ~/data/review-data
+    fields:
+      - name: name
+        type: string
+      - name: title
+        type: string
+      - name: review
+        type: string
+      - name: reviewID
+        type: string
+      - name: rating
+        type: number
+      - name: date
+        type: string
+
+  carousel_store:
+    description: Reactive store for slide navigation state
+    fields:
+      - name: index
+        type: number
+        default: 1
+      - name: customSlides
+        type: "FiveStars[]"
+        default: "[]"
+
+field_consumption:
+  FiveStars:
+    consumed:
+      - name: Rendered before "days ago" label
+      - title: Rendered as slide title div
+      - review: Rendered as slide review text div
+      - date: Used to compute days-ago diff via Date constructor
+    ignored:
+      - reviewID: Not displayed
+      - rating: Not displayed in this carousel
+
+implementation_logic:
+  infinite_loop_mechanism:
+    rule: |
+      The clone-first-and-last technique:
+      Original slides: [A, B, C, D]
+      After cloning: [D_clone, A, B, C, D, A_clone]
+      Carousel starts at index=1 (showing A).
+      showNext at maxSlide (length-2=4, showing D): jump without transition to index=1 (A after D_clone).
+      showPrev at index=1 (showing A): jump without transition to maxSlide (D before A_clone).
+      The transition is disabled for 100ms then re-enabled to create seamless wrapping.
+    critical: true
+
+visibility_map:
+  slides:
+    condition: "customSlides.length > 0 (populated after useTask$ runs)"
+    default: empty slider until useTask$ executes

@@ -1,0 +1,321 @@
+name: CollectionSlider
+source: src/components/shop-page/components/collection-slider.tsx
+description: |
+  Displays a collection of products as a styled slider. On desktop (lg+) shows
+  a side-by-side grid with a grayscale-to-color hover effect; on mobile shows a
+  horizontally scrollable stacked slider.
+
+  If collectionData prop is null, the component fetches data from the API using the
+  event query string (parsed to extract eventName and handle). Style configuration is
+  parsed from collectionData.collectionColourStyle JSON; falls back to DEFAULT_COLLECTION_STYLE
+  if parsing fails.
+
+  Each product card (SliderContent) has an "Add to cart" button that calls
+  addCouponProductToCart and updates the CartCount cookie with a CustomEvent dispatch.
+  A popup confirmation is shown on successful cart add, dismissible by clicking outside.
+
+  Internal sub-components (DesktopSlider, SliderContent, Slider, StackedSlider) are
+  defined in the same file but are not exported.
+
+exports:
+  - name: default
+    type: component$<CollectionSliderProps>
+    description: Default Qwik component export
+
+props:
+  - name: collectionData
+    type: "ICollectionData | null"
+    required: true
+    description: Pre-loaded collection data. If null, the component fetches it using the event prop.
+  - name: event
+    type: "string | undefined"
+    required: false
+    description: URL query string containing eventName and handle parameters (e.g. "eventName=FLASH_SALE&handle=canvas-prints"). Used to fetch data when collectionData is null.
+
+component_structure:
+  - desktop_container:
+      element: div
+      class: "hidden lg:flex flex-wrap -mx-1"
+      renders: DesktopSlider for each product in collectionDataSignal.value.products
+  - mobile_container:
+      element: div
+      class: "lg:hidden"
+      renders: StackedSlider for collectionDataSignal.value (if data present)
+
+child_components:
+  - name: DesktopSlider
+    type: internal (not exported)
+    purpose: Renders a single product as a grayscale card with hover color reveal effect
+    props:
+      - product: IProduct
+      - collectionData: ICollectionData
+      - style: IShopStyleItems
+      - aspectRatio: string (computed based on product count)
+
+  - name: SliderContent
+    type: internal (not exported)
+    purpose: Product card body — discount badge, title, pricing, add-to-cart button, save popup
+    props:
+      - product: IProduct
+      - collectionData: ICollectionData
+      - style: IShopStyleItems
+      - isStacked: boolean (default false)
+
+  - name: Slider
+    type: internal (not exported)
+    purpose: Horizontally scrollable row of product cards (used by StackedSlider for mobile)
+    props:
+      - collectionData: ICollectionData
+      - collectionProducts: "IProduct[]"
+      - aspectRatio: string
+      - style: IShopStyleItems
+
+  - name: StackedSlider
+    type: internal (not exported)
+    purpose: Mobile layout — Slider for first N-2 products, stacked cards for last 2 when count > 4
+    props:
+      - collectionData: ICollectionData
+      - collectionProducts: "IProduct[]"
+      - aspectRatio: string
+      - style: IShopStyleItems
+
+data_structure:
+  ICollectionData:
+    source: "~/services/shop-page-service"
+    fields:
+      - title: string
+      - shopTitle: string
+      - eventName: string
+      - shop_topBanner: string
+      - shop_topBanner_mobile: string
+      - products_page_topBanner: string
+      - products_page_topBanner_mobile: string
+      - backUrl: string
+      - handle: string
+      - products: "IProduct[]"
+      - off: string
+      - tag_price_now: string
+      - tag_price_was: string
+      - tag_pack_of: string
+      - tag_price_each: string
+      - collectionColourStyle: string (JSON-encoded IShopStyleItems)
+      - showBuyNowCreateLaterButton: boolean
+      - showBuyNowCreateNowButton: boolean
+      - shopModelLabelModel: IShopModelLabelModel
+
+  IProduct:
+    source: "~/services/shop-page-service"
+    fields:
+      - title: string
+      - images_src: "IImageSrc[]"
+      - metafield_each_price: number
+      - variant_compare_at_price: number
+      - variant_price: number
+      - percent_off: number
+      - metafield_product_qty: number
+      - option1_value: string (used as popup ID key)
+      - variant_barcode: string (used as productId for add-to-cart)
+      - product_position: number
+      - body_html: string (rendered via dangerouslySetInnerHTML)
+      - isFreeShipping: boolean
+
+  IShopStyleItems:
+    source: "~/services/shop-page-service"
+    fields:
+      - actionButton: IShopStyle
+      - discountBadge: IShopStyle
+      - carouselButton: IShopStyle
+      - pack: IShopStyle
+      - freeShippingLabel: IShopStyle
+
+  IShopStyle:
+    source: "~/services/shop-page-service"
+    fields:
+      - color: "string | null"
+      - bgColor: "string | null"
+      - borderColor: "string | null"
+      - borderSizePx: "number | null"
+      - borderStyle: "string | null"
+      - rounded: "boolean | null"
+      - display: "boolean | null"
+
+  IShopModelLabelModel:
+    source: "~/services/shop-page-service"
+    fields:
+      - buy: string (add-to-cart button label)
+      - cart: string (success popup "added" message)
+      - checkout: string (checkout link text in popup)
+      - shopping: string (continue shopping label in popup)
+      - off: string (percentage off label)
+
+behavior:
+  - On task (useTask$, runs server-side or on first render):
+      1. If collectionData prop is null: parse event string as URLSearchParams, extract eventName and handle, call getCollectionData(eventName, handle)
+      2. Parse collectionColourStyle JSON as IShopStyleItems; if parsing fails, use DEFAULT_COLLECTION_STYLE
+      3. Store both in signals (collectionDataSignal, collectionStyle)
+  - Aspect ratio computation (called at render time before signals are set):
+      - Desktop: 6 or 5 products → "305 / 567"; 4 or 3 products → "476 / 591"; else undefined
+      - Mobile: 6 or 5 products → "119 / 270"; 4 or 3 products → "161 / 200"; else undefined
+  - Desktop layout: flex row of DesktopSlider components, one per product
+  - Mobile layout: StackedSlider handles 1-4 products as flat slider; 5+ as slider + 2 stacked cards
+  - Add-to-cart flow (SliderContent):
+      1. Button click: set loading=true, fire Matomo ADD_COUPON_PRODUCT_TO_CART event, call addCouponProductToCart(variant_barcode)
+      2. On success: increment CartCount cookie, dispatch "updateCartCount" CustomEvent on window.document, show save popup
+      3. Set loading=false
+  - Save popup dismissal: useOnDocument("click") closes popup if click is outside popup element
+
+api_calls:
+  - GET /Sale/Products?eventName={eventName}&handle={handle}
+    condition: collectionData prop is null
+    service: getCollectionData from "~/services/shop-page-service"
+    response: "ICollectionData | null"
+
+  - POST /CartService/AddCouponProductToBasket
+    trigger: User clicks add-to-cart button
+    service: addCouponProductToCart from "~/services/shop-page-service"
+    payload:
+      machineToken: from getMachineToken()
+      productId: product.variant_barcode
+    response: boolean (success flag)
+
+wire_format:
+  POST /CartService/AddCouponProductToBasket:
+    description: Adds a coupon/sale product to the basket
+    mapping:
+      "machineToken (from getMachineToken())": machineToken
+      "product.variant_barcode (IProduct field)": productId
+    content_type: application/json (via handleMultipleAPIRequests)
+
+analytics:
+  - event: ADD_COUNPON_PRODUCT_TO_CART
+    platform: Matomo
+    trigger: User clicks add-to-cart button on a product
+    data:
+      category: MatomoCategory.SHOP
+      action: MatomoEvent.ADD_COUNPON_PRODUCT_TO_CART
+      name: product.variant_barcode
+
+styling:
+  scoped:
+    - ".heading font-size: 16px (max 450px), 18px (451-580px)": product heading responsive
+    - ".explore font-size: 14px (max 450px), 16px (451-580px)": explore text responsive
+  global:
+    - ".dangerously ul": list-style disc, inside (1280px+)
+    - ".dangerously ul li::marker": 0.7em font-size
+    - ".dangerously li": color #00000088, font-size 0.8rem
+  tailwind:
+    - "hidden lg:flex flex-wrap -mx-1": desktop container
+    - "lg:hidden": mobile container
+    - "flex-1 relative group px-1 rounded-2xl": desktop product card
+    - "grayscale group-hover:grayscale-0 transition-all duration-300": image hover effect
+    - "absolute top-1 right-2 w-[90px] h-[90px]": discount badge position
+    - "overflow-x-scroll overflow-y-hidden": mobile scroll container
+    - "flex gap-2 w-[100%] justify-between": mobile product row
+
+dependencies:
+  qwik:
+    - $, component$, useOnDocument, useSignal, useStyles$, useStylesScoped$, useTask$ from "@builder.io/qwik"
+  external:
+    - Image from "@unpic/qwik"
+  services:
+    - addCouponProductToCart, DEFAULT_COLLECTION_STYLE, getCollectionData from "~/services/shop-page-service"
+    - ICollectionData, IProduct, IShopStyleItems (types) from "~/services/shop-page-service"
+  utilities:
+    - formatPrice from "~/utility/format"
+    - getBaseDomainName, getCookie, setCookie from "~/services/cart-services/cookie"
+    - MatomoCategory, MatomoEvent, pushMatomoEvent from "~/utility/matomo"
+  components:
+    - SVGIcon from "~/components/svg-icon/svg-icon"
+
+used_by:
+  - CommonCategoryContainer
+
+security:
+  - product.body_html is rendered via dangerouslySetInnerHTML — CMS responsibility to sanitize
+  - machineToken is retrieved from getMachineToken() (cookie/server-side) not from props
+  - CartCount cookie is updated client-side after successful add-to-cart
+
+edge_cases:
+  - collectionData is null AND event is undefined/empty: getCollectionData called with undefined args → returns empty object {}; collectionDataSignal.value is {} (no products rendered)
+  - event string has no valid eventName or handle: getCollectionData not called, collectionDataSignal stays as {}
+  - collectionColourStyle is not valid JSON: catch block sets style to DEFAULT_COLLECTION_STYLE
+  - Product count < 3 (e.g., 1 or 2): calculateAspectRatio returns undefined; image aspectRatio is undefined
+  - addCouponProductToCart returns false: savePopup.value stays false, no popup shown
+  - User double-clicks add-to-cart: loading signal is true during request; button is not disabled (only visual opacity change via style)
+
+notes:
+  - Matomo event name has a typo in source: MatomoEvent.ADD_COUNPON_PRODUCT_TO_CART ("COUNPON" instead of "COUPON")
+  - DesktopSlider picks image with sortNo=1 for preview; Slider (mobile) picks sortNo=2
+  - The StackedSlider uses > 4 products as the threshold for stacked layout, not >= 5
+  - The "updateCartCount" CustomEvent is dispatched to keep the cart icon count in sync
+
+types:
+  CollectionSliderProps:
+    description: Component props interface
+    fields:
+      - name: collectionData
+        type: "ICollectionData | null"
+      - name: event
+        type: "string | undefined"
+        optional: true
+
+field_consumption:
+  ICollectionData:
+    consumed:
+      - products: Iterated to render DesktopSlider / StackedSlider children
+      - collectionColourStyle: Parsed as JSON to derive IShopStyleItems style
+      - shopModelLabelModel.buy: Add-to-cart button label
+      - shopModelLabelModel.cart: Success popup "added" message
+      - shopModelLabelModel.checkout: Checkout link text in popup
+      - shopModelLabelModel.shopping: Continue shopping button text in popup
+      - shopModelLabelModel.off: Percentage off label in discount badge
+    ignored:
+      - title, shopTitle, eventName, handle, backUrl: Not used in rendering
+      - shop_topBanner, shop_topBanner_mobile, products_page_topBanner, products_page_topBanner_mobile: Not used
+      - off, tag_price_now, tag_price_was, tag_pack_of, tag_price_each: Not used directly (shopModelLabelModel used instead)
+      - showBuyNowCreateLaterButton, showBuyNowCreateNowButton: Not used
+
+  IProduct:
+    consumed:
+      - title: Product name displayed on card
+      - images_src: Array of images; sortNo=1 for desktop preview, sortNo=2 for mobile preview
+      - variant_compare_at_price: Strikethrough original price (if discountBadge displayed)
+      - variant_price: Current selling price
+      - percent_off: Discount percentage in badge
+      - option1_value: Used as popup DOM element ID key
+      - variant_barcode: Passed as productId to addCouponProductToCart
+      - body_html: Product description rendered via dangerouslySetInnerHTML
+    ignored:
+      - metafield_each_price: Not rendered in this component
+      - metafield_product_qty: Not used
+      - product_position: Not used in CollectionSlider
+      - isFreeShipping: Not used in CollectionSlider (used in ShopPageCards)
+
+visibility_map:
+  desktop_container:
+    condition: CSS — lg:flex (visible at 1024px+)
+    default: hidden on mobile
+
+  mobile_container:
+    condition: CSS — lg:hidden (visible below 1024px)
+    default: hidden on desktop
+
+  discount_badge:
+    condition: "style.discountBadge.display !== false"
+    default: shown (unless explicitly disabled in style config)
+
+  strikethrough_original_price:
+    condition: "style.discountBadge.display !== false"
+    default: shown alongside discount badge
+
+  save_popup:
+    condition: savePopup signal is true (after successful add-to-cart)
+    default: hidden
+
+  loading_spinner:
+    condition: loading signal is true (during API call)
+    default: hidden
+
+  stacked_layout_last_two:
+    condition: "collectionData.products.length > 4 (mobile only)"
+    default: shown only for last 2 products when total > 4

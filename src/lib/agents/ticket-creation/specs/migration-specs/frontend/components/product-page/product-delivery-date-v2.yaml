@@ -1,0 +1,223 @@
+name: ProductDeliveryDateV2
+source: src/components/product-page/product-delivery-date-v2.tsx
+description: |
+  Displays delivery date information on the product page using data from
+  ProductContext. Supports two rendering modes: (1) "fastest option" single-line
+  summary showing the earliest available delivery date range, and (2) full list
+  of all delivery methods with icons. Rendering mode and display are controlled
+  by deliveryDeadline flags: showDeliveryDeadlines (outer guard),
+  useScriptForDeliveryDeadlines (dynamic date calculation vs hardcoded text), and
+  showFastestOption prop. Also shows a carouselNudgeText paragraph when present.
+
+exports:
+  - name: default
+    type: component$<ProductDeliveryDataProps>
+    description: Default Qwik component export
+
+props:
+  - name: colour
+    type: string
+    required: false
+    default: ""
+    description: Optional colour suffix for delivery icons (e.g., "white" → icon-white.svg)
+  - name: showFastestOption
+    type: boolean
+    required: false
+    default: false
+    description: If true and useScriptForDeliveryDeadlines is true, shows only the fastest delivery option as a single line
+  - name: fastestOptionVersion
+    type: '"bold" | "normal"'
+    required: false
+    default: '"bold"'
+    description: Controls which i18n key is used — bold uses deliveryMessage4/2, normal uses deliveryMessage5/3
+  - name: fastestOptionMobileAlign
+    type: '"left" | "center"'
+    required: false
+    default: '"center"'
+    description: Mobile horizontal alignment of the fastest option line
+
+context_consumed:
+  - name: ProductContext
+    source: ~/context/product-category-context
+    fields:
+      - product.deliveryDeadline.showDeliveryDeadlines: Boolean guard for the entire component
+      - product.deliveryDeadline.useScriptForDeliveryDeadlines: Whether to calculate dates dynamically
+      - product.deliveryDeadline.scriptDeadlines: Array of delivery method objects
+      - product.deliveryDeadline.carouselNudgeText: Optional nudge text paragraph below dates
+
+component_structure:
+  - OuterGuard: Renders nothing if showDeliveryDeadlines is false
+  - ScriptModeBlock: When useScriptForDeliveryDeadlines=true, renders fastest option or full list
+    - FastestOptionLine: Single span with date range and method name (showFastestOption=true)
+    - FullScriptList: List of all scriptDeadlines with icons and translated date strings
+  - HardcodeModeBlock: When useScriptForDeliveryDeadlines=false, renders hardcodeDeliverydeadline text per method
+  - CarouselNudgeText: Optional paragraph below the delivery list
+
+child_components:
+  - name: Image
+    source: "@unpic/qwik"
+    purpose: Renders delivery method icon SVGs
+    props:
+      - src: icon path with optional colour suffix
+      - width: 24 (script list) or 20 (hardcode list)
+      - aspectRatio: "1/1"
+
+data_structure:
+  ScriptDeadline:
+    - name: string (delivery method name, e.g., "Standard Delivery")
+    - rangeEstimateDay: string (e.g., "2,3" or "3")
+    - hardcodeDeliverydeadline: string (may contain HTML)
+
+  DeliveryDateRange:
+    - startDate: number (business days from today)
+    - endDate: number (0 if single date, > 0 if range)
+
+behavior:
+  - fastestOption useComputed$:
+      1. If scriptDeadlines is missing or empty → return null
+      2. Use reduce to find scriptDeadline with smallest extractNumberOfDayFromDateRange(rangeEstimateDay).startDate
+  - On render (inside showDeliveryDeadlines guard):
+      - useScriptForDeliveryDeadlines=true:
+          - showFastestOption=true AND fastestOption exists:
+              1. If endDate > 0: render range message (deliveryMessage4 bold / deliveryMessage5 normal) with deliveryDate1, deliveryDate2, methodName
+              2. If endDate == 0: render single date message (deliveryMessage2 bold / deliveryMessage3 normal) with deliveryDate, methodName
+              3. Dates computed via getNextBusinessDayForDelivery(new Date(), startDate/endDate) → formatDeliverDate
+          - showFastestOption=false OR fastestOption=null: render full list of scriptDeadlines (filter rangeEstimateDay truthy)
+              1. Each method: icon + date range or single date string from i18n (dateRangeDeliveryMessage / deliveryMessage)
+      - useScriptForDeliveryDeadlines=false: render scriptDeadlines list with hardcodeDeliverydeadline text (raw HTML via dangerouslySetInnerHTML is NOT used — text is rendered directly as string)
+  - carouselNudgeText: shown as paragraph mt-4 text-[14px] if truthy
+
+styling:
+  - Container: mt-4
+  - Full list container: list-disc list-outside
+  - Each list item: flex with icon 24px (script) or 20px (hardcode) + mr-2 or mr-1
+  - Fastest option: flex justify-center (centre) or justify-start (left) lg:justify-start; text-[17px]
+  - Icon path pattern: baseIconPath + (colour ? "-{colour}" : "") + ".svg"
+  - nudge text: mt-4 text-[14px]
+
+dependencies:
+  qwik:
+    - component$, useComputed$, useContext from @builder.io/qwik
+  external:
+    - Image from @unpic/qwik
+  i18n:
+    - inlineTranslate from qwik-speak
+  contexts:
+    - ProductContext from ~/context/product-category-context
+  utilities:
+    - extractNumberOfDayFromDateRange, formatDeliverDate, getNextBusinessDayForDelivery from ~/utility/date
+
+used_by:
+  - ProductPageBaseTemplate
+  - ProductPageBasicTemplate
+  - ProductPageFixedTemplate
+  - ProductPageFixedThemeTemplate
+  - ProductPageHubTemplate
+  - PhotoCanvasPrintsNewTemplate
+  - PhotoCanvasPrintsNewTemplateV3
+  - PhotoCanvasPrintsBundledTemplate
+  - PhotoCanvasPrintsHubBundledTemplate
+  - PhotoCanvasPrintsTemplateV2
+  - PhotoCanvasPrintsBaseTemplate
+  - PhotoCalendarsBaseTemplate
+  - PhotoCalendarsBalooRadioTemplate
+  - PhotoCalendarsDaisyTemplate
+  - PhotoCalendarsJbc2024Template
+  - OptionPanelV3
+  - OptionPanelV4
+  - OptionPanelV5
+
+edge_cases:
+  - If scriptDeadlines is empty or null, fastestOption is null; showFastestOption mode falls through to full list which also renders nothing
+  - hardcodeDeliverydeadline may contain HTML (product team input); rendered as text (no dangerouslySetInnerHTML in hardcode mode)
+  - delivery icon index is positional (0→rush, 1→expedited, 2→standard, 3→economy); if more than 4 methods exist, extra items have no icon
+  - colour="" (default) means icon path has no suffix: "-" is not appended when colour is falsy
+
+notes:
+  - Delivery date calculation is client-runtime: getNextBusinessDayForDelivery uses new Date() each render
+  - The icon file naming convention: base-name + optional "-{colour}" + ".svg" (e.g., "rush-shipping-white.svg")
+
+types:
+  ProductDeliveryDataProps:
+    description: Component props
+    fields:
+      - name: colour
+        type: string
+        optional: true
+        default: ""
+      - name: showFastestOption
+        type: boolean
+        optional: true
+        default: false
+      - name: fastestOptionVersion
+        type: '"bold" | "normal"'
+        optional: true
+        default: '"bold"'
+      - name: fastestOptionMobileAlign
+        type: '"left" | "center"'
+        optional: true
+        default: '"center"'
+
+  ScriptDeadline:
+    description: Single delivery method entry from deliveryDeadline.scriptDeadlines
+    fields:
+      - name: name
+        type: string
+      - name: rangeEstimateDay
+        type: string
+      - name: hardcodeDeliverydeadline
+        type: string
+
+field_consumption:
+  ProductContext.product.deliveryDeadline:
+    consumed:
+      - showDeliveryDeadlines: Outer render guard
+      - useScriptForDeliveryDeadlines: Chooses between script-calculated and hardcoded modes
+      - scriptDeadlines: Iterated to render delivery rows; used to find fastest option
+      - carouselNudgeText: Rendered as plain text paragraph below delivery list
+    ignored:
+      - deliveryDeadline (string field on the parent object): Not read by this component (used by ProductFlipClock)
+      - carouselNudge (object): Not used in this component
+
+implementation_logic:
+  fastest_option_selection:
+    rule: |
+      Reduce over scriptDeadlines to find the entry with the lowest startDate
+      from extractNumberOfDayFromDateRange(rangeEstimateDay).startDate.
+      If multiple methods share the same startDate, the first one wins (reduce returns a).
+    critical: false
+
+  date_range_vs_single_date:
+    rule: |
+      extractNumberOfDayFromDateRange returns { startDate, endDate }.
+      If endDate > 0: use the range i18n key (deliveryMessage4/5 or dateRangeDeliveryMessage).
+      If endDate == 0: use the single date i18n key (deliveryMessage2/3 or deliveryMessage).
+    critical: true
+
+  icon_colour_suffix:
+    rule: |
+      Icon path base (without .svg extension) + (colour ? "-{colour}" : "") + ".svg"
+      Empty colour string produces the default coloured icon.
+      Non-empty colour (e.g., "white") produces the alternate colour icon.
+    critical: false
+
+visibility_map:
+  entire_component:
+    condition: "product.deliveryDeadline.showDeliveryDeadlines is true"
+    default: hidden
+
+  fastest_option_line:
+    condition: "useScriptForDeliveryDeadlines=true AND showFastestOption=true AND fastestOption.value is non-null AND rangeEstimateDay is truthy"
+    default: hidden
+
+  full_script_list:
+    condition: "useScriptForDeliveryDeadlines=true AND (showFastestOption=false OR fastestOption.value is null)"
+    default: hidden
+
+  hardcode_list:
+    condition: "useScriptForDeliveryDeadlines=false AND scriptDeadlines is non-empty"
+    default: hidden
+
+  carousel_nudge_text:
+    condition: "product.deliveryDeadline.carouselNudgeText is truthy"
+    default: hidden

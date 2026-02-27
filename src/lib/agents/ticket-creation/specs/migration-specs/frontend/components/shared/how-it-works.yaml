@@ -1,0 +1,173 @@
+name: HowItWorks
+source:
+  path: components/share/how-it-works/how-it-works.tsx
+  lines: 1-59
+  type: component
+
+description: |
+  Four-step guide component explaining the product personalization process.
+  Displays icons and text for each step: Upload → Create → Checkout → Love.
+  Responsive layout: 2 columns on mobile, 4 columns on desktop. Used on product
+  pages and category pages to educate users about the ordering process.
+
+  Features:
+  - Fixed 4-step workflow
+  - Icon + title + description for each step
+  - Fully translatable content
+  - Responsive grid layout
+  - Centered text alignment
+
+exports:
+  - name: default
+    type: component
+    description: Default export of HowItWorks component (wrapper around HowItWork)
+
+component_structure: |
+  <div class="container m-auto">
+    <div class="p-4 mt-4">
+      <h2 class="text-center text-[22px] font-bold mb-2">
+        {t("how_it_works.how_it_works_title")}
+      </h2>
+      <p class="text-center mb-2">
+        {t("how_it_works.personalisation")}
+      </p>
+
+      <div class="flex flex-wrap">
+        {data.map((step) => (
+          <div class="step-column">
+            <img src={step.imgSrc} alt={step.title} width={80} height={80} />
+            <p class="font-bold">{step.title}</p>
+            <p>{step.description}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+
+behavior:
+  rendering:
+    - Always renders all 4 steps
+    - Steps are hardcoded in component (not from props)
+    - Icons loaded from /images-q/icons/ directory
+    - All text from translation service
+
+  steps:
+    - step: 1
+      icon: /images-q/icons/upload.svg
+      title: how_it_works.upload
+      description: how_it_works.upload_description
+
+    - step: 2
+      icon: /images-q/icons/create-black.svg
+      title: how_it_works.create
+      description: how_it_works.create_description
+
+    - step: 3
+      icon: /images-q/icons/checkout.svg
+      title: how_it_works.checkout
+      description: how_it_works.checkout_description
+
+    - step: 4
+      icon: /images-q/icons/heart.svg
+      title: how_it_works.love
+      description: how_it_works.love_description
+
+internal_components:
+  HowItWork:
+    description: Internal component that renders the actual content
+    exports: Not exported (used only within file)
+
+dependencies:
+  qwik:
+    - component$ (from @builder.io/qwik)
+
+  i18n:
+    - inlineTranslate (from qwik-speak)
+
+data_dependencies:
+  translation_keys:
+    - how_it_works.how_it_works_title: Main heading
+    - how_it_works.personalisation: Subheading/description
+    - how_it_works.upload: Step 1 title
+    - how_it_works.upload_description: Step 1 description
+    - how_it_works.create: Step 2 title
+    - how_it_works.create_description: Step 2 description
+    - how_it_works.checkout: Step 3 title
+    - how_it_works.checkout_description: Step 3 description
+    - how_it_works.love: Step 4 title
+    - how_it_works.love_description: Step 4 description
+
+  images:
+    - /images-q/icons/upload.svg
+    - /images-q/icons/create-black.svg
+    - /images-q/icons/checkout.svg
+    - /images-q/icons/heart.svg
+
+styling:
+  classes:
+    container:
+      - container m-auto: Centered container
+      - p-4 mt-4: Padding and top margin
+
+    heading:
+      - text-center: Centered text
+      - text-[22px]: 22px font size
+      - font-bold: Bold weight
+      - mb-2: Bottom margin
+
+    description:
+      - text-center: Centered text
+      - mb-2: Bottom margin
+
+    grid:
+      - flex flex-wrap: Flexbox grid
+      - mx-[-15px]: Negative horizontal margin (row container)
+      - px-[15px]: Horizontal padding (mobile only)
+
+    step_column:
+      - md:flex-[0_0_25%] md:max-w-[25%]: 25% width on desktop (4 columns)
+      - flex-[0_0_50%] max-w-[50%]: 50% width on mobile (2 columns)
+      - px-[15px]: Column padding
+      - text-center: Centered text
+      - flex flex-col justify-center items-center: Vertical flex layout
+
+    icon:
+      - width: 80px
+      - height: 80px
+      - my-4: Vertical margin
+
+    text:
+      - font-bold: Step title
+      - leading-[1.5]: Line height 1.5
+
+responsive:
+  mobile_default:
+    - 2 columns (50% width each)
+    - Icons 80x80
+    - Centered layout
+
+  desktop_md:
+    - 4 columns (25% width each)
+    - Same icon size
+    - Horizontal row layout
+
+accessibility:
+  considerations:
+    - Icons have alt text matching step title
+    - Semantic heading (h2)
+    - Logical reading order (1-2-3-4)
+
+used_by: []
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  HowItWorkStep:
+    description: Internal data shape for each step (not exported; constructed inline)
+    fields:
+      - name: imgSrc
+        type: string
+      - name: title
+        type: string
+      - name: description
+        type: string

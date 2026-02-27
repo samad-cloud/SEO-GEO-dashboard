@@ -1,0 +1,111 @@
+name: BulkOrderingRoute
+source:
+  path: routes/bulk-ordering/index@bulkorder.tsx
+  lines: 1-50
+  type: route
+
+description: |
+  Bulk ordering inquiry form for customers wanting to place large orders.
+  Uses @bulkorder layout. Renders BulkOrderPage component.
+
+  Form loader provides initial values for the bulk order form.
+
+url_pattern: /bulk-ordering
+layout: "@bulkorder"
+
+exports:
+  default: true
+  component: BulkOrderPage
+
+  routeLoader: useFormLoader
+  routeLoader_behavior: |
+    Returns InitialValues<BulkOrderingForm> with defaults:
+    - productType: "Blankets"
+    - productName: ""
+    - size: "baby"
+    - pages: 1
+    - quantity: undefined
+    - name: ""
+    - zipcode: ""
+    - email: ""
+    - phone: ""
+    - survey: ""
+    - msg: ""
+
+  head: true
+  head_behavior: |
+    Returns localized meta tags:
+    - title, description, keywords from i18n (order.bulk_ordering.*)
+    - Standard meta tags (google, theme-color, distribution, rating, author, copyright, google-signin-scope, robots)
+
+dependencies:
+  - "@builder.io/qwik"
+  - "@builder.io/qwik-city" (routeLoader$)
+  - "@modular-forms/qwik" (InitialValues)
+  - "qwik-speak" (inlineTranslate)
+  - "~/components/bulk-order/bulk-order-page-old" (BulkOrderingForm type)
+  - "~/components/bulk-order/bulk-order-page"
+
+behavior:
+  - Form loader provides initial state for modular-forms
+  - BulkOrderPage handles form rendering and submission
+  - Uses @bulkorder layout (different from default)
+
+i18n_keys:
+  - order.bulk_ordering.meta.title
+  - order.bulk_ordering.meta.description
+  - order.bulk_ordering.meta.keywords
+
+rewrite_routes: []
+
+used_by: []
+
+types:
+  BulkOrderingForm:
+    description: Form field schema for the bulk order inquiry form; derived via z.infer from bulkOrderSchema in bulk-order-page-old.tsx
+    source: "~/components/bulk-order/bulk-order-page-old"
+    fields:
+      - name: productType
+        type: string
+        description: Selected product type (e.g. "Blankets"); set to "Blankets" by default
+      - name: productName
+        type: string
+        optional: true
+        description: Specific product name entered by customer
+      - name: size
+        type: string
+        optional: true
+        description: Product size (e.g. "baby"); default "baby"
+      - name: pages
+        type: number
+        description: Number of pages; minimum 1; default 1
+      - name: quantity
+        type: "number | undefined"
+        description: Order quantity; minimum 1; undefined by default
+      - name: name
+        type: string
+        description: Customer full name; required
+      - name: zipcode
+        type: string
+        description: Customer delivery postcode/zipcode; required
+      - name: email
+        type: string
+        description: Customer email address; must be valid email format
+      - name: phone
+        type: string
+        description: Customer phone number; required
+      - name: survey
+        type: string
+        description: How the customer heard about Printerpix; required
+      - name: msg
+        type: string
+        optional: true
+        description: Optional additional message
+
+  FormLoaderInitialValues:
+    description: Return type of useFormLoader routeLoader$; wraps BulkOrderingForm with modular-forms InitialValues<T>
+    source: "@modular-forms/qwik"
+    fields:
+      - name: "(all BulkOrderingForm fields)"
+        type: BulkOrderingForm
+        description: Identical to BulkOrderingForm fields, provided as initial values for the form library

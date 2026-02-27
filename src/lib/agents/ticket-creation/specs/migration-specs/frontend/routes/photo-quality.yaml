@@ -1,0 +1,40 @@
+name: PhotoQualityRoute
+source:
+  path: routes/photo-quality/index.tsx
+  lines: 1-9
+  type: route
+
+description: |
+  Static informational page about photo quality requirements.
+  Renders PhotoQualityContainer and uses its Head export.
+
+url_pattern: /photo-quality
+layout: default
+
+exports:
+  default: true
+  component: PhotoQualityContainer
+  head: true
+  head_source: "Imported from PhotoQualityContainer (Head export)"
+
+dependencies:
+  - "@builder.io/qwik"
+  - "@builder.io/qwik-city" (DocumentHead type)
+  - "~/components/photo-quality-page/containers/photo-quality-container"
+
+behavior:
+  - Renders container component
+  - Head metadata managed by container
+
+i18n_keys: []
+
+rewrite_routes:
+  NL: /fotokwaliteit
+  DE: /fotoqualitat
+  IT: /qualita-foto
+  ES: /calidad-foto
+
+used_by: []
+
+types:
+  notes: "Route component. Types defined in associated container component. No locally-defined interfaces."

@@ -1,0 +1,46 @@
+name: AboutUsContent
+description: Region-specific About Us page content loader
+
+source:
+  path: utility/about-us/about-us-content.ts
+  lines: 1-30
+  type: utility
+
+exports:
+  - name: getAboutUsContent
+    type: function
+    signature: "() => any"
+    description: Returns About Us page content JSON for current region
+    regions: [US, GB, FR, NL, DE, IT, ES]
+    fallback: US
+
+dependencies:
+  internal:
+    - "~/config/settings": settings function
+    - "~/utility/about-us/US.json": USAboutUs
+    - "~/utility/about-us/UK.json": UKAboutUs
+    - "~/utility/about-us/FR.json": FRAboutUs
+    - "~/utility/about-us/NL.json": NLAboutUs
+    - "~/utility/about-us/DE.json": DEAboutUs
+    - "~/utility/about-us/IT.json": ITAboutUs
+    - "~/utility/about-us/ES.json": ESAboutUs
+
+behavior:
+  region_detection:
+    method: settings().website
+    supported_regions: [US, GB, FR, NL, DE, IT, ES]
+    fallback: US
+
+  content_source:
+    format: Static JSON files
+    location: utility/about-us/
+    naming: {REGION}.json
+
+edge_cases:
+  - Unrecognized region returns US content
+  - Switch statement with explicit default case
+
+types:
+  notes: "No locally-defined types. getAboutUsContent returns any (raw JSON from regional static files)."
+
+used_by: []

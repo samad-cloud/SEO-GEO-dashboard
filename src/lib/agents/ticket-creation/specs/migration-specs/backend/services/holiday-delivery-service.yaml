@@ -1,0 +1,314 @@
+name: HolidayDeliveryService
+source: services/holiday-delivery-service.ts
+description: |
+  Service for fetching and validating holiday delivery guide content.
+  Displays seasonal shipping deadlines with customizable colors, images,
+  and CTA buttons. Tracks deadline expiration status.
+
+exports:
+  functions:
+    - name: getHolidayDeliveryGuideContent
+      signature: "() => Promise<HolidayDeliveryGuideResponse>"
+      description: Fetches holiday delivery guide content from JSON service
+      async: true
+      returns: HolidayDeliveryGuideResponse with delivery deadline data
+
+  interfaces:
+    - name: DeadlineDates
+      fields:
+        - name: sectionBgColor
+          type: string
+          description: Background color for this deadline section
+        - name: textColor
+          type: string
+          description: Text color for this deadline
+        - name: ordinal
+          type: string
+          description: Ordinal number text (e.g., "1st", "2nd", "3rd")
+        - name: date
+          type: string
+          description: Deadline date string
+        - name: day
+          type: string
+          description: Day of week
+        - name: shippingType
+          type: string
+          description: Shipping method name (e.g., "Standard", "Express")
+        - name: imgSrc
+          type: string
+          description: URL to deadline icon/image
+        - name: imageAspectRatio
+          type: string
+          description: Aspect ratio for the image
+        - name: isExpired
+          type: boolean
+          description: Whether this deadline has passed
+        - name: href
+          type: string
+          description: Optional link for the deadline
+
+    - name: HolidayDeliveryGuide
+      exported: true
+      fields:
+        - name: display
+          type: boolean
+          description: Whether to display this section
+        - name: order
+          type: number
+          description: Display order for this section
+        - name: mainTextColor
+          type: string
+          description: Main text color for the section
+        - name: sectionBgColor
+          type: string
+          description: Section background color
+        - name: heading
+          type: string
+          description: Section heading text
+        - name: subHeading
+          type: string
+          description: Section subheading text
+        - name: description
+          type: string
+          description: Section description text
+        - name: ctaLink
+          type: string
+          description: CTA button URL
+        - name: ctaText
+          type: string
+          description: CTA button text
+        - name: ctaBgColor
+          type: string
+          description: CTA button background color
+        - name: ctaTextColor
+          type: string
+          description: CTA button text color
+        - name: image
+          type: string
+          description: URL to section hero image
+        - name: deadlines
+          type: DeadlineDates[]
+          description: Array of delivery deadlines
+
+    - name: HolidayDeliveryGuideResponse
+      fields:
+        - name: holidayDeliveryGuide
+          type: HolidayDeliveryGuide
+          description: Holiday delivery guide data (single object)
+
+  schemas:
+    - name: DeadlineDateSchema
+      type: zod
+      description: Zod schema for validating deadline objects
+      fields:
+        - sectionBgColor (string)
+        - textColor (string)
+        - ordinal (string)
+        - date (string)
+        - day (string)
+        - shippingType (string)
+        - imgSrc (string)
+        - imageAspectRatio (string)
+        - isExpired (boolean, optional, nullable)
+        - href (string, optional, nullable)
+
+    - name: HolidayDeliveryGuideSchema
+      type: zod
+      exported: true
+      description: Zod schema for validating HolidayDeliveryGuide object
+      fields:
+        - display (boolean)
+        - order (number, min: 1)
+        - mainTextColor (string)
+        - sectionBgColor (string)
+        - heading (string)
+        - subHeading (string)
+        - description (string)
+        - ctaLink (string)
+        - ctaText (string)
+        - ctaBgColor (string)
+        - ctaTextColor (string)
+        - image (string)
+        - deadlines (array of DeadlineDateSchema)
+
+    - name: HolidayDeliveryGuideResponseSchema
+      type: zod
+      exported: true
+      description: Zod schema for validating API response
+      fields:
+        - holidayDeliveryGuide (HolidayDeliveryGuideSchema)
+
+api_contracts:
+  - endpoint: Via loadWebContent (WebContentType.HOLIDAY_DELIVERY_GUIDE)
+    method: N/A (internal service call)
+    description: Fetches holiday delivery guide content from JSON service
+    response_type: HolidayDeliveryGuideResponse
+    response_shape:
+      holidayDeliveryGuide:
+        display: boolean
+        order: number
+        mainTextColor: string
+        sectionBgColor: string
+        heading: string
+        subHeading: string
+        description: string
+        ctaLink: string
+        ctaText: string
+        ctaBgColor: string
+        ctaTextColor: string
+        image: string
+        deadlines:
+          - sectionBgColor: string
+            textColor: string
+            ordinal: string
+            date: string
+            day: string
+            shippingType: string
+            imgSrc: string
+            imageAspectRatio: string
+            isExpired: boolean | null
+            href: string | null
+
+dependencies:
+  external:
+    - package: zod
+      usage: Schema validation
+  internal:
+    - path: ~/services/json-service
+      imports: [loadWebContent, WebContentType]
+      usage: Load web content via WebContentType.HOLIDAY_DELIVERY_GUIDE
+
+data_flow:
+  - step: 1
+    action: Call getHolidayDeliveryGuideContent()
+  - step: 2
+    action: Internally calls loadWebContent with WebContentType.HOLIDAY_DELIVERY_GUIDE
+  - step: 3
+    action: Returns HolidayDeliveryGuideResponse with single guide object
+  - step: 4
+    action: Data validated against HolidayDeliveryGuideResponseSchema
+
+business_logic:
+  - Response contains a SINGLE HolidayDeliveryGuide object (not array)
+  - Section can be toggled on/off with "display" boolean
+  - Minimum order value is 1 (enforced by zod schema)
+  - Each deadline can have its own background and text colors
+  - Deadlines track expiration status via isExpired flag
+  - Optional href links for each deadline
+  - Section-wide CTA with customizable colors
+  - Hero image for visual appeal
+  - Multiple deadlines per guide (array)
+  - Ordinal text for deadline numbering (1st, 2nd, etc.)
+
+error_handling:
+  - Zod schema validation ensures data integrity
+  - Invalid data shape will throw zod validation errors
+  - Empty deadlines array is allowed
+  - isExpired and href are optional/nullable
+  - Missing required fields will fail schema validation
+  - Invalid color values will fail validation
+
+security:
+  - Read-only operation
+  - Public content, no authentication required
+  - All URLs (image, ctaLink, href) should be validated/sanitized
+  - Color values should be sanitized before inline style usage
+
+behavior:
+  - name: getHolidayDeliveryGuideContent
+    steps:
+      - Calls loadWebContent with WebContentType.HOLIDAY_DELIVERY_GUIDE
+      - loadWebContent internally fetches from JSON service API, validates against HolidayDeliveryGuideResponseSchema
+      - Returns HolidayDeliveryGuideResponse containing a single holidayDeliveryGuide object
+      - Response is validated by Zod schemas (DeadlineDateSchema, HolidayDeliveryGuideSchema, HolidayDeliveryGuideResponseSchema)
+      - Invalid data will throw Zod validation errors
+
+used_by:
+  - backend/services/json-service.yaml - imports HolidayDeliveryGuideResponseSchema for web content validation in loadWebContent
+
+types:
+  DeadlineDates:
+    description: A single shipping deadline entry with display styling and expiry tracking
+    fields:
+      - name: sectionBgColor
+        type: string
+        description: Background color for this deadline section
+      - name: textColor
+        type: string
+        description: Text color for this deadline
+      - name: ordinal
+        type: string
+        description: Ordinal number text (e.g., "1st", "2nd", "3rd")
+      - name: date
+        type: string
+        description: Deadline date string
+      - name: day
+        type: string
+        description: Day of week
+      - name: shippingType
+        type: string
+        description: Shipping method name (e.g., "Standard", "Express")
+      - name: imgSrc
+        type: string
+        description: URL to deadline icon/image
+      - name: imageAspectRatio
+        type: string
+        description: Aspect ratio for the image
+      - name: isExpired
+        type: "boolean | null"
+        optional: true
+        description: Whether this deadline has passed
+      - name: href
+        type: "string | null"
+        optional: true
+        description: Optional link for the deadline
+
+  HolidayDeliveryGuide:
+    description: Complete holiday delivery guide section with heading, CTA, and deadlines array
+    fields:
+      - name: display
+        type: boolean
+        description: Whether to display this section
+      - name: order
+        type: number
+        description: Display order (minimum 1)
+      - name: mainTextColor
+        type: string
+        description: Main text color for the section
+      - name: sectionBgColor
+        type: string
+        description: Section background color
+      - name: heading
+        type: string
+        description: Section heading text
+      - name: subHeading
+        type: string
+        description: Section subheading text
+      - name: description
+        type: string
+        description: Section description text
+      - name: ctaLink
+        type: string
+        description: CTA button URL
+      - name: ctaText
+        type: string
+        description: CTA button text
+      - name: ctaBgColor
+        type: string
+        description: CTA button background color
+      - name: ctaTextColor
+        type: string
+        description: CTA button text color
+      - name: image
+        type: string
+        description: URL to section hero image
+      - name: deadlines
+        type: "DeadlineDates[]"
+        description: Array of delivery deadlines
+
+  HolidayDeliveryGuideResponse:
+    description: Top-level API response wrapper for holiday delivery guide
+    fields:
+      - name: holidayDeliveryGuide
+        type: HolidayDeliveryGuide
+        description: Holiday delivery guide data (single object, not array)

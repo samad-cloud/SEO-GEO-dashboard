@@ -1,0 +1,251 @@
+name: NavigationMenu4
+source: src/components/navigation-v4/navigation-menu.tsx
+description: |
+  Site navigation component that fetches the category/menu tree from the
+  CMS JSON service and renders it in two distinct layouts: a slide-in drawer
+  for mobile/tablet (below xl breakpoint) and a horizontal mega-menu bar for
+  desktop (xl and above). Manages open/closed state for the mobile overlay,
+  including a translate-x animation. Renders an empty div while loading and
+  an error message if the fetch fails.
+
+exports:
+  - name: default
+    type: component$<MenuProps>
+    description: Default Qwik component export
+
+  - name: MenuInterface
+    type: interface
+    description: Recursive type describing a single navigation node (category or product page)
+
+props:
+  - name: mobileMenuOpen
+    type: boolean
+    required: true
+    description: Controls whether the mobile menu drawer is translated into view
+  - name: toggleMenu
+    type: "PropFunction<() => void>"
+    required: true
+    description: Callback to toggle mobile menu open/closed state (owned by Header)
+  - name: isFixed
+    type: boolean
+    required: true
+    description: |
+      When true, positions nav relative to a 60px fixed header bar (top-[60px],
+      height calc(100vh - 60px)). When false, uses 97px offset for standard header.
+
+component_structure:
+  root: Resource (Qwik async resource wrapper)
+  onPending: empty <div/>
+  onRejected: "<div> with error.message"
+  onResolved:
+    - element: nav
+      id: sitenav
+      className: "w-full bg-white overflow-y-auto xl:overflow-y-visible xl:h-[unset] xl:border-b z-[99999] xl:z-[1000] fixed left-0 md:top-[95px] xl:top-0 xl:relative xl:block container duration-300 transition xl:translate-x-0"
+      dynamicClasses:
+        - mobileMenuOpen=true: "translate-x-0"
+        - mobileMenuOpen=false: "-translate-x-full"
+        - isFixed=true: "top-[60px] h-[calc(100vh-60px)]"
+        - isFixed=false: "top-[97px] h-[calc(100vh-97px)]"
+      children:
+        - element: div
+          className: "justify-between items-center relative xl:flex p-[20px] xl:p-0 container"
+          children:
+            - element: div
+              className: "xl:hidden"
+              contains: NavigationMenuDrawer (mobile)
+            - element: div
+              className: "hidden xl:block w-full"
+              contains: NavigationMenuBar (desktop)
+
+child_components:
+  - name: NavigationMenuDrawer
+    path: "~/components/navigation-v4/navigation-menu-drawer"
+    rendered_when: below xl breakpoint (xl:hidden wrapper)
+    props:
+      - items: MenuInterface[] (categories from API)
+      - toggleMenu: PropFunction passed through from parent
+  - name: NavigationMenuBar
+    path: "~/components/navigation-v4/navigation-menu-bar"
+    rendered_when: xl breakpoint and above (hidden xl:block wrapper)
+    props:
+      - items: MenuInterface[] (categories from API)
+
+data_structure:
+  MenuApiResponse:
+    - categories: "MenuInterface[]"
+
+behavior:
+  - On mount: call loadWebContent<{ categories: MenuInterface[] }>(WebContentType.MENU_V2) via useResource$
+  - While loading: render empty <div/>
+  - On error: render <div> with error.message text
+  - On success: render <nav id="sitenav"> with mobile drawer and desktop bar inside
+  - Mobile drawer (xl:hidden): slides in from left when mobileMenuOpen=true, hidden off-screen when false
+  - Desktop bar (hidden xl:block): always visible at xl+; overflow not clipped; no translate animation
+  - The nav is position:fixed on mobile/tablet, position:relative on xl+
+  - Body scroll lock is managed externally by Header (overflow:hidden on body), not by this component
+  - Active route highlighting: NavigationMenuBar tracks URL via popstate listener; NavigationMenuDrawer resolves active route from location pathname on mount
+
+styling:
+  nav:
+    base: "w-full bg-white overflow-y-auto xl:overflow-y-visible xl:h-[unset] xl:border-b z-[99999] xl:z-[1000] fixed left-0 md:top-[95px] xl:top-0 xl:relative xl:block container duration-300 transition xl:translate-x-0"
+    open: "translate-x-0"
+    closed: "-translate-x-full"
+    fixed_header: "top-[60px] h-[calc(100vh-60px)]"
+    default_header: "top-[97px] h-[calc(100vh-97px)]"
+  inner_container: "justify-between items-center relative xl:flex p-[20px] xl:p-0 container"
+
+api_calls:
+  - service: loadWebContent
+    type: WebContentType.MENU_V2
+    key: "__menu_v2__"
+    description: Fetches the category/navigation tree from the Printerpix CMS JSON service
+    returns: "{ categories: MenuInterface[] }"
+    fallback: getBackUpFileContent(WebContentType.MENU_V2) used by json-service on error
+
+dependencies:
+  qwik:
+    - component$, type PropFunction, Resource, useResource$ from @builder.io/qwik
+  services:
+    - loadWebContent, WebContentType from ~/services/json-service
+  components:
+    - NavigationMenuDrawer from ~/components/navigation-v4/navigation-menu-drawer
+    - NavigationMenuBar from ~/components/navigation-v4/navigation-menu-bar
+
+used_by:
+  - Header
+
+security:
+  - No authentication required; menu data is public
+  - No user input is accepted by this component
+
+edge_cases:
+  - API failure: onRejected renders error.message inline (no retry logic)
+  - Empty categories array: NavigationMenuBar and Drawer render empty lists gracefully
+  - isFixed toggles CSS classes only; height/top recalculation happens purely via Tailwind class swap
+
+notes:
+  - The mobile nav overlay (z-[99999]) sits above most page content; the desktop bar uses z-[1000]
+  - NavigationMenuBar performs active route detection via popstate + useTask$; NavigationMenuDrawer uses location pathname on mount only
+  - Both sub-components share the same MenuInterface type, exported from this file
+
+# ── NEW SECTIONS ────────────────────────────────────────────────────────────
+
+types:
+  MenuInterface:
+    description: Recursive interface for a navigation tree node (category or product page)
+    exported: true
+    fields:
+      - name: caption
+        type: string
+        description: Display label for the menu item
+      - name: friendlyUrl
+        type: "string | null"
+        description: URL path; null for non-linkable group headers
+      - name: subcategories
+        type: "MenuInterface[] | null"
+        description: Child category nodes
+      - name: productPages
+        type: "MenuInterface[] | null"
+        description: Child product-page nodes
+      - name: showSubcategories
+        type: boolean
+        description: Whether to render subcategories in this node
+      - name: showProductPages
+        type: boolean
+        description: Whether to render productPages in this node
+
+  MenuProps:
+    description: Props for the NavigationMenu4 component
+    fields:
+      - name: mobileMenuOpen
+        type: boolean
+      - name: toggleMenu
+        type: "PropFunction<() => void>"
+      - name: isFixed
+        type: boolean
+
+  MenuApiResponse:
+    description: Shape of the API response from loadWebContent(MENU_V2)
+    fields:
+      - name: categories
+        type: "MenuInterface[]"
+
+field_consumption:
+  MenuApiResponse:
+    consumed:
+      - categories: Passed directly as items prop to NavigationMenuDrawer and NavigationMenuBar
+    ignored: []
+
+  MenuInterface:
+    consumed:
+      - caption: Used as display text and React key
+      - friendlyUrl: Used for <a href> and active route matching; null means no link
+      - subcategories: Recursively rendered as child items when showSubcategories=true
+      - productPages: Recursively rendered as child items when showProductPages=true
+      - showSubcategories: Controls whether subcategories are rendered
+      - showProductPages: Controls whether productPages are rendered
+    ignored: []
+
+visibility_map:
+  entire_nav_element:
+    condition: Resource onResolved fires (menu data loaded)
+    default: empty div during loading
+
+  mobile_drawer_wrapper:
+    condition: "always rendered inside nav (visibility controlled by CSS: xl:hidden)"
+    default: visible on < xl, hidden on xl+
+
+  desktop_bar_wrapper:
+    condition: "always rendered inside nav (visibility controlled by CSS: hidden xl:block)"
+    default: hidden on < xl, visible on xl+
+
+  nav_translate_state:
+    condition: props.mobileMenuOpen === true
+    default: closed (-translate-x-full)
+    notes: xl:translate-x-0 overrides on desktop regardless of mobileMenuOpen
+
+  nav_height_and_top:
+    condition: props.isFixed === true
+    default: top-[97px] h-[calc(100vh-97px)] when isFixed=false
+
+implementation_logic:
+  menu_data_loading:
+    rule: |
+      useResource$ calls loadWebContent<{ categories: MenuInterface[] }>(WebContentType.MENU_V2)
+      on the server side. The Resource component renders an empty div while pending and an
+      inline error message if rejected. This means the nav is invisible during SSR/hydration
+      until the resource resolves — Header must account for layout shift.
+    critical: false
+
+  mobile_vs_desktop_rendering:
+    rule: |
+      Both NavigationMenuDrawer and NavigationMenuBar are always mounted in the DOM; the
+      mobile/desktop split is achieved purely via CSS (xl:hidden and hidden xl:block wrappers).
+      Neither sub-component is conditionally created/destroyed. This means both receive
+      the same categories data and both are included in the SSR output.
+    critical: true
+
+  mobile_drawer_translate_animation:
+    rule: |
+      The mobile nav slide-in is driven by toggling Tailwind classes on the <nav> element:
+        mobileMenuOpen=true  → "translate-x-0"  (nav visible, slides in from left)
+        mobileMenuOpen=false → "-translate-x-full"  (nav hidden off-screen)
+      xl:translate-x-0 is always present and overrides the mobile classes at xl+ breakpoints,
+      making the nav permanently visible on desktop regardless of mobileMenuOpen.
+    critical: false
+
+  is_fixed_height_calculation:
+    rule: |
+      When isFixed=true (compact/sticky header mode), the nav uses top-[60px] and
+      h-[calc(100vh-60px)] to offset below a 60px header bar.
+      When isFixed=false (standard header), offsets are top-[97px] and h-[calc(100vh-97px)].
+      These values are CSS class swaps; there is no JS height calculation.
+    critical: false
+
+  active_route_detection:
+    rule: |
+      NavigationMenuBar tracks the active route via a popstate event listener plus a
+      useTask$ that fires on URL changes. NavigationMenuDrawer resolves the active
+      path only once on mount using the current location pathname. Neither mechanism
+      is owned by NavigationMenu4 itself — it is handled inside the child components.
+    critical: false

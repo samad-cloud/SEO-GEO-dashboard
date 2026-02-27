@@ -1,0 +1,263 @@
+name: HomePageCategory
+source: components/homepage/homepagecategory.tsx
+description: >
+  Individual homepage category section that displays a category heading
+  (optionally linked to the category page), a row of product cards, and an
+  optional "Shop Collection" CTA link. The heading renders as an anchor-wrapped
+  h2 if a categoryPageUrl exists, or a plain h2 otherwise. Products are
+  rendered in a flexible wrap layout using HomePageCategoryCard components.
+
+exports:
+  - name: default
+    type: component
+    description: HomePageCategory component (default export)
+  - name: imgFetchPriority
+    type: type
+    description: "Union type: 'high' | 'low' | 'auto' for image fetch priority"
+
+props:
+  - name: data
+    type: ProductSection
+    required: true
+    description: Category data containing heading, subheading, categoryPageUrl, productPages array, and buttonCaption.
+  - name: imgFetchPriority
+    type: "'high' | 'low' | 'auto'"
+    required: false
+    description: Image fetch priority hint passed through to product cards.
+  - name: shopCollectionCtaText
+    type: string
+    required: false
+    description: "Text for the 'Shop Collection' CTA link. Only shown if categoryPageUrl also exists."
+  - name: showOff
+    type: boolean
+    required: true
+    description: Flag passed through to product cards, typically true for the last category in the container.
+
+component_structure:
+  root_element: div
+  root_classes: "home-category my-[25px] w-full border-b border-base-mainBorder px-[10px] lg:px-0 text-base-mainText home_page_category_wrapper"
+  layout: >
+    Two sections stacked vertically: a header row with heading and CTA link,
+    followed by a flex-wrap row of product cards.
+
+  header_row:
+    element: div
+    classes: "flex justify-between items-center"
+    children:
+      - heading:
+          condition: "If data.categoryPageUrl exists, heading is wrapped in an anchor tag"
+          with_link:
+            element: "a > h2"
+            href: "data.categoryPageUrl"
+            link_class: "link_homepage_category"
+            h2_class: "home-category-name font-semibold w-full"
+            text: "data.heading"
+          without_link:
+            element: h2
+            class: "home-category-name font-semibold w-full"
+            text: "data.heading"
+      - cta_link:
+          condition: "data.categoryPageUrl AND shopCollectionCtaText both exist"
+          element: a
+          classes: "flex items-center text-[14px] link_homepage_category"
+          href: "data.categoryPageUrl"
+          content: "shopCollectionCtaText + arrow icon"
+
+  products_row:
+    element: div
+    classes: "home-category-items flex justify-between items-start flex-wrap py-[10px]"
+
+child_components:
+  - name: HomePageCategoryCard
+    source: components/homepage/homepagecategorycard.tsx
+    description: Individual product card within the category section.
+    props_passed:
+      - name: product
+        from: "product (iterated from data.productPages)"
+      - name: categorySize
+        from: "data.productPages.length"
+      - name: key
+        from: index
+      - name: categoryName
+        from: "data.heading"
+      - name: imgFetchPriority
+        from: "props.imgFetchPriority"
+      - name: showOff
+        from: "props.showOff"
+  - name: SVGIcon
+    source: components/svg-icon/svg-icon.tsx
+    description: Right-pointing arrow icon in the CTA link (arrow-down rotated -90deg).
+    props_passed:
+      - name: name
+        value: "arrow-down"
+      - name: width
+        value: "12"
+      - name: height
+        value: "12"
+      - name: class
+        value: "duration-300 fill-base-mainText ml-1 -rotate-90"
+
+data_structure:
+  ProductSection:
+    heading: string
+    subheading: string
+    categoryPageUrl: string
+    productPages: ProductPage[]
+    buttonCaption: string
+  ProductPage:
+    caption: string
+    bannerUrl: string
+    bannerAltText: string
+    productPageUrl: string
+    price: number
+    discountedPrice: number
+    priceDisplay: string
+    discountedPriceDisplay: string
+
+behavior:
+  heading_rendering:
+    description: >
+      Conditionally wraps the h2 heading in an anchor tag if categoryPageUrl
+      is provided. This makes the heading clickable to navigate to the
+      category page.
+    condition: "data.categoryPageUrl is truthy"
+
+  cta_link:
+    description: >
+      Shows a "Shop Collection" (or equivalent) CTA link with an arrow icon
+      to the right of the heading. Only visible when both categoryPageUrl and
+      shopCollectionCtaText are provided.
+    condition: "data.categoryPageUrl AND shopCollectionCtaText both truthy"
+    icon: "arrow-down rotated -90 degrees (pointing right)"
+    icon_animation: "duration-300 transition on the icon"
+
+  product_cards:
+    description: >
+      Iterates over data.productPages and renders a HomePageCategoryCard for
+      each product. Passes categorySize to allow cards to adjust their width
+      based on total count.
+
+styling:
+  wrapper: "home-category my-[25px] w-full border-b border-base-mainBorder px-[10px] lg:px-0 text-base-mainText home_page_category_wrapper"
+  header: "flex justify-between items-center"
+  heading: "home-category-name font-semibold w-full"
+  cta_link: "flex items-center text-[14px] link_homepage_category"
+  products: "home-category-items flex justify-between items-start flex-wrap py-[10px]"
+  icon: "duration-300 fill-base-mainText ml-1 -rotate-90"
+  responsive:
+    mobile: "px-[10px] horizontal padding"
+    desktop: "lg:px-0 no horizontal padding on large screens"
+  border: "border-b border-base-mainBorder (bottom border separating categories)"
+  custom_classes:
+    - "home_page_category_wrapper (GTM/analytics tracking hook)"
+    - "link_homepage_category (GTM/analytics tracking hook)"
+
+dependencies:
+  internal:
+    - path: components/homepage/homepagecategorycard.tsx
+      purpose: Renders individual product cards within the category
+    - path: components/svg-icon/svg-icon.tsx
+      purpose: Arrow icon for the CTA link
+    - path: services/home-service.ts
+      purpose: ProductSection and ProductPage type definitions
+  external: []
+
+used_by:
+  - path: components/homepage/homepage-category-container.tsx
+    description: Parent container that renders a list of these category sections
+
+security:
+  concerns: none
+  auth_required: false
+  sensitive_data: false
+
+notes:
+  - The subheading and buttonCaption fields from ProductSection are not used in this component
+  - The imgFetchPriority type is re-exported from this file (used by homepagecategorycard)
+  - CSS class names like home_page_category_wrapper and link_homepage_category are GTM tracking hooks
+  - The arrow icon uses duration-300 transition but no hover state is defined in this component
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  CategoryProps:
+    description: Component props interface (internal, not exported)
+    fields:
+      - name: data
+        type: ProductSection
+      - name: imgFetchPriority
+        type: "'high' | 'low' | 'auto'"
+        optional: true
+      - name: shopCollectionCtaText
+        type: string
+        optional: true
+      - name: showOff
+        type: boolean
+
+  imgFetchPriority:
+    description: Union type for image fetch priority hint (re-exported from this file)
+    fields:
+      - name: value
+        type: "'high' | 'low' | 'auto'"
+
+  ProductSection:
+    description: Category section data passed as the data prop
+    source: ~/services/home-service
+    fields:
+      - name: heading
+        type: string
+      - name: subheading
+        type: string
+      - name: categoryPageUrl
+        type: string
+      - name: productPages
+        type: "ProductPage[]"
+      - name: buttonCaption
+        type: string
+
+  ProductPage:
+    description: Individual product card data within a category section
+    source: ~/services/home-service
+    fields:
+      - name: caption
+        type: string
+      - name: bannerUrl
+        type: string
+      - name: bannerAltText
+        type: string
+      - name: productPageUrl
+        type: string
+      - name: price
+        type: number
+      - name: discountedPrice
+        type: number
+      - name: priceDisplay
+        type: string
+      - name: discountedPriceDisplay
+        type: string
+
+field_consumption:
+  CategoryProps:
+    consumed:
+      - data: data.categoryPageUrl drives heading link and CTA visibility; data.heading is the h2 text; data.productPages is iterated for product cards; data.productPages.length passed as categorySize
+      - shopCollectionCtaText: Shown in CTA link when truthy alongside data.categoryPageUrl
+      - imgFetchPriority: Passed through to HomePageCategoryCard
+      - showOff: Passed through to HomePageCategoryCard
+
+  ProductSection:
+    consumed:
+      - heading: Rendered as h2 text; also passed to HomePageCategoryCard as categoryName
+      - categoryPageUrl: Used as href for heading anchor and CTA link; truthy check controls both
+      - productPages: Iterated to render HomePageCategoryCard instances; length used as categorySize
+    ignored:
+      - subheading: Not read anywhere in this component
+      - buttonCaption: Not read anywhere in this component
+
+visibility_map:
+  heading_as_anchor:
+    condition: "data.categoryPageUrl is truthy"
+    default: visible as plain h2 (no link) when categoryPageUrl is absent
+
+  cta_link:
+    condition: "data.categoryPageUrl && shopCollectionCtaText are both truthy"
+    default: hidden (neither rendered when either value is absent)

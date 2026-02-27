@@ -1,0 +1,202 @@
+name: CategoryQuickLinks
+source: src/components/category-page/category-quick-links.tsx
+description: |
+  Horizontal scrollable navigation bar of quick-link pills for category sub-pages.
+  Optionally shows a parent breadcrumb link/span to the left of the link pills.
+  Each pill is styled with active/non-active colors from the data.styles object;
+  the active state is determined client-side by matching the current full URL against
+  each link's URL string.
+
+  URL tracking uses a MutationObserver on the document body to detect client-side
+  navigation changes (SPA route changes), keeping the active pill in sync without
+  a full page reload.
+
+  A sticky version of the bar (above the viewport) is present in the source but
+  commented out entirely — only the static (non-sticky) version is active.
+
+exports:
+  - name: default
+    type: component$<CategoryQuickLinksProps>
+    description: Default Qwik component export
+  - name: CategoryQuickLinksProps
+    type: interface
+    description: Props interface exported for consumer use
+
+props:
+  - name: data
+    type: CategoryQuickLinkSection
+    required: true
+    description: Quick link section data including parentBreadcrumb, quickLinks array, and styles
+
+component_structure:
+  - root: React Fragment (<>)
+  - main_container:
+      element: div
+      class: "container mx-auto pl-4 lg:pl-0"
+      children:
+        - flex_row:
+            element: div
+            class: "flex items-center"
+            children:
+              - parent_breadcrumb:
+                  condition: data.parentBreadcrumb.display === true
+                  variants:
+                    - link_variant:
+                        condition: data.parentBreadcrumb.url is truthy
+                        element: a
+                        class: "flex items-center mr-2 link_category_quick_links--parent"
+                        href: data.parentBreadcrumb.url
+                        children: [text, SVGIcon arrow-down rotated -90deg]
+                    - span_variant:
+                        condition: data.parentBreadcrumb.url is falsy
+                        element: span
+                        class: "flex items-center mr-2"
+                        children: [text, SVGIcon arrow-down rotated -90deg]
+              - scroll_container:
+                  element: div
+                  class: "flex-1 overflow-x-auto quick-links-sliders"
+                  style: "scrollbarWidth: none"
+                  children:
+                    - pills_row:
+                        element: div
+                        class: "flex min-w-full w-fit gap-x-4 flex-nowrap [lg:justify-center if no parent breadcrumb]"
+                        children:
+                          - link_pills: "(mapped from data.quickLinks)"
+                              element: Link (from qwik-city)
+                              class: "link_category_quick_links--{index} block text-nowrap py-2 min-w-[40vw] lg:min-w-0 lg:px-4 text-center rounded-3xl [active-quick-link if active]"
+                              style: active/non-active colors from data.styles
+                              href: link.url
+                              key: link.text
+
+data_structure:
+  CategoryQuickLinkSection:
+    source: "~/services/category-service"
+    fields:
+      - displayOn: "string[] — URL paths on which this section should appear"
+      - parentBreadcrumb:
+          display: boolean
+          text: string
+          url: string
+      - quickLinks:
+          - text: string
+          - url: string
+      - styles:
+          activeBg: string
+          activeText: string
+          nonActiveBg: string
+          nonActiveText: string
+
+behavior:
+  - On mount (useVisibleTask$):
+      1. Set activeUrl signal to document.location.href
+      2. Store oldHref = current href
+      3. Create MutationObserver watching body for childList and subtree mutations
+      4. On each mutation: if location.href changed, update oldHref and activeUrl signal
+      5. On cleanup: disconnect the MutationObserver
+  - Render logic:
+      - If data.parentBreadcrumb.display is true:
+          - If parentBreadcrumb.url is non-empty: render <a> with link_category_quick_links--parent class and arrow icon
+          - Else: render <span> with text and arrow icon (no link)
+      - For each quick link, render a Link pill:
+          - Active if activeUrl.value.includes(link.url)
+          - Active pill: data.styles.activeBg background, data.styles.activeText color, class "active-quick-link"
+          - Inactive pill: data.styles.nonActiveBg background, data.styles.nonActiveText color
+          - Each pill has a GTM/analytics class "link_category_quick_links--{index}"
+  - Pills scroll container has scrollbarWidth:none (hidden scrollbar) and overflow-x-auto (swipeable)
+  - Pills row is center-justified (lg:justify-center) only when parentBreadcrumb is not displayed
+
+styling:
+  - "container mx-auto pl-4 lg:pl-0": outer container
+  - "flex items-center": flex row for breadcrumb + pills
+  - "flex items-center mr-2 link_category_quick_links--parent": parent breadcrumb link
+  - "-rotate-90 ml-4": arrow icon rotation (pointing right)
+  - "flex-1 overflow-x-auto quick-links-sliders": scrollable pills wrapper
+  - "flex min-w-full w-fit gap-x-4 flex-nowrap": pills row
+  - "block text-nowrap py-2 min-w-[40vw] lg:min-w-0 lg:px-4 text-center rounded-3xl": individual pill
+  - "active-quick-link": applied to currently active pill
+
+dependencies:
+  qwik:
+    - component$, useSignal, useVisibleTask$ from "@builder.io/qwik"
+  qwik_city:
+    - Link from "@builder.io/qwik-city"
+  components:
+    - SVGIcon from "~/components/svg-icon/svg-icon"
+  types:
+    - CategoryQuickLinkSection from "~/services/category-service"
+
+used_by:
+  - CommonCategoryContainer
+
+security:
+  - No dangerouslySetInnerHTML — all content rendered as text/attributes
+  - Link hrefs come from CMS-supplied data; server-side validation is expected upstream
+
+edge_cases:
+  - data.parentBreadcrumb.url is empty string: parentBreadcrumb.url is falsy, renders span instead of link
+  - All quickLinks inactive: no pill gets active-quick-link class
+  - Multiple quickLinks whose URL matches activeUrl: all matching pills get active styling (substring match)
+  - SPA navigation occurs: MutationObserver fires, activeUrl updates, reactive re-render re-evaluates active pills
+  - data.quickLinks is empty array: pills row renders empty, no pills shown
+
+notes:
+  - The sticky header version is fully commented out in source (lines 32-107); only the static bar is rendered
+  - The useVisibleTask$ hook uses eslint-disable-next-line for qwik/no-use-visible-task, meaning this is a known Qwik anti-pattern accepted here for DOM access
+  - Active link detection uses String.includes(link.url) — a substring match, not an exact match — which can cause false positives for overlapping URL paths
+  - The MutationObserver approach is used because Qwik's SSR-friendly routing doesn't provide a reliable client-side navigation hook at this usage site
+
+types:
+  CategoryQuickLinksProps:
+    description: Component props interface
+    fields:
+      - name: data
+        type: CategoryQuickLinkSection
+
+  CategoryQuickLinkSection:
+    description: Quick link section data from category-service
+    source: "~/services/category-service"
+    fields:
+      - name: displayOn
+        type: "string[]"
+      - name: parentBreadcrumb
+        type: "{ display: boolean; text: string; url: string }"
+      - name: quickLinks
+        type: "Array<{ text: string; url: string }>"
+      - name: styles
+        type: "{ activeBg: string; activeText: string; nonActiveBg: string; nonActiveText: string }"
+
+field_consumption:
+  CategoryQuickLinkSection:
+    consumed:
+      - "parentBreadcrumb.display": Guards rendering of parent breadcrumb element
+      - "parentBreadcrumb.url": Determines link vs span variant; used as href
+      - "parentBreadcrumb.text": Displayed as breadcrumb label text
+      - "quickLinks[].text": Pill label text and React key
+      - "quickLinks[].url": Pill href and active-state substring match target
+      - "styles.activeBg": Background color for active pill
+      - "styles.activeText": Text color for active pill
+      - "styles.nonActiveBg": Background color for inactive pill
+      - "styles.nonActiveText": Text color for inactive pill
+    ignored:
+      - "displayOn": Not used by this component; used by parent (CommonCategoryContainer) to select which section to show
+
+visibility_map:
+  parent_breadcrumb:
+    condition: data.parentBreadcrumb.display === true
+    default: hidden
+
+  parent_breadcrumb_as_link:
+    condition: "data.parentBreadcrumb.display === true AND data.parentBreadcrumb.url is truthy"
+    default: hidden
+
+  parent_breadcrumb_as_span:
+    condition: "data.parentBreadcrumb.display === true AND data.parentBreadcrumb.url is falsy"
+    default: hidden
+
+  pills_row_centered:
+    condition: "data.parentBreadcrumb.display === false (lg:justify-center applied)"
+    default: left-aligned when breadcrumb is visible
+
+  active_quick_link_styling:
+    condition: activeUrl.value.includes(link.url)
+    default: inactive styling

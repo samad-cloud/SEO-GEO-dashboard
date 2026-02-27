@@ -1,0 +1,214 @@
+name: ShoppingGuide
+source: components/web-component/shopping-guide.tsx
+description: >
+  A polymorphic shopping guide component that renders different sub-components
+  based on which data variant is present. Acts as a routing layer that selects
+  between slider (large/greyscale/stacked), shop-by-category, shop-by-budget,
+  and medium greyscale slider presentations. One variant (sliderMediumGreyscale)
+  is region-gated to GB (UK) only.
+
+exports:
+  default:
+    type: component
+    name: ShoppingGuide
+    export_type: default
+
+props:
+  data:
+    type: ShoppingGuide
+    required: true
+    description: >
+      Union-like object where exactly one variant field is non-null.
+      The component checks fields in priority order and renders the first match.
+
+component_structure:
+  root:
+    description: >
+      No wrapping element. Returns the first matching child component directly,
+      or null if no variant matches.
+    variant_selection:
+      - condition: data.sliderLargeGrayScale is truthy
+        renders: ShoppingGuideSlider with isGreyscale=true
+      - condition: data.sliderLarge is truthy
+        renders: ShoppingGuideSlider with isGreyscale=false
+      - condition: data.shopByCategory is truthy
+        renders: ShopByCategory
+      - condition: data.shopByBudget is truthy
+        renders: ShopByBudget
+      - condition: data.stackedSliderGrayScale is truthy
+        renders: ShoppingGuideSlider with isGreyscale=true, isStacked=true
+      - condition: data.sliderMediumGreyscale is truthy AND settings().website == "GB"
+        renders: ProductOptionType4
+      - condition: none match
+        renders: null
+
+child_components:
+  - name: ShoppingGuideSlider
+    source: ./shopping-guide-slider
+    props:
+      isGreyscale:
+        type: boolean
+        description: Whether to render images in greyscale
+      data:
+        type: TypeOption2
+        description: Slider data with items
+      isStacked:
+        type: boolean
+        optional: true
+        description: Whether to use stacked layout variant
+  - name: ShopByCategory
+    source: ./shop-by-category
+    props:
+      data:
+        type: ShopByCategory
+        description: Category browsing data
+  - name: ShopByBudget
+    source: ./shop-by-budget
+    props:
+      data:
+        type: ShopByBudget
+        description: Budget-based browsing data
+  - name: ProductOptionType4
+    source: ../product-page/product-option-type-4
+    props:
+      data:
+        type: TypeOption2
+        description: Medium greyscale slider data (GB-only)
+
+data_structure:
+  ShoppingGuide:
+    sliderLargeGrayScale:
+      type: TypeOption2 | null
+      description: Large slider with greyscale images, checked first
+    sliderLarge:
+      type: TypeOption2 | null
+      description: Large slider without greyscale, checked second
+    shopByCategory:
+      type: ShopByCategory | null
+      description: Category-based shopping guide, checked third
+    shopByBudget:
+      type: ShopByBudget | null
+      description: Budget-based shopping guide, checked fourth
+    stackedSliderGrayScale:
+      type: TypeOption2 | null
+      description: Stacked slider with greyscale, checked fifth
+    sliderMediumGreyscale:
+      type: TypeOption2 | null
+      description: Medium greyscale slider, checked sixth (GB region only)
+
+behavior:
+  variant_selection:
+    - Uses if/else-if chain to select exactly ONE child component to render
+    - Priority order is strictly defined (sliderLargeGrayScale > sliderLarge > shopByCategory > shopByBudget > stackedSliderGrayScale > sliderMediumGreyscale)
+    - Only the first truthy variant is rendered; subsequent truthy variants are ignored
+    - Returns null if no variant matches
+  region_gating:
+    - The sliderMediumGreyscale variant is ONLY rendered when settings().website equals "GB"
+    - Uses runtime settings check via settings() function from config/settings
+    - Other regions will skip this variant entirely even if data is present
+  rendering:
+    - No wrapping elements; returns child component directly
+    - Each child receives its specific data slice, not the entire ShoppingGuide object
+
+styling:
+  approach: No direct styling; delegated entirely to child components
+  note: Parent wrapper in web-contents-component provides "w-full my-4 lg:my-8" styling
+
+dependencies:
+  - name: ShoppingGuideSlider
+    source: ./shopping-guide-slider
+    purpose: Renders slider/carousel variants (large, greyscale, stacked)
+  - name: ShopByCategory
+    source: ./shop-by-category
+    purpose: Renders category-based shopping guide
+  - name: ShopByBudget
+    source: ./shop-by-budget
+    purpose: Renders budget-based shopping guide
+  - name: ProductOptionType4
+    source: ../product-page/product-option-type-4
+    purpose: Renders medium greyscale slider (GB only)
+  - name: settings
+    source: ~/config/settings
+    purpose: Runtime environment settings for region-gating
+  - name: web-component-service
+    purpose: ShoppingGuide type definition
+    import: "type ShoppingGuide"
+
+used_by:
+  - components/web-component/web-contents-component.tsx
+  - components/web-component/web-contents-component-v3.tsx
+
+security:
+  - Region-gating logic uses server-side settings; ensure region check cannot be bypassed client-side
+
+notes:
+  - This component acts purely as a dispatcher/router with no visual output of its own
+  - The variant priority order is important and must be preserved in reimplementation
+  - The sliderMediumGreyscale with GB gating suggests region-specific homepage customization
+  - ProductOptionType4 is imported from the product-page directory, crossing domain boundaries
+  - There is a commented-out duplicate import of ProductOptionType4 in the source
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  ShoppingGuideProps:
+    description: Component props interface
+    fields:
+      - name: data
+        type: ShoppingGuide
+
+  ShoppingGuide:
+    description: Shopping guide variant union from web-component-service
+    source: ~/services/web-component-service
+    fields:
+      - name: sliderLargeGrayScale
+        type: "TypeOption2 | null"
+      - name: sliderLarge
+        type: "TypeOption2 | null"
+      - name: shopByCategory
+        type: "ShopByCategory | null"
+      - name: shopByBudget
+        type: "ShopByBudget | null"
+      - name: stackedSliderGrayScale
+        type: "TypeOption2 | null"
+      - name: sliderMediumGreyscale
+        type: "TypeOption2 | null"
+
+field_consumption:
+  ShoppingGuide:
+    consumed:
+      - sliderLargeGrayScale: Truthiness check; if truthy renders ShoppingGuideSlider(isGreyscale=true)
+      - sliderLarge: Truthiness check (if sliderLargeGrayScale is null); if truthy renders ShoppingGuideSlider(isGreyscale=false)
+      - shopByCategory: Truthiness check; if truthy renders ShopByCategory
+      - shopByBudget: Truthiness check; if truthy renders ShopByBudget
+      - stackedSliderGrayScale: Truthiness check; if truthy renders ShoppingGuideSlider(isGreyscale=true, isStacked=true)
+      - sliderMediumGreyscale: Truthiness check AND region check (settings().website == "GB"); if both true renders ProductOptionType4
+
+visibility_map:
+  ShoppingGuideSlider_greyscale_large:
+    condition: "data.sliderLargeGrayScale is truthy"
+    default: hidden
+
+  ShoppingGuideSlider_large:
+    condition: "data.sliderLargeGrayScale is falsy AND data.sliderLarge is truthy"
+    default: hidden
+
+  ShopByCategory:
+    condition: "sliderLargeGrayScale and sliderLarge are falsy AND data.shopByCategory is truthy"
+    default: hidden
+
+  ShopByBudget:
+    condition: "sliderLargeGrayScale, sliderLarge, shopByCategory are falsy AND data.shopByBudget is truthy"
+    default: hidden
+
+  ShoppingGuideSlider_stacked_greyscale:
+    condition: "previous variants all falsy AND data.stackedSliderGrayScale is truthy"
+    default: hidden
+
+  ProductOptionType4:
+    condition: "all previous variants falsy AND data.sliderMediumGreyscale is truthy AND settings().website == 'GB'"
+    default: hidden
+
+  null_render:
+    condition: "none of the six variant conditions are satisfied"
+    default: "rendered (component returns null)"

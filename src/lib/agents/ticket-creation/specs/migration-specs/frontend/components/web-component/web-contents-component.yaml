@@ -1,0 +1,479 @@
+name: WebContentsComponent (ProductPageContentWebComponents)
+source: components/web-component/web-contents-component.tsx
+description: >
+  Critical orchestrator component that renders multiple CMS-driven content sections on product/category pages.
+  Receives an array of WebComponent[] data from the CMS API, filters each item by its wcTemplateName to determine
+  which section type to render, transforms each via a dedicated process*Data() function from web-component-service,
+  and renders the corresponding child component. All sections are ordered via CSS `order` property derived from
+  content.order. Supports 15 distinct section types. Passes an optional CategoryTheme for color theming to
+  child components that support it.
+
+exports:
+  - name: ProductPageContentWebComponentsProps
+    type: interface
+    description: Props interface for the component
+  - name: default
+    type: component
+    description: The main web contents orchestrator component (default export)
+
+props:
+  - name: data
+    type: "Array<WebComponent>"
+    required: true
+    description: >
+      Array of WebComponent objects from CMS API. Each has wcTemplateName, fields[], customTag[],
+      childWebComponents_1[], childWebComponents_2[], order, componentType, name, guid, isActive, productType.
+  - name: theme
+    type: "CategoryTheme | null"
+    required: false
+    description: >
+      Optional category theme with primary, secondary, primaryText, secondaryText color values.
+      Passed through to child components that support theming (SeoContent, TrustSignals, Cards, FAQ, UGC, Email, CtaList).
+
+component_structure:
+  type: fragment
+  description: >
+    Renders a React Fragment containing up to 15 filtered/mapped section blocks. Each block:
+    1. Filters data array by wcTemplateName prefix matching a WebComponentType enum value
+    2. Maps each match through its process*Data() transformer function
+    3. Wraps result in a div with id, class, style={{order}}, and key={content.originalData.name}
+    4. Renders the appropriate child component with transformed data
+
+  sections:
+    - filter: "wcTemplateName.startsWith(WebComponentType.SEO_SECTION)"
+      processor: processSeoContentData
+      wrapper_id: "seo-{order|1}"
+      wrapper_class: "container mx-auto my-4 lg:my-8 px-4 lg:px-0"
+      child: SeoContentComponent
+      theme_passed: true
+      props_mapping: "content={content.data.content} heading={content.data.heading} subHeading={content.data.subHeading} icons={content.data.icons} type={content.originalData.componentType} theme={theme}"
+
+    - filter: "wcTemplateName.startsWith(WebComponentType.BLOG_SECTION)"
+      processor: processBlogSectionData
+      wrapper_id: "bs-{order|2}"
+      wrapper_class: "container mx-auto my-4 lg:my-8 px-4 lg:px-0"
+      child: BlogCategorySection
+      theme_passed: false
+      props_mapping: "spread {...content.data}"
+
+    - filter: "wcTemplateName.startsWith(WebComponentType.STORIES_SECTION)"
+      processor: processStoriesData
+      wrapper_id: "sb-{order|3}"
+      wrapper_class: "my-4 lg:my-8"
+      child: StoriesSection
+      theme_passed: false
+      props_mapping: "spread {...content.data}"
+      note: "No container class - stories section is full-width"
+
+    - filter: "wcTemplateName.startsWith(WebComponentType.TRUST_SIGNALS_SECTION)"
+      processor: processTrustSignalsData
+      wrapper_id: "ts-{order|4}"
+      wrapper_class: "container mx-auto my-4 lg:my-8 px-4 lg:px-0"
+      child: TrustSignalsSection
+      theme_passed: true
+      props_mapping: "content={content.data} theme={theme}"
+
+    - filter: "wcTemplateName.startsWith(WebComponentType.CARD_SECTION)"
+      processor: processCardSectionData
+      wrapper_id: "cc-{order|5}"
+      wrapper_class: "my-4 lg:my-8 flex container mx-auto"
+      child: CategoryCards
+      theme_passed: true
+      props_mapping: "content={content.data} theme={theme}"
+
+    - filter: "wcTemplateName.startsWith(WebComponentType.FAQ_SECTION)"
+      processor: processFaqContentData
+      wrapper_id: "faq-{order|6}"
+      wrapper_class: "container mx-auto my-4 lg:my-8"
+      child: FaqSectionV2
+      theme_passed: true
+      props_mapping: "content={content.data} theme={theme} meta={content.originalData}"
+
+    - filter: "wcTemplateName.startsWith(WebComponentType.UGC_SECTION)"
+      processor: processUgcSectionData
+      wrapper_id: "ugc-{order|7}"
+      wrapper_class: "container mx-auto my-4 lg:my-8"
+      child: UgcSectionComponent
+      theme_passed: true
+      props_mapping: "content={content.data} theme={theme}"
+
+    - filter: "wcTemplateName.startsWith(WebComponentType.EMAIL_NEWSLETTER_SECTION)"
+      processor: processEmailSubscriptionData
+      wrapper_id: "ep-{order|8}"
+      wrapper_class: "my-4 lg:my-8"
+      wrapper_style: "order + backgroundColor from content.data.backgroundColor"
+      child: EmailSubscription
+      theme_passed: true
+      props_mapping: "data={content.data} theme={theme}"
+      note: >
+        Wrapper div has inline backgroundColor style. Inner div is "container mx-auto flex justify-center".
+        Email section is full-bleed with background color.
+
+    - filter: "wcTemplateName.startsWith(WebComponentType.FEATURED_SECTION)"
+      processor: processFeaturedSectionData
+      wrapper_id: "bs-{order|9}"
+      wrapper_class: "container mx-auto my-4 lg:my-8"
+      child: HomeBestSellers
+      theme_passed: false
+      props_mapping: "data={content.data}"
+
+    - filter: "wcTemplateName.startsWith(WebComponentType.HOME_PAGE_MARKETING_VIDEO)"
+      processor: processMarketingContentVideoData
+      wrapper_id: "marketing-content-video"
+      wrapper_class: "container mx-auto my-4 lg:my-8"
+      child: MarketingContentVideo
+      theme_passed: false
+      props_mapping: "data={content.data}"
+      note: "Static id (not order-based) - only one marketing video expected"
+
+    - filter: "wcTemplateName.startsWith(WebComponentType.SHOPPING_GUIDE)"
+      processor: processShoppingGuideData
+      wrapper_id: "shopping-guide"
+      wrapper_class: "w-full my-4 lg:my-8"
+      child: ShoppingGuide
+      theme_passed: false
+      props_mapping: "data={content.data}"
+      note: "Full width (w-full) instead of container"
+
+    - filter: "wcTemplateName.startsWith(WebComponentType.MID_PAGE_BANNER)"
+      processor: processMidPageBannerData
+      wrapper_id: "mid-page-banner"
+      wrapper_class: "conditional - 'container mx-auto' if componentType=='Contained Width' else 'w-full'"
+      child: MidPageBanner
+      theme_passed: false
+      props_mapping: "data={content.data}"
+      note: "Width is dynamic based on content.originalData.componentType value"
+
+    - filter: "wcTemplateName.startsWith(WebComponentType.VIDEO_BANNER) AND item.componentType=='Mid-Page'"
+      processor: processVideoBannerData
+      wrapper_id: "video-banner"
+      wrapper_class: "my-4 lg:my-8"
+      child: VideoBanner
+      theme_passed: false
+      props_mapping: "data={content.data}"
+      note: "Additional componentType filter: only 'Mid-Page' video banners rendered here"
+
+    - filter: "wcTemplateName.startsWith(WebComponentType.CTA_LIST_SECTION)"
+      processor: processCtaListData
+      wrapper_id: "cta-list"
+      wrapper_class: "my-4 lg:my-8 container mx-auto"
+      child: CtaList
+      theme_passed: true
+      props_mapping: "data={content.data} theme={theme}"
+
+    - filter: "wcTemplateName.startsWith(WebComponentType.ICON_LIST)"
+      processor: processIconListData
+      wrapper_id: "icon-list"
+      wrapper_class: "my-4 lg:my-8 container mx-auto"
+      child: TrustIndicator
+      theme_passed: false
+      props_mapping: "data={content.data} variant='top'"
+
+child_components:
+  - name: SeoContentComponent
+    source: "./seo-content"
+  - name: BlogCategorySection
+    source: "~/components/category-page/blog-category-section"
+  - name: StoriesSection
+    source: "./stories"
+  - name: TrustSignalsSection
+    source: "./trust-signals"
+  - name: CategoryCards
+    source: "~/components/category-page/category-cards"
+  - name: FaqSectionV2
+    source: "./v2/faq"
+  - name: UgcSectionComponent
+    source: "./ugc-section"
+  - name: EmailSubscription
+    source: "~/components/category-page/email-subscription"
+  - name: HomeBestSellers
+    source: "./home-best-sellers"
+  - name: MarketingContentVideo
+    source: "~/components/homepage/marketing-content-video"
+  - name: ShoppingGuide
+    source: "./shopping-guide"
+  - name: MidPageBanner
+    source: "./mid-page-banner"
+  - name: VideoBanner
+    source: "./video-banner"
+  - name: CtaList
+    source: "./cta-list"
+  - name: TrustIndicator
+    source: "~/components/share/trust-indication/trust-indicator"
+
+data_structure:
+  WebComponent:
+    guid: string
+    productType: PlatinumProductTypeEnum
+    wcTemplateName: WebComponentType (enum string)
+    componentType: string
+    name: string
+    isActive: boolean
+    fields: WebComponentField[] (fieldName/fieldValue pairs)
+    customTag: CustomTag[] (id/tagKey/tagKeyCode/tagValue)
+    childWebComponents_1: WebComponent[]
+    childWebComponents_2: WebComponent[] | null
+    order: number
+
+  WebContent<T>:
+    data: T (processed data for the specific section type)
+    componentType: string
+    order: number
+    productType: PlatinumProductTypeEnum
+    originalData: WebComponent (raw source data preserved)
+
+  CategoryTheme:
+    primary: string
+    secondary: string
+    primaryText: string
+    secondaryText: string
+
+  WebComponentType_enum:
+    SEO_SECTION: "SEO Section"
+    BLOG_SECTION: "Blog Section"
+    STORIES_SECTION: "Stories Section"
+    TRUST_SIGNALS_SECTION: "Trust Signals Section"
+    CARD_SECTION: "Card Section"
+    FAQ_SECTION: "FAQ Section"
+    UGC_SECTION: "UGC Section"
+    EMAIL_NEWSLETTER_SECTION: "Email Newsletter Section"
+    FEATURED_SECTION: "Featured Section"
+    HOME_PAGE_MARKETING_VIDEO: "Home Page Marketing Video"
+    SHOPPING_GUIDE: "Shopping Guide"
+    MID_PAGE_BANNER: "Mid-Page Banner"
+    VIDEO_BANNER: "Video Banner"
+    CTA_LIST_SECTION: "CTA List"
+    ICON_LIST: "Icon List"
+
+behavior:
+  - action: "Filter and render CMS sections"
+    details: >
+      For each of the 15 WebComponentType values, filters the data array using wcTemplateName.startsWith()
+      to find matching items. Each match is transformed by the corresponding process*Data() function from
+      web-component-service, then rendered inside a wrapper div with the appropriate child component.
+  - action: "CSS order-based layout"
+    details: >
+      Each wrapper div receives style={{order: content.order}} allowing CSS flexbox/grid ordering.
+      The id attribute follows the pattern "{prefix}-{order|default}" where the default varies by section type.
+  - action: "Key assignment"
+    details: >
+      Each wrapper div uses key={content.originalData.name} for React reconciliation.
+  - action: "Theme passthrough"
+    details: >
+      The optional theme prop is forwarded to child components that support theming:
+      SeoContent, TrustSignals, Cards, FAQ, UGC, Email, CtaList.
+      Components without theme support: Blog, Stories, Featured, MarketingVideo, ShoppingGuide, MidPageBanner, VideoBanner, IconList.
+  - action: "Conditional width for MidPageBanner"
+    details: >
+      MidPageBanner wrapper uses conditional class based on content.originalData.componentType.
+      If "Contained Width" then "container mx-auto", otherwise "w-full".
+  - action: "Additional filter for VideoBanner"
+    details: >
+      VideoBanner section applies an extra filter: item.componentType == "Mid-Page".
+      Only video banners with componentType "Mid-Page" are rendered in this location.
+  - action: "Email section background color"
+    details: >
+      Email newsletter section wrapper has inline backgroundColor from content.data.backgroundColor.
+      Contains an inner "container mx-auto flex justify-center" div.
+
+styling:
+  wrapper_pattern: >
+    Most sections use "container mx-auto my-4 lg:my-8 px-4 lg:px-0" for contained layout.
+    Some sections (Stories, Email, ShoppingGuide, VideoBanner) use full-width patterns.
+    All wrappers have "my-4 lg:my-8" vertical spacing (16px mobile, 32px desktop).
+  css_order: "Each wrapper div has style={{order: content.order}} for flex/grid ordering"
+
+dependencies:
+  services:
+    - name: web-component-service
+      imports:
+        - processBlogSectionData
+        - processCardSectionData
+        - processCtaListData
+        - processEmailSubscriptionData
+        - processFaqContentData
+        - processFeaturedSectionData
+        - processIconListData
+        - processMarketingContentVideoData
+        - processMidPageBannerData
+        - processSeoContentData
+        - processShoppingGuideData
+        - processStoriesData
+        - processTrustSignalsData
+        - processUgcSectionData
+        - processVideoBannerData
+        - WebComponentType
+        - WebComponent (type)
+  types:
+    - name: CategoryTheme
+      source: "~/services/category-service"
+
+used_by:
+  - "Category pages (product listing pages)"
+  - "Product detail pages"
+  - "Homepage (via web component data)"
+  - "Any page that renders CMS-managed content sections"
+
+security:
+  - "No direct user input handling - all data comes from CMS API"
+  - "Child components may use dangerouslySetInnerHTML for markdown content - XSS risk managed at service layer"
+  - "No authentication required for rendering"
+
+notes:
+  - >
+    This is the most critical orchestrator component for CMS-driven content. All 15 section types
+    share the same filter-transform-render pattern but each has unique wrapper classes, props mapping,
+    and theme support.
+  - >
+    The component does NOT sort/reorder sections itself. CSS `order` property handles visual ordering.
+    All sections render in code order (SEO first, IconList last) but display order is controlled by
+    the order property from CMS data.
+  - >
+    Some wrapper ids are static (marketing-content-video, shopping-guide, mid-page-banner, video-banner,
+    cta-list, icon-list) while others are dynamic with order suffix.
+  - >
+    The Featured section wrapper reuses the "bs-" id prefix (same as Blog section), which could cause
+    duplicate ids if both section types are present with the same order value.
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  ProductPageContentWebComponentsProps:
+    description: Named exported props interface
+    fields:
+      - name: data
+        type: "Array<WebComponent>"
+      - name: theme
+        type: "CategoryTheme | null"
+        optional: true
+
+  WebComponent:
+    description: Raw CMS web component object from API
+    source: ~/services/web-component-service
+    fields:
+      - name: guid
+        type: string
+      - name: productType
+        type: PlatinumProductTypeEnum
+      - name: wcTemplateName
+        type: string
+      - name: componentType
+        type: string
+      - name: name
+        type: string
+      - name: isActive
+        type: boolean
+      - name: fields
+        type: "WebComponentField[]"
+      - name: customTag
+        type: "CustomTag[]"
+      - name: childWebComponents_1
+        type: "WebComponent[]"
+      - name: childWebComponents_2
+        type: "WebComponent[] | null"
+      - name: order
+        type: number
+
+  CategoryTheme:
+    description: Optional category theme forwarded to theming-capable child components
+    source: ~/services/category-service
+    fields:
+      - name: primary
+        type: string
+      - name: secondary
+        type: string
+      - name: primaryText
+        type: string
+      - name: secondaryText
+        type: string
+
+field_consumption:
+  WebComponent:
+    consumed:
+      - wcTemplateName: Used in startsWith() filter to determine which section type each item belongs to
+      - componentType: Used for two purposes — MidPageBanner wrapper width ("Contained Width" check) and VideoBanner additional filter ("Mid-Page" check)
+      - order: Passed as CSS style={{order}} on each wrapper div; used in dynamic wrapper ids
+      - name: Used as key={content.originalData.name} on each wrapper div
+    ignored:
+      - guid: Not used by this component
+      - productType: Not used by this component
+      - isActive: Not used by this component (parent or service layer filters inactive items)
+      - fields: Not read directly; passed to process*Data() functions which extract fields
+      - customTag: Not read directly; passed to process*Data() functions
+      - childWebComponents_1: Not read directly; passed to process*Data() functions
+      - childWebComponents_2: Not read directly; passed to process*Data() functions
+
+  CategoryTheme:
+    consumed:
+      - primary: Forwarded to themed child components (SeoContent, TrustSignals, Cards, FAQ, UGC, Email, CtaList)
+      - secondary: Forwarded as part of theme object
+      - primaryText: Forwarded as part of theme object
+      - secondaryText: Forwarded as part of theme object
+
+visibility_map:
+  seo_section_blocks:
+    condition: "any WebComponent item has wcTemplateName starting with 'SEO Section'"
+    default: hidden
+    notes: "Renders one wrapper per matching item"
+
+  blog_section_blocks:
+    condition: "any WebComponent item has wcTemplateName starting with 'Blog Section'"
+    default: hidden
+
+  stories_section_blocks:
+    condition: "any WebComponent item has wcTemplateName starting with 'Stories Section'"
+    default: hidden
+
+  trust_signals_blocks:
+    condition: "any WebComponent item has wcTemplateName starting with 'Trust Signals Section'"
+    default: hidden
+
+  card_section_blocks:
+    condition: "any WebComponent item has wcTemplateName starting with 'Card Section'"
+    default: hidden
+
+  faq_section_blocks:
+    condition: "any WebComponent item has wcTemplateName starting with 'FAQ Section'"
+    default: hidden
+
+  ugc_section_blocks:
+    condition: "any WebComponent item has wcTemplateName starting with 'UGC Section'"
+    default: hidden
+
+  email_newsletter_blocks:
+    condition: "any WebComponent item has wcTemplateName starting with 'Email Newsletter Section'"
+    default: hidden
+
+  featured_section_blocks:
+    condition: "any WebComponent item has wcTemplateName starting with 'Featured Section'"
+    default: hidden
+
+  marketing_video_blocks:
+    condition: "any WebComponent item has wcTemplateName starting with 'Home Page Marketing Video'"
+    default: hidden
+
+  shopping_guide_blocks:
+    condition: "any WebComponent item has wcTemplateName starting with 'Shopping Guide'"
+    default: hidden
+
+  mid_page_banner_blocks:
+    condition: "any WebComponent item has wcTemplateName starting with 'Mid-Page Banner'"
+    default: hidden
+
+  video_banner_blocks:
+    condition: "any WebComponent item has wcTemplateName starting with 'Video Banner' AND item.componentType == 'Mid-Page'"
+    default: hidden
+    notes: "Double filter — both wcTemplateName prefix AND componentType must match"
+
+  cta_list_blocks:
+    condition: "any WebComponent item has wcTemplateName starting with 'CTA List'"
+    default: hidden
+
+  icon_list_blocks:
+    condition: "any WebComponent item has wcTemplateName starting with 'Icon List'"
+    default: hidden
+
+  mid_page_banner_contained_width:
+    condition: "content.originalData.componentType == 'Contained Width'"
+    default: "full width (w-full) used when condition is false"
+    notes: "Controls wrapper class: 'container mx-auto' vs 'w-full'"

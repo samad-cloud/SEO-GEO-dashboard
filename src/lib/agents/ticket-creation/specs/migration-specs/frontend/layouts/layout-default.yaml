@@ -1,0 +1,248 @@
+name: Default Layout (Root Layout)
+source:
+  path: src/routes/layout.tsx
+  lines: 1-81
+  type: qwik-layout
+
+description: |
+  Default application layout that wraps all pages in the e-commerce storefront.
+  Handles middleware for cookies and redirects, loads banner content, detects user country,
+  and provides global actions for adding products to cart.
+
+  This layout is the root layout that applies to all routes unless overridden by a more
+  specific layout (e.g., layout-bulkorder.tsx).
+
+exports:
+  - name: useAddToCart
+    type: globalAction
+    description: Global action for adding single products to cart
+
+  - name: useAddToCartProductBundle
+    type: globalAction
+    description: Global action for adding product bundles to cart
+
+  - name: onRequest
+    type: RequestHandler
+    description: Middleware that runs on every request to handle cookies and redirects
+
+  - name: useLoadBanner
+    type: routeLoader
+    description: Loads banner content (strip banner) for current page based on URL
+
+  - name: useLoadPromoBanners
+    type: routeLoader
+    description: Loads promo banners (main banner) for current page based on URL
+
+  - name: useDetectCountry
+    type: routeLoader
+    description: Detects user country from request headers and checks if cross-domain notification should show
+
+  - name: default
+    type: component
+    description: Main layout component that renders header, banners, slot, and footer
+
+behavior:
+  onRequest:
+    - Calls cookieAndRedirectionMiddleware(event)
+    - Handles cookie logic and regional redirections before page loads
+
+  routeLoaders:
+    - useLoadBanner:
+        input: url.pathname
+        process: |
+          - Extracts friendlyUrl by slicing pathname (removes leading/trailing slashes)
+          - Calls getBanner(friendlyUrl)
+        output: { stripBanner: BannerData | null }
+
+    - useLoadPromoBanners:
+        input: url.pathname
+        process: |
+          - Extracts friendlyUrl by slicing pathname (removes leading/trailing slashes)
+          - Calls getPromoBanners(friendlyUrl)
+        output: { mainPromoBanner: PromoBannerData | null }
+
+    - useDetectCountry:
+        input: request headers, cookies
+        process: |
+          - Calls detectCountryFromHeader(request) to get country code
+          - Checks cookie "showCrossDomainNotification" (default: show if cookie != "false")
+        output: { country: string, shouldShowCrossDomainNotification: boolean }
+
+  globalActions:
+    - useAddToCart:
+        input: payload (product data, machine token, quantity, etc.)
+        process: Calls addToCart(payload) from add-to-cart-service
+        output: API response (success/error, cart data)
+
+    - useAddToCartProductBundle:
+        input: payload (bundle data, machine token, etc.)
+        process: Calls addToCartProductBundle(payload) from add-to-cart-service
+        output: API response (success/error, cart data)
+
+  rendering:
+    structure: |
+      1. CrossDomainNotification (conditional: if country detected AND shouldShow)
+      2. StripBanner (conditional: if stripBanner data exists)
+      3. HeaderWrapper (always rendered)
+      4. MainBanner (conditional: if mainPromoBanner exists, desktop only lg:block)
+      5. <main> container with <Slot /> (child routes rendered here)
+      6. Footer (conditional: if URL param showFooter != "0")
+
+    conditions:
+      - CrossDomainNotification shows when:
+          - country is truthy
+          - shouldShowCrossDomainNotification is true
+      - StripBanner shows when stripBanner data exists
+      - MainBanner shows when mainPromoBanner exists (hidden on mobile, shown lg:block)
+      - Footer shows when URL param showFooter is not "0"
+
+data_flow:
+  - onRequest middleware runs first (cookies, redirects)
+  - routeLoaders run in parallel (banner, promoBanners, country)
+  - Component consumes loader data via .value
+  - Child pages use globalActions (useAddToCart, useAddToCartProductBundle)
+  - Child pages render in <Slot />
+
+dependencies:
+  internal:
+    - ~/components/footer/footer (Footer)
+    - ~/components/banner/strip-banner (StripBanner)
+    - ~/components/banner/dynamic-promo-banner-v2 (MainBanner)
+    - ~/components/cross-domain-notification/cross-domain-notification (CrossDomainNotification)
+    - ~/components/header/header-wrapper (HeaderWrapper)
+    - ~/services/middle-ware-service (cookieAndRedirectionMiddleware)
+    - ~/services/common-service (getBanner, getPromoBanners)
+    - ~/services/add-to-cart-service (addToCart, addToCartProductBundle)
+    - ~/utility/country-region (detectCountryFromHeader)
+
+  external:
+    - "@builder.io/qwik" (component$, Slot)
+    - "@builder.io/qwik-city" (RequestHandler, globalAction$, routeLoader$, useLocation)
+
+types:
+  BannerData:
+    description: Strip banner content returned by getBanner()
+    fields:
+      - stripBanner: object | null
+
+  PromoBannerData:
+    description: Promo banner content returned by getPromoBanners()
+    fields:
+      - mainPromoBanner: object | null
+
+  CountryDetectionResult:
+    description: Result from useDetectCountry loader
+    fields:
+      - country: string (country code, e.g., "US", "GB")
+      - shouldShowCrossDomainNotification: boolean
+
+  AddToCartPayload:
+    description: Payload for useAddToCart action
+    fields:
+      - machineToken: string
+      - productId: string | number
+      - quantity: number
+      - (other product-specific fields)
+
+  AddToCartBundlePayload:
+    description: Payload for useAddToCartProductBundle action
+    fields:
+      - machineToken: string
+      - bundleId: string | number
+      - (bundle-specific fields)
+
+used_by:
+  - "All routes that do not use a named layout override (e.g., @containerless, @bulkorder, @categoryproduct)"
+  - "This is the root layout applied to all standard pages including product-category, info pages, about-us, shipping-policy, etc."
+
+security:
+  - machineToken required for all cart actions
+  - Cookie handling via middleware (MACHINE_TOKEN cookie)
+  - Regional redirection based on country detection
+
+edge_cases:
+  - If friendlyUrl extraction fails, banner services should handle gracefully
+  - If country detection returns null, CrossDomainNotification not shown
+  - If showCrossDomainNotification cookie missing, defaults to showing notification
+  - If showFooter param is "0", footer is hidden
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+# Note: types section already exists above (BannerData, PromoBannerData,
+# CountryDetectionResult, AddToCartPayload, AddToCartBundlePayload).
+# Additional concrete types from json-service are documented here.
+
+types:
+  StripBanner:
+    description: Strip banner content shown at top of page (from json-service)
+    source: ~/services/json-service
+    fields:
+      - name: banners
+        type: "string[]"
+      - name: bgColor
+        type: string
+      - name: textColor
+        type: string
+
+  PromoBannerContent:
+    description: Promo/footer banner object returned inside useLoadPromoBanners
+    source: ~/services/common-service (PromoBannerResponse.mainPromoBanner)
+    fields:
+      - name: mainPromoBanner
+        type: "object | null"
+        notes: Passed directly to MainBanner component as `data` prop with type="home"
+
+field_consumption:
+  BannerLoaderResult:
+    consumed:
+      - stripBanner: Truthy check gates StripBanner render; passed as `data` prop
+    ignored:
+      - promoBanner: Present in getBanner() response but not used by this layout
+      - shippingFooterBanner: Present in getBanner() response but not used by this layout
+
+  PromoBannerLoaderResult:
+    consumed:
+      - mainPromoBanner: Truthy check gates MainBanner render; passed as `data` prop with type="home"
+    ignored:
+      - floatingPromoBanner: Returned by getPromoBanners but not consumed here
+
+  DetectCountryResult:
+    consumed:
+      - country: Truthy check plus passed as prop to CrossDomainNotification
+      - shouldShowCrossDomainNotification: AND condition with country to gate render
+    ignored: []
+
+visibility_map:
+  cross_domain_notification:
+    condition: "country is truthy AND shouldShowCrossDomainNotification is true"
+    default: hidden
+
+  strip_banner:
+    condition: "stripBanner is truthy (not null/undefined)"
+    default: hidden
+
+  header_wrapper:
+    condition: always rendered
+    default: visible
+
+  main_promo_banner:
+    condition: "promoBannerContent.mainPromoBanner is truthy"
+    default: hidden
+    notes: Wrapped in `w-full hidden lg:block` — only visible on desktop (lg breakpoint and above)
+
+  footer:
+    condition: 'location.url.searchParams.get("showFooter") !== "0"'
+    default: visible (hidden only when showFooter=0 query param is present)
+
+implementation_logic:
+  global_add_to_cart_actions:
+    rule: |
+      Two globalAction$ exports (useAddToCart, useAddToCartProductBundle) are defined
+      at the layout level so they are available to all child routes without each child
+      needing to define them. Child pages call useAddToCart() or
+      useAddToCartProductBundle() to access these actions. Both delegate directly to
+      the corresponding service function (addToCart / addToCartProductBundle) with the
+      raw payload — no transformation occurs at the layout level. Payloads are typed
+      as `any` in the service; the calling child page is responsible for constructing
+      the correct payload shape.
+    critical: true
+

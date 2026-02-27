@@ -1,0 +1,40 @@
+name: TrackMyOrderRoute
+source:
+  path: routes/track-my-order/index.tsx
+  lines: 1-9
+  type: route
+
+description: |
+  Order tracking page where customers can look up order status.
+  Renders TrackMyOrderContainer and uses its Head export.
+
+url_pattern: /track-my-order
+layout: default
+
+exports:
+  default: true
+  component: TrackMyOrderContainer
+  head: true
+  head_source: "Imported from TrackMyOrderContainer (Head export)"
+
+dependencies:
+  - "@builder.io/qwik"
+  - "@builder.io/qwik-city" (DocumentHead type)
+  - "~/components/track-my-order-page/containers/track-my-order-container"
+
+behavior:
+  - Renders container component
+  - Head metadata managed by container
+
+i18n_keys: []
+
+rewrite_routes:
+  NL: /track-mijn-bestelling
+  DE: /meine-bestellung-verfolgen
+  IT: /dove-si-trova-il-mio-ordine
+  ES: /donde-esta-mi-orden
+
+used_by: []
+
+types:
+  notes: "Route component. Types defined in associated container component. No locally-defined interfaces."

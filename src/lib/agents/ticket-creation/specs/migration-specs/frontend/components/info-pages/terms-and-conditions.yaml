@@ -1,0 +1,180 @@
+name: TermsAndConditions
+source: src/components/terms-and-conditions-page/containers/terms-and-conditions-container.tsx
+description: |
+  Inner display component of the terms-and-conditions page. Renders the page
+  heading, an array of content sections loaded from a region-specific JSON file,
+  and a closing refund note. Each section has an uppercase bold centred heading
+  (sectionName) followed by one or more paragraphs (data array), each rendered
+  via dangerouslySetInnerHTML because the JSON strings contain embedded HTML
+  (lists, links, bold text). A scoped CSS rule is injected with useStyles$ to
+  style all anchor tags within the component pink (#f02084) and bold.
+  Data is loaded at module initialisation time via a top-level const (outside
+  component). The component is defined as a module-level const (not exported)
+  inside terms-and-conditions-container.tsx; the file's default export is a thin
+  wrapper that renders this component directly.
+
+exports:
+  - name: TermsAndConditions
+    type: component$ (module-scoped, not exported from the file)
+    description: Inner component rendered by the TermsAndConditionsContainer default export
+
+props: []
+
+component_structure:
+  outer_div:
+    classes: "mt-[50px] mb-[30px] px-[15px] lg:px-0 terms-and-conditions-container"
+    children:
+      - h1:
+          classes: "text-center mb-5"
+          text: t("terms_and_conditions.terms_and_conditions_title")
+      - sections_loop:
+          iterate_over: data.termsAndConditions
+          key: index (numeric, not string)
+          each_section_div:
+            classes: "mb-8"
+            children:
+              - p.font-extrabold.mb-4.uppercase.text-center: section.sectionName (plain text)
+              - data_points_loop:
+                  iterate_over: section.data
+                  key: index (numeric)
+                  each_p:
+                    dangerouslySetInnerHTML: point (HTML string from JSON)
+                    classes: "mb-4 text-sm"
+      - p: t("terms_and_conditions.refund_note") — closing refund note
+
+types:
+  TermsSection:
+    description: A single section in the terms-and-conditions JSON
+    fields:
+      - name: sectionName
+        type: string
+        description: Section heading, typically SCREAMING_CASE (e.g. "AGREEMENT", "PRE-ORDER")
+      - name: data
+        type: "string[]"
+        description: Array of HTML strings, each rendered as one paragraph via dangerouslySetInnerHTML
+
+  TermsAndConditionsData:
+    description: Shape of the JSON returned by getTermsAndConditionsContent()
+    fields:
+      - name: termsAndConditions
+        type: "TermsSection[]"
+
+field_consumption:
+  data (module-level const from getTermsAndConditionsContent()):
+    consumed:
+      - termsAndConditions: Iterated to produce section divs
+    ignored: []
+
+  TermsSection:
+    consumed:
+      - sectionName: Rendered as uppercase bold centred paragraph heading
+      - data: Each string rendered as a paragraph with dangerouslySetInnerHTML
+    ignored: []
+
+  i18n (inlineTranslate):
+    consumed:
+      - terms_and_conditions.terms_and_conditions_title: h1 heading text
+      - terms_and_conditions.refund_note: closing paragraph
+    ignored: []
+
+behavior:
+  - Scoped CSS injected via useStyles$:
+      selector: ".terms-and-conditions-container a"
+      properties: "color: #f02084; font-weight: bold;"
+      scope: This CSS is applied to all <a> elements rendered inside the component
+        (including those inside dangerouslySetInnerHTML HTML strings).
+  - Data loaded once at module initialisation: const data = getTermsAndConditionsContent()
+    (outside component, so region is resolved once when the module loads)
+  - For each section in data.termsAndConditions:
+      1. Render section heading as <p class="font-extrabold mb-4 uppercase text-center">{sectionName}</p>
+         Note: sectionName is already UPPERCASE in the JSON; uppercase CSS class is redundant but present.
+      2. For each point in section.data:
+         Render <p dangerouslySetInnerHTML={point} class="mb-4 text-sm" />
+  - After all sections: render <p>{t("terms_and_conditions.refund_note")}</p>
+
+styling:
+  container: "mt-[50px] mb-[30px] px-[15px] lg:px-0 terms-and-conditions-container"
+  heading: "text-center mb-5"
+  section_wrapper: "mb-8"
+  section_name: "font-extrabold mb-4 uppercase text-center"
+  section_point: "mb-4 text-sm"
+  scoped_link_style: ".terms-and-conditions-container a { color: #f02084; font-weight: bold; }"
+  responsive:
+    mobile: px-[15px] horizontal padding
+    desktop: lg:px-0 removes horizontal padding at lg+
+
+i18n:
+  namespace: terms_and_conditions
+  library: qwik-speak
+  method: inlineTranslate()
+  translation_keys:
+    - terms_and_conditions.terms_and_conditions_title
+    - terms_and_conditions.refund_note
+
+data_structure:
+  source: Region-specific JSON files via getTermsAndConditionsContent()
+  regions:
+    - US: ~/utility/terms-and-conditions/US.json
+    - GB: ~/utility/terms-and-conditions/UK.json
+    - FR: ~/utility/terms-and-conditions/FR.json
+    - NL: ~/utility/terms-and-conditions/NL.json
+    - DE: ~/utility/terms-and-conditions/DE.json
+    - IT: ~/utility/terms-and-conditions/IT.json
+    - ES: ~/utility/terms-and-conditions/ES.json
+    - default: US.json
+  format: |
+    {
+      "termsAndConditions": [
+        {
+          "sectionName": "SECTION HEADING",
+          "data": [
+            "HTML string paragraph one...",
+            "HTML string paragraph two..."
+          ]
+        }
+      ]
+    }
+  html_content_examples:
+    - Unordered lists: <ul class='list-disc px-4 text-sm'><li>...</li></ul>
+    - Anchor links: <a target='_blank' href='...'>text</a>
+    - Note: HTML is embedded directly in JSON string values
+
+dependencies:
+  qwik:
+    - component$, useStyles$ from @builder.io/qwik
+  i18n:
+    - inlineTranslate from qwik-speak
+  utilities:
+    - getTermsAndConditionsContent from ~/utility/terms-and-conditions/terms-and-conditions
+
+used_by:
+  - TermsAndConditionsContainer
+
+security:
+  - dangerouslySetInnerHTML used for ALL section.data paragraphs
+  - Content comes from region-specific JSON files maintained internally by the Printerpix team
+  - JSON files contain HTML with external links (e.g. Freshdesk support links) and list markup
+  - Risk is low for XSS as files are committed to the repository, but any modification to
+    JSON files must be reviewed to prevent injection of malicious scripts
+  - Scoped CSS injected via useStyles$ is trusted internal CSS, not user-controlled
+  - No user input accepted; no authentication required
+
+edge_cases:
+  - Empty termsAndConditions array: only h1 and refund note rendered; no section content
+  - Section with empty data array: section heading rendered with no point paragraphs
+  - Malformed HTML in data strings: browser renders best-effort; no sanitization in source
+  - Unknown region: getTermsAndConditionsContent() falls back to US.json
+  - Missing i18n keys (title, refund_note): qwik-speak returns key string as fallback
+
+notes:
+  - The TermsAndConditionsContainer default export is an unusually thin wrapper:
+    export default component$(() => <TermsAndConditions />); with no wrapping div or class.
+  - This is unlike PhotoQualityContainer and ImageResolutionContainer, which add a
+    wrapper div around their inner component.
+  - The numeric index is used as the key for both section divs and point paragraphs.
+    This is safe here because the JSON data is static and never reordered at runtime.
+  - sectionName values in the actual JSON files are already UPPERCASE strings
+    (e.g. "AGREEMENT", "PRE-ORDER"); the uppercase CSS class duplicates this but
+    must be preserved for cases where JSON content is changed to mixed case.
+  - The src/data/terms-and-conditions-data.json file exists but is NOT used by this
+    component; actual data comes from ~/utility/terms-and-conditions/{region}.json files.

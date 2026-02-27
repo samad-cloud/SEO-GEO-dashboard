@@ -1,0 +1,382 @@
+name: BannerFlipClock
+source: src/components/product-page/banner-flip-clock/banner-flip-clock.tsx
+description: |
+  Animated flip-clock countdown component used inside promotional banners.
+  Displays a live countdown in days, hours, minutes, and seconds using a
+  card-flip animation for each digit. Dimensions are calculated responsively
+  from the container width on mount and on every window resize. The days unit
+  is hidden when both digits are zero. Unit labels (DAYS, HRS, MINS, SECS) are
+  only rendered for US and GB regions. A second internal component, Digit,
+  handles the individual flip-card animation for each numeric digit.
+
+exports:
+  - name: BannerFlipClock
+    type: component$<FlipClockProps>
+    description: Main countdown clock component. Named export.
+  - name: Digit
+    type: component$<DigitProps>
+    description: Single flip-card digit sub-component. Named export.
+  - name: FlipClockProps
+    type: interface
+    description: Props interface for BannerFlipClock
+  - name: DigitProps
+    type: interface
+    description: Props interface for Digit
+
+props:
+  BannerFlipClock:
+    - name: deliveryDeadline
+      type: string
+      required: true
+      description: |
+        ISO datetime string for the countdown target. If omitted or invalid,
+        the clock counts down to midnight of the current day instead.
+    - name: clockColor
+      type: string
+      required: true
+      description: Background and separator-dot color for the flip cards (CSS color value).
+    - name: textColor
+      type: string
+      required: true
+      description: Foreground digit color for the flip cards (CSS color value).
+    - name: bannerType
+      type: "'product' | 'category' | 'home'"
+      required: false
+      description: |
+        Page context. Passed in by DynamicPromoBannerV2 but not used internally
+        by the clock — reserved for future layout differentiation.
+
+  Digit:
+    - name: digit
+      type: number
+      required: true
+      description: Current digit value (0-9) to display and animate.
+    - name: isSeconds
+      type: boolean
+      required: true
+      description: True when this digit represents the seconds unit; affects animation cleanup timing.
+    - name: clockStyle
+      type: string
+      required: true
+      description: Injected CSS string from getFlipClockStyle() that drives all flip animations.
+    - name: containerRef
+      type: "HTMLDivElement | undefined"
+      required: true
+      description: Reference to the parent container; used for sizing CSS custom properties.
+    - name: cardHeight
+      type: number
+      required: true
+      description: Computed pixel height of each flip card, derived from container width.
+    - name: clockColor
+      type: string
+      required: true
+      description: Background color passed through to CSS custom property --flip-container-color / --flip-color.
+    - name: textColor
+      type: string
+      required: true
+      description: Text color passed through to CSS custom property --flip-text-color.
+
+component_structure:
+  BannerFlipClock:
+    root: div.flex.items-center.justify-center.gap-1.w-full (ref=containerRef)
+    children_per_unit:
+      - outer: div.flex.flex-col.items-center (one per time unit; days hidden when both digits are 0)
+      - inner_row: div.flex.items-center.time-unit.gap-1
+        children:
+          - Digit (firstDigit)
+          - Digit (lastDigit)
+          - separator_dots: div.flex.flex-col.gap-1 (two dot divs; omitted for last unit)
+      - label: div.text-xs.mt-1.font-medium (rendered only for US/GB regions, only after clockStyle loaded)
+
+  Digit:
+    root: React.Fragment
+    children:
+      - style (dangerouslySetInnerHTML with clockStyle CSS)
+      - div.relative.flip (ref=flip, holds all CSS custom properties as inline style)
+        children:
+          - div.flip-display
+            children:
+              - div.flip-display-top (ref=flipDisplayTop, shows flipDisplayTopText)
+              - div.flip-display-bottom (ref=flipDisplayBottom, shows flipDisplayBottomText + optional shadow overlay)
+          - div.flipper
+            children:
+              - div.flipper-top (ref=flipperTop, shows flipperTopText + optional shadow overlay)
+              - div.flipper-bottom (ref=flipperBottom, shows flipperBottomText, fires handleAnimationEnd$)
+
+state_management:
+  BannerFlipClock:
+    signals:
+      - name: containerRef
+        type: "Signal<HTMLDivElement | undefined>"
+        description: DOM ref to outer container; used to calculate responsive card height.
+      - name: clockStyle
+        type: "Signal<string>"
+        description: Inline CSS string from getFlipClockStyle(). Empty string until after DOM mount.
+      - name: dynamicHeight
+        type: "Signal<number>"
+        description: Computed pixel height for flip cards; recalculated on resize.
+    stores:
+      - name: timeRemaining
+        type: TimeRemainingStore
+        description: Reactive store holding current TimeData. Updated every second via setInterval.
+
+  Digit:
+    signals:
+      - name: flipperTop / flipperBottom / flipDisplayTop / flipDisplayBottom
+        type: "Signal<HTMLDivElement | undefined>"
+        description: DOM refs to the four card faces.
+      - name: flip
+        type: "Signal<HTMLDivElement | undefined>"
+        description: DOM ref to the outer flip container; .play class toggled to trigger animation.
+      - name: flipperTopText / flipDisplayTopText / flipperBottomText / flipDisplayBottomText
+        type: "Signal<number>"
+        description: The digit values shown on each card face. Split so animation shows old/new simultaneously.
+      - name: displayShadow
+        type: "Signal<boolean>"
+        description: When true, a dark semi-transparent overlay is rendered over flip faces.
+      - name: previousDigit
+        type: "Signal<number>"
+        description: Tracks last rendered digit value to suppress animations when digit is unchanged.
+
+data_structure:
+  TimeData:
+    source: ~/services/flip-clock-service
+    fields:
+      - days: Digits
+      - hours: Digits
+      - minutes: Digits
+      - seconds: Digits
+
+  Digits:
+    source: ~/services/flip-clock-service
+    fields:
+      - firstDigit: "number | null"
+      - lastDigit: "number | null"
+
+  TimeRemainingStore:
+    fields:
+      - data: TimeData
+      - isInitialized: boolean
+
+behavior:
+  BannerFlipClock:
+    - step: 1
+      action: "On mount, createInitialTimeData(deliveryDeadline) is called synchronously to initialise timeRemaining.data via useStore."
+    - step: 2
+      action: "useTask$ tracks containerRef.value. Once the container element is mounted, calls resize() to compute dynamicHeight and load clockStyle."
+    - step: 3
+      action: "resize() reads window.innerWidth to determine containerWidth: <1024 → width*0.47; 1024–1536 → (width/2)*0.6; >1536 → (1600/2)*0.6. numDigits=8 if deliveryDeadline is truthy, else 6. dynamicHeight = containerWidth / (numDigits * 0.9)."
+    - step: 4
+      action: "useVisibleTask$ (strategy: document-ready) syncs the clock to the real second boundary: calculates msToNextSecond = 1000 - (now % 1000), waits that many ms with setTimeout, then starts a 1000ms setInterval that calls generateTimeInfo(deliveryDeadline) and writes each digit field individually into timeRemaining.data."
+    - step: 5
+      action: "useOnDocument('load') and useOnWindow('resize') both call resize() to recompute card dimensions after full page load and on every window resize."
+    - step: 6
+      action: "Render loop: Object.entries(timeRemaining.data) iterates [days, hours, minutes, seconds]. Each unit is rendered unless unit === 'days' and both digits are 0 (days column suppressed when zero)."
+    - step: 7
+      action: "Digit cards rendered only after clockStyle is non-empty (the JSX block is guarded by {clockStyle.value && ...})."
+    - step: 8
+      action: "Unit labels (DAYS, HRS, MINS, SECS) are conditionally rendered only when settings().website is 'US' or 'GB', and only after clockStyle is loaded."
+    - step: 9
+      action: "Separator dots (two small circular divs) appear between every unit except after the last unit."
+
+  Digit:
+    - step: 1
+      action: "All four text signals are initialised to the same digit value on mount."
+    - step: 2
+      action: "useVisibleTask$ tracks digit prop. If newDigit equals previousDigit.value, returns early (no animation)."
+    - step: 3
+      action: "When digit changes: previousDigit updated; setAfterValue(newDigit) sets flipDisplayTopText and flipperBottomText to the new digit. flip.value.classList.add('play') starts the CSS flip animation. displayShadow set true."
+    - step: 4
+      action: "For non-seconds digits: setTimeout(300ms) calls setPreviousValue(newDigit), setting flipperTopText and flipDisplayBottomText to the new digit, and clears the shadow. This completes the card flip after the animation."
+    - step: 5
+      action: "For seconds digit: setPreviousValue is called in handleAnimationEnd$ after a further 800ms delay once the CSS animation fires animationend."
+    - step: 6
+      action: "handleAnimationEnd$ removes the 'play' class from flip.value and, if isSeconds, triggers the 800ms delayed card-face reset."
+
+styling:
+  BannerFlipClock:
+    container: "flex items-center justify-center gap-1 w-full"
+    separator_dots: "w-[2px] h-[2px] md:w-[3px] md:h-[3px] rounded-full (backgroundColor: clockColor)"
+    unit_label: "text-xs mt-1 font-medium (color: clockColor)"
+
+  Digit:
+    css_custom_properties:
+      --flip-height: "{cardHeight}px"
+      --flip-width: "calc({cardHeight}px * 0.7)"
+      --line-height: "calc({cardHeight}px * 0.5)"
+      --flip-container-color: "clockColor || '#353531'"
+      --flip-color: "clockColor || '#353531'"
+      --flip-text-color: "textColor || '#efefef'"
+      --flip-border-radius: "calc({cardHeight}px * 0.1)"
+      --animation-time: "0.4s"
+      --animation-ease: "linear"
+      --perspective: "100px"
+    shadow_overlay: "absolute bg-black/40 w-full h-full (flipDisplayBottom) | bg-black/20 w-full h-full (flipperTop)"
+    centre_divider: "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-[1.5%] bg-black/20 z-[3]"
+
+dependencies:
+  qwik:
+    - $, component$, useOnDocument, useOnWindow, useSignal, useStore, useTask$, useVisibleTask$ from @builder.io/qwik
+  config:
+    - settings from ~/config/settings
+  services:
+    - generateTimeInfo, getFlipClockStyle from ~/services/flip-clock-service
+    - TimeData (type) from ~/services/flip-clock-service
+
+used_by:
+  - DynamicPromoBannerV2
+  - DynamicPromoBanner
+  - CampaignPromoBanner
+  - PhotoCanvasPrintsNewTemplate
+
+security:
+  - No API calls; pure client-side timer logic.
+  - deliveryDeadline is parsed with new Date(); invalid strings produce NaN which is safely handled with isNaN() check, falling back to end-of-day countdown.
+
+edge_cases:
+  - Invalid or empty deliveryDeadline: clock counts down to midnight of current day.
+  - secondsRemaining reaching zero: re-calculates as time remaining to midnight (no negative values).
+  - Days unit both digits zero: the days column is omitted from the DOM entirely.
+  - clockStyle empty string on SSR: digit cards are not rendered (guarded) until client-side resize runs.
+  - Window resize: dynamicHeight recomputed; card proportions adjust fluidly.
+  - Animation not fired for unchanged digits: previousDigit guard prevents spurious CSS reflows.
+
+notes:
+  - bannerType prop is accepted but not consumed by BannerFlipClock itself; it is forwarded by DynamicPromoBannerV2 for possible future use.
+  - The clock synchronises to real second boundaries by waiting msToNextSecond before starting the interval, avoiding drift.
+  - Unit labels are a region-specific feature: only US and GB show DAYS/HRS/MINS/SECS labels.
+  - getFlipClockStyle() returns a large CSS string injected via dangerouslySetInnerHTML into a <style> tag inside each Digit; this is intentional for scoped animation keyframes.
+
+types:
+  FlipClockProps:
+    description: Props for BannerFlipClock component
+    fields:
+      - name: deliveryDeadline
+        type: string
+      - name: clockColor
+        type: string
+      - name: textColor
+        type: string
+      - name: bannerType
+        type: "'product' | 'category' | 'home'"
+        optional: true
+
+  DigitProps:
+    description: Props for Digit sub-component
+    fields:
+      - name: digit
+        type: number
+      - name: isSeconds
+        type: boolean
+      - name: clockStyle
+        type: string
+      - name: containerRef
+        type: "HTMLDivElement | undefined"
+      - name: cardHeight
+        type: number
+      - name: clockColor
+        type: string
+      - name: textColor
+        type: string
+
+  TimeRemainingStore:
+    description: Internal Qwik store shape for BannerFlipClock
+    fields:
+      - name: data
+        type: TimeData
+      - name: isInitialized
+        type: boolean
+
+  TimeData:
+    description: Time-remaining decomposed into digit pairs per unit
+    source: ~/services/flip-clock-service
+    fields:
+      - name: days
+        type: Digits
+      - name: hours
+        type: Digits
+      - name: minutes
+        type: Digits
+      - name: seconds
+        type: Digits
+
+  Digits:
+    description: First and last digit of a two-digit time unit
+    source: ~/services/flip-clock-service
+    fields:
+      - name: firstDigit
+        type: "number | null"
+      - name: lastDigit
+        type: "number | null"
+
+field_consumption:
+  FlipClockProps:
+    consumed:
+      - deliveryDeadline: Passed to generateTimeInfo() for initial calculation and repeated interval updates; also used to compute numDigits (8 if truthy, else 6)
+      - clockColor: Applied to CSS custom properties --flip-container-color and --flip-color; used for separator dot backgroundColor and unit label color
+      - textColor: Applied to CSS custom property --flip-text-color
+    ignored:
+      - bannerType: Accepted in props but not read inside the component body
+
+  TimeData:
+    consumed:
+      - days.firstDigit: Rendered as first Digit in days unit; used in zero-suppression check
+      - days.lastDigit: Rendered as second Digit in days unit; used in zero-suppression check
+      - hours.firstDigit / hours.lastDigit: Rendered as Digit pair for hours
+      - minutes.firstDigit / minutes.lastDigit: Rendered as Digit pair for minutes
+      - seconds.firstDigit / seconds.lastDigit: Rendered as Digit pair for seconds
+    ignored: []
+
+implementation_logic:
+  responsive_card_sizing:
+    rule: |
+      Card height is derived from container width, not set as a fixed value.
+      Breakpoints: viewport < 1024px → containerWidth = viewport * 0.47;
+      viewport 1024–1536px → containerWidth = (viewport / 2) * 0.6;
+      viewport > 1536px → containerWidth = (1600 / 2) * 0.6 (capped).
+      numDigits = 8 when deliveryDeadline is truthy (days+hrs+min+sec = 8 digits);
+      numDigits = 6 when no deadline (only hrs+min+sec = 6 digits).
+      dynamicHeight = containerWidth / (numDigits * 0.9).
+    critical: true
+
+  second_boundary_sync:
+    rule: |
+      The interval does not start immediately. A one-off setTimeout of
+      msToNextSecond = 1000 - (Date.now() % 1000) aligns the first tick
+      to the real second boundary. Only then does a 1000ms setInterval begin.
+      This prevents the displayed countdown from drifting relative to wall-clock seconds.
+    critical: true
+
+  days_zero_suppression:
+    rule: |
+      The days unit is suppressed (not rendered) when both digits.firstDigit and
+      digits.lastDigit are 0. The remaining time units always render.
+    critical: false
+
+  digit_animation_guard:
+    rule: |
+      In the Digit component, if the incoming digit prop equals previousDigit.value,
+      the useVisibleTask$ returns early and no animation runs. This prevents
+      unnecessary DOM manipulation when the digit has not changed.
+    critical: false
+
+visibility_map:
+  days_unit:
+    condition: "digits.firstDigit > 0 OR digits.lastDigit > 0"
+    default: hidden when both are 0
+
+  digit_cards_per_unit:
+    condition: "clockStyle.value is non-empty string"
+    default: hidden (SSR renders nothing; cards appear only after client-side resize)
+
+  unit_labels:
+    condition: "settings().website === 'US' OR settings().website === 'GB', AND clockStyle.value is non-empty"
+    default: hidden for all other regions
+
+  separator_dots:
+    condition: "current unit index is NOT the last unit (seconds)"
+    default: rendered between every unit except after seconds
+
+  digit_shadow_overlay:
+    condition: "displayShadow.value is true (set on digit change, cleared after animation)"
+    default: hidden

@@ -1,0 +1,263 @@
+name: ShopPageCards
+source: src/components/shop-page/components/shop-page-cards.tsx
+description: |
+  Displays a responsive grid of shop collection cards. Each card shows the collection
+  title, a preview image, a "price from" label, and a styled CTA button.
+  Optionally shows a free shipping badge and a discount badge.
+
+  If shopData prop is null, the component fetches shop data from the API using the
+  friendUrl prop. Style configuration is parsed from shopData.collectionColourStyle JSON;
+  falls back to DEFAULT_SHOP_STYLE if parsing fails.
+
+  Each card is a full anchor link navigating to /s/collection?eventName=...&handle=...
+  Preview image is the image of the product with the lowest product_position in the collection.
+
+  The internal Collection sub-component is defined in the same file but not exported.
+
+exports:
+  - name: default
+    type: component$<ShopPageCardsProps>
+    description: Default Qwik component export
+
+props:
+  - name: shopData
+    type: "IShopData | null"
+    required: true
+    description: Pre-loaded shop data. If null, the component fetches it using the friendUrl prop.
+  - name: friendUrl
+    type: "string | undefined"
+    required: false
+    description: Shop friendly URL used to fetch data when shopData is null (e.g. "canvas-prints")
+
+component_structure:
+  - conditional_root:
+      condition: shopDataSignal.value is truthy
+      element: div
+      class: "grid-cols-1 md:grid-cols-1 lg:grid-cols-3 grid gap-2 lg:gap-6 xl:gap-8 p-2 lg:p-6 xl:p-8"
+      children: Collection component per shopData.collections item
+
+child_components:
+  - name: Collection
+    type: internal (not exported)
+    purpose: Individual collection card with image, title, pricing, CTA, and optional badges
+    props:
+      - shopData: IShopData
+      - collection: IShopCollection
+      - eventName: string (from shopData.eventName)
+      - style: IShopStyleItems
+
+data_structure:
+  IShopData:
+    source: "~/services/shop-page-service"
+    fields:
+      - topBanner: string
+      - topBanner_mobile: string
+      - eventName: string
+      - collections: "IShopCollection[]"
+      - friendlyUrl: string
+      - shopTitle: string
+      - upto: string
+      - tag_price_from: string
+      - off: string
+      - btn_see_more: string
+      - shopColourStyle: string
+      - shopModelLabelModel: IShopModelLabelModel
+      - collectionColourStyle: string (JSON-encoded IShopStyleItems)
+
+  IShopCollection:
+    source: "~/services/shop-page-service"
+    fields:
+      - title: string
+      - price_from: number
+      - upto_percent_off: number
+      - handle: string
+      - isFreeShipping: boolean
+      - products: "IProduct[]"
+
+  IShopModelLabelModel:
+    source: "~/services/shop-page-service"
+    fields:
+      - btn_see_more: string (CTA button label)
+      - tag_price_from: string (price label template with {0} placeholder)
+      - upto: string ("up to" label for discount badge)
+      - off: string ("off" label for discount badge)
+
+  IShopStyleItems:
+    source: "~/services/shop-page-service"
+    fields:
+      - actionButton: IShopStyle (CTA button colors/borders)
+      - discountBadge: IShopStyle (badge colors and display flag)
+      - freeShippingLabel: IShopStyle (free shipping badge colors)
+
+  IShopStyle:
+    source: "~/services/shop-page-service"
+    fields:
+      - color: "string | null"
+      - bgColor: "string | null"
+      - borderColor: "string | null"
+      - borderSizePx: "number | null"
+      - borderStyle: "string | null"
+      - rounded: "boolean | null"
+      - display: "boolean | null"
+
+behavior:
+  - On task (useTask$, runs server-side or on first render):
+      1. If shopData prop is null: call getShopData(friendUrl) to fetch data; store in shopDataSignal
+      2. Parse shopDataSignal.value.collectionColourStyle as JSON IShopStyleItems
+      3. If JSON parse fails: use DEFAULT_SHOP_STYLE
+      4. Store style in shopStyle signal
+  - Rendering:
+      - Render grid only if shopDataSignal.value is truthy
+      - Iterate over shopData.collections; render Collection card for each
+      - Each Collection card:
+          1. Find product with lowest product_position (reduce) → use its first image as preview
+          2. Fallback: collection.products[0].images_src[0].url if no min-position product image
+          3. Card is an <a> link to /s/collection?eventName={shopData.eventName}&handle={collection.handle}
+          4. If collection.isFreeShipping: render free shipping SVG badge (site-specific icon)
+          5. Render collection title, preview image, price-from label, CTA button
+          6. Price label: uses renderDynamicString to replace {0} placeholder with formatted price_from
+          7. If style.discountBadge.display is truthy: render discount badge with upto_percent_off
+
+api_calls:
+  - GET /Sale/Index?friendlyUrl=/{friendUrl}
+    condition: shopData prop is null
+    service: getShopData from "~/services/shop-page-service"
+    response: "IShopData | null"
+
+styling:
+  grid:
+    - "grid-cols-1 md:grid-cols-1 lg:grid-cols-3": responsive grid (1 col mobile, 3 cols desktop)
+    - "gap-2 lg:gap-6 xl:gap-8": responsive gap
+    - "p-2 lg:p-6 xl:p-8": responsive padding
+  collection_card:
+    - "shadow-[0_0_10px_rgba(72,72,72,0.22)] p-2 lg:p-4 mb-1 lg:mb-2 relative link_shop_page_card": card wrapper
+    - "flex flex-col h-full justify-between": inner flex column
+    - "text-xl w-[65%] lg:w-full lg:text-2xl font-medium py-3 text-black": collection title
+    - "text-base lg:text-xl text-center py-1 lg:py-3 text-black": price-from label
+    - "text-lg lg:text-2xl font-medium": formatted price value within label
+    - "p-2 lg:p-4 lg:mb-1": CTA button wrapper (styled via inline style from IShopStyle)
+    - "text-base lg:text-xl font-medium text-center": CTA button text
+  discount_badge:
+    - "absolute top-1 right-1 rounded-full w-[70px] h-[70px] lg:w-[90px] lg:h-[90px]": badge position
+    - "flex flex-col items-center justify-center h-full": badge inner layout
+    - "text-xs": "upto" and "off" labels
+    - "text-[1.5rem] font-medium": percentage number
+  free_shipping:
+    - SVG icon from SVGIcon component (name: free_delivery_{settings().website})
+    - "absolute w-full left-0 top-0 z-10": positioning overlay on image
+
+analytics:
+  - class: link_shop_page_card
+    element: Each collection card anchor
+    purpose: GTM/analytics tracking for shop page card clicks
+
+dependencies:
+  qwik:
+    - component$, useSignal, useTask$ from "@builder.io/qwik"
+  external:
+    - Image from "@unpic/qwik"
+  services:
+    - DEFAULT_SHOP_STYLE, getShopData from "~/services/shop-page-service"
+    - IShopCollection, IShopData, IShopStyleItems (types) from "~/services/shop-page-service"
+  utilities:
+    - formatPrice from "~/utility/format"
+  components:
+    - SVGIcon from "~/components/svg-icon/svg-icon"
+  config:
+    - settings from "~/config/settings"
+
+used_by:
+  - CommonCategoryContainer
+  - ShopPageContainer
+
+security:
+  - No dangerouslySetInnerHTML
+  - Card href is constructed from shopData.eventName and collection.handle (CMS data, not user input)
+  - Style inline values are from parsed JSON (CMS-controlled)
+
+edge_cases:
+  - shopData is null AND friendUrl is undefined: getShopData not called, shopDataSignal.value remains null, grid not rendered
+  - shopData.collections is empty: grid renders with no cards
+  - collectionColourStyle JSON parse fails: DEFAULT_SHOP_STYLE used
+  - collection.products is empty array: reduce on empty array throws; no guard present (potential runtime error)
+  - style.discountBadge.display is falsy: discount badge not shown
+  - collection.isFreeShipping is false: free shipping badge not shown
+
+notes:
+  - The Collection sub-component is defined in the same file but not exported
+  - renderDynamicString splits on "{0}" literal and splices in formatted price — this is a custom i18n-style template function
+  - The free shipping SVG icon name is site-specific: free_delivery_{settings().website} (e.g. free_delivery_uk, free_delivery_us)
+  - The free shipping label style (cls-1, cls-2 CSS classes) injects fill colors via an inline <style> tag scoped to the wrapper div
+
+types:
+  ShopPageCardsProps:
+    description: Component props interface
+    fields:
+      - name: shopData
+        type: "IShopData | null"
+      - name: friendUrl
+        type: "string | undefined"
+        optional: true
+
+field_consumption:
+  IShopData:
+    consumed:
+      - collections: Iterated to render Collection cards
+      - eventName: Used in collection card href query parameter
+      - collectionColourStyle: Parsed as JSON to derive IShopStyleItems
+      - shopModelLabelModel.btn_see_more: CTA button label text
+      - shopModelLabelModel.tag_price_from: Price-from label template
+      - shopModelLabelModel.upto: Discount badge "upto" label
+      - shopModelLabelModel.off: Discount badge "off" label
+    ignored:
+      - topBanner, topBanner_mobile: Not used in this component
+      - friendlyUrl: Not used (friendUrl prop used instead)
+      - shopTitle, upto, tag_price_from, off, btn_see_more: These are top-level IShopData fields duplicated in shopModelLabelModel; shopModelLabelModel versions are used
+      - shopColourStyle: Not used (only collectionColourStyle is used)
+
+  IShopCollection:
+    consumed:
+      - title: Collection heading text
+      - price_from: Formatted price in price-from label
+      - upto_percent_off: Percentage displayed in discount badge
+      - handle: Used in card href query parameter
+      - isFreeShipping: Guards free shipping badge rendering
+      - products: Iterated to find lowest product_position for preview image
+    ignored: []
+
+  IProduct:
+    consumed:
+      - product_position: Used to find minimum position product (reduce comparison)
+      - images_src[0].url: Preview image URL
+    ignored:
+      - All other IProduct fields: Not rendered by ShopPageCards
+
+visibility_map:
+  grid_container:
+    condition: shopDataSignal.value is truthy
+    default: hidden (not rendered when data not loaded)
+
+  free_shipping_badge:
+    condition: collection.isFreeShipping === true
+    default: hidden
+
+  discount_badge:
+    condition: "style.discountBadge.display is truthy"
+    default: shown if style config has display:true
+
+implementation_logic:
+  preview_image_selection:
+    rule: |
+      Preview image is derived by finding the product with the minimum product_position
+      value within the collection (using Array.reduce). The first image (images_src[0].url)
+      of that product is used. Falls back to collection.products[0].images_src[0].url
+      if the reduce result has no images (though this is a secondary fallback, not null-safe).
+    critical: false
+
+  price_label_template:
+    rule: |
+      shopData.shopModelLabelModel.tag_price_from is a string containing "{0}" as a placeholder.
+      The renderDynamicString function splits on "{0}", interleaves the formatted price_from value
+      using formatPrice(), and renders parts as JSX. This allows localized label templates like
+      "Starting from {0}" or "{0} von" depending on the region.
+    critical: false

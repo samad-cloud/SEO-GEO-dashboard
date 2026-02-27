@@ -1,0 +1,135 @@
+name: BulkPricingV4
+source: src/components/product-page/bulk-pricing-v4.tsx
+description: |
+  Display-only section showing bulk/group pricing information on the product page.
+  Reads the BULK_PRICING_SECTION web component from ProductContext and renders a
+  green-icon header with a markdown description body. When the description contains
+  two or more markdown links, the second link is automatically styled as a
+  floating button using injected scoped CSS. Falls back to localised default text
+  when no web component data is configured.
+
+exports:
+  - name: default
+    type: component$
+    description: Default Qwik component export (no explicit props — reads ProductContext)
+
+context_consumed:
+  - name: ProductContext
+    source: ~/context/product-category-context
+    fields:
+      - product.productPageContent.webComponents: Array searched for BULK_PRICING_SECTION web component
+
+component_structure:
+  - HeaderRow: Green circular SVG icon + h3 heading (from data or i18n fallback)
+  - DescriptionBody: p tag with dangerouslySetInnerHTML of markdown-converted description
+  - InlineStyle: Scoped CSS block injected via dangerouslySetInnerHTML to style the second link as a button
+
+child_components: []
+
+data_structure:
+  BulkPricingData:
+    - heading: string (optional CMS heading; fallback to i18n "product.bulkPricingTitle")
+    - description: string (markdown text with optional markdown links)
+
+behavior:
+  - On render, useComputed$ finds web component with wcTemplateName starting with WebComponentType.BULK_PRICING_SECTION
+  - If found, calls processBulkPricingData to extract { heading, description }
+  - hasSecondLink useComputed$ counts markdown link occurrences ([text](url)) in description
+  - If count >= 2: adds class bulk_pricing_content--with-button to description wrapper
+  - Description HTML is rendered via convertMarkdownToHtml (markdown → HTML)
+  - If no web component data found: renders i18n default question text
+
+styling:
+  - Section wrapper: bg-[#FBF6F7] px-4 py-5 bulk-pricing-section w-full
+  - Icon wrapper: w-8 h-8 rounded-full bg-[#15A662] flex items-center justify-center
+  - Heading: font-bold text-[18px]
+  - Description: text-gray-700 text-[15px]
+  - Injected CSS — first link: text-decoration underline
+  - Injected CSS — second link (button): absolute right-0, bg-[#E8E0E2], color #374151, font-weight 600, padding 8px 16px, border-radius 6px, white-space nowrap
+  - Description wrapper with button mode: padding-right 120px
+
+dependencies:
+  qwik:
+    - component$, useComputed$, useContext from @builder.io/qwik
+  i18n:
+    - inlineTranslate from qwik-speak
+  contexts:
+    - ProductContext from ~/context/product-category-context
+  services:
+    - convertMarkdownToHtml from ~/services/markdown-service
+    - processBulkPricingData, WebComponentType from ~/services/web-component-service
+
+used_by:
+  - ProductPageBaseTemplate
+  - ProductPageBasicTemplate
+  - ProductPageFixedTemplate
+  - ProductPageFixedThemeTemplate
+  - ProductPageHubTemplate
+  - PhotoCanvasPrintsNewTemplate
+  - PhotoCanvasPrintsNewTemplateV3
+  - PhotoCanvasPrintsBundledTemplate
+  - PhotoCanvasPrintsHubBundledTemplate
+  - PhotoCanvasPrintsTemplateV2
+  - PhotoCanvasPrintsBaseTemplate
+  - PhotoCalendarsBaseTemplate
+  - PhotoCalendarsBalooRadioTemplate
+  - PhotoCalendarsDaisyTemplate
+  - PhotoCalendarsJbc2024Template
+
+edge_cases:
+  - If description has only one link, the second-link button CSS class is NOT applied and no padding-right is added
+  - If bulkPricingWebComponetData is null, the fallback i18n paragraph is shown but the heading still uses the i18n key
+  - Malformed markdown links (missing closing paren, etc.) will simply not match the regex and hasSecondLink stays false
+
+notes:
+  - Component is a display-only panel; there are no user interaction handlers beyond the styled links in the description HTML
+  - The CSS injection pattern uses dangerouslySetInnerHTML on a <style> tag — this is intentional for dynamic button styling without a CSS module
+
+types:
+  BulkPricingData:
+    description: Extracted bulk pricing web component data
+    fields:
+      - name: heading
+        type: string
+        optional: true
+      - name: description
+        type: string
+
+field_consumption:
+  ProductContext.product:
+    consumed:
+      - productPageContent.webComponents: Searched for BULK_PRICING_SECTION entry
+    ignored:
+      - All other product fields
+
+  BulkPricingData:
+    consumed:
+      - heading: Displayed in h3; falls back to i18n if absent
+      - description: Converted from markdown to HTML and rendered
+    ignored: []
+
+implementation_logic:
+  second_link_button_detection:
+    rule: |
+      The regex /\[([^\]]+)\]\(([^)]+)\)/g is applied to the description string.
+      If the match array has length >= 2, the class bulk_pricing_content--with-button is
+      added to the description wrapper div. This triggers the injected CSS to position
+      the second <a> tag absolutely as a button.
+    critical: false
+
+visibility_map:
+  bulk_pricing_section:
+    condition: "Always rendered (no outer visibility guard)"
+    default: visible
+
+  description_with_data:
+    condition: "bulkPricingWebComponetData.value is non-null"
+    default: visible (data from CMS)
+
+  description_fallback:
+    condition: "bulkPricingWebComponetData.value is null"
+    default: hidden (shows i18n default text)
+
+  second_link_button_style:
+    condition: "hasSecondLink.value is true (description contains >= 2 markdown links)"
+    default: hidden (second link is inline text only)

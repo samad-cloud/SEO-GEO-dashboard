@@ -1,0 +1,333 @@
+name: FlipUGC
+source: src/components/web-component/ugc-section.tsx
+description: |
+  Internal sub-component of UgcSection (defined in ugc-section.tsx, not a separate file).
+  Renders a 3D flip-card UGC grid layout used when UgcSection content.type is NOT "Slider".
+  Layout has a left headings panel (30% wide) and a right items panel (70% wide) with exactly
+  4 UGC cards: card 1 (40%, images front/back), cards 2+3 stacked (20%, images front/back),
+  card 4 (40%, videos front/back). Cards have 3D rotateX flip animations — initially showing
+  the back face (rotateX 180deg). Cards auto-flip every 15 seconds when the page has focus.
+  Content is lazy-loaded: not rendered until the user scrolls (window:onScroll$ triggers load)
+  or window fires the load event.
+
+exports:
+  - name: FlipUGC
+    type: "component$<Props> (named const, NOT default export)"
+    description: Internal component used only by the default export of ugc-section.tsx
+
+props:
+  - name: content
+    type: UgcSection
+    required: true
+    description: UGC section data with heading, subheading, textContent (markdown), and ugc items array
+  - name: theme
+    type: "CategoryTheme | null"
+    required: false
+    description: Optional category theme (received but NOT used in FlipUGC rendering)
+
+component_structure:
+  root: Fragment (<>)
+  children:
+    - div#ugc-section (outer wrapper, handles scroll-triggered lazy load)
+      condition: always rendered
+      children:
+        - div#ugc-container (main content grid, only rendered when loadUgc.value=true)
+          class: "ugc-container flex flex-col lg:flex-row w-full bg-[#f0f0f0] p-5 text-base-complementaryText overflow-hidden box-border"
+          children:
+            - div.ugc-headings (left panel, 30% on desktop)
+              children:
+                - h2#ugc-heading
+                - p#ugc-subheading
+                - div.review-content (dangerouslySetInnerHTML of markdown textContent)
+            - div.ugc-items (right panel, 70% on desktop, flex flex-wrap)
+              children:
+                - card_1 (ugc-card-container, 40%, aspect 1:1, ugc[0] images front/back)
+                - card_2_3 (ugc-card-container ugcc2, 20%, ugc[1] and ugc[2] images front/back, stacked)
+                - card_4 (ugc-card-container ugcc4, 40%, aspect 1:1, ugc[3] videos front/back)
+    - style element (dangerouslySetInnerHTML of flipUgcStyles CSS string)
+
+  flip_card_structure:
+    - div.ugc-card (perspective: 1000px)
+      - div.ugc-card-inner (rotatable, starts at rotateX(180deg))
+        - div.ugc-card-front
+          - Image or Video
+          - p.ugc-review (review text + reviewer span)
+        - div.ugc-card-back
+          - Image or Video
+          - p.ugc-review (backReview + backReviewer span)
+
+child_components:
+  - name: Image
+    source: "@unpic/qwik"
+    purpose: Renders front/back images for ugc[0], ugc[1], ugc[2] cards
+    props_examples:
+      card_1: "src=ugc[0].image, alt=ugc[0].imageAlt, loading=lazy, width=470, height=470"
+      card_2_3: "width=226, height=226, class=lg:h-full lg:w-auto m-auto w-full h-auto"
+  - name: Video
+    source: "~/components/media/video"
+    purpose: Renders front/back videos for ugc[3] card
+    props:
+      front:
+        - poster: "ugc[3].videoPoster || ''"
+        - name: "ugc[3].video || ''"
+        - autoplay: true
+        - loop: true
+        - muted: true
+        - playsinline: true
+        - id: "ugv_v_1"
+        - aspectRatio: "1 / 1"
+      back:
+        - poster: "ugc[3].backVideoPoster || ''"
+        - name: "ugc[3].backVideo || ''"
+        - autoplay: true
+        - loop: true
+        - muted: true
+        - playsinline: true
+        - id: "ugv_v_2"
+        - aspectRatio: "1 / 1"
+
+data_structure:
+  UgcSection:
+    order: number
+    heading: string
+    subheading: "string | null"
+    ugc: "UGC[] — expects exactly 4 items for FlipUGC"
+    textContent: "string (markdown)"
+    ctaText: string
+    ctaUrl: string
+    ctaTextColor: "string (optional)"
+    ctaBackgroundColor: "string (optional)"
+    display: boolean
+    type: "string (optional) — 'Slider' or 'Flip'; FlipUGC used when type != 'Slider'"
+
+  UGC:
+    image: string
+    imageAlt: "string (optional)"
+    video: "string | null (optional)"
+    videoPoster: "string (optional)"
+    review: string
+    reviewer: string
+    backImage: "string (optional, Flip mode only)"
+    backImageAlt: "string (optional, Flip mode only)"
+    backVideo: "string (optional, Flip mode only — ugc[3] back face)"
+    backVideoPoster: "string (optional, Flip mode only — ugc[3] back face)"
+    backReview: "string (optional, Flip mode only)"
+    backReviewer: "string (optional, Flip mode only)"
+
+behavior:
+  - action: "Lazy-load on scroll or page load"
+    details: >
+      loadUgc signal starts as false. The div#ugc-section has window:onScroll$={createUgc}.
+      createUgc function: if !loadUgc.value, sets loadUgc.value=true, removes the scroll listener
+      from #ugc-section via removeAttribute("on-window:scroll"), then starts the flip interval.
+      Separately, useOnWindow("load", ...) also starts the flip interval independently on page load.
+      Code for the flip interval is DUPLICATED between createUgc and the useOnWindow handler.
+  - action: "3D flip animation"
+    details: >
+      Cards start with style="transform: rotateX(180deg)" (showing the back face first).
+      Flip interval (setInterval 15000ms): for each .ugc-card-inner element, reads current
+      rotation degree from style.transform, increments by 180deg with staggered delay (i * 100ms).
+      Pause on window blur (clearInterval), resume on window focus (new setInterval).
+      Cards also flip on hover via CSS: .ugc-card:hover .ugc-card-inner { transform: rotateX(180deg) }
+  - action: "Render headings panel"
+    details: >
+      Left panel shows: h2 with content.heading, p with content.subheading, div.review-content
+      with dangerouslySetInnerHTML={convertMarkdownToHtml(content.textContent || '')}.
+  - action: "Render card grid"
+    details: >
+      Card 1 (ugc[0]): large card, 40% desktop, aspect-ratio 1:1, front/back images.
+      Cards 2+3 (ugc[1], ugc[2]): stacked in ugcc2 container, 20% desktop, each fills half
+      the container (h-1/2 on desktop, w-1/2 on mobile). Front/back images.
+      Card 4 (ugc[3]): large card, 40% desktop, aspect-ratio 1:1, front/back VIDEOS (autoplay, muted, loop).
+
+styling:
+  outer_wrapper: "w-full p-[10px] bg-base-complementaryBg"
+  container: "ugc-container flex flex-col lg:flex-row w-full bg-[#f0f0f0] p-5 text-base-complementaryText overflow-hidden box-border"
+  headings_panel: "ugc-headings text-center box-border w-full lg:w-[30%] xl:w-[25%] 2xl:[20%] flex flex-col justify-center items-center mb-4"
+  items_panel: "ugc-items flex flex-wrap w-full lg:w-[70%] xl:w-[75%] 2xl:[80%]"
+  card_1: "ugc-card-container m-auto w-full max-w-[483px] max-h-[483px] lg:w-[40%] min-h-[220px] [aspect-ratio: 1/1]"
+  card_2_3_container: "ugc-card-container ugcc2 w-full max-w-[480px] min-h-[110px] m-auto lg:w-[20%] aspect-[2/1] lg:aspect-[1/2] flex flex-wrap"
+  card_2_or_3: "ugc-card h-full lg:h-1/2 w-1/2 lg:w-full"
+  card_4: "ugc-card-container ugcc4 m-auto w-full max-w-[483px] max-h-[483px] lg:w-[40%] min-h-[220px] [aspect-ratio: 1/1]"
+  injected_css_highlights:
+    ".ugc-card": "perspective: 1000px; padding: 5px"
+    ".ugc-card-inner": "transition: transform 0.8s ease-in-out; transform-style: preserve-3d"
+    ".ugc-card:hover .ugc-card-inner": "transform: rotateX(180deg)"
+    ".ugc-card-back": "transform: rotateX(180deg) (starts hidden)"
+    ".ugc-review": "background: rgba(255,255,255,0.8); height: 33%; top: 50%; opacity: 0; transition: all 300ms"
+    ".ugc-card-front:hover .ugc-review": "top: -33%; opacity: 1 (large cards)"
+    ".ugcc2 .ugc-review, .ugcc3 .ugc-review": "height: 100%; top: 120% (small cards use different offset)"
+    ".ugcc2 .ugc-card-front:hover .ugc-review": "top: -100%; opacity: 1"
+
+dependencies:
+  qwik:
+    - $, component$, useOnWindow, useSignal from @builder.io/qwik
+  components:
+    - Image from @unpic/qwik
+    - Video from ~/components/media/video
+  services:
+    - convertMarkdownToHtml from ~/services/markdown-service
+  types:
+    - UgcSection, CategoryTheme from ~/services/category-service
+
+used_by:
+  - UgcSection
+
+security:
+  - content.textContent is rendered via dangerouslySetInnerHTML after markdown conversion — CMS content must be sanitized
+  - The CSS styles are injected via dangerouslySetInnerHTML on a <style> tag — string is a hardcoded template literal, not user input
+  - Uses direct DOM manipulation (document.querySelectorAll, element.style.transform) — replace with React refs in Next.js
+
+edge_cases:
+  - Expects EXACTLY 4 UGC items (ugc[0] through ugc[3]). Accessing ugc[3] without guard will throw if fewer items present
+  - If ugc[3].video is null/undefined, Video component receives empty string for name prop
+  - If content.textContent is falsy, convertMarkdownToHtml receives empty string ''
+  - Subheading and heading rendered unconditionally (no falsy guard in FlipUGC) — empty strings render empty elements
+
+notes:
+  - FlipUGC is a named const (not default export) defined inside ugc-section.tsx — it cannot be imported separately
+  - The flip animation code is duplicated between createUgc function and the useOnWindow("load") handler
+  - Cards start showing the BACK face (rotateX 180deg) — the "front" CSS class is actually the back visual
+  - The theme prop is received but NOT used in FlipUGC rendering
+  - ctaText, ctaUrl, ctaTextColor, ctaBackgroundColor from UgcSection are NOT used by FlipUGC (used by SliderUGC only)
+  - In Next.js migration, replace document.querySelectorAll with refs and setInterval with useEffect cleanup
+
+types:
+  Props:
+    description: Component props (shared with SliderUGC)
+    fields:
+      - name: content
+        type: UgcSection
+      - name: theme
+        type: "CategoryTheme | null"
+        optional: true
+
+  UgcSection:
+    description: UGC section CMS data
+    source: ~/services/category-service
+    fields:
+      - name: order
+        type: number
+      - name: heading
+        type: string
+      - name: subheading
+        type: "string | null"
+      - name: ugc
+        type: "UGC[]"
+      - name: textContent
+        type: string
+      - name: ctaText
+        type: string
+      - name: ctaUrl
+        type: string
+      - name: ctaTextColor
+        type: "string (optional)"
+      - name: ctaBackgroundColor
+        type: "string (optional)"
+      - name: display
+        type: boolean
+      - name: type
+        type: "string (optional)"
+
+  UGC:
+    description: Individual UGC item (flip mode uses back fields)
+    fields:
+      - name: image
+        type: string
+      - name: imageAlt
+        type: "string (optional)"
+      - name: video
+        type: "string | null (optional)"
+      - name: videoPoster
+        type: "string (optional)"
+      - name: review
+        type: string
+      - name: reviewer
+        type: string
+      - name: backImage
+        type: "string (optional)"
+      - name: backImageAlt
+        type: "string (optional)"
+      - name: backVideo
+        type: "string (optional)"
+      - name: backVideoPoster
+        type: "string (optional)"
+      - name: backReview
+        type: "string (optional)"
+      - name: backReviewer
+        type: "string (optional)"
+
+field_consumption:
+  UgcSection:
+    consumed:
+      - heading: Rendered as h2 in headings panel
+      - subheading: Rendered as p in headings panel
+      - textContent: Converted from markdown and rendered via dangerouslySetInnerHTML
+      - ugc: Items [0], [1], [2] used for image cards; item [3] used for video card
+    ignored:
+      - ctaText: Used by SliderUGC, not FlipUGC
+      - ctaUrl: Used by SliderUGC, not FlipUGC
+      - ctaTextColor: Used by SliderUGC, not FlipUGC
+      - ctaBackgroundColor: Used by SliderUGC, not FlipUGC
+      - display: Checked by parent UgcSection/WebContentsComponent
+      - order: Not used by FlipUGC
+      - type: Read by parent UgcSection to route to FlipUGC vs SliderUGC
+
+  UGC_items_0_1_2:
+    consumed:
+      - image: front face Image src
+      - imageAlt: front face Image alt
+      - review: front face review text
+      - reviewer: front face reviewer span
+      - backImage: back face Image src
+      - backImageAlt: back face Image alt
+      - backReview: back face review text
+      - backReviewer: back face reviewer span
+    ignored:
+      - video: Not used for items 0-2 (only item 3 uses video)
+      - videoPoster: Not used for items 0-2
+
+  UGC_item_3:
+    consumed:
+      - video: front face Video name
+      - videoPoster: front face Video poster
+      - review: front face review text
+      - reviewer: front face reviewer span
+      - backVideo: back face Video name
+      - backVideoPoster: back face Video poster
+      - backReview: back face review text
+      - backReviewer: back face reviewer span
+    ignored:
+      - image: Not used for item 3 (video card)
+      - imageAlt: Not used for item 3
+
+  CategoryTheme:
+    consumed: [] (theme prop received but NOT read in FlipUGC render)
+    ignored:
+      - primary: Not used
+      - primaryText: Not used
+
+implementation_logic:
+  lazy_load_deduplication:
+    rule: |
+      createUgc checks !loadUgc.value before setting it true. This prevents double-initialization
+      if both the scroll event and the load event fire (the second call returns early via the else branch).
+      However the useOnWindow("load") handler does NOT check loadUgc.value and always starts a new
+      flip interval — this is a code duplication/bug in the source.
+    critical: true
+
+  flip_direction:
+    rule: |
+      Flip reads current rotateX degrees from style.transform string: parseInt(card.style.transform.split('(')[1]).
+      Each flip adds 180 degrees. Starting at 180 (back face visible), after first flip: 360 (front visible),
+      then 540 (back visible), etc. This is a pure accumulation — no modulo reset.
+    critical: true
+
+visibility_map:
+  ugc_container:
+    condition: "loadUgc.value === true"
+    default: hidden (not rendered until scroll or load event fires)
+
+  flip_card_back_faces:
+    condition: "always rendered (both front and back faces exist in DOM)"
+    default: back faces initially visible (rotateX(180deg) start state), front faces hidden by backface-visibility:hidden

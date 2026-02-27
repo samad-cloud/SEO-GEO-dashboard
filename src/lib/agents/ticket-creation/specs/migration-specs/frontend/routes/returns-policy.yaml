@@ -1,0 +1,72 @@
+name: ReturnsPolicyRoute
+source:
+  path: routes/returns-policy/index.tsx
+  lines: 1-53
+  type: route
+
+description: |
+  Returns policy page explaining return/exchange procedures.
+  Content includes:
+  - Link to satisfaction guarantee
+  - Care quality statement
+  - Return policy list (4 items, 4th hidden on IT and NL)
+
+  All content is i18n localized.
+
+url_pattern: /returns-policy
+layout: default
+
+exports:
+  default: true
+  component: |
+    Renders:
+    - Title (centered, bold)
+    - Link to satisfaction guarantee
+    - Care quality description
+    - Policy title
+    - Goal statement
+    - Ordered list of policies (4 items, conditional 4th item)
+
+  head: true
+  head_behavior: |
+    Returns localized meta tags:
+    - title, description, keywords from i18n
+    - Standard meta tags (google, theme-color, distribution, rating, author, copyright, google-signin-scope, robots)
+
+dependencies:
+  - "@builder.io/qwik"
+  - "qwik-speak" (inlineTranslate)
+  - "~/config/settings"
+
+data_dependencies:
+  - settings().website for IT/NL region check
+
+behavior:
+  - Policy item 4 hidden if website is IT or NL
+  - All text uses inlineTranslate for i18n
+  - Responsive padding (15px mobile, 0 desktop)
+
+i18n_keys:
+  - returns_policy.title
+  - returns_policy.satisfaction_guarantee_link
+  - returns_policy.satisfaction_guarantee
+  - returns_policy.care_quality
+  - returns_policy.our_goal
+  - returns_policy.policy_1
+  - returns_policy.policy_2
+  - returns_policy.policy_3
+  - returns_policy.policy_4
+  - returns_policy.meta.title
+  - returns_policy.meta.description
+  - returns_policy.meta.keywords
+
+rewrite_routes:
+  NL: /retourneerbeleid
+  DE: /ruckgaberecht
+  IT: /termini-di-restituzione
+  ES: /cambios-y-devoluciones
+
+used_by: []
+
+types:
+  notes: "Route component. No locally-defined interfaces. All content sourced from inlineTranslate() i18n keys and settings().website region string."

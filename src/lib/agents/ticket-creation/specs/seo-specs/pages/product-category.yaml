@@ -1,0 +1,356 @@
+page_id: product-category
+description: |
+  Dynamic catch-all route that handles BOTH category pages and product detail pages.
+  The server determines the page type based on the friendly URL via webPageType field.
+  This is the highest-traffic, most complex page type in the application.
+
+url:
+  pattern: "/[...productCategory]"
+  examples:
+    category:
+      - "/canvas-prints/"
+      - "/photo-gifts/"
+      - "/photo-books/"
+      - "/personalised-mugs/"
+    product:
+      - "/canvas-prints/single-canvas-print/"
+      - "/photo-books/hardcover-photo-book/"
+      - "/personalised-mugs/magic-mug/"
+  i18n_rewrites: "None — category/product URLs are not rewritten per locale (same URL across all regions)"
+  layout: "categoryproduct"
+
+seo_contract:
+  # --- CATEGORY PAGES ---
+  category:
+    title:
+      pattern: "{metaData.title}"
+      source_field: "data.metaData.title"
+      generating_function: "getCategoryHeadData()"
+      generating_file: "src/services/category-service.ts"
+      spec: "../migration-specs/backend/services/category-service.yaml"
+
+    meta_description:
+      source_field: "data.metaData.description"
+      max_length: null
+      notes: "No client-side truncation — depends on API response"
+
+    canonical:
+      pattern: "{domain}{canonicalUrl}"
+      source_field: "data.canonicalUrl"
+      generating_function: "getCategoryHeadData()"
+      notes: "Falls back to url.pathname if canonicalUrl not in API response"
+
+    robots:
+      logic: "data.metaData.isIndex === true → 'index, follow' | false → 'noindex, nofollow'"
+      generating_function: "getCategoryHeadData()"
+
+    open_graph:
+      og_title: "data.metaData.ogTitle"
+      og_type: "data.metaData.ogType"
+      og_url: "data.metaData.ogUrl"
+      og_description: "data.metaData.ogDescription"
+      og_site_name: "data.metaData.ogSitename"
+      og_locale: "data.metaData.ogLocale"
+      og_image: "data.metaData.ogImage"
+      og_app_id: "data.metaData.ogAppId"
+
+    twitter_card:
+      twitter_card: "data.metaData.twitterCard"
+      twitter_site: "data.metaData.twitterSite"
+      twitter_title: "data.metaData.twitterTitle"
+      twitter_description: "data.metaData.twitterDescription"
+      twitter_image: "data.metaData.twitterImage"
+
+    structured_data:
+      - type: "schema.org/ItemList"
+        description: "List of products in category with offers, shipping, return policy"
+        generating_function: "getCategoryItemsSchema(productSections, url, categoryData)"
+        generating_file: "src/services/category-service.ts"
+        schema_shape:
+          "@type": "ItemList"
+          itemListElement:
+            - "@type": "ListItem"
+              position: "number"
+              item:
+                "@type": "Product"
+                name: "product title"
+                image: "product image URL"
+                url: "product URL"
+                offers:
+                  "@type": "Offer"
+                  price: "discounted price"
+                  priceCurrency: "region currency"
+                  availability: "InStock"
+                  shippingDetails:
+                    shippingRate:
+                      value: "standardShippingPrice"
+                  hasMerchantReturnPolicy:
+                    merchantReturnDays: 30
+                    returnFees: "FreeReturn"
+
+      - type: "schema.org/BreadcrumbList"
+        description: "Breadcrumb navigation path"
+        generating_component: "Breadcrumbs"
+        generating_file: "src/components/share/breadcrumbs/breadcrumbs.tsx"
+        schema_shape:
+          "@type": "BreadcrumbList"
+          itemListElement:
+            - "@type": "ListItem"
+              position: 1
+              name: "Home"
+              item: "/"
+            - "@type": "ListItem"
+              position: 2
+              name: "{category name}"
+              item: "{category URL}"
+
+    hreflang:
+      count: 8
+      x_default: "https://www.printerpix.co.uk{pathname}"
+      generating_function: "getHreflangLinks(pathname)"
+      generating_file: "src/services/server.ts"
+      known_issues: "No i18n rewrite issue for this page type (URLs are the same across regions)"
+
+    heading_hierarchy:
+      h1: "data.contentTitle (category name, e.g., 'Canvas Prints')"
+      h2_examples:
+        - "Product section headings"
+        - "FAQ heading"
+        - "SEO content section headings"
+        - "Trust signals heading"
+      notes: "H1 comes from contentTitle field. Multiple H2s from various sections."
+
+    known_issues:
+      - "Some categories may have metaData.isIndex=false, making them noindex despite having content"
+
+  # --- PRODUCT PAGES ---
+  product:
+    title:
+      pattern: "{metaData.title}"
+      source_field: "data.metaData.title"
+      generating_function: "getProductHeadData()"
+      generating_file: "src/services/product-page-service.ts"
+      spec: "../migration-specs/backend/services/product-page-service.yaml"
+
+    meta_description:
+      source_field: "data.metaData.description"
+
+    canonical:
+      pattern: "{domain}{canonicalUrl}"
+      source_field: "data.canonicalUrl"
+      generating_function: "getProductHeadData()"
+
+    robots:
+      logic: "data.metaData.isIndex === true → 'index, follow' | false → 'noindex, nofollow'"
+
+    open_graph:
+      og_title: "data.metaData.ogTitle"
+      og_type: "data.metaData.ogType"
+      og_url: "data.metaData.ogUrl"
+      og_description: "data.metaData.ogDescription"
+      og_site_name: "data.metaData.ogSitename"
+      og_locale: "data.metaData.ogLocale"
+      og_image: "data.metaData.ogImage"
+      og_app_id: "data.metaData.ogAppId"
+
+    twitter_card:
+      twitter_card: "data.metaData.twitterCard"
+      twitter_site: "data.metaData.twitterSite"
+      twitter_title: "data.metaData.twitterTitle"
+      twitter_description: "data.metaData.twitterDescription"
+      twitter_image: "data.metaData.twitterImage"
+
+    structured_data:
+      - type: "schema.org/ProductGroup"
+        description: "Product with offers, reviews, variants, breadcrumbs"
+        generating_function: "getProductPageJsonSchema(productPageData, url)"
+        generating_file: "src/services/product-page-service.ts"
+        schema_shape:
+          "@type": "ProductGroup"
+          name: "product name"
+          description: "product description"
+          image: "product images"
+          url: "product URL"
+          offers:
+            "@type": "AggregateOffer"
+            lowPrice: "lowest variant price"
+            highPrice: "highest variant price"
+            priceCurrency: "region currency"
+          review: "customer reviews (if available)"
+          aggregateRating: "star rating data"
+          hasVariant: "product variants/sizes"
+          breadcrumb: "BreadcrumbList"
+
+      - type: "schema.org/BreadcrumbList"
+        description: "Same as category — rendered by Breadcrumbs component"
+        generating_component: "Breadcrumbs"
+        generating_file: "src/components/share/breadcrumbs/breadcrumbs.tsx"
+
+    hreflang:
+      count: 8
+      x_default: "https://www.printerpix.co.uk{pathname}"
+      generating_function: "getHreflangLinks(pathname)"
+
+    heading_hierarchy:
+      h1: "data.imageCaption OR data.h1 (product name)"
+      h2_examples:
+        - "Product details sections"
+        - "Reviews heading"
+        - "FAQ heading"
+        - "SEO content sections"
+
+    known_issues:
+      - "Product pages with productPageViewName=NonCustomizableThemes2021Q1 use getInstantProductHeadData() instead"
+
+api_verification:
+  description: "How to verify this page's SEO via direct API calls"
+  category_page:
+    curl: |
+      curl -X POST "https://qt-api.printerpix.co.uk/CategoryAndProductPage/GetByFriendlyUrlForQwikV2/?url=canvas-prints" \
+        -H "Content-Type: application/json" \
+        -H "machine-token: {TOKEN}" \
+        -d '{"machineToken": "{TOKEN}"}'
+    notes: "URL goes as ?url= query param, body only needs machineToken"
+    check_fields:
+      - "data.webPageType === 2 (CategoryPage)"
+      - "data.metaData.title — should match page <title>"
+      - "data.metaData.description — should match <meta name='description'>"
+      - "data.canonicalUrl — should match <link rel='canonical'>"
+      - "data.metaData.isIndex — controls robots tag"
+      - "data.metaData.ogTitle — should match <meta property='og:title'>"
+      - "data.breadcrumbsNavigation — should match BreadcrumbList structured data"
+      - "data.productSections — products should appear in ItemList structured data"
+    see: "_api-guide.yaml for tokens and full documentation"
+
+  product_page:
+    curl: |
+      curl -X POST "https://qt-api.printerpix.co.uk/CategoryAndProductPage/GetByFriendlyUrlForQwikV2/?url=canvas-prints/single-canvas-print" \
+        -H "Content-Type: application/json" \
+        -H "machine-token: {TOKEN}" \
+        -d '{"machineToken": "{TOKEN}"}'
+    notes: "For product URLs use the full path: category/product-name"
+    check_fields:
+      - "data.webPageType === 1 (ProductPage)"
+      - "data.metaData.title"
+      - "data.metaData.description"
+      - "data.canonicalUrl"
+      - "data.metaData.isIndex"
+      - "data.breadcrumbs — should match BreadcrumbList structured data"
+      - "data.standardShippingPrice — used in offer structured data"
+      - "data.reviewsCollection — used in review structured data"
+
+file_chain:
+  route:
+    file: "src/routes/[...productCategory]/index@categoryproduct.tsx"
+    spec: "../migration-specs/frontend/routes/product-category.yaml"
+    description: "Entry point — reads WebPageTypeContext, renders CategoryPageFactory or ProductPageSelection"
+
+  layout:
+    file: "src/routes/layout-categoryproduct.tsx"
+    spec: "../migration-specs/frontend/layouts/layout-categoryproduct.yaml"
+    seo_elements_owned:
+      - "head export (title, meta, OG, Twitter, canonical, structured data scripts)"
+      - "Breadcrumbs rendering with schema.org markup"
+      - "Hreflang links"
+    data_loading: "useLoadAllData — consolidated parallel loader"
+
+  head_generation:
+    category:
+      function: "getCategoryHeadData(category, url)"
+      file: "src/services/category-service.ts"
+      spec: "../migration-specs/backend/services/category-service.yaml"
+      calls:
+        - "getCategoryItemsSchema() for ItemList JSON-LD"
+        - "getHreflangLinks() for hreflang"
+    product:
+      function: "getProductHeadData(product, url)"
+      file: "src/services/product-page-service.ts"
+      spec: "../migration-specs/backend/services/product-page-service.yaml"
+      calls:
+        - "getProductPageJsonSchema() for ProductGroup JSON-LD"
+        - "getHreflangLinks() for hreflang"
+    instant_product:
+      function: "getInstantProductHeadData(product, url)"
+      file: "src/services/product-page-service.ts"
+
+  data_source:
+    function: "getProductOrCategoryData(request)"
+    file: "src/services/product-category-service.ts"
+    spec: "../migration-specs/backend/services/product-category-service.yaml"
+    endpoint: "/CategoryAndProductPage/GetByFriendlyUrlForQwikV2"
+
+  breadcrumbs:
+    component: "Breadcrumbs"
+    file: "src/components/share/breadcrumbs/breadcrumbs.tsx"
+    spec: "../migration-specs/frontend/components/shared/breadcrumbs.yaml"
+    data_source_category: "data.breadcrumbsNavigation"
+    data_source_product: "data.breadcrumbs"
+    schema_org: "BreadcrumbList with ListItem entries, position starts at 1 (Home)"
+
+  hreflang:
+    function: "getHreflangLinks(pathname)"
+    file: "src/services/server.ts"
+    spec: "../migration-specs/backend/services/server.yaml"
+
+  page_components:
+    category:
+      - name: "CategoryPageFactory"
+        file: "src/components/category-page/containers/category-page-factory.tsx"
+        spec: "../migration-specs/frontend/components/category-page/category-page-factory.yaml"
+      - name: "CommonCategoryContainer"
+        file: "src/components/category-page/containers/common-category-container.tsx"
+        spec: "../migration-specs/frontend/components/category-page/common-category-container.yaml"
+    product:
+      - name: "ProductPageSelection"
+        file: "src/components/product-page/containers/product-page-selection.tsx"
+        spec: "../migration-specs/frontend/components/product-page/product-page-selection.yaml"
+        notes: "Routes to one of 13 templates based on productPageViewName"
+      - name: "ProductPageBaseTemplate (most common)"
+        file: "src/components/product-page/containers/templates/product-page-base-template.tsx"
+        spec: "../migration-specs/frontend/components/product-page/product-page-base-template.yaml"
+
+  middleware:
+    ref: "_architecture.yaml → middleware_pipeline"
+    notes: "cookieAndRedirectionMiddleware + redeemgift redirect + excluded route check"
+
+  product_templates:
+    description: "13 product page template variants, selected by productPageViewName enum"
+    templates:
+      - view_name: "BaseTemplate (99) / BaseTemplateMarketing (25)"
+        component: "ProductPageBaseTemplate"
+        spec: "../migration-specs/frontend/components/product-page/product-page-base-template.yaml"
+      - view_name: "BasicTemplate (4)"
+        component: "ProductPageBasicTemplate"
+        spec: "../migration-specs/frontend/components/product-page/product-page-basic-template.yaml"
+      - view_name: "FixedTheme (21) / FixedThemeCards (23)"
+        component: "ProductPageFixedTemplate"
+        spec: "../migration-specs/frontend/components/product-page/product-page-fixed-template.yaml"
+      - view_name: "HubTemplate (28)"
+        component: "ProductPageHubTemplate"
+        spec: "../migration-specs/frontend/components/product-page/product-page-hub-template.yaml"
+      - view_name: "HubChild (29)"
+        component: "ProductPageHubChildTemplate"
+        spec: "../migration-specs/frontend/components/product-page/product-page-hub-child-template.yaml"
+      - view_name: "NonCustomizableThemes2021Q1 (6)"
+        component: "InstantProductPageContainer"
+        spec: "../migration-specs/frontend/components/product-page/instant-product-page-container.yaml"
+      - view_name: "CopyCanvasDiscountTemplate (20)"
+        component: "PhotoCanvasPrintsNewTemplate"
+        spec: "../migration-specs/frontend/components/product-page/photo-canvas-prints-new-template.yaml"
+      - view_name: "CanvasDiscountBundledExperience (26)"
+        component: "PhotoCanvasPrintsBundledTemplate"
+        spec: "../migration-specs/frontend/components/product-page/photo-canvas-prints-bundled-template.yaml"
+      - view_name: "CanvasHub (27)"
+        component: "PhotoCanvasPrintsHubBundledTemplate"
+        spec: "../migration-specs/frontend/components/product-page/photo-canvas-prints-hub-bundled-template.yaml"
+      - view_name: "CopyPhotobox (22)"
+        component: "PhotoCanvasPrintsTemplateV2"
+        spec: "../migration-specs/frontend/components/product-page/photo-canvas-prints-template-v2.yaml"
+
+region_variations:
+  notes: "Product/category data comes from API — region differences are in the API response, not in frontend code"
+  differences:
+    - "Currency and pricing format varies by region"
+    - "standardShippingPrice varies by region (used in structured data)"
+    - "Some products may not be available in all regions"
+    - "Review data may differ by region"

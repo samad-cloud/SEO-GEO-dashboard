@@ -1,0 +1,93 @@
+name: GoogleTagManagerExtension
+description: Google Tag Manager utilities for product configuration tracking, data layer management, and GTM container ID resolution
+
+source:
+  path: utility/google-tag-manager-extension.ts
+  lines: 1-65
+  type: utility
+
+exports:
+  - name: getProductConfigurationSnippet
+    type: function
+    signature: "(configuredProductMetaJson: any) => string"
+    description: Generates GTM script snippet for product configuration events
+    parameters:
+      - name: configuredProductMetaJson
+        type: any
+        description: JSON-stringified product metadata
+    returns: Script string that pushes productConfiguration event to dataLayer
+    event_name: productConfiguration
+
+  - name: getProductDetailSnippet
+    type: function
+    signature: "(configuredProductMetaJson: any, detailProductJson: any, currencyCode: string) => string"
+    description: Generates GTM script snippet for product detail view events
+    parameters:
+      - name: configuredProductMetaJson
+        type: any
+      - name: detailProductJson
+        type: any
+      - name: currencyCode
+        type: string
+    returns: Script string that pushes detail event to dataLayer
+    event_name: detail
+
+  - name: pushDataIntoDataLayer
+    type: function
+    signature: "(data: any) => void"
+    description: Pushes arbitrary data into window.dataLayer array
+    parameters:
+      - name: data
+        type: any
+    behavior:
+      - Initializes window.dataLayer if undefined
+      - Pushes data to array
+    client_side_only: true
+
+  - name: getGTMId
+    type: function
+    signature: "() => string"
+    description: Returns GTM container ID for current region
+    regions:
+      GB: GTM-PQSN92M7
+      US: GTM-5QS84BXH
+      DE: GTM-5KJDMQF9
+      ES: GTM-5M3KL2CS
+      FR: GTM-MRKJW7TH
+      IT: GTM-TKWW4X4K
+      NL: GTM-WJJ4ZQZR
+      IN: GTM-TM8NKCJN
+      AE: GTM-5K3KBBD5
+      default: GTM-P74CNBL
+
+dependencies:
+  internal:
+    - "~/config/settings": settings function
+  external:
+    - window.dataLayer (browser global)
+
+types:
+  WindowWithDataLayer:
+    description: Window interface augmented with GTM dataLayer array
+    definition: "Window & { dataLayer: Record<string, any>[] }"
+    notes: "Used internally in pushDataIntoDataLayer to type-safely access and initialize window.dataLayer"
+
+behavior:
+  data_layer_events:
+    productConfiguration:
+      fields: [event, configurationStepMeta, configuredProductMeta]
+      step_meta: { stepName: "view", step: 1 }
+    detail:
+      fields: [event, configurationStepMeta, configuredProductMeta, currencyCode, detailProduct]
+      step_meta: { stepName: "view", step: 1 }
+
+  gtm_container_mapping:
+    method: settings().website
+    supported_regions: [GB, US, DE, ES, FR, IT, NL, IN, AE]
+    fallback: GTM-P74CNBL
+
+edge_cases:
+  - window.dataLayer initialized if undefined
+  - Unrecognized region uses default GTM-P74CNBL
+
+used_by: []

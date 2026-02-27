@@ -1,0 +1,333 @@
+name: CategoryCards
+source: components/category-page/category-cards.tsx
+description: >
+  Renders a grid of alternating-layout product/category cards for category pages.
+  Each card shows an image (with optional mobile variant) on one side and text content
+  with CTA buttons on the other. Cards alternate left-right layout (even cards: image left,
+  odd cards: image right). Buttons support theme-based or custom color styling with
+  hover color inversion. Fires Matomo analytics on CTA clicks.
+
+exports:
+  default:
+    type: component
+    description: CategoryCards wrapper component that renders heading and card list (default export)
+  CategoryCardsProps:
+    type: interface
+    description: Props interface for the CategoryCards component
+
+props:
+  content:
+    type: Cards
+    required: true
+    description: >
+      Cards data object containing heading, card list, button colors, and display/order metadata.
+  theme:
+    type: "CategoryTheme | null"
+    required: false
+    description: >
+      Optional category theme providing primary/secondary colors and text colors.
+      Used as fallback when card-level button colors are not specified.
+
+component_structure:
+  root: div
+  layout: >
+    Section heading (h2) centered at top, followed by a vertical list of CategoryCard
+    sub-components. Each card alternates its image/text layout direction.
+  heading:
+    element: h2
+    text: content.heading
+    styling: "text-xl md:text-2xl text-center mb-5 font-bold"
+  card_list:
+    iteration: content.cardList.map with index
+    key: card.heading
+    each_card:
+      component: CategoryCard (internal sub-component)
+      props_passed:
+        - all Card fields spread
+        - reverse: "index % 2 !== 0 (odd cards are reversed)"
+        - buttonColor: content.buttonColor
+        - buttonTextColor: content.buttonTextColor
+        - index: current index
+        - cardListLength: total cards count
+        - theme: theme prop
+
+child_components:
+  - name: CategoryCard
+    type: internal sub-component
+    description: >
+      Individual card component with alternating image/text layout.
+      Not exported -- internal to this file.
+    props:
+      image: string (desktop image URL)
+      mobileImage: string (mobile-specific image URL, optional)
+      heading: string (card title)
+      textContent: string (card description)
+      buttons: "Array<{ ctaText: string; href: string }> | null"
+      reverse: boolean (whether to reverse layout direction)
+      buttonColor: string (primary button background color)
+      buttonTextColor: string (primary button text color)
+      index: number (card index in list)
+      cardListLength: number (total number of cards)
+      theme: "CategoryTheme | null (optional theme fallback)"
+  - name: Image
+    source: "@unpic/qwik"
+    description: Optimized image component
+
+data_structure:
+  Card:
+    source: "~/services/category-service"
+    fields:
+      image: string (desktop image URL)
+      mobileImage: string (mobile-only image URL)
+      heading: string
+      textContent: string
+      buttons: "Array<{ ctaText: string; href: string }> | null"
+  Cards:
+    source: "~/services/category-service"
+    fields:
+      heading: string (section heading)
+      order: number (display order)
+      cardList: "Array<Card>"
+      display: boolean
+      buttonColor: string (hex color for primary buttons)
+      buttonTextColor: string (hex color for primary button text)
+  CategoryTheme:
+    source: "~/services/category-service"
+    fields:
+      primary: string (primary theme color)
+      secondary: string (secondary theme color)
+      primaryText: string (primary text color)
+      secondaryText: string (secondary text color)
+
+behavior:
+  rendering:
+    - Section heading is always rendered
+    - Cards alternate layout direction (even index: image left/text right, odd index: image right/text left)
+    - Last card has no bottom margin (mb-0), all others have mb-8
+    - Desktop image is hidden when mobileImage exists on mobile; mobile image shown only on small screens
+    - Image alt text falls back to card heading or "Category"
+    - Buttons rendered inline with gap, even-index buttons get extra right margin when there are multiple buttons
+  button_coloring:
+    primary_button (even index):
+      background: "buttonColor || theme.primary"
+      text: "buttonTextColor || theme.primaryText"
+    secondary_button (odd index):
+      background: "buttonTextColor || theme.secondary"
+      text: "buttonColor || theme.secondaryText"
+    border: >
+      "1px solid" -- if buttonColor is "#FFFFFF", border uses buttonTextColor;
+      otherwise border uses buttonColor
+  hover_behavior:
+    mechanism: >
+      On mouseOver and mouseOut, button colors are swapped (background becomes text color,
+      text becomes background color). If the previous text color was white (rgb(255, 255, 255)),
+      a 1px solid border is added in the new text color.
+    implementation: Direct DOM style manipulation via event handler
+  analytics:
+    - Each button click fires a Matomo trackEvent
+    - Category: MatomoCategory.CATEGORY ("category")
+    - Action: MatomoEvent.CLICK_CATEGORY_CARD_CTA ("clickCategoryCardCta")
+    - Name: the button href
+  navigation:
+    - Buttons are anchor elements linking to btn.href
+
+styling:
+  framework: Tailwind CSS
+  responsive:
+    mobile:
+      - Cards are full width, stacked vertically (image on top, text below)
+      - Text content has top margin and horizontal padding
+    desktop:
+      - Cards use 8/12 (66.67%) width for image, 4/12 (33.33%) for text
+      - Reversed cards swap column order with flex-row-reverse
+      - Padding adjustments based on reverse prop (pl-4 vs pr-4)
+  key_classes:
+    - "rounded-3xl" (buttons)
+    - "transition-colors duration-200" (button hover transition)
+    - "cta_category_cart--{index}" (dynamic button class for analytics/testing)
+
+dependencies:
+  - "@unpic/qwik": Image component
+  - "~/services/category-service": Card, Cards, CategoryTheme type definitions
+  - "~/utility/matomo": pushMatomoEvent, MatomoCategory, MatomoEvent
+
+used_by:
+  - components/web-component/web-contents-component.tsx
+  - components/web-component/web-contents-component-v3.tsx
+  - components/marketing-page/generateMComponents.tsx
+
+security:
+  - No dangerouslySetInnerHTML usage -- all text rendered as plain children
+  - CTA hrefs come from CMS data; ensure URLs are validated server-side
+
+notes:
+  - Button hover effect uses direct DOM manipulation (element.style) rather than CSS classes
+  - The hover handler is the same function for both mouseOver and mouseOut, toggling colors each time
+  - The border condition specifically checks for "#FFFFFF" (case-sensitive) as the buttonColor
+  - Image widths are set to "100%" as strings, not numbers
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  CategoryCardsProps:
+    description: Props for the default-exported CategoryCards wrapper component
+    fields:
+      - name: content
+        type: Cards
+      - name: theme
+        type: "CategoryTheme | null"
+        optional: true
+
+  Cards:
+    description: Section data containing a list of cards and shared button styling
+    source: ~/services/category-service
+    fields:
+      - name: heading
+        type: string
+      - name: order
+        type: number
+      - name: display
+        type: boolean
+      - name: cardList
+        type: "Array<Card>"
+      - name: buttonColor
+        type: string
+      - name: buttonTextColor
+        type: string
+
+  Card:
+    description: Individual card data object
+    source: ~/services/category-service
+    fields:
+      - name: image
+        type: string
+      - name: mobileImage
+        type: string
+        optional: true
+      - name: heading
+        type: string
+      - name: textContent
+        type: string
+      - name: buttons
+        type: "Array<{ ctaText: string; href: string }> | null"
+        optional: true
+
+  CategoryTheme:
+    description: Theme colors used as fallback when card-level button colors are absent
+    source: ~/services/category-service
+    fields:
+      - name: primary
+        type: string
+      - name: secondary
+        type: string
+      - name: primaryText
+        type: string
+      - name: secondaryText
+        type: string
+
+  CategoryCardInternalProps:
+    description: Props for the internal (non-exported) CategoryCard sub-component
+    fields:
+      - name: image
+        type: string
+      - name: mobileImage
+        type: string
+        optional: true
+      - name: heading
+        type: string
+      - name: textContent
+        type: string
+      - name: buttons
+        type: "Array<{ ctaText: string; href: string }> | null"
+        optional: true
+      - name: reverse
+        type: boolean
+      - name: buttonColor
+        type: string
+      - name: buttonTextColor
+        type: string
+      - name: index
+        type: number
+      - name: cardListLength
+        type: number
+      - name: theme
+        type: "CategoryTheme | null"
+        optional: true
+
+field_consumption:
+  CategoryCardsProps:
+    consumed:
+      - content: content.heading rendered as h2; content.cardList iterated to produce CategoryCard instances; content.buttonColor and content.buttonTextColor forwarded to each card
+      - theme: Forwarded to each CategoryCard as theme prop for fallback colors
+
+  Cards:
+    consumed:
+      - heading: Rendered as h2 section heading
+      - cardList: Iterated with index to produce CategoryCard components
+      - buttonColor: Forwarded to each CategoryCard
+      - buttonTextColor: Forwarded to each CategoryCard
+    ignored:
+      - order: Not consumed by this component (used by parent for section ordering)
+      - display: Not consumed by this component (parent controls visibility)
+
+  Card:
+    consumed:
+      - image: Rendered as desktop Image (hidden on mobile when mobileImage is present)
+      - mobileImage: Rendered as mobile-only Image when truthy
+      - heading: Card title in h3; also used as alt text fallback; used as React key
+      - textContent: Descriptive paragraph text below heading
+      - buttons: Iterated to produce anchor CTA buttons
+    ignored: []
+
+  CategoryTheme:
+    consumed:
+      - primary: Fallback background color for even-index buttons when buttonColor is absent
+      - secondary: Fallback background color for odd-index buttons when buttonColor is absent
+      - primaryText: Fallback text color for even-index buttons when buttonTextColor is absent
+      - secondaryText: Fallback text color for odd-index buttons when buttonTextColor is absent
+
+implementation_logic:
+  button_color_resolution:
+    rule: |
+      Each button within a card receives a color based on its index within the buttons array
+      (not the card index within the card list):
+        Even-index button (0, 2, …): background = buttonColor || theme.primary
+                                     text = buttonTextColor || theme.primaryText
+        Odd-index button (1, 3, …):  background = buttonTextColor || theme.secondary
+                                     text = buttonColor || theme.secondaryText
+      This produces a primary/secondary alternation for multi-button cards.
+    critical: true
+
+  hover_color_swap:
+    rule: |
+      The same handler (handleMouseEvent) is attached to both onMouseOver and onMouseOut.
+      Each invocation swaps element.style.color and element.style.backgroundColor in-place.
+      If the color being moved INTO the backgroundColor position was "rgb(255, 255, 255)"
+      (white), a 1px solid border is added using the new text color, to prevent the button
+      from becoming invisible against a white page background.
+      The check uses the string value "rgb(255, 255, 255)" (browser-normalised form), not "#FFFFFF".
+    critical: true
+
+  border_white_guard:
+    rule: |
+      In the initial style, the border is always "1px solid {buttonColor}" UNLESS buttonColor
+      equals the literal string "#FFFFFF" (uppercase, case-sensitive), in which case the border
+      uses buttonTextColor instead. This prevents an invisible white border on white backgrounds.
+    critical: false
+
+visibility_map:
+  desktop_image:
+    condition: "props.mobileImage is falsy OR viewport >= md"
+    default: visible (class 'hidden' applied only when mobileImage exists AND on mobile)
+
+  mobile_image:
+    condition: "props.mobileImage is truthy AND viewport < md"
+    default: hidden (class 'block md:hidden' — only shown on small screens)
+
+  buttons_row:
+    condition: "props.buttons is not null and not undefined"
+    default: hidden (buttons && buttons.map — short-circuits when null/undefined)
+
+  last_card_bottom_margin:
+    condition: "index === cardListLength - 1"
+    default: "mb-8 (all cards except the last); last card gets mb-0"

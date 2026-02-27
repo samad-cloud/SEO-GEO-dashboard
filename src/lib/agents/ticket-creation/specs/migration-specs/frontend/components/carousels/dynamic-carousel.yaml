@@ -1,0 +1,349 @@
+name: DynamicCarousel
+source: components/carousels/dynamic-carousel.tsx
+description: >
+  Full-featured image/video carousel with infinite loop scrolling, autoplay,
+  touch swipe gestures, keyboard-accessible prev/next controls, and support
+  for mixed slide types (images, videos, GoQuick upload widget). Uses a
+  clone-first-and-last-slide technique to achieve seamless infinite looping.
+  When only a single image is provided (and GoQuick widget is disabled), it
+  renders a simple static image link instead of the full carousel.
+
+exports:
+  default:
+    type: component
+    description: DynamicCarousel - the main carousel component
+
+props:
+  images:
+    type: "HomepageBanner[]"
+    required: true
+    description: >
+      Array of banner image objects. Each has mobileBannerUrl, bannerUrl,
+      bannerAltText, and bannerNavUrl. This is the primary slide content.
+  videos:
+    type: "any[]"
+    required: false
+    description: >
+      Optional array of video objects. Each has a Url property. Currently
+      only the first video in the array is rendered as a slide.
+  videoPosition:
+    type: "'first' | 'last'"
+    required: false
+    description: >
+      Controls whether the video slide appears before or after the image
+      slides in the carousel order.
+  mobileDimensions:
+    type: "{ width: number; height: number }"
+    required: true
+    description: Dimensions for mobile image rendering (currently unused in Image tags but passed as prop).
+  desktopDimensions:
+    type: "{ width: number; height: number }"
+    required: true
+    description: Dimensions for desktop image rendering (currently unused in Image tags but passed as prop).
+  videoDimensions:
+    type: "{ width: number; height: number }"
+    required: false
+    description: Optional dimensions for video rendering (declared but not currently used).
+  aspectRatio:
+    type: string
+    required: false
+    description: Optional aspect ratio string (declared but not currently used in rendering).
+  controls:
+    type: boolean
+    required: false
+    description: >
+      When true, shows left/right arrow navigation buttons. These are
+      visible only on lg+ screens (desktop). Rendered as circular white
+      buttons with gray chevron characters.
+  indicator:
+    type: boolean
+    required: false
+    description: Dot indicator prop (declared but not currently rendered in the component).
+  autoplay:
+    type: boolean
+    required: false
+    description: >
+      When true, the carousel auto-advances every 5 seconds. Autoplay
+      pauses on mouse enter and resumes on mouse leave. Also pauses on
+      focus-in and resumes on focus-out.
+  enableGoQuickWidget:
+    type: boolean
+    required: false
+    description: >
+      When true, includes a GoQuickCarouselWidget as a slide in the
+      carousel. The widget appears as both the first and last cloned
+      slide for infinite loop purposes. Also shows UploadProgress
+      overlay when an upload is in progress.
+
+component_structure:
+  conditional_rendering:
+    - condition: "images.length === 1 && !enableGoQuickWidget"
+      renders: "Simple static image with link (no carousel)"
+      details: >
+        Renders desktop and mobile images wrapped in an anchor tag.
+        Desktop image hidden on mobile (md:block), mobile image hidden
+        on desktop (md:hidden). Both set to priority loading.
+    - condition: "else (multiple images or GoQuick enabled)"
+      renders: "Full carousel with slides container"
+  carousel_layout:
+    wrapper: "div#carousel_ with overflow:hidden"
+    slides_container: "div#carousel-slides with flex layout"
+    slide_width_calculation: "Each slide is (100 / totalSlides)% wide"
+    carousel_width_calculation: "totalSlides * 100%"
+    total_slides: "numImages + numVideos + goQuickWidgetCount + 2 (for clone slides)"
+    initial_transform: "translateX(-slideWidth%) to start at index 1 (past first clone)"
+
+child_components:
+  - name: GoQuickCarouselWidget
+    source: components/go-quick/go-quick-carousel-widget
+    condition: "enableGoQuickWidget is true"
+    props_passed:
+      - uploadProgress (store with fileSize, progress, started)
+      - multipleFileUpload (signal<boolean>)
+    notes: >
+      Rendered twice in the slides array - once at the beginning and once
+      at the end as clone slides for infinite loop effect.
+  - name: Video
+    source: components/media/video
+    condition: "videos array exists"
+    props_passed:
+      - "name: videos[0].Url"
+      - "id: 'video-slide'"
+    notes: Only renders the first video from the videos array.
+  - name: UploadProgress
+    source: components/uploadcare/uploadprogress
+    condition: "uploadProgress.started is true"
+    props_passed:
+      - "percents: 100 * uploadProgress.progress"
+      - "fileSize: uploadProgress.fileSize"
+      - multipleFileUpload
+    notes: Renders as a full-screen overlay on top of the carousel.
+  - name: Image
+    source: "@unpic/qwik"
+    description: >
+      Optimized image component. Used for both desktop and mobile banner
+      images. First slide images use eager loading; subsequent slides use
+      lazy loading. Desktop images hidden on mobile via md:block/hidden classes.
+
+data_structure:
+  HomepageBanner:
+    mobileBannerUrl: string
+    bannerUrl: string
+    bannerAltText: string
+    bannerNavUrl: string
+  uploadProgress_store:
+    fileSize: "number (default 0)"
+    progress: "number (default 0.0)"
+    started: "boolean (default false)"
+  multipleFileUpload_signal:
+    type: "Signal<boolean>"
+    default: true
+
+behavior:
+  initialization:
+    - Runs initCarousel on window load event
+    - Queries DOM for carousel container, slides container, next/prev buttons
+    - Sets initial slide index to 1 (past the cloned first slide)
+
+  infinite_loop_mechanism:
+    description: >
+      Uses clone-first-and-last technique. The last real slide is cloned
+      before the first, and the first real slide (or video if videoPosition
+      is 'first') is cloned after the last. When reaching the last clone
+      (index === slides.length - 1), it instantly jumps to index 1. When
+      reaching the first clone (index === 0), it jumps to slides.length - 2.
+    transition: "1000ms for slide animation, transition removed for instant jump"
+    debounce: "1100ms clickable lock prevents rapid clicking during transition"
+
+  autoplay:
+    interval_ms: 5000
+    pause_triggers:
+      - mouseenter on carousel
+      - focusin on carousel
+      - mouseenter on GoQuick slide
+      - focusin on GoQuick slide
+    resume_triggers:
+      - mouseleave from carousel
+      - focusout from carousel
+      - mouseleave from GoQuick slide (only if cursor leaves carousel bounds)
+      - focusout from GoQuick slide (only if focus moves outside carousel)
+
+  navigation:
+    next_button: "Moves to next slide, wraps to beginning via clone technique"
+    prev_button: "Moves to previous slide, wraps to end via clone technique"
+    touch_swipe:
+      min_distance: 50px
+      direction_detection: "Compares horizontal vs vertical movement magnitude"
+      swipe_left: "Advances to next slide"
+      swipe_right: "Goes to previous slide"
+      vertical_swipe: "Ignored (vertical movement greater than horizontal)"
+
+  slide_order:
+    - "[Clone] GoQuick widget (if enabled) OR last image"
+    - "GoQuick widget (if enabled)"
+    - "Video (if videoPosition is 'first')"
+    - "All images in order"
+    - "Video (if videoPosition is 'last')"
+    - "[Clone] GoQuick widget (if enabled)"
+    - "[Clone] Video (if videoPosition is 'first') OR first image"
+
+  image_loading:
+    first_image: eager loading
+    subsequent_images: lazy loading
+    responsive:
+      mobile: "mobileBannerUrl shown, hidden on md+"
+      desktop: "bannerUrl shown, hidden below md"
+
+  upload_progress:
+    - When uploadProgress.started is true, UploadProgress overlay renders on top of carousel
+    - Progress tracked via uploadProgress store shared with GoQuickCarouselWidget
+
+styling:
+  scoped_css:
+    - ".slide { opacity: 1 }"
+  tailwind_classes:
+    carousel_wrapper: "w-full bg-gray-100 my-0 mx-auto relative overflow-hidden"
+    slides_container: "flex"
+    controls_wrapper: "absolute top-[50%] left-0 -translate-y-[50%] w-full justify-between items-center text-white hidden lg:flex z-30 pointer-events-none"
+    prev_button: "ml-2 px-3 py-1 bg-white rounded-[100%] flex items-center justify-center cursor-pointer pointer-events-auto"
+    next_button: "mr-2 px-3 py-1 bg-white rounded-[100%] flex items-center justify-center cursor-pointer pointer-events-auto"
+    button_text: "text-[#A6A6A6] text-[30px] leading-[30px] bg-transparent border-none"
+  css_classes_for_analytics:
+    - "cta_homepage_banner (on simple image link)"
+    - "link_carousel_image (on carousel image links)"
+    - "button_homepage_banner--arrow-left (prev button)"
+    - "button_homepage_banner--arrow-right (next button)"
+
+dependencies:
+  external:
+    - "@unpic/qwik (Image component)"
+  internal:
+    - "components/media/video (Video component)"
+    - "services/home-service (HomepageBanner type)"
+    - "components/go-quick/go-quick-carousel-widget (GoQuickCarouselWidget)"
+    - "components/uploadcare/uploadprogress (UploadProgress)"
+
+used_by:
+  - routes/index@containerless.tsx (homepage)
+
+security:
+  - Image URLs and navigation URLs come from server-side HomepageBanner data
+  - No user input directly rendered; all content is CMS-driven
+  - bannerNavUrl used as href - should be validated server-side
+
+notes:
+  - The indicator prop is accepted but not rendered in the current implementation
+  - videoDimensions and aspectRatio props are declared but unused
+  - Only the first video from the videos array is ever rendered
+  - The carousel uses direct DOM manipulation (getElementById, style.transform) for slide transitions
+  - Slide width is calculated as percentage of total carousel width, not viewport
+  - The GoQuick widget mouse/focus handling has special logic to only resume autoplay when cursor/focus actually leaves the carousel bounds
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  CarouselProps:
+    description: Component props interface (internal, not exported)
+    fields:
+      - name: images
+        type: "HomepageBanner[]"
+      - name: videos
+        type: "any[]"
+        optional: true
+      - name: videoPosition
+        type: "'first' | 'last'"
+        optional: true
+      - name: mobileDimensions
+        type: MediaDimensions
+      - name: desktopDimensions
+        type: MediaDimensions
+      - name: videoDimensions
+        type: MediaDimensions
+        optional: true
+      - name: aspectRatio
+        type: string
+        optional: true
+      - name: controls
+        type: boolean
+        optional: true
+      - name: indicator
+        type: boolean
+        optional: true
+      - name: autoplay
+        type: boolean
+        optional: true
+      - name: enableGoQuickWidget
+        type: boolean
+        optional: true
+
+  HomepageBanner:
+    description: Single banner slide data
+    source: ~/services/home-service
+    fields:
+      - name: mobileBannerUrl
+        type: string
+      - name: bannerUrl
+        type: string
+      - name: bannerAltText
+        type: string
+      - name: bannerNavUrl
+        type: string
+
+  MediaDimensions:
+    description: Width/height pair for image or video rendering (internal interface)
+    fields:
+      - name: width
+        type: number
+      - name: height
+        type: number
+
+  VideoPosition:
+    description: Controls whether video slide appears before or after image slides (internal interface)
+    fields:
+      - name: position
+        type: "'first' | 'last'"
+
+field_consumption:
+  CarouselProps:
+    consumed:
+      - images: Length checked for showSimpleImage condition; each image renders desktop + mobile Image components with bannerNavUrl, bannerUrl, mobileBannerUrl, bannerAltText; first image always eager-loaded
+      - videos: Existence checked (if truthy, numVideos set to 1); videos[0].Url passed to Video component
+      - videoPosition: Checked against 'first' and 'last' to determine slide insertion position
+      - controls: When true, renders prev/next navigation button DOM nodes
+      - autoplay: Passed to initCarousel() to decide whether to startSlide on init
+      - enableGoQuickWidget: When true, adds GoQuickCarouselWidget slide and UploadProgress overlay; also affects slide count and clone logic
+    ignored:
+      - mobileDimensions: Declared and received but not passed to Image components in carousel mode
+      - desktopDimensions: Declared and received but not passed to Image components in carousel mode
+      - videoDimensions: Declared but never read in the component body
+      - aspectRatio: Declared but never read in the component body
+      - indicator: Declared but dot indicators are never rendered
+
+visibility_map:
+  simple_static_image:
+    condition: "images.length === 1 && !enableGoQuickWidget"
+    default: hidden (full carousel renders instead when multiple images or GoQuick is enabled)
+
+  full_carousel:
+    condition: "images.length > 1 || enableGoQuickWidget"
+    default: visible
+
+  upload_progress_overlay:
+    condition: "uploadProgress.started === true"
+    default: hidden
+
+  video_slide_first_position:
+    condition: "props.videos && props.videoPosition === 'first'"
+    default: hidden
+
+  video_slide_last_position:
+    condition: "props.videos && props.videoPosition === 'last'"
+    default: hidden
+
+  goquick_slide:
+    condition: "enableGoQuickWidget === true"
+    default: hidden
+
+  controls_buttons:
+    condition: "props.controls === true"
+    default: hidden (only shown on lg+ screens via CSS hidden lg:flex)

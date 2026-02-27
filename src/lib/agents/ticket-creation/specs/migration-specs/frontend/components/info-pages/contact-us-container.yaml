@@ -1,0 +1,446 @@
+name: ContactUsContainer
+source: src/components/contact-us/containers/contact-us-container.tsx
+description: |
+  Contact us landing page with hero banner, support navigation, and FAQ section.
+  No direct contact form - instead redirects to CSR help pages or account order tracking.
+  Checks login status via machine token and redirects to appropriate order tracking page.
+  Loads FAQ content from web component service dynamically.
+
+exports:
+  - name: default
+    type: component
+    signature: component$(() => JSX.Element)
+    description: Main contact us container with banner and navigation
+
+  - name: Head
+    type: function
+    signature: () => DocumentHead
+    description: SEO metadata with robots: none
+
+component_structure:
+  type: container_with_navigation
+  layout: |
+    <div class="mt-[50px] mb-[30px] px-[15px] md:px-0">
+      {/* Hero Banner with Background Image */}
+      <div class="banner with PixLogo and region name">
+        <PixLogo />
+        <h2>{region name}</h2>
+        <h2>{Got a question? We can help}</h2>
+        <p>{operating hours info}</p>
+      </div>
+
+      {/* Support Options Navigation */}
+      <div class="border-[30px] border-[#F8F8F8] p-5">
+        <p>{assistance options message}</p>
+        <div class="flex">
+          <a href="/csr-q/help/new-order">New Order</a>
+          <div onClick={ordersPageRedirect}>Existing Order</div>
+        </div>
+      </div>
+
+      {/* Track Order and Support Info */}
+      <div class="border-[30px] border-[#F8F8F8] p-5">
+        <p>{track order link and customer support message}</p>
+      </div>
+
+      {/* Dynamic FAQ Section */}
+      <Resource value={faqs}>
+        {data && <FaqSection content={data.data} />}
+      </Resource>
+    </div>
+
+child_components:
+  - name: PixLogo
+    source: ~/components/icons/pix
+    props:
+      - disabled: boolean (set to true)
+    description: Printerpix logo icon component
+
+  - name: FaqSection
+    source: ~/components/web-component/faq
+    props:
+      - content: FaqContent (from web component service)
+    description: Renders FAQ accordion with questions/answers
+
+navigation_logic:
+  - name: ordersPageRedirect
+    type: QRL function
+    behavior: |
+      1. Get machine token from cookies
+      2. Call getCurrentLoginSession(machineToken)
+      3. IF session exists AND !isAnonymous:
+         - Redirect to /account/order-tracking/
+      4. ELSE:
+         - Redirect to /login/signin/?destinationUrl=order-tracking
+    redirect_targets:
+      - /account/order-tracking/ (logged in users)
+      - /login/signin/?destinationUrl=order-tracking (anonymous/logged out)
+    description: |
+      Checks authentication status and redirects to appropriate order tracking page.
+      Uses window.document.location.href for redirect (full page navigation).
+
+api_calls:
+  - endpoint: getCurrentLoginSession
+    service: ~/services/accounts-service
+    parameters:
+      - machineToken: string (from getMachineToken())
+    returns: |
+      {
+        isAnonymous: boolean;
+        // other session fields
+      } | null
+    error_handling: |
+      - Try/catch around session check
+      - On error or null, treat as logged out
+      - No error display to user (silent fallback)
+
+  - endpoint: getWebComponentData
+    service: ~/services/web-component-service
+    parameters: none
+    returns: |
+      Array<{
+        guid: string;
+        // other web component fields
+      }>
+    description: |
+      Fetches all web components, filters for FAQ component by GUID.
+      GUID: "a507acbc-dbce-42e6-b9cf-dbb66d630adb"
+
+  - endpoint: processFaqContentData
+    service: ~/services/web-component-service
+    parameters:
+      - component: WebComponent with matching GUID
+    returns: |
+      WebContent<FaqContent> = {
+        data: FaqContent; // structured FAQ data
+      }
+    description: Processes raw web component data into FAQ structure
+
+state_management:
+  resources:
+    - name: faqs
+      type: useResource$
+      async_loader: |
+        1. Fetch web component data
+        2. Find component with GUID "a507acbc-dbce-42e6-b9cf-dbb66d630adb"
+        3. Process with processFaqContentData
+        4. Return WebContent<FaqContent> | null
+      states:
+        - pending: Show "Loading..." text
+        - rejected: Show error.message
+        - resolved: Render FaqSection with data or hide if null
+
+service_functions:
+  - name: getMachineToken
+    source: ~/services/cart-services/machine-token
+    description: Retrieves machine token from cookies
+    returns: string | undefined
+
+  - name: getCurrentLoginSession
+    source: ~/services/accounts-service
+    description: Fetches current user session
+    parameters:
+      - machineToken: string
+    returns: Promise<{isAnonymous: boolean} | null>
+
+  - name: getWebComponentData
+    source: ~/services/web-component-service
+    description: Fetches all web component data
+    returns: Promise<Array<{guid: string}>>
+
+  - name: processFaqContentData
+    source: ~/services/web-component-service
+    description: Processes web component into FAQ structure
+    parameters:
+      - component: raw web component object
+    returns: WebContent<FaqContent>
+
+i18n:
+  translation_keys:
+    - contact_us.region_name
+    - contact_us.question (Got a question?)
+    - contact_us.help (We can help)
+    - contact_us.operate (operating hours message)
+    - contact_us.assist_options
+    - contact_us.new_order
+    - contact_us.existing_order
+    - contact_us.assist_further
+    - contact_us.track_order
+    - contact_us.track_order_link (e.g., "/track-order/")
+    - contact_us.track_order_text (link text)
+    - contact_us.customer_support
+    - contact_us.call_team (commented out - not used)
+    - contact_us.tel_link (commented out - not used)
+    - contact_us.tel_text (commented out - not used)
+    - contact_us.meta.title
+    - contact_us.meta.description
+
+behavior:
+  - step: 1
+    action: "Initialize the component and set up the inlineTranslate function for i18n support"
+  - step: 2
+    action: "Create an async resource (useResource$) that fetches web component data from the API, searches for the FAQ component by GUID 'a507acbc-dbce-42e6-b9cf-dbb66d630adb', and processes it into structured FAQ content via processFaqContentData. Returns null if not found."
+  - step: 3
+    action: "Define an ordersPageRedirect QRL function that checks user login status: retrieves machine token from cookies, calls getCurrentLoginSession API, and determines if user is anonymous or authenticated"
+  - step: 4
+    action: "Render a hero banner section with background image (contact-us-banner.webp), PixLogo, region name, question heading, and operating hours info from i18n"
+  - step: 5
+    action: "Render a support options section with two clickable boxes: 'New Order' (static link to /csr-q/help/new-order) and 'Existing Order' (triggers ordersPageRedirect on click)"
+  - step: 6
+    action: "When 'Existing Order' is clicked: if user is logged in (not anonymous), redirect to /account/order-tracking/; if logged out or error, redirect to /login/signin/?destinationUrl=order-tracking"
+  - step: 7
+    action: "Render a track order section with link to track-order page and customer support message from i18n keys"
+  - step: 8
+    action: "Render the FAQ section using the Resource component: show 'Loading...' while pending, error message on rejection, and FaqSection component with resolved data. Hide section if data is null."
+
+used_by:
+  - "~/routes/contact-us/index.tsx"
+  - "~/routes/contact-us-q/index.tsx"
+  - "~/routes/contactez-nous/index.tsx"
+
+dependencies:
+  qwik:
+    - $
+    - component$
+    - Resource
+    - useResource$
+  qwik_speak:
+    - inlineTranslate
+  components:
+    - PixLogo: ~/components/icons/pix
+    - FaqSection: ~/components/web-component/faq
+  services:
+    - getMachineToken: ~/services/cart-services/machine-token
+    - getCurrentLoginSession: ~/services/accounts-service
+    - getWebComponentData: ~/services/web-component-service
+    - processFaqContentData: ~/services/web-component-service
+  types:
+    - FaqContent: ~/services/web-component-service
+    - WebContent: ~/services/web-component-service
+
+rendering:
+  features:
+    - Hero banner with background image (contact-us-banner.webp)
+    - Responsive background sizing (bg-cover md:bg-auto)
+    - Clickable navigation boxes with pink borders
+    - Dynamic FAQ loading with Resource component
+    - Loading/error/resolved states for FAQ
+    - Region-specific content via i18n
+
+  background_image:
+    url: /images-q/contact-us-banner.webp
+    position: right
+    repeat: no-repeat
+    sizing: cover (mobile), auto (desktop)
+    classes: bg-[url('/images-q/contact-us-banner.webp')] bg-cover md:bg-auto
+
+  responsive_breakpoints:
+    - Mobile: Stacked layout, small text (text-xl, text-sm)
+    - sm: 640px - Larger banner height (h-[290px])
+    - md: 768px - Horizontal navigation, no horizontal padding
+    - lg: 1024px - Larger text (text-3xl), flex-row navigation
+    - xl: 1280px+ - Full width text, max-w-[100%]
+
+seo:
+  title_source: i18n key
+  robots: none
+  meta_tags:
+    - name: title
+    - name: description
+    - name: google (notranslate)
+    - name: theme-color
+    - name: distribution
+    - name: rating
+    - name: author
+    - name: copyright
+    - name: google-signin-scope
+
+security:
+  - Machine token used for authentication check (MACHINE_TOKEN cookie)
+  - No user input fields (no injection risk)
+  - External navigation via window.document.location.href (safe)
+  - FAQ content from trusted web component service (not user-supplied)
+
+edge_cases:
+  - No machine token (treat as logged out)
+  - Session API returns null (treat as logged out)
+  - Session API throws error (treat as logged out)
+  - Web component API fails (show error message in Resource)
+  - FAQ component not found in web component data (show nothing)
+  - FAQ component exists but data is invalid (processFaqContentData returns null)
+
+user_flows:
+  - name: Contact for new order
+    steps:
+      1. User clicks "New Order" box
+      2. Navigates to /csr-q/help/new-order
+    description: Static link to CSR help page for new order questions
+
+  - name: Contact for existing order (logged in)
+    steps:
+      1. User clicks "Existing Order" box
+      2. ordersPageRedirect checks authentication
+      3. User is logged in (isAnonymous: false)
+      4. Redirects to /account/order-tracking/
+    description: Logged in users go directly to account order tracking
+
+  - name: Contact for existing order (logged out)
+    steps:
+      1. User clicks "Existing Order" box
+      2. ordersPageRedirect checks authentication
+      3. User is logged out or anonymous
+      4. Redirects to /login/signin/?destinationUrl=order-tracking
+    description: Logged out users must sign in first, then redirected to order tracking
+
+  - name: View FAQ
+    steps:
+      1. Page loads
+      2. useResource$ fetches web component data
+      3. FAQ section renders when data available
+    description: FAQ loads asynchronously at bottom of page
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  CurrentLoginSession:
+    description: Shape of the session object returned by getCurrentLoginSession
+    source: ~/services/accounts-service
+    fields:
+      - name: machineToken
+        type: string
+      - name: customerGuid
+        type: string
+      - name: btCustomerId
+        type: "string | null"
+      - name: emailAddress
+        type: string
+      - name: firstName
+        type: string
+      - name: lastName
+        type: string
+      - name: phoneNumber
+        type: string
+      - name: isPasswordSupplied
+        type: boolean
+      - name: isGuest
+        type: boolean
+      - name: isAnonymous
+        type: boolean
+      - name: isLoginSocial
+        type: boolean
+
+  WebComponent:
+    description: Raw web component object returned by getWebComponentData
+    source: ~/services/web-component-service
+    fields:
+      - name: guid
+        type: string
+      - name: wcTemplateName
+        type: WebComponentType
+      - name: componentType
+        type: string
+      - name: name
+        type: string
+      - name: isActive
+        type: boolean
+      - name: fields
+        type: "WebComponentField[]"
+      - name: customTag
+        type: "CustomTag[]"
+      - name: childWebComponents_1
+        type: "WebComponent[]"
+      - name: childWebComponents_2
+        type: "WebComponent[] | null"
+      - name: order
+        type: number
+      - name: productType
+        type: PlatinumProductTypeEnum
+
+  FaqContent:
+    description: Structured FAQ data produced by processFaqContentData
+    source: ~/services/web-component-service
+    fields:
+      - name: heading
+        type: string
+      - name: subHeading
+        type: string
+      - name: faqs
+        type: "Array<{ question: string; answer: string }>"
+      - name: order
+        type: number
+
+  WebContent:
+    description: Generic wrapper around processed web component data
+    source: ~/services/web-component-service
+    fields:
+      - name: data
+        type: "L (generic)"
+      - name: componentType
+        type: string
+      - name: order
+        type: number
+      - name: productType
+        type: PlatinumProductTypeEnum
+      - name: originalData
+        type: WebComponent
+
+field_consumption:
+  CurrentLoginSession:
+    consumed:
+      - isAnonymous: Checked to determine if user is logged in; false means redirect to /account/order-tracking/
+    ignored:
+      - machineToken: Present on session but not re-used (token is sourced from cookie directly)
+      - customerGuid: Not used
+      - btCustomerId: Not used
+      - emailAddress: Not used
+      - firstName: Not used
+      - lastName: Not used
+      - phoneNumber: Not used
+      - isPasswordSupplied: Not used
+      - isGuest: Not used
+      - isLoginSocial: Not used
+
+  WebComponent:
+    consumed:
+      - guid: Compared against "a507acbc-dbce-42e6-b9cf-dbb66d630adb" to find the FAQ component
+    ignored:
+      - wcTemplateName: Not checked here; filtering is by guid only
+      - componentType: Not read by this component
+      - name: Not read
+      - isActive: Not checked
+      - fields: Not accessed directly; passed to processFaqContentData
+      - customTag: Not accessed directly
+      - childWebComponents_1: Not accessed directly
+      - childWebComponents_2: Not accessed directly
+      - order: Not read
+      - productType: Not read
+
+  WebContent:
+    consumed:
+      - data: Passed as content prop to FaqSection (data.data is the FaqContent object)
+    ignored:
+      - componentType: Returned by processFaqContentData but not read here
+      - order: Not read
+      - productType: Not read
+      - originalData: Not read
+
+visibility_map:
+  faq_section_loading_state:
+    condition: faqs resource is pending
+    default: hidden
+    notes: Renders <div>Loading...</div> while pending
+
+  faq_section_error_state:
+    condition: faqs resource is rejected
+    default: hidden
+    notes: Renders error.message text on rejection
+
+  faq_section_content:
+    condition: faqs resource resolved AND data is not null
+    default: hidden
+    notes: Renders FaqSection component when data is available
+
+  faq_section_empty:
+    condition: faqs resource resolved AND data is null
+    default: hidden
+    notes: Renders a hidden <p> element (effectively invisible)

@@ -1,0 +1,486 @@
+name: CommonService
+source: src/services/common-service.ts
+description: |
+  Common utility service providing shared functionality across the e-commerce application.
+  Handles API response validation, error logging, banner content loading, and cookie management.
+  Provides server$ functions for server-side cookie operations and promotional content fetching.
+
+exports:
+  - name: isDataReady
+    signature: '<T>(input: T | DefaultError) => boolean'
+    description: Validates if API response has successful status (OK)
+    inputs:
+      - name: input
+        type: T | DefaultError
+        description: API response object to validate
+    outputs:
+      type: boolean
+      description: True if status is "OK", false otherwise
+
+  - name: shouldShowAppPopupIssue
+    signature: '<T>(input: T | DefaultError) => boolean'
+    description: Checks if error response should trigger an app issue popup
+    inputs:
+      - name: input
+        type: T | DefaultError
+        description: API response to check for error popup flag
+    outputs:
+      type: boolean
+      description: True if status is ERROR and showPopup is true
+
+  - name: activateCookieIssuePopup
+    signature: 'server$(() => void)'
+    description: Server-side function that sets cookies to show app issue popup for 1 day
+    server_function: true
+    cookies_written:
+      - name: showAppIssuePopup
+        value: "1"
+        domain: Base domain from hostname
+        path: /
+        max_age: 1 day
+      - name: unstableAppUrl
+        value: Current pathname
+        domain: Base domain from hostname
+        path: /
+        max_age: 1 day
+
+  - name: clearCookieFromServer
+    signature: 'server$((key: string) => void)'
+    description: Server-side function to delete a cookie by key
+    server_function: true
+    inputs:
+      - name: key
+        type: string
+        description: Cookie name to delete
+
+  - name: setTheAPIAttemptInfo
+    signature: 'server$((endpoint: string, attempt: number) => void)'
+    description: Server-side function to track API retry attempts in cookies
+    server_function: true
+    inputs:
+      - name: endpoint
+        type: string
+        description: API endpoint being attempted
+      - name: attempt
+        type: number
+        description: Retry attempt number
+    cookies_written:
+      - name: apiAttemptInfo
+        value: '{endpoint}-{attempt}'
+        domain: Base domain from hostname
+
+  - name: logError
+    signature: 'async (payload: ErrorPayload) => Promise<void>'
+    description: Logs error information to backend API for monitoring
+    inputs:
+      - name: payload
+        type: ErrorPayload
+        fields:
+          - machineToken: string
+          - component: string
+          - friendlyMsg: string
+          - keyInfo: string
+          - errorObjectJson: string
+    api_calls:
+      - endpoint: /cartProcess/LogError
+        method: POST
+        error_handling: Silent catch - logs to console if fails
+
+  - name: getBanner
+    signature: 'async (url: string, productType?: PlatinumProductTypeEnum) => Promise<Banner>'
+    description: |
+      Fetches banner content (strip banner, promo banner, shipping footer banner) for a given URL and product type.
+      Falls back to backup banners if API fails or returns non-OK status.
+    inputs:
+      - name: url
+        type: string
+        description: Current page URL for banner targeting
+      - name: productType
+        type: PlatinumProductTypeEnum
+        optional: true
+        description: Product type for banner filtering
+    outputs:
+      type: Banner
+      description: Transformed banner object with stripBanner, promoBanner, shippingFooterBanner
+    api_calls:
+      - endpoint: /Banner
+        method: GET
+        params:
+          - url: string
+          - productType: string (optional)
+        retry_mode: soft
+    fallback: getBannersBackup() from utility/backup-json
+
+  - name: getGuidelineSection
+    signature: 'async () => Promise<HolidayDeliveryGuideResponse["holidayDeliveryGuide"] | null>'
+    description: Fetches holiday delivery guideline section data
+    outputs:
+      type: HolidayDeliveryGuideResponse.holidayDeliveryGuide | null
+      description: Guideline section config or null if API fails
+    api_calls:
+      - endpoint: /GuidelineSection
+        method: GET
+        retry_mode: soft
+    fallback: Returns null on error or non-OK status
+
+  - name: getPromoBanners
+    signature: 'async (url: string, productType?: PlatinumProductTypeEnum) => Promise<PromoBannerResponse | null>'
+    description: Fetches promotional banners (main and floating) for a given URL
+    inputs:
+      - name: url
+        type: string
+        description: Current page URL
+      - name: productType
+        type: PlatinumProductTypeEnum
+        optional: true
+        description: Product type filter
+    outputs:
+      type: PromoBannerResponse | null
+      description: Main promo banner, floating promo banner, or null if fails
+    api_calls:
+      - endpoint: /BannerPromo
+        method: GET
+        params:
+          - url: string
+          - productType: string (optional)
+        retry_mode: soft
+    fallback: Returns null on error or non-OK status
+
+api_contracts:
+  - endpoint: /Banner
+    method: GET
+    description: Fetch strip, promo, and shipping footer banners
+    params:
+      url: string
+      productType: string (optional, empty string if not provided)
+    response_type: BannerResponse
+    response_structure:
+      footerBanner:
+        firstText1: string
+        bgColor: string
+        textColor: string
+        bottomText1: string
+        bottomText2: string
+        bottomText3: string
+        cta:
+          url: string
+          title: string
+          bgColor: string
+          textColor: string
+          mobileTextColor: string
+        desktopBannerImg: string
+        mobileBannerImg: string
+        shippingFooterBanner:
+          display: boolean
+          desktopShippingFooterBanner: string
+          mobileShippingFooterBanner: string
+          imgBgColor: string
+          imgUrl: string
+      stripBanner:
+        banners: string[]
+        bgColor: string
+        textColor: string
+
+  - endpoint: /BannerPromo
+    method: GET
+    description: Fetch main and floating promotional banners
+    params:
+      url: string
+      productType: string (optional)
+    response_type: PromoBannerResponse
+    response_structure:
+      mainPromoBanner: MainBannerSection | null
+      floatingPromoBanner: FloatingBannerSection | null
+      hidePromoBanner: boolean (optional)
+
+  - endpoint: /GuidelineSection
+    method: GET
+    description: Fetch holiday delivery guideline section
+    response_type: HolidayDeliveryGuideResponse
+    response_structure:
+      holidayDeliveryGuide:
+        display: boolean
+        order: number
+        mainTextColor: string
+        sectionBgColor: string
+        subHeading: string
+        heading: string
+        description: string
+        ctaLink: string
+        ctaText: string
+        ctaBgColor: string
+        ctaTextColor: string
+        image: string
+        data: Array of deadline entries
+
+  - endpoint: /cartProcess/LogError
+    method: POST
+    description: Log frontend errors for monitoring
+    request_body:
+      payload:
+        machineToken: string
+        component: string
+        friendlyMsg: string
+        keyInfo: string
+        errorObjectJson: string
+    error_handling: Silent failure - catches and logs to console only
+
+types:
+  - name: DefaultError
+    source: ~/utility/http
+    description: Standard error response structure
+
+  - name: NewAPIResponse
+    source: ~/config/http
+    description: Generic API response wrapper
+
+  - name: ErrorPayload
+    fields:
+      - machineToken: string
+      - component: string (error source component)
+      - friendlyMsg: string (user-friendly message)
+      - keyInfo: string (debugging context)
+      - errorObjectJson: string (serialized error object)
+
+  - name: BannerResponse
+    description: API response for /Banner endpoint
+    fields:
+      - footerBanner: Footer banner config or null
+      - stripBanner: Strip banner config or null
+
+  - name: Banner
+    source: ~/services/json-service
+    description: Transformed banner output type
+
+  - name: HolidayDeliveryGuideResponse
+    description: API response for holiday guideline section
+
+  - name: PromoBannerResponse
+    description: API response for promotional banners
+    fields:
+      - mainPromoBanner: MainBannerSection | null
+      - floatingPromoBanner: FloatingBannerSection | null
+      - hidePromoBanner: boolean (optional)
+
+  - name: PlatinumProductTypeEnum
+    source: ~/services/product-category-service
+    description: Enum for product types
+
+behavior:
+  - name: isDataReady
+    steps:
+      - Checks if input has status == "OK" (lowercase) OR Status == "OK" (uppercase)
+      - Uses loose equality (==) for the lowercase check
+      - Returns true if either condition matches, false otherwise
+      - Handles inconsistent API response casing
+
+  - name: shouldShowAppPopupIssue
+    steps:
+      - Checks if input has status === "ERROR" (strict equality)
+      - Also checks if input has showPopup flag set to truthy
+      - Returns true only if BOTH conditions are met
+
+  - name: activateCookieIssuePopup
+    steps:
+      - Runs as a Qwik server$ function (server-side only)
+      - Sets cookie "showAppIssuePopup" to "1" with 1-day maxAge
+      - Sets cookie "unstableAppUrl" to current pathname with 1-day maxAge
+      - Both cookies use getBaseDomainName(hostname) for domain and path "/"
+
+  - name: clearCookieFromServer
+    steps:
+      - Runs as a Qwik server$ function (server-side only)
+      - Deletes the cookie identified by the given key string
+
+  - name: setTheAPIAttemptInfo
+    steps:
+      - Runs as a Qwik server$ function (server-side only)
+      - Sets cookie "apiAttemptInfo" to "{endpoint}-{attempt}" string
+      - Uses getBaseDomainName(hostname) for domain
+
+  - name: logError
+    steps:
+      - POSTs { payload } to /cartProcess/LogError via baseNewAPI().post
+      - Fire-and-forget pattern (does not await the POST)
+      - On error, logs to console via writeConsoleLog("CartProcess/Error err", error)
+      - Does not throw or return error status
+
+  - name: getBanner
+    steps:
+      - GETs /Banner with params { url, productType (defaults to "") }
+      - Uses "soft" error handling mode
+      - If isDataReady, transforms BannerResponse to Banner format
+      - Maps footerBanner to promoBanner (extracting cta, bgColor, bottomText1-3, firstText1, textColor)
+      - Extracts shippingFooterBanner from inside footerBanner (renames imgBgColor to background, imgUrl to href)
+      - Passes through stripBanner as-is
+      - If response not OK, falls back to getBannersBackup()
+      - On error (catch), also falls back to getBannersBackup()
+
+  - name: getGuidelineSection
+    steps:
+      - GETs /GuidelineSection with no params
+      - Uses "soft" error handling mode
+      - If isDataReady, returns response.data (HolidayDeliveryGuideResponse)
+      - Otherwise returns null
+      - On error (catch), returns null
+
+  - name: getPromoBanners
+    steps:
+      - GETs /BannerPromo with params { url, productType (defaults to "") }
+      - Uses "soft" error handling mode
+      - If isDataReady, returns response.data (PromoBannerResponse with mainPromoBanner, floatingPromoBanner)
+      - Otherwise returns null
+      - On error (catch), returns null
+
+dependencies:
+  internal:
+    - '@builder.io/qwik-city': server$
+    - '~/utility/http': handleMultipleAPIRequests, HTTP_METHODS, DefaultError
+    - '~/services/cart-services/cookie': getBaseDomainName
+    - '~/config/http': baseNewAPI, NewAPIResponse
+    - '~/services/cart-services/console-log': writeConsoleLog
+    - '~/services/product-category-service': PlatinumProductTypeEnum
+    - '~/services/json-service': Banner, FloatingBannerSection, MainBannerSection
+    - '~/utility/backup-json/backup-json-utilities': getBannersBackup
+  external:
+    - None (all dependencies are internal framework/utility modules)
+
+data_flow:
+  banner_loading:
+    inputs:
+      - Current page URL
+      - Optional product type
+    transformations:
+      - Call /Banner API with url and productType params
+      - Check isDataReady(response)
+      - If OK: Transform BannerResponse to Banner format
+      - If ERROR: Fall back to getBannersBackup()
+    outputs:
+      - Banner object with stripBanner, promoBanner, shippingFooterBanner
+
+  promo_banner_loading:
+    inputs:
+      - Current page URL
+      - Optional product type
+    transformations:
+      - Call /BannerPromo API with url and productType params
+      - Check isDataReady(response)
+      - If OK: Return PromoBannerResponse data
+      - If ERROR: Return null
+    outputs:
+      - PromoBannerResponse or null
+
+  error_logging:
+    inputs:
+      - ErrorPayload with machineToken, component, messages
+    transformations:
+      - POST to /cartProcess/LogError
+      - Silent catch if logging fails
+    outputs:
+      - None (fire-and-forget)
+
+  cookie_management:
+    inputs:
+      - Cookie key, value, or deletion request
+      - Current URL hostname for domain resolution
+    transformations:
+      - Resolve base domain via getBaseDomainName()
+      - Set cookie with appropriate maxAge and domain
+    outputs:
+      - Server-side cookie written or deleted
+
+business_logic:
+  response_validation:
+    description: |
+      isDataReady checks both status == "OK" (lowercase) and Status == "OK" (uppercase)
+      to handle inconsistent API response formats.
+
+  error_popup_activation:
+    description: |
+      When shouldShowAppPopupIssue returns true, activateCookieIssuePopup sets:
+      - showAppIssuePopup cookie to "1" for 1 day
+      - unstableAppUrl cookie to current pathname for 1 day
+      This allows the app to display an error popup on subsequent page loads.
+
+  banner_fallback_strategy:
+    description: |
+      getBanner has a two-tier fallback:
+      1. If API returns non-OK status: use getBannersBackup()
+      2. If API throws error: catch and use getBannersBackup()
+      This ensures banners always display even if API is down.
+
+  banner_transformation:
+    description: |
+      BannerResponse.footerBanner is transformed to Banner.promoBanner
+      by extracting only the needed fields (cta, bgColor, bottomText1-3, etc.)
+      and renaming the top-level key.
+
+      shippingFooterBanner is nested inside footerBanner in the API response
+      but extracted as a top-level property in the output.
+
+  api_retry_tracking:
+    description: |
+      setTheAPIAttemptInfo stores "{endpoint}-{attempt}" in apiAttemptInfo cookie
+      to track which endpoints are failing and how many retries have occurred.
+      This is used for debugging and monitoring API stability.
+
+error_handling:
+  banner_api_failure:
+    strategy: Fallback to backup JSON data
+    functions: getBanner, getPromoBanners, getGuidelineSection
+
+  error_logging_failure:
+    strategy: Silent catch with console log
+    functions: logError
+
+  response_validation:
+    strategy: Check isDataReady before processing, fallback or return null if false
+    functions: getBanner, getPromoBanners, getGuidelineSection
+
+cookie_operations:
+  written_cookies:
+    - showAppIssuePopup: "1" (1 day) - Triggers app issue popup
+    - unstableAppUrl: pathname (1 day) - Tracks where error occurred
+    - apiAttemptInfo: "{endpoint}-{attempt}" - Tracks API retry attempts
+
+  domain_resolution:
+    All cookies use getBaseDomainName(hostname) to ensure cookies work across subdomains
+
+server_functions:
+  qwik_server_functions:
+    - activateCookieIssuePopup: Sets error popup cookies
+    - clearCookieFromServer: Deletes cookie by key
+    - setTheAPIAttemptInfo: Tracks API retry info
+
+security:
+  cookie_security:
+    - All cookies set with domain scoping (prevents cross-domain access)
+    - Cookies set with explicit path: "/"
+    - No HttpOnly flag specified (cookies accessible to JS)
+
+  error_logging:
+    - machineToken sent in error payloads for tracking
+    - Full error object JSON sent to backend (could contain sensitive data)
+    - No sanitization of error messages before logging
+
+performance:
+  api_calls:
+    - All banner APIs use "soft" retry mode via handleMultipleAPIRequests
+    - Banner loading happens on page load (could be optimized with caching)
+    - Error logging is fire-and-forget (non-blocking)
+
+  fallbacks:
+    - Backup banner JSON loaded synchronously if API fails
+    - No caching of banner responses (fresh fetch each time)
+
+used_by:
+  - backend/services/accounts-service.yaml - imports isDataReady for API response validation
+  - backend/services/add-to-cart-service.yaml - imports isDataReady for API response validation
+  - backend/services/delivery-rates-service.yaml - imports isDataReady for API response validation
+  - backend/services/home-service.yaml - imports isDataReady for API response validation
+  - backend/services/product-page-service.yaml - imports isDataReady for API response validation
+  - frontend/layouts/layout-default.yaml - imports getBanner, getGuidelineSection, getPromoBanners, isDataReady
+  - frontend/layouts/layout-categoryproduct.yaml - imports getBanner, getPromoBanners, isDataReady
+  - frontend/layouts/layout-containerless.yaml - imports isDataReady
+  - frontend/components/uploadcare/uploadcare.yaml - imports isDataReady
+  - frontend/components/shared/guideline-section.yaml - imports getGuidelineSection

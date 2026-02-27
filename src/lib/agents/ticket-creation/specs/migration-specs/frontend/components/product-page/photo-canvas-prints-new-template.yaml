@@ -1,0 +1,432 @@
+name: PhotoCanvasPrintsNewTemplate
+source: ecommerce-frontend-qwik/src/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-new-template.tsx
+description: |
+  Canvas product page template featuring a 70/30 two-column layout with image carousel,
+  option panel, delivery countdown timer, and dynamic content sections. This template
+  emphasizes visual hierarchy with the product images in a larger left column and
+  configuration options in a sticky right sidebar. Includes responsive behavior for
+  mobile with stacked layout and support for hub child products and customer reviews.
+
+exports:
+  - name: default
+    type: component$
+    props: none
+
+context_consumed:
+  - ProductContext:
+      - product (full product data)
+      - friendlyUrl
+      - filterIndex
+      - refCode
+      - firstSlideUrl
+      - preselectedRefId
+      - selectedFilter
+  - DeviceDetectorContext:
+      - deviceInfo (deviceType for mobile/desktop detection)
+
+component_structure: |
+  <>
+    <ProductPageTopBannerV2 />
+    <div.container>
+      <div.flex-wrap>                           # Main two-column grid
+
+        # MOBILE TITLE & RATING (visible only on mobile)
+        {isMobile && (
+          <h1 />                                # Product title
+          <TrustpilotRating />                  # Rating widget
+        )}
+
+        # LEFT COLUMN (70% desktop width)
+        <div.max-w-[70%]>
+          <ProductCarousel                       # Main product images
+            showPriceTag={true}
+            preselectedRefId={...}
+            productImages={...}
+          />
+        </div>
+
+        # RIGHT COLUMN (30% desktop, hidden on mobile)
+        <div.max-w-[30%].hidden.lg:flex>
+          {isDesktop && <h1 />}                 # Product title
+          <TrustpilotRating />                   # Rating widget
+
+          <OptionCanvasPrintsPanel               # Size/price/add-to-cart
+            productData={product}
+            preselectedRefId={...}
+          />
+
+          <div.border>                          # Delivery deadline box
+            <p>{aboveClockText}</p>
+            <ProductFlipClock                    # Countdown timer
+              clockColor={dynamic from floatingBanner}
+              textColor={dynamic from floatingBanner}
+            />
+            <ProductDeliveryDateV2 />
+          </div>
+
+          <BulkPricingV4 />                     # Volume discounts
+        </div>
+      </div>
+
+      # MOBILE OPTION PANEL (block lg:hidden)
+      <OptionCanvasPrintsPanel />
+
+      # MOBILE DELIVERY DEADLINE (block lg:hidden)
+      <div.border>
+        <p>{aboveClockText}</p>
+        <ProductFlipClock />
+        <ProductDeliveryDateV2 />
+      </div>
+
+      # MOBILE BULK PRICING (block lg:hidden)
+      <BulkPricingV4 />
+    </div>
+
+    # HUB CHILDREN (cross-sell products, hidden for GB region)
+    {product.listHubChilds.length > 0 && settings().website != "GB" && (
+      <ProductOptionType4 />
+    )}
+
+    <div.flex-col.mt-8>
+      # MOBILE-ONLY SECTIONS (order: 1)
+      <div.container.lg:hidden>
+        <CustomerReview />                      # Customer reviews
+
+        <div.items-center>                      # Satisfaction guarantee
+          <Image src="Satisfaction-100-Guarantee.svg" />
+          <p>{satisfactionGuarantee.title}</p>
+          <p>{satisfactionGuarantee.description}</p>
+        </div>
+      </div>
+
+      <div.container.lg:hidden>
+        <CanvasSizeTable                        # Size comparison table
+          optionData={product.optionData}
+          highlightColour="#555555"
+          textColour="#15A662"
+        />
+      </div>
+
+      # DESKTOP-ONLY SECTIONS (hidden lg:grid)
+      <div.container.hidden.lg:grid>
+        <div.col-span-3>                        # Satisfaction guarantee
+          <Image src="Satisfaction-100-Guarantee.svg" />
+          <p>{satisfactionGuarantee.title}</p>
+          <p>{satisfactionGuarantee.description}</p>
+        </div>
+
+        <div.col-span-7>                        # Customer reviews
+          <CustomerReview />
+        </div>
+      </div>
+
+      <div.container.hidden.lg:block>
+        <div.max-w-[70%]>
+          <CanvasSizeTable />                   # Size comparison table
+          <ProductTrustIndicatorV6 />           # Trust badges (hidden on mobile in this section)
+        </div>
+      </div>
+
+      # PRODUCT DESCRIPTION (dynamic order)
+      <div.container style={{order: product.productExtendedDetails.order}}>
+        <ProductDescriptionV2 />
+        <ProductTrustIndicatorV6 />
+      </div>
+
+      # PRODUCT PAGE CONTENT (CMS-driven sections)
+      <ProductPageContentV2
+        productPageContent={product.productPageContent}
+        designUrl={designUrl.value}
+      />
+    </div>
+  </>
+
+child_components:
+  - ProductPageTopBannerV2: Campaign banner (floating top)
+  - ProductCarousel: Image carousel with price tag
+  - TrustpilotRating: Star rating widget
+  - OptionCanvasPrintsPanel: Main product configuration panel (size, price, add-to-cart)
+  - ProductFlipClock: Animated countdown timer
+  - ProductDeliveryDateV2: Delivery date display
+  - BulkPricingV4: Volume discount table
+  - ProductOptionType4: Hub child products (cross-sell)
+  - CustomerReview: Customer review carousel
+  - CanvasSizeTable: Size comparison table
+  - ProductTrustIndicatorV6: Trust badges (guarantee, secure payment, etc.)
+  - ProductDescriptionV2: Product details accordion
+  - ProductPageContentV2: CMS-driven content sections
+
+state_management:
+  local_signals:
+    - designUrl: string (CTA button href, extracted via useVisibleTask$)
+
+  local_stores:
+    - initialCarouselImages: ProductCarouseImage[] (images with video icon if applicable)
+    - optionStore: OptionStore (orientation, filter, tier, addon indexes + productData)
+    - carousel: { activeIndex: number }
+
+  reactive_computeds:
+    - productImages: adds selectedFilter image to carousel if filter selected
+    - clockColors: extracts backgroundColor and textColor from product.productPageContent.floatingBanner
+      (desktopBanner.backgroundColor || mobileBanner.backgroundColor || default "#2E638A")
+      (sections.section1[0].color || sections.section2[0].color || default "#FFFFFF")
+
+side_effects:
+  useTask$:
+    - Tracks product.id changes
+    - Updates optionStore with latest product data, filterIndex, refCode, firstSlideUrl, selectedFilter
+    - Builds carousel images from product.images + embededVideoIcon if present
+    - Mutates initialCarouselImages array
+
+  useVisibleTask$:
+    - Tracks product.id changes
+    - Extracts href from #cta-design-button DOM element
+    - Updates designUrl signal
+    - Strategy: document-ready
+
+  qrl_functions:
+    - changeActiveSlide: (index: number) => updates carousel.activeIndex
+    - onChangeDesignUrl: (url: string) => updates designUrl.value
+
+unique_features:
+  - "70/30 two-column layout (product images left, options right)"
+  - "Dynamic clock colors extracted from floatingBanner CMS data"
+  - "Conditional rendering for GB region (hides hub children)"
+  - "Three instances of CanvasSizeTable with different IDs (mobile, desktop x2)"
+  - "Satisfaction guarantee appears in two different layouts (mobile vs desktop)"
+  - "Desktop layout uses grid with col-span-3 / col-span-7 for guarantee + reviews"
+  - "ProductTrustIndicatorV6 appears twice (hidden on mobile in middle section, visible below description)"
+  - "Order-based dynamic rendering via product.productExtendedDetails.order"
+
+layout_characteristics:
+  desktop:
+    - 70% left column (carousel + size table)
+    - 30% right sidebar (options + delivery + bulk pricing)
+    - Satisfaction guarantee + reviews in horizontal grid (3-col + 7-col)
+  mobile:
+    - Stacked vertical layout
+    - Title/rating above carousel
+    - Options panel below carousel
+    - Delivery deadline + bulk pricing below options
+    - Satisfaction guarantee inline with description
+
+dependencies:
+  qwik_core:
+    - "@builder.io/qwik": [$, component$, useComputed$, useContext, useSignal, useStore, useStylesScoped$, useTask$, useVisibleTask$]
+    - "@builder.io/qwik-city": [useLocation]
+
+  external_packages:
+    - "@unpic/qwik": [Image]
+    - "qwik-speak": [inlineTranslate]
+
+  internal_imports:
+    - "~/components/product-page/product-carousel/product-carousel": [ProductCarousel, ProductCarouseImage (type)]
+    - "~/components/homepage/trustpilot-rating": [TrustpilotRating]
+    - "~/components/product-page/canvas-size-table/canvas-size-table": [CanvasSizeTable]
+    - "~/components/product-page/option-canvas-prints-panel": [OptionCanvasPrintsPanel]
+    - "~/components/customer-review/customer-review": [CustomerReview]
+    - "~/components/product-page/product-option-type-4": [ProductOptionType4]
+    - "~/components/product-page/product-page-content-v2": [ProductPageContentV2]
+    - "~/components/product-page/banner-flip-clock/banner-flip-clock": [BannerFlipClock (unused in main render)]
+    - "~/components/product-page/product-page-top-banner-v2": [ProductPageTopBannerV2]
+    - "~/components/product-page/product-countdown-timer/product-flip-clock-v2": [ProductFlipClock]
+    - "~/components/product-page/product-delivery-date-v2": [ProductDeliveryDateV2]
+    - "~/components/product-page/product-description-v2": [ProductDescriptionV2]
+    - "~/components/product-page/product-trust-indicator-v6": [ProductTrustIndicatorV6]
+    - "~/components/product-page/bulk-pricing-v4": [BulkPricingV4]
+    - "~/context/product-category-context": [ProductContext]
+    - "~/context/device-detector-context": [DeviceDetectorContext]
+    - "~/services/product-category-service": [PlatinumProductTypeEnum]
+    - "~/services/product-page-service": [TypeOption2 (type)]
+    - "~/data/option-data": [OptionStore (type)]
+    - "~/config/settings": [settings]
+    - "~/hooks/useDetectScreen": [useDetectScreen]
+
+  styles:
+    - "../styles/index.css?inline": [styles]
+
+behavior:
+  - On mount, reads product data and device info from ProductContext and DeviceDetectorContext
+  - Initializes optionStore with product.optionData, filterIndex, refCode, firstSlideUrl, and selectedFilter
+  - Tracks product.id changes via useTask$ and rebuilds carousel images from product.images; appends embededVideoIcon if embededVideo is present
+  - Computes productImages by prepending selectedFilter image (if a filter is selected) to the carousel image array
+  - Computes clockColors dynamically from product.productPageContent.floatingBanner (desktop/mobile backgroundColor and section text color, fallback defaults #2E638A/#FFFFFF)
+  - useVisibleTask$ (document-ready strategy) extracts href from #cta-design-button DOM element and stores it in designUrl signal; tracks product.id changes
+  - Renders mobile title (product.imageCaption) and TrustpilotRating only on mobile devices
+  - Desktop right column (30%) contains title, TrustpilotRating, OptionCanvasPrintsPanel, delivery deadline, and BulkPricingV4
+  - Mobile renders OptionCanvasPrintsPanel, delivery deadline, and BulkPricingV4 below the carousel (block lg:hidden)
+  - Delivery countdown (ProductFlipClock) only shown when product.deliveryDeadline.showClock is true, with dynamic clock colors
+  - ProductDeliveryDateV2 passes colour="black" on desktop
+  - Hub child products (ProductOptionType4) rendered from product.listHubChilds when array has items AND region is NOT GB
+  - Mobile sections (order 1): CustomerReview, satisfaction guarantee (Image + translated title/description), then CanvasSizeTable with custom colors (#555555/#15A662)
+  - Desktop sections: satisfaction guarantee in 3-column grid, CustomerReview in 7-column grid, then CanvasSizeTable in 70% width with ProductTrustIndicatorV6
+  - Multiple instances of CanvasSizeTable rendered with different IDs (mobile id="3", desktop id="1" and id="2") and platinumProductType prop
+  - ProductTrustIndicatorV6 appears twice: hidden on mobile in desktop section, visible below ProductDescriptionV2
+  - ProductDescriptionV2 ordered dynamically using product.productExtendedDetails.order CSS property
+  - ProductPageContentV2 receives productPageContent, productType (Canvas), and designUrl; only renders when productPageContent exists
+  - changeActiveSlide QRL updates carousel.activeIndex; onChangeDesignUrl QRL updates designUrl.value
+
+used_by:
+  - product-page-selection (rendered when productPageViewName === RyzanGo)
+
+security_notes:
+  - designUrl extracted from DOM via useVisibleTask$ - ensure safe URL handling
+  - product.productPageContent is CMS-driven - sanitize HTML if rendered
+  - Image sources from product data - validate URLs before rendering
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  ProductCarouseImage:
+    description: Single image entry for the product carousel
+    source: ~/components/product-page/product-carousel/product-carousel
+    fields:
+      - name: url
+        type: string
+      - name: altText
+        type: string
+
+  OptionStore:
+    description: Central reactive store for product option selections
+    source: ~/data/option-data
+    fields:
+      - name: optionData
+        type: object
+      - name: productData
+        type: object
+      - name: filterIndex
+        type: "number[]"
+      - name: refCode
+        type: string
+      - name: firstSlideUrl
+        type: string
+      - name: selectedFilter
+        type: "Filter | null"
+
+  ClockColors:
+    description: Computed clock color pair extracted from floatingBanner CMS data
+    fields:
+      - name: clockColor
+        type: string
+      - name: textColor
+        type: string
+
+  ProductContextValue:
+    description: Shape of ProductContext fields consumed by this template
+    source: ~/context/product-category-context
+    fields:
+      - name: product
+        type: object
+      - name: friendlyUrl
+        type: string
+      - name: filterIndex
+        type: "number[]"
+      - name: refCode
+        type: string
+      - name: firstSlideUrl
+        type: string
+      - name: preselectedRefId
+        type: "string | undefined"
+      - name: selectedFilter
+        type: "Filter | null"
+
+field_consumption:
+  ProductContext:
+    consumed:
+      - product: Full product — imageCaption, images, optionData, deliveryDeadline, listHubChilds, productExtendedDetails, reviewsCollection, productPageContent (floatingBanner + productType + designUrl), satisfactionGuarantee translations
+      - friendlyUrl: Passed to child option panel
+      - filterIndex: Seeds optionStore.filterIndex
+      - refCode: Seeds optionStore.refCode
+      - firstSlideUrl: Seeds optionStore.firstSlideUrl for carousel
+      - preselectedRefId: Used in optionStore to build carousel
+      - selectedFilter: Seeds optionStore.selectedFilter; prepended to productImages
+    ignored:
+      - machineToken: Not used — no direct API calls
+      - editor: Not used
+      - couponCode: Not read
+
+  DeviceDetectorContext:
+    consumed:
+      - deviceInfo: Used via useDetectScreen to derive isMobile / isDesktop booleans
+    ignored: []
+
+implementation_logic:
+  hub_children_gb_exclusion:
+    rule: |
+      ProductOptionType4 (from product.listHubChilds) renders only when
+      `product.listHubChilds.length > 0 && settings().website != "GB"`.
+    critical: true
+
+  canvas_size_table_multiple_instances:
+    rule: |
+      CanvasSizeTable is rendered THREE times with different IDs and visibility classes:
+        1. Mobile-only (lg:hidden): id="3", highlightColour="#555555", textColour="#15A662"
+        2. Desktop-only (hidden lg:block) inside 70% column: no custom colors
+        3. Desktop-only above ProductTrustIndicatorV6
+      The IDs ("1", "2", "3") disambiguate the instances for the canvas size table's
+      internal anchor/scroll behavior.
+    critical: false
+
+  satisfaction_guarantee_layout_difference:
+    rule: |
+      The satisfaction guarantee block is laid out differently per viewport:
+        - Mobile: inline below CustomerReview (order 1 flex section)
+        - Desktop: inside hidden lg:grid with col-span-3 (guarantee) + col-span-7 (reviews)
+      Both use the same translated content but different container structures.
+    critical: false
+
+  clock_colors_extraction:
+    rule: |
+      clockColors is computed from product.productPageContent.floatingBanner:
+        clockColor = desktopBanner.backgroundColor || mobileBanner.backgroundColor || "#2E638A"
+        textColor  = sections.section1[0].color || sections.section2[0].color || "#FFFFFF"
+    critical: false
+
+visibility_map:
+  mobile_title_and_trustpilot:
+    condition: "isMobile is true"
+    default: hidden (shown above carousel on mobile only)
+
+  desktop_right_column:
+    condition: "isDesktop is true (hidden lg:flex)"
+    default: hidden
+
+  desktop_title_in_right_column:
+    condition: "isDesktop is true"
+    default: hidden
+
+  mobile_option_panel:
+    condition: "isMobile is true (block lg:hidden)"
+    default: hidden
+
+  mobile_delivery_deadline:
+    condition: "isMobile is true (block lg:hidden) AND product.deliveryDeadline.showClock is true"
+    default: hidden
+
+  mobile_bulk_pricing:
+    condition: "isMobile is true (block lg:hidden)"
+    default: hidden
+
+  hub_children_section:
+    condition: "product.listHubChilds.length > 0 AND settings().website != 'GB'"
+    default: hidden
+
+  mobile_only_sections_order1:
+    condition: "viewport is mobile (lg:hidden)"
+    default: hidden (customer review + satisfaction guarantee + mobile canvas size table)
+
+  desktop_only_sections:
+    condition: "viewport is desktop (hidden lg:grid / hidden lg:block)"
+    default: hidden (desktop satisfaction guarantee + desktop canvas size table + ProductTrustIndicatorV6)
+
+  product_description_section:
+    condition: "product.productExtendedDetails exists"
+    default: hidden
+
+  product_page_content_section:
+    condition: "product.productPageContent exists"
+    default: hidden
+
+  delivery_flip_clock:
+    condition: "product.deliveryDeadline.showClock is true"
+    default: hidden

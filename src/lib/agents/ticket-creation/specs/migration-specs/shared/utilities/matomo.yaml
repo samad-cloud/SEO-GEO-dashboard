@@ -1,0 +1,291 @@
+name: Matomo
+description: Matomo analytics event tracking utilities for product interactions, Ryzan editor, reminders, and scroll depth
+
+source:
+  path: utility/matomo.ts
+  lines: 1-175
+  type: utility
+
+exports:
+  - name: MatomoCategory
+    type: enum
+    description: Event categories for Matomo tracking
+    values:
+      - PRODUCT: "product"
+      - CATEGORY: "category"
+      - RYZAN: "ryzan"
+      - COMMON: "common"
+      - ADDONS_UPSELLS: "addonsUpsells"
+      - THEMES: "themes"
+      - SHOP: "shop"
+      - REMINDERS: "reminders"
+      - GO_QUICK: "goQuick"
+
+  - name: MatomoEvent
+    type: enum
+    description: Specific event names for Matomo tracking
+    values:
+      - SELECT_PRODUCT_OPTION: "selectProductOption"
+      - CHANGE_TIER_PRICING: "changeTierPricing"
+      - CLICK_CTA_DESIGN_BUTTON: "clickCtaDesignButton"
+      - CLICK_IMAGE_CAROUSEL: "clickImageCarousel"
+      - CLICK_SHOP_DESIGN_BROWSE_ALL: "clickShopDesignBrowseAll"
+      - CLICK_SHOP_DESIGN_THEME: "clickShopDesignTheme"
+      - CLICK_SLIDE_CATEGORY_FEATURES: "clickSlideCategoryFeatures"
+      - CLICK_CATEGORY_FEATURES_CTA: "clickCategoryFeaturesCta"
+      - CLICK_PRODUCT_OPTION_TYPE_1_CTA: "clickProductOptionType1Cta"
+      - CLICK_PRODUCT_OPTION_TYPE_2_CTA: "clickProductOptionType2Cta"
+      - CLICK_PRODUCT_OPTION_TYPE_3_CTA: "clickProductOptionType3Cta"
+      - CLICK_PRODUCT_OPTION_TYPE_4_CTA: "clickProductOptionType4Cta"
+      - CLICK_PRODUCT_FINAL_SALE_PITCH_CTA: "clickProductFinalSalePitchCta"
+      - CLICK_PROMO_BANNER_CTA: "clickPromoBannerCta"
+      - CLICK_GUIDELINE_SECTION_CTA: "clickGuidelineSectionCta"
+      - CLICK_BLOG_CATEGORY_SECTION_CTA: "clickBlogCategorySectionCta"
+      - CLICK_CATEGORY_CARD_CTA: "clickCategoryCardCta"
+      - CLICK_FAQ_SECTION: "clickFaqSection"
+      - CLICK_CTA_LIST_CTA: "clickCtaListCta"
+      - CLICK_BEST_SELLERS_PRODUCT: "clickBestSellersProduct"
+      - CLICK_MID_PAGE_BANNER: "clickMidPageBanner"
+      - CLICK_SHOP_BY_BUDGET: "clickShopByBudget"
+      - CLICK_SHOP_BY_CATEGORY: "clickShopByCategory"
+      - CLICK_SHOPPING_GUIDE_ITEM: "clickShoppingGuideItem"
+      - CLICK_UGC_SECTION_CTA: "clickUgcSectionCta"
+      - CLICK_VIEW_VIDEO_POPUP: "clickViewVideoPopup"
+      - CLICK_CANVAS_SIZE_TABLE_TYPE: "clickCanvasSizeTableType"
+      - CLICK_CANVAS_SIZE_TABLE_ROW: "clickCanvasSizeTableRow"
+      - CLICK_GLOBAL_CATEGORY_BANNER: "clickGlobalCategoryBanner"
+      - CLICK_CAMPAIGN_CTA: "clickCampaignCta"
+      - CLICK_CATEGORY_QUICK_LINK: "clickCategoryQuickLink"
+      - CLICK_BREADCRUMB: "clickBreadcrumb"
+      - CLICK_STANDARD_CATEGORY_CTA: "clickStandardCategoryCta"
+      - CLICK_STANDARD_CATEGORY_PRODUCT: "clickStandardCategoryProduct"
+      - CLICK_FLIPPED_CATEGORY_CTA: "clickFlippedCategoryCta"
+      - CLICK_FLIPPED_CATEGORY_PRODUCT: "clickFlippedCategoryProduct"
+      - CLICK_SLIDE_SHOW_CATEGORY_CTA: "clickSlideShowCategoryCta"
+      - CLICK_SLIDE_SHOW_CATEGORY_PRODUCT: "clickSlideShowCategoryProduct"
+      - ADD_COUNPON_PRODUCT_TO_CART: "addCouponProductToCart"
+      - CREATE_INSTANT_PRODUCT_DESIGN_LINK: "createInstantProductDesignLink"
+      - ACCEPT_UPSELL_OPTION: "acceptUpsellOption"
+      - REJECT_UPSELL_OPTION: "rejectUpsellOption"
+      - ACCEPT_ADDON_OPTION: "acceptAddonOption"
+      - REJECT_ADDON_OPTION: "rejectAddonOption"
+      - ACCEPT_EXTRA_COPY_OPTION: "acceptExtraCopyOption"
+      - REJECT_EXTRA_COPY_OPTION: "rejectExtraCopyOption"
+      - ACCEPT_MULTI_ADDON_OPTION: "acceptMultiAddonOption"
+      - REJECT_MULTI_ADDON_OPTION: "rejectMultiAddonOption"
+      - INTIAL_RYZAN_LOAD: "initialRyzanLoad"
+      - SAVE_RYZAN_PROJECT: "saveRyzanProject"
+      - NEW_RYZAN_PROJECT: "newRyzanProject"
+      - CLICK_PREVIEW: "clickRyzanPreview"
+      - CLICK_EDIT: "clickRyzanEdit"
+      - CLICK_PRODUCT_TAB: "clickRyzanProductTab"
+      - CLICK_SIZE_TAB: "clickRyzanSizeTab"
+      - CLICK_OPTIONS_TAB: "clickRyzanOptionsTab"
+      - CLICK_ADDON_OPTION: "clickRyzanAddonOption"
+      - CHANGE_SIZE: "changeRyzanSize"
+      - CLICK_REPLACE_IMAGE_TAB: "clickRyzanReplaceImageTab"
+      - SWITCH_RYZAN_MODULE: "switchRyzanModule"
+      - SWITCH_RYZAN_TYPE: "switchRyzanType"
+      - ADD_RYZAN_PRODUCT_TO_CART: "addRyzanProductToCart"
+      - CLICK_SWAP_PHOTOS: "clickRyzanSwapPhotos"
+      - CLICK_UPLOAD_MORE_PHOTOS: "clickRyzanUploadMorePhotos"
+      - CHANGE_THICKNESS: "changeRyzanThickness"
+      - CHANGE_EDGE: "changeRyzanEdge"
+      - TOGGLE_PAPER_FRAME: "toggleRyzanPaperFrame"
+      - TOGGLE_PREVIEW_TYPE: "toggleRyzanPreviewType"
+      - TOGGLE_MEASUREMENT: "toggleRyzanMeasurement"
+      - CHANGE_ZOOM: "changeRyzanZoom"
+      - CHANGE_PRODUCT: "changeRyzanProduct"
+      - CLICK_REMINDERS: "clickReminders"
+      - CLICK_REMINDERS_CREATE: "clickRemindersCreate"
+      - CREATE_BATCH_REMINDERS: "createBatchReminders"
+      - CREATE_BATCH_REMINDERS_FAILED: "createBatchRemindersFailed"
+      - CREATE_REMINDER: "createReminder"
+      - CREATE_REMINDER_FAILED: "createReminderFailed"
+      - CLICK_REMINDERS_EDIT: "clickRemindersEdit"
+      - UPDATE_REMINDER: "updateReminder"
+      - UPDATE_REMINDER_FAILED: "updateReminderFailed"
+      - CLICK_REMINDERS_DELETE: "clickRemindersDelete"
+      - DELETE_REMINDER: "deleteReminder"
+      - DELETE_REMINDER_FAILED: "deleteReminderFailed"
+      - CLICK_REMINDERS_SHOP_CTA: "clickRemindersShopCta"
+      - GO_QUICK_PAGE_ENTER: "addGoQuickPageEnter"
+      - GO_QUICK_IMAGE_UPLOAD: "addGoQuickImageUpload"
+      - GO_QUICK_PRODUCT_TO_CART: "addGoQuickProductToCart"
+
+  - name: pushMatomoEvent
+    type: function
+    signature: "(args: any[]) => void"
+    description: Pushes event to Matomo _paq array with error handling
+    parameters:
+      - name: args
+        type: any[]
+        description: Matomo event arguments
+    behavior:
+      - Checks if window._paq exists
+      - Pushes args to _paq array
+      - Silently fails if error (non-critical)
+    client_side_only: true
+
+  - name: formatRyzanEvent
+    type: function
+    signature: "() => string"
+    description: Formats current URL and query params as JSON string for Ryzan events
+    returns: JSON string with website, pathname, productConfig, fullUrl
+    client_side_only: true
+
+  - name: resetScrollTracking
+    type: function
+    signature: "() => void"
+    description: Resets scroll depth tracking flags on window object
+    behavior:
+      - Sets window.hasTracked25 = false
+      - Sets window.hasTracked50 = false
+      - Sets window.hasTracked75 = false
+      - Sets window.hasTracked100 = false
+    client_side_only: true
+
+  - name: scrollingTracking
+    type: function
+    signature: "() => void"
+    description: Tracks scroll depth milestones (25%, 50%, 75%, 100%)
+    behavior:
+      - Calculates scrollDepth = ((scrollY + innerHeight) / scrollHeight) * 100
+      - Tracks 50% depth if >= 50 and not hasTracked50
+      - Tracks 75% depth if >= 75 and not hasTracked75
+      - Tracks 100% depth if >= 100 and not hasTracked100
+      - Tracks 25% depth if >= 25 and not hasTracked25
+    event_category: Scroll
+    event_actions: ["25% Scroll Depth", "50% Scroll Depth", "75% Scroll Depth", "100% Scroll Depth"]
+    client_side_only: true
+
+dependencies:
+  external:
+    - window._paq (Matomo tracking array)
+    - window (scroll properties, location, custom flags)
+
+behavior:
+  scroll_tracking:
+    milestones: [25%, 50%, 75%, 100%]
+    check_order: [50, 75, 100, 25] (as implemented)
+    deduplication: Uses window.hasTrackedX flags
+
+  ryzan_event_format:
+    includes: [website, pathname, productConfig (query params), fullUrl]
+    output: JSON string
+
+  error_handling:
+    matomo_unavailable: Silent fail (try-catch)
+    non_critical: Events are analytics-only
+
+edge_cases:
+  - Missing window._paq handled gracefully
+  - Scroll tracking flags prevent duplicate events
+  - Ryzan event format captures full URL state
+
+types:
+  MatomoCategory:
+    description: Enum of Matomo event category strings
+    values:
+      - PRODUCT: "product"
+      - CATEGORY: "category"
+      - RYZAN: "ryzan"
+      - COMMON: "common"
+      - ADDONS_UPSELLS: "addonsUpsells"
+      - THEMES: "themes"
+      - SHOP: "shop"
+      - REMINDERS: "reminders"
+      - GO_QUICK: "goQuick"
+
+  MatomoEvent:
+    description: Enum of Matomo event name strings covering product options, categories, Ryzan editor, reminders, add-ons, and analytics
+    values:
+      - SELECT_PRODUCT_OPTION: "selectProductOption"
+      - CHANGE_TIER_PRICING: "changeTierPricing"
+      - CLICK_CTA_DESIGN_BUTTON: "clickCtaDesignButton"
+      - CLICK_IMAGE_CAROUSEL: "clickImageCarousel"
+      - CLICK_SHOP_DESIGN_BROWSE_ALL: "clickShopDesignBrowseAll"
+      - CLICK_SHOP_DESIGN_THEME: "clickShopDesignTheme"
+      - CLICK_SLIDE_CATEGORY_FEATURES: "clickSlideCategoryFeatures"
+      - CLICK_CATEGORY_FEATURES_CTA: "clickCategoryFeaturesCta"
+      - CLICK_PRODUCT_OPTION_TYPE_1_CTA: "clickProductOptionType1Cta"
+      - CLICK_PRODUCT_OPTION_TYPE_2_CTA: "clickProductOptionType2Cta"
+      - CLICK_PRODUCT_OPTION_TYPE_3_CTA: "clickProductOptionType3Cta"
+      - CLICK_PRODUCT_OPTION_TYPE_4_CTA: "clickProductOptionType4Cta"
+      - CLICK_PRODUCT_FINAL_SALE_PITCH_CTA: "clickProductFinalSalePitchCta"
+      - CLICK_PROMO_BANNER_CTA: "clickPromoBannerCta"
+      - CLICK_GUIDELINE_SECTION_CTA: "clickGuidelineSectionCta"
+      - CLICK_BLOG_CATEGORY_SECTION_CTA: "clickBlogCategorySectionCta"
+      - CLICK_CATEGORY_CARD_CTA: "clickCategoryCardCta"
+      - CLICK_FAQ_SECTION: "clickFaqSection"
+      - CLICK_CTA_LIST_CTA: "clickCtaListCta"
+      - CLICK_BEST_SELLERS_PRODUCT: "clickBestSellersProduct"
+      - CLICK_MID_PAGE_BANNER: "clickMidPageBanner"
+      - CLICK_SHOP_BY_BUDGET: "clickShopByBudget"
+      - CLICK_SHOP_BY_CATEGORY: "clickShopByCategory"
+      - CLICK_SHOPPING_GUIDE_ITEM: "clickShoppingGuideItem"
+      - CLICK_UGC_SECTION_CTA: "clickUgcSectionCta"
+      - CLICK_VIEW_VIDEO_POPUP: "clickViewVideoPopup"
+      - CLICK_CANVAS_SIZE_TABLE_TYPE: "clickCanvasSizeTableType"
+      - CLICK_CANVAS_SIZE_TABLE_ROW: "clickCanvasSizeTableRow"
+      - CLICK_GLOBAL_CATEGORY_BANNER: "clickGlobalCategoryBanner"
+      - CLICK_CAMPAIGN_CTA: "clickCampaignCta"
+      - CLICK_CATEGORY_QUICK_LINK: "clickCategoryQuickLink"
+      - CLICK_BREADCRUMB: "clickBreadcrumb"
+      - CLICK_STANDARD_CATEGORY_CTA: "clickStandardCategoryCta"
+      - CLICK_STANDARD_CATEGORY_PRODUCT: "clickStandardCategoryProduct"
+      - CLICK_FLIPPED_CATEGORY_CTA: "clickFlippedCategoryCta"
+      - CLICK_FLIPPED_CATEGORY_PRODUCT: "clickFlippedCategoryProduct"
+      - CLICK_SLIDE_SHOW_CATEGORY_CTA: "clickSlideShowCategoryCta"
+      - CLICK_SLIDE_SHOW_CATEGORY_PRODUCT: "clickSlideShowCategoryProduct"
+      - ADD_COUNPON_PRODUCT_TO_CART: "addCouponProductToCart"
+      - CREATE_INSTANT_PRODUCT_DESIGN_LINK: "createInstantProductDesignLink"
+      - ACCEPT_UPSELL_OPTION: "acceptUpsellOption"
+      - REJECT_UPSELL_OPTION: "rejectUpsellOption"
+      - ACCEPT_ADDON_OPTION: "acceptAddonOption"
+      - REJECT_ADDON_OPTION: "rejectAddonOption"
+      - ACCEPT_EXTRA_COPY_OPTION: "acceptExtraCopyOption"
+      - REJECT_EXTRA_COPY_OPTION: "rejectExtraCopyOption"
+      - ACCEPT_MULTI_ADDON_OPTION: "acceptMultiAddonOption"
+      - REJECT_MULTI_ADDON_OPTION: "rejectMultiAddonOption"
+      - INTIAL_RYZAN_LOAD: "initialRyzanLoad"
+      - SAVE_RYZAN_PROJECT: "saveRyzanProject"
+      - NEW_RYZAN_PROJECT: "newRyzanProject"
+      - CLICK_PREVIEW: "clickRyzanPreview"
+      - CLICK_EDIT: "clickRyzanEdit"
+      - CLICK_PRODUCT_TAB: "clickRyzanProductTab"
+      - CLICK_SIZE_TAB: "clickRyzanSizeTab"
+      - CLICK_OPTIONS_TAB: "clickRyzanOptionsTab"
+      - CLICK_ADDON_OPTION: "clickRyzanAddonOption"
+      - CHANGE_SIZE: "changeRyzanSize"
+      - CLICK_REPLACE_IMAGE_TAB: "clickRyzanReplaceImageTab"
+      - SWITCH_RYZAN_MODULE: "switchRyzanModule"
+      - SWITCH_RYZAN_TYPE: "switchRyzanType"
+      - ADD_RYZAN_PRODUCT_TO_CART: "addRyzanProductToCart"
+      - CLICK_SWAP_PHOTOS: "clickRyzanSwapPhotos"
+      - CLICK_UPLOAD_MORE_PHOTOS: "clickRyzanUploadMorePhotos"
+      - CHANGE_THICKNESS: "changeRyzanThickness"
+      - CHANGE_EDGE: "changeRyzanEdge"
+      - TOGGLE_PAPER_FRAME: "toggleRyzanPaperFrame"
+      - TOGGLE_PREVIEW_TYPE: "toggleRyzanPreviewType"
+      - TOGGLE_MEASUREMENT: "toggleRyzanMeasurement"
+      - CHANGE_ZOOM: "changeRyzanZoom"
+      - CHANGE_PRODUCT: "changeRyzanProduct"
+      - CLICK_REMINDERS: "clickReminders"
+      - CLICK_REMINDERS_CREATE: "clickRemindersCreate"
+      - CREATE_BATCH_REMINDERS: "createBatchReminders"
+      - CREATE_BATCH_REMINDERS_FAILED: "createBatchRemindersFailed"
+      - CREATE_REMINDER: "createReminder"
+      - CREATE_REMINDER_FAILED: "createReminderFailed"
+      - CLICK_REMINDERS_EDIT: "clickRemindersEdit"
+      - UPDATE_REMINDER: "updateReminder"
+      - UPDATE_REMINDER_FAILED: "updateReminderFailed"
+      - CLICK_REMINDERS_DELETE: "clickRemindersDelete"
+      - DELETE_REMINDER: "deleteReminder"
+      - DELETE_REMINDER_FAILED: "deleteReminderFailed"
+      - CLICK_REMINDERS_SHOP_CTA: "clickRemindersShopCta"
+      - GO_QUICK_PAGE_ENTER: "addGoQuickPageEnter"
+      - GO_QUICK_IMAGE_UPLOAD: "addGoQuickImageUpload"
+      - GO_QUICK_PRODUCT_TO_CART: "addGoQuickProductToCart"
+
+used_by: []

@@ -1,0 +1,158 @@
+name: ProductTrustIndicatorV6
+source: src/components/product-page/product-trust-indicator-v6.tsx
+description: |
+  A static trust indicator strip displaying 2 icon+text items (shortVersion) or
+  3 icon+text items (full version) from a region-matched data set. Renders
+  separate desktop (hidden md:block) and mobile (md:hidden) layouts. Icons are
+  SVG images; titles and descriptions are localised per region and rendered via
+  dangerouslySetInnerHTML (descriptions may contain HTML such as <br>). Reacts
+  to window load and resize to track small-screen state (< 375px breakpoint).
+
+exports:
+  - name: default
+    type: "component$<{ shortVersion?: boolean }>"
+    description: Default Qwik component export
+
+props:
+  - name: shortVersion
+    type: boolean
+    required: false
+    default: false
+    description: If true, shows a reduced set of trust indicators (slice 0 to -2 excludes last two)
+
+component_structure:
+  - DesktopStrip: hidden md:block — flex row of trust indicator items
+  - MobileStrip: md:hidden -mx-3 — flex row of trust indicator items (smaller)
+
+child_components:
+  - name: Image
+    source: "@unpic/qwik"
+    purpose: Renders each trust indicator SVG icon
+    props:
+      - src: section.imgUrl
+      - aspectRatio: "1/1"
+
+data_structure:
+  TrustIndicatorEntry:
+    - imgUrl: string (SVG path under /images-q/icons/)
+    - desktopTitle: string (UPPERCASE)
+    - mobileTitle: string (UPPERCASE, may be shorter)
+    - description: string (may contain HTML tags like <br>)
+
+  TrustIndicatorRegionSet:
+    - region: string (e.g., "GB", "US", "DE", "FR", "IT", "ES", "NL")
+    - trustIndicators: TrustIndicatorEntry[]
+
+behavior:
+  - On window load and resize: set isSmallScreen signal (window.innerWidth < 375)
+  - Select displayData: find entry in productTrustIndicatorData where region === settings().website; fallback to first entry if not found
+  - Desktop: render trustIndicators.slice(0, shortVersion ? -2 : -1) — shortVersion shows 2 items, full shows 3
+  - Mobile: render trustIndicators.slice(0, -2) — always shows 2 items regardless of shortVersion
+  - Desktop titles use desktopTitle field; mobile titles use mobileTitle field
+  - Descriptions rendered via dangerouslySetInnerHTML (allow <br> HTML tags)
+
+styling:
+  - Desktop strip: hidden md:block; inner flex: flex flex-wrap bg-[#FBF6F7] py-2
+  - Desktop item: flex flex-col items-center; icon wrapper: w-[40px] mb-1 (shortVersion) or w-[20%] (full)
+  - Desktop text: flex flex-col text-[12px] items-center uppercase; title: font-bold; description: text-[11px]
+  - Desktop spacing: px-2 (shortVersion) or px-4 (full); layout: flex justify-between
+  - Mobile strip: md:hidden -mx-3; inner: flex flex-wrap bg-[#FBF6F7] py-3 px-3
+  - Mobile item: flex flex-col items-center w-[80px]; icon: w-[40px] mb-1
+  - Mobile text: same structure as desktop at text-[12px] / text-[11px]
+
+dependencies:
+  qwik:
+    - component$, useOnWindow, useSignal, $ from @builder.io/qwik
+  external:
+    - Image from @unpic/qwik
+  config:
+    - settings from ~/config/settings
+  services:
+    - productTrustIndicatorData from ~/services/product-page-service
+
+used_by:
+  - ProductPageBaseTemplate
+  - ProductPageBasicTemplate
+  - ProductPageFixedTemplate
+  - ProductPageFixedThemeTemplate
+  - ProductPageHubTemplate
+  - PhotoCanvasPrintsNewTemplate
+  - PhotoCanvasPrintsNewTemplateV3
+  - PhotoCanvasPrintsBundledTemplate
+  - PhotoCanvasPrintsHubBundledTemplate
+  - PhotoCanvasPrintsTemplateV2
+  - PhotoCanvasPrintsBaseTemplate
+  - PhotoCalendarsBaseTemplate
+  - PhotoCalendarsBalooRadioTemplate
+  - PhotoCalendarsDaisyTemplate
+  - PhotoCalendarsJbc2024Template
+
+edge_cases:
+  - If settings().website does not match any region in productTrustIndicatorData, the first entry (fallback) is used
+  - isSmallScreen signal is computed but not used in current render logic (reserved for future use or sub-threshold tweaks)
+  - descriptions may contain HTML — rendered via dangerouslySetInnerHTML intentionally
+
+notes:
+  - Region-specific text data (previously inline) was moved to productTrustIndicatorData in the service layer (the commented-out inline data in source is the historical reference)
+  - highlightFeatures section is commented out in the current implementation
+
+types:
+  TrustIndicatorEntry:
+    description: Single trust indicator item for a region
+    fields:
+      - name: imgUrl
+        type: string
+      - name: desktopTitle
+        type: string
+      - name: mobileTitle
+        type: string
+      - name: description
+        type: string
+
+  TrustIndicatorRegionSet:
+    description: Region-keyed set of trust indicators
+    fields:
+      - name: region
+        type: string
+      - name: trustIndicators
+        type: "TrustIndicatorEntry[]"
+
+field_consumption:
+  TrustIndicatorRegionSet:
+    consumed:
+      - region: Matched against settings().website for region selection
+      - trustIndicators: Sliced and iterated to render items
+    ignored:
+      - highlightFeatures: Present in data structure but commented out in render
+
+  TrustIndicatorEntry:
+    consumed:
+      - imgUrl: Passed to Image src
+      - desktopTitle: Displayed on desktop (key and visible text)
+      - mobileTitle: Displayed on mobile (key and visible text)
+      - description: Rendered via dangerouslySetInnerHTML
+    ignored: []
+
+implementation_logic:
+  region_fallback:
+    rule: |
+      productTrustIndicatorData.find(section => section.region === settings().website)
+      returns undefined when the region is not in the list.
+      The || productTrustIndicatorData[0] fallback ensures the first entry (GB) is shown.
+    critical: false
+
+  slice_logic:
+    rule: |
+      Desktop: slice(0, shortVersion ? -2 : -1) — shortVersion removes last 2 items, full removes last 1.
+      Mobile: always slice(0, -2) — always removes last 2 items regardless of shortVersion.
+      This means a 4-item array shows: desktop-full=3, desktop-short=2, mobile=2.
+    critical: false
+
+visibility_map:
+  desktop_strip:
+    condition: "viewport width >= 768px (md:block)"
+    default: hidden on mobile
+
+  mobile_strip:
+    condition: "viewport width < 768px (md:hidden)"
+    default: hidden on desktop

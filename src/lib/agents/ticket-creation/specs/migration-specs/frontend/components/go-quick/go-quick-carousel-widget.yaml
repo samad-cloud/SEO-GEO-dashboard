@@ -1,0 +1,271 @@
+name: GoQuickCarouselWidget
+source: components/go-quick/go-quick-carousel-widget.tsx
+description: >
+  GoQuick photo upload widget designed to be embedded as a slide within the DynamicCarousel
+  component on the homepage. Similar in purpose to GoQuickHomepageWidget but adapted for
+  carousel context: receives upload state as props (shared with carousel parent), uses
+  carousel-appropriate aspect ratios, has separate mobile and desktop layouts, and tracks
+  a different event name ('homepage_banner_upload' vs 'homepage_upload'). Uses Uploadcare
+  for file upload, navigates to /go-quick with uploaded photo S3 keys as query params.
+
+exports:
+  - name: default
+    type: component
+    description: Default-exported Qwik component that accepts GoQuickCarouselWidgetProps
+
+props:
+  uploadProgress:
+    type: UploadProgressState
+    required: true
+    shape:
+      fileSize: number
+      progress: number
+      started: boolean
+    description: >
+      Shared upload progress state passed from the DynamicCarousel parent. This allows
+      the carousel to also react to upload state (e.g., showing/hiding progress).
+  multipleFileUpload:
+    type: Signal<boolean>
+    required: true
+    description: >
+      Qwik Signal controlling whether multiple file upload is enabled. Shared with
+      the DynamicCarousel parent component.
+
+component_structure:
+  root_element: div
+  root_id: go-quick-carousel-slide
+  root_classes: >
+    w-full relative overflow-hidden bg-gradient-to-r from-[#f02480] via-purple-600 to-[#f02480]
+    go-quick-carousel-slide aspect-[780/422] md:aspect-[1920/589]
+    border-2 border-white/20 animate-glow
+  layers:
+    - name: gradient_overlay
+      description: Semi-transparent dark gradient overlay for depth.
+    - name: animated_background_elements
+      description: >
+        Seven floating circles with varying sizes, white/yellow tints, pulse and bounce
+        animations with staggered delays. Uses percentage-based positioning for
+        carousel aspect ratio responsiveness.
+    - name: mobile_layout
+      description: >
+        Shown on screens below md breakpoint (md:hidden). Horizontal flex layout with
+        content on the left and upload card on the right.
+      condition: viewport < md
+      sub_layers:
+        - name: left_content
+          description: >
+            GoQuick badge (lightning bolt + title), heading text with "Create" and
+            "Minutes" lines, and three small feature pills (AI, 3 Photos, Pro Quality).
+        - name: right_upload_card
+          description: >
+            Glassmorphic card (white/95 to white/90 with backdrop-blur) containing
+            Uploadcare input (id: carousel-upload-input-mobile), upload icon, title,
+            and "Start" button. Card has a gradient glow border effect.
+    - name: desktop_layout
+      description: >
+        Shown on md+ screens (hidden md:flex). Two-column layout with content on the
+        left and a larger upload card on the right, centered within max-w-7xl container.
+      condition: viewport >= md
+      sub_layers:
+        - name: left_content
+          description: >
+            GoQuick badge pill, large heading text (up to xl:text-5xl), and three
+            feature badges with check icons, backdrop blur, and white/20 borders.
+        - name: right_upload_card
+          description: >
+            Larger glassmorphic card (min-w-[260px] lg:min-w-[320px]) with Uploadcare
+            input (id: carousel-upload-input), upload icon with hover scale effect,
+            title, drag-drop subtitle, and gradient "Start" button with arrow icon.
+            Has a gradient blur glow on hover.
+
+child_components:
+  - name: Uploadcare (mobile)
+    source: components/uploadcare/uploadcare
+    props:
+      id: '"carousel-upload-input-mobile"'
+      classes: '"absolute inset-0 opacity-0 cursor-pointer z-20 rounded-xl"'
+      type: '"upload_and_return"'
+      handleNewS3: "handleNewS3 callback"
+      uploadProgress: "props.uploadProgress (passed through)"
+      multipleFileUpload: "props.multipleFileUpload (passed through)"
+    description: Mobile version of the invisible file upload input within the mobile upload card.
+
+  - name: Uploadcare (desktop)
+    source: components/uploadcare/uploadcare
+    props:
+      id: '"carousel-upload-input"'
+      classes: '"absolute inset-0 opacity-0 cursor-pointer z-20 rounded-2xl"'
+      type: '"upload_and_return"'
+      handleNewS3: "handleNewS3 callback"
+      uploadProgress: "props.uploadProgress (passed through)"
+      multipleFileUpload: "props.multipleFileUpload (passed through)"
+    description: Desktop version of the invisible file upload input within the desktop upload card.
+
+data_structure:
+  internal_state: []
+    # No internal state. Upload progress and multipleFileUpload are received as props.
+
+  i18n_keys:
+    - go_quick.title
+    - go_quick.widget.create
+    - go_quick.widget.minutes
+    - go_quick.widget.ai
+    - go_quick.widget.3_photos
+    - go_quick.widget.pro_quality
+    - go_quick.widget.ai_powered
+    - go_quick.widget.up_to_3_photos
+    - go_quick.widget.upload
+    - go_quick.widget.drag_drop
+    - go_quick.widget.start
+
+behavior:
+  - action: file_upload_initiated
+    description: >
+      User clicks on the upload card area (mobile or desktop), which triggers the
+      corresponding invisible Uploadcare input. Uploadcare handles file selection and
+      upload. The parent carousel's uploadProgress state updates during upload.
+
+  - action: upload_complete
+    trigger: Uploadcare calls handleNewS3 with array of S3 keys
+    steps:
+      - Push Matomo trackEvent with category GO_QUICK ("goQuick") and action GO_QUICK_IMAGE_UPLOAD ("addGoQuickImageUpload")
+      - Call goQuickTrackEvent('homepage_banner_upload') - note different event name than homepage widget
+      - Build URLSearchParams with each S3 key appended as "photos" parameter
+      - Navigate to /go-quick?photos=key1&photos=key2&...
+    error_handling: >
+      On error, logs to console.error with message "Error in handleNewS3:" and the error object.
+      No Sentry logging (unlike the homepage widget). Error is caught silently.
+
+  - action: upload_error
+    description: >
+      If handleNewS3 throws, the error is caught and logged to console.error only.
+      The widget remains in its original state. No user-facing error UI.
+
+styling:
+  approach: scoped_styles_and_tailwind
+  custom_animations:
+    - name: pulse-slow
+      keyframes: "0%,100% opacity:1; 50% opacity:0.8"
+      duration: 3s
+      timing: ease-in-out infinite
+    - name: bounce-subtle
+      keyframes: "0%,100% translateY(0); 50% translateY(-2px)"
+      duration: 2s
+      timing: ease-in-out infinite
+    - name: glow
+      keyframes: >
+        0%,100% box-shadow: 0 0 5px rgba(255,255,255,0.3);
+        50% box-shadow: 0 0 20px rgba(255,255,255,0.6), 0 0 30px rgba(240,36,128,0.3)
+      duration: 2s
+      timing: ease-in-out infinite
+  brand_colors:
+    primary_pink: "#f02480"
+    purple: "purple-600 (Tailwind)"
+  responsive_breakpoints:
+    - md (768px): Switches between mobile horizontal layout and desktop centered two-column layout
+    - lg (1024px): Increases text sizes, padding, and upload card dimensions
+    - xl (1280px): Further increases heading size to text-5xl
+  aspect_ratios:
+    mobile: "780/422 (approximately 1.85:1)"
+    desktop: "1920/589 (approximately 3.26:1)"
+  glassmorphism:
+    description: >
+      Upload cards use glassmorphic design with bg-gradient-to-br from-white/95 to-white/90,
+      backdrop-blur-xl, and a gradient glow blur effect behind the card.
+
+dependencies:
+  internal:
+    - components/uploadcare/uploadcare (file upload handler)
+    - services/go-quick-service (goQuickTrackEvent server function)
+    - utility/matomo (pushMatomoEvent, MatomoCategory, MatomoEvent)
+  external:
+    - qwik-speak (inlineTranslate for i18n)
+  framework:
+    - "@builder.io/qwik" (component$, $, Signal, useStylesScoped$)
+    - "@builder.io/qwik-city" (useNavigate)
+
+used_by:
+  - file: components/carousels/dynamic-carousel.tsx
+    context: >
+      Conditionally rendered inside DynamicCarousel when enableGoQuickWidget prop is true.
+      Appears as the first and last slide in the carousel (duplicated for infinite scroll effect).
+      Receives uploadProgress store and multipleFileUpload signal from the carousel parent.
+      Currently disabled on the homepage (enableGoQuickWidget={false}).
+
+security:
+  - S3 keys are passed as URL query parameters (visible in browser history/URL bar)
+  - No user authentication required to upload photos
+  - Uploadcare handles file validation and upload security
+  - Errors are only logged to console (not Sentry, unlike homepage widget)
+
+notes:
+  - Key difference from GoQuickHomepageWidget: this component receives upload state as props instead of managing it internally, enabling the parent carousel to share state
+  - Error handling is weaker than the homepage widget (console.error vs Sentry)
+  - Uses a different goQuickTrackEvent event name: 'homepage_banner_upload' vs 'homepage_upload'
+  - Does NOT render UploadProgress component itself - the parent DynamicCarousel may handle this
+  - Has two separate Uploadcare instances with different IDs for mobile vs desktop
+  - The root div ID "go-quick-carousel-slide" is used by DynamicCarousel for JavaScript-based slide detection and positioning
+  - Currently enableGoQuickWidget is set to false on the homepage carousel, making this widget inactive
+  - Mobile layout uses compact text sizes (text-xs, text-[10px], text-[11px]) for tight carousel slide space
+  - Desktop layout uses glassmorphic upload cards with gradient glow borders
+  - Uses different i18n keys than homepage widget (go_quick.widget.create, go_quick.widget.minutes, go_quick.widget.ai, go_quick.widget.3_photos, go_quick.widget.start)
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  GoQuickCarouselWidgetProps:
+    description: Component props — upload state is owned by the DynamicCarousel parent and passed in
+    fields:
+      - name: uploadProgress
+        type: UploadProgressState
+      - name: multipleFileUpload
+        type: "Signal<boolean>"
+
+  UploadProgressState:
+    description: Shared upload progress tracking object (owned by DynamicCarousel, mutated by Uploadcare)
+    fields:
+      - name: fileSize
+        type: number
+      - name: progress
+        type: number
+        notes: "0.0 to 1.0 range"
+      - name: started
+        type: boolean
+
+field_consumption:
+  GoQuickCarouselWidgetProps:
+    consumed:
+      - uploadProgress: Passed through to both Uploadcare instances (mobile and desktop) so that the parent DynamicCarousel can observe progress changes
+      - multipleFileUpload: Passed through to both Uploadcare instances; controls whether multi-file upload is enabled
+
+implementation_logic:
+  event_name_distinction:
+    rule: |
+      This widget calls goQuickTrackEvent('homepage_banner_upload'), NOT 'homepage_upload'.
+      The homepage widget (GoQuickHomepageWidget) uses 'homepage_upload'.
+      These are distinct server-side tracking events and must not be swapped.
+    critical: true
+
+  error_handling_console_only:
+    rule: |
+      On handleNewS3 failure, this widget catches the error and calls console.error only.
+      Unlike GoQuickHomepageWidget, it does NOT log to Sentry via logHTTPDataToSentry.
+      This is intentional weaker error handling for the (currently inactive) carousel variant.
+    critical: false
+
+  dual_uploadcare_instances:
+    rule: |
+      Two separate Uploadcare components are rendered simultaneously — one for mobile layout
+      (id="carousel-upload-input-mobile") and one for desktop layout (id="carousel-upload-input").
+      Both reference the same handleNewS3 callback and the same uploadProgress/multipleFileUpload
+      props. Only one will be visible at any given viewport width, but both are in the DOM.
+    critical: false
+
+visibility_map:
+  mobile_layout:
+    condition: "viewport < md breakpoint (tailwind md = 768px)"
+    default: visible (class 'md:hidden')
+
+  desktop_layout:
+    condition: "viewport >= md breakpoint"
+    default: hidden (class 'hidden md:flex')

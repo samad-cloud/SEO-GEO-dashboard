@@ -1,0 +1,344 @@
+name: SliderUGC
+source: src/components/web-component/ugc-section.tsx
+description: |
+  Internal sub-component of UgcSection (defined in ugc-section.tsx, not a separate file).
+  Renders a horizontally scrollable UGC review slider used when UgcSection content.type is "Slider".
+  Displays an optional heading (h3) and subheading (p), then a row of UGC cards each containing
+  either a Video or an Image, review text (italic, centered), and reviewer name (gray). Wrapper
+  width and per-item width are computed dynamically from the number of UGC items via useTask$
+  tracking location.url and content changes. An optional CTA button link is shown below the items.
+  All UGC items show inline (no auto-play), with scroll hidden on mobile and visible on desktop.
+
+exports:
+  - name: SliderUGC
+    type: "component$<Props> (named const, NOT default export)"
+    description: Internal component used only by the default export of ugc-section.tsx
+
+props:
+  - name: content
+    type: UgcSection
+    required: true
+    description: UGC section data including heading, subheading, ugc items, ctaText/ctaUrl, and theme colors
+  - name: theme
+    type: "CategoryTheme | null"
+    required: false
+    description: Optional category theme providing primary and primaryText colors for the CTA button
+
+component_structure:
+  root: div (no special id or class at root)
+  children:
+    - h3 heading (rendered only when content.heading is truthy)
+    - p subheading (rendered only when content.subheading is truthy)
+    - div scroll container (overflow-x-scroll, scrollbar hidden)
+      - div wrapper (dynamic width class from ugcStyling.wrapperClasses)
+        - per item div (dynamic width class from ugcStyling.itemClasses)
+          - Video (if review.video is truthy) OR Image (if review.video is falsy)
+          - div.p-2.md:p-4
+            - p review text (italic, centered, 14px)
+            - p reviewer name (gray #B0AEAE, centered)
+    - div.flex.justify-center.mt-4.lg:mt-8 (rendered only when content.ctaText is truthy)
+      - a (CTA link, themed background/text color)
+
+child_components:
+  - name: Video
+    source: "~/components/media/video"
+    purpose: Renders UGC video items
+    props:
+      - autoplay: false
+      - loop: true
+      - id: "photobook-video-{index}"
+      - name: review.video
+      - controls: true
+      - poster: review.videoPoster
+      - normalVideoLoad: true
+      - index: index
+      - videoStateStore: videoStateStore
+  - name: Image
+    source: "@unpic/qwik"
+    purpose: Renders UGC image items
+    props:
+      - src: review.image
+      - class: "w-full h-auto"
+      - alt: "review.review || 'User generated content'"
+
+data_structure:
+  UgcSection:
+    order: number
+    heading: string
+    subheading: "string | null"
+    ugc: "UGC[]"
+    textContent: "string (markdown, not used by SliderUGC)"
+    ctaText: string
+    ctaUrl: string
+    ctaTextColor: "string (optional, not used — CTA color uses theme.primary instead)"
+    ctaBackgroundColor: "string (optional, not used — CTA color uses theme.primary instead)"
+    display: boolean
+    type: "string (optional) — must be 'Slider' to route to this component"
+
+  UGC:
+    image: string
+    imageAlt: "string (optional, not used by SliderUGC)"
+    video: "string | null (optional)"
+    videoPoster: "string (optional)"
+    review: string
+    reviewer: string
+    backImage: "string (optional, Flip mode only — not used here)"
+    backImageAlt: "string (optional, Flip mode only — not used here)"
+    backVideo: "string (optional, Flip mode only — not used here)"
+    backVideoPoster: "string (optional, Flip mode only — not used here)"
+    backReview: "string (optional, Flip mode only — not used here)"
+    backReviewer: "string (optional, Flip mode only — not used here)"
+
+  ugcStyling_store:
+    wrapperClasses:
+      type: string
+      description: "Computed: 'w-[{80*ugc.length}vw] md:w-full flex flex-nowrap md:flex-wrap mx:-mx-4'"
+    itemClasses:
+      type: string
+      description: "Computed: 'w-[80vw] md:flex-[0_0_{(100/ugc.length).toFixed(0)}%] max-w-[0_0_{...}%] px-4 md:px-4 text-left'"
+
+  videoStateStore:
+    states:
+      type: "boolean[]"
+      description: Array of boolean states (all initially true), one per UGC item; passed to Video for coordinated play/pause
+
+behavior:
+  - action: "Compute dynamic wrapper and item widths"
+    details: >
+      useTask$ tracks location.url and content. When either changes:
+      wrapperClasses = "w-[{80 * content.ugc.length}vw] md:w-full flex flex-nowrap md:flex-wrap mx:-mx-4"
+      itemClasses = "w-[80vw] md:flex-[0_0_{(100/content.ugc.length).toFixed(0)}%] max-w-[0_0_{same}%] px-4 md:px-4 text-left"
+      This makes each item 80vw wide on mobile and an equal fraction of 100% on desktop.
+  - action: "Render each UGC item as video or image"
+    details: >
+      If review.video is truthy: render Video component with review.video as name, review.videoPoster as poster,
+      autoplay=false, loop=true, controls=true, normalVideoLoad=true. Video state tracked via videoStateStore.
+      If review.video is falsy: render Image with review.image as src, alt falls back to review.review || "User generated content".
+  - action: "Horizontal scroll on mobile"
+    details: >
+      The outer scroll container has overflow-x-scroll on mobile and overflow-x-visible on desktop.
+      scrollbarWidth: "none" hides the scrollbar.
+      The wrapper div is {80 * ugc.length}vw wide on mobile so items overflow and allow scrolling.
+  - action: "Render optional CTA button"
+    details: >
+      When content.ctaText is truthy: renders a centered <a> link to content.ctaUrl.
+      Background color: content.ugc ? theme?.primary : "#F02480" (always uses theme.primary when ugc array exists).
+      Text color: content.ugc ? theme?.primaryText : "#FFF".
+      Note: the condition `content.ugc` is always truthy when ugc items are present, so theme colors are always used.
+      Class: "rounded-md px-16 py-4 font-bold inline-block w-fit cta_ugc_section"
+  - action: "Fire Matomo analytics on CTA click"
+    details: >
+      CTA anchor onClick$: pushMatomoEvent(["trackEvent", MatomoCategory.COMMON, MatomoEvent.CLICK_UGC_SECTION_CTA, content.ctaUrl])
+
+styling:
+  heading: "text-center font-bold text-2xl mb-4"
+  subheading: "text-[14px] text-center mb-3"
+  scroll_container: "overflow-x-scroll overflow-y-hidden md:overflow-x-visible md:overflow-y-visible"
+  scrollbar: "scrollbarWidth: 'none' (inline style)"
+  wrapper_mobile: "w-[{80*ugc.length}vw] (dynamic)"
+  wrapper_desktop: "md:w-full"
+  item_mobile: "w-[80vw]"
+  item_desktop: "md:flex-[0_0_{100/ugc.length}%] (dynamic)"
+  item_padding: "px-4 md:px-4 text-left"
+  review_text: "mt-4 text-[14px] italic text-center"
+  reviewer: "mt-4 text-[14px] text-center text-[#B0AEAE]"
+  cta_wrapper: "flex justify-center mt-4 lg:mt-8"
+  cta_button: "rounded-md px-16 py-4 font-bold inline-block w-fit cta_ugc_section"
+  cta_button_style: "backgroundColor: theme.primary (fallback #F02480); color: theme.primaryText (fallback #FFF)"
+
+dependencies:
+  qwik:
+    - component$, useStore, useTask$ from @builder.io/qwik
+  routing:
+    - useLocation from @builder.io/qwik-city
+  components:
+    - Image from @unpic/qwik
+    - Video from ~/components/media/video
+  analytics:
+    - MatomoCategory, MatomoEvent, pushMatomoEvent from ~/utility/matomo
+  types:
+    - UgcSection, CategoryTheme from ~/services/category-service
+
+used_by:
+  - UgcSection
+
+security:
+  - CTA URL (content.ctaUrl) comes from CMS — validate to prevent open redirect or javascript: URI
+  - Image alt text falls back to review.review (user-generated text) — ensure safe for use as attribute value
+  - Video src (review.video) comes from CMS — validate against CDN whitelist
+
+edge_cases:
+  - If content.ugc is empty, wrapper width is "w-[0vw]" and no items render
+  - If content.ctaText is falsy, the CTA button is not rendered at all
+  - If theme is null/undefined, CTA uses fallback colors (#F02480 background, #FFF text)
+  - If review.video is an empty string (falsy), Image is rendered instead of Video
+  - The width calculations use toFixed(0) which rounds to nearest integer, so at 3 items each gets 33% (not 33.33%)
+
+notes:
+  - SliderUGC is a named const (not default export) defined inside ugc-section.tsx — cannot be imported separately
+  - The CTA color condition `content.ugc ? theme?.primary : '#F02480'` uses the array reference as truthy check
+    (always true when ugc items exist), so theme colors are effectively always used when theme is provided
+  - textContent (markdown) is part of UgcSection but NOT rendered by SliderUGC (only used in FlipUGC)
+  - Back-face fields (backImage, backVideo, etc.) are part of UGC type but NOT used by SliderUGC
+  - Image alt falls back to review.review when imageAlt is not set (review text used as alt text)
+  - useTask$ tracks both location.url AND content, so widths recompute on navigation (SPA route changes)
+
+types:
+  Props:
+    description: Component props (shared type alias with FlipUGC)
+    fields:
+      - name: content
+        type: UgcSection
+      - name: theme
+        type: "CategoryTheme | null"
+        optional: true
+
+  UgcSection:
+    description: UGC section CMS data
+    source: ~/services/category-service
+    fields:
+      - name: order
+        type: number
+      - name: heading
+        type: string
+      - name: subheading
+        type: "string | null"
+      - name: ugc
+        type: "UGC[]"
+      - name: textContent
+        type: string
+      - name: ctaText
+        type: string
+      - name: ctaUrl
+        type: string
+      - name: ctaTextColor
+        type: "string (optional)"
+      - name: ctaBackgroundColor
+        type: "string (optional)"
+      - name: display
+        type: boolean
+      - name: type
+        type: "string (optional)"
+
+  UGC:
+    description: Individual UGC review item
+    fields:
+      - name: image
+        type: string
+      - name: imageAlt
+        type: "string (optional)"
+      - name: video
+        type: "string | null (optional)"
+      - name: videoPoster
+        type: "string (optional)"
+      - name: review
+        type: string
+      - name: reviewer
+        type: string
+      - name: backImage
+        type: "string (optional)"
+      - name: backImageAlt
+        type: "string (optional)"
+      - name: backVideo
+        type: "string (optional)"
+      - name: backVideoPoster
+        type: "string (optional)"
+      - name: backReview
+        type: "string (optional)"
+      - name: backReviewer
+        type: "string (optional)"
+
+  CategoryTheme:
+    description: Optional category theme for CTA button colors
+    source: ~/services/category-service
+    fields:
+      - name: primary
+        type: string
+        description: CTA button background color
+      - name: primaryText
+        type: string
+        description: CTA button text color
+
+  ugcStylingStore:
+    description: Reactive store for computed CSS class strings
+    fields:
+      - name: wrapperClasses
+        type: string
+      - name: itemClasses
+        type: string
+
+  videoStateStore:
+    description: Reactive store for coordinated video play/pause states
+    fields:
+      - name: states
+        type: "boolean[]"
+        description: One boolean per UGC item; all initialized to true
+
+field_consumption:
+  UgcSection:
+    consumed:
+      - heading: Rendered as h3 when truthy
+      - subheading: Rendered as p when truthy
+      - ugc: Iterated to render items and to compute wrapper/item CSS widths
+      - ctaText: Gates CTA rendering; rendered as button label
+      - ctaUrl: CTA href and Matomo event label
+    ignored:
+      - textContent: Used by FlipUGC only
+      - ctaTextColor: Not read; CTA uses theme.primaryText instead
+      - ctaBackgroundColor: Not read; CTA uses theme.primary instead
+      - display: Checked by parent
+      - order: Not used by SliderUGC
+      - type: Read by parent UgcSection to route to SliderUGC
+
+  UGC_items:
+    consumed:
+      - video: If truthy, renders Video; if falsy, renders Image
+      - videoPoster: Passed to Video as poster
+      - image: Passed to Image as src
+      - review: Rendered as review text paragraph; also used as Image alt fallback
+      - reviewer: Rendered as reviewer name paragraph
+    ignored:
+      - imageAlt: Not used (alt falls back to review.review or hardcoded string)
+      - backImage: Flip mode only
+      - backImageAlt: Flip mode only
+      - backVideo: Flip mode only
+      - backVideoPoster: Flip mode only
+      - backReview: Flip mode only
+      - backReviewer: Flip mode only
+
+  CategoryTheme:
+    consumed:
+      - primary: Used as CTA background color (with #F02480 fallback)
+      - primaryText: Used as CTA text color (with #FFF fallback)
+    ignored: []
+
+implementation_logic:
+  cta_color_logic:
+    rule: |
+      CTA background: content.ugc ? theme?.primary : "#F02480"
+      CTA text color: content.ugc ? theme?.primaryText : "#FFF"
+      Since content.ugc is an array (truthy when non-empty), when ugc has items the theme colors
+      are always used. The fallback "#F02480"/"#FFF" only applies if ugc is null/undefined/empty array.
+      This means ctaTextColor and ctaBackgroundColor fields on UgcSection are NEVER used by this component.
+    critical: true
+
+visibility_map:
+  heading:
+    condition: "content.heading is truthy"
+    default: hidden (not rendered for falsy heading)
+
+  subheading:
+    condition: "content.subheading is truthy"
+    default: hidden (not rendered for falsy subheading)
+
+  video_item:
+    condition: "review.video is truthy"
+    default: image rendered instead
+
+  image_item:
+    condition: "review.video is falsy"
+    default: video rendered instead
+
+  cta_section:
+    condition: "content.ctaText is truthy"
+    default: hidden (CTA not rendered)

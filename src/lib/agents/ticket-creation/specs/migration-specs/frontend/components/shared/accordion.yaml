@@ -1,0 +1,81 @@
+name: Accordion
+source: components/share/accordion/accordion.tsx
+description: >
+  Simple accordion container component that wraps accordion items (header + details pairs).
+  Provides a semantic wrapper div with ARIA tablist role. Does not manage expand/collapse
+  state itself -- state management is handled by the parent component via props passed
+  to AccordionHeader and AccordionDetails children.
+
+exports:
+  default:
+    type: component
+    description: Accordion container component (default export)
+
+props:
+  id:
+    type: string
+    required: true
+    description: >
+      Unique identifier for the accordion container. Set as the DOM id attribute
+      on the wrapper div.
+
+component_structure:
+  root: div
+  attributes:
+    id: props.id
+    role: tablist
+    aria-multiselectable: "false"
+  children: Slot (renders whatever children are passed)
+
+child_components:
+  - name: Slot
+    source: "@builder.io/qwik"
+    description: >
+      Qwik's content projection mechanism. In Next.js, this maps to React children prop.
+
+data_structure: {}
+
+behavior:
+  rendering:
+    - Renders a single div with id, role="tablist", and aria-multiselectable="false"
+    - All children are projected through Slot (content projection)
+  state_management:
+    - This component does NOT manage accordion state (expanded/collapsed)
+    - Parent component is responsible for tracking which sections are expanded
+    - Parent passes expanded state and onChange handlers to AccordionHeader/AccordionDetails children
+  accessibility:
+    - role="tablist" identifies this as a tab-like widget to assistive technologies
+    - aria-multiselectable="false" indicates only one panel should be expanded at a time
+
+styling:
+  framework: Tailwind CSS
+  classes: none
+  description: No styling applied -- pure structural/semantic wrapper
+
+dependencies:
+  - "@builder.io/qwik": Slot, component$
+
+used_by:
+  - components/footer/footer-containerless.tsx (footer navigation accordion)
+  - components/footer/footer.tsx
+  - components/footer/footer-product-category.tsx
+  - components/footer/footer-canvas.tsx
+  - components/footer/footer-auth.tsx
+  - Various FAQ and product detail page accordions
+
+security:
+  - No security concerns -- pure structural wrapper with no user input or data handling
+
+notes:
+  - Despite aria-multiselectable="false", the actual single-expand enforcement is done by the parent, not this component
+  - In a Next.js migration, Slot maps to React's children prop pattern
+  - This component is intentionally minimal -- all behavior lives in AccordionHeader and AccordionDetails
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  IAccordion:
+    description: Component props interface
+    fields:
+      - name: id
+        type: string

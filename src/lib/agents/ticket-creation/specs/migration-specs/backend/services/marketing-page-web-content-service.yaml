@@ -1,0 +1,644 @@
+name: MarketingPageWebContentService
+source: services/marketing-page-web-content-service.ts
+description: |
+  Defines interfaces and Zod schemas for marketing page components including hero sections,
+  product selectors with pricing, carousels, how-to sections, image/text layouts, customer
+  reviews, and FAQs. Supports SEO metadata and configurable section ordering.
+
+exports:
+  types:
+    - name: MarketingPageHero
+      fields:
+        - display: boolean
+        - order: number
+        - sectionTitle: string (optional)
+        - image: string
+        - imageAlt: string (optional)
+        - title: string
+        - subtitle: string (optional)
+        - features: string[] (optional)
+        - badgeText: string (optional)
+        - currentPrice: string (optional)
+        - originalPrice: string (optional)
+        - productSelector: ProductSelector (optional)
+        - showTimer: boolean (optional)
+        - timerDate: string (optional)
+        - textColor: string (optional)
+
+    - name: ProductSelectorOption
+      fields:
+        - productId: string
+        - optionText: string
+        - currentPrice: string (optional)
+        - originalPrice: string (optional)
+
+    - name: ProductSelectorRow
+      fields:
+        - title: string
+        - options: ProductSelectorOption[]
+
+    - name: ProductSelector
+      fields:
+        - display: boolean
+        - order: number
+        - heading: string (optional)
+        - rows: ProductSelectorRow[]
+        - ctaText: string (optional)
+
+    - name: MarketingCarouselSection
+      fields:
+        - display: boolean
+        - order: number
+        - sectionTitle: string (optional)
+        - badge: string (optional)
+        - bulletPoints: string[]
+        - images: string[]
+        - imageAlt: string (optional)
+
+    - name: MarketingHowToStep
+      fields:
+        - number: string
+        - title: string
+        - description: string
+
+    - name: MarketingHowTo
+      fields:
+        - display: boolean
+        - order: number
+        - sectionTitle: string (optional)
+        - heading: string (optional)
+        - steps: MarketingHowToStep[]
+
+    - name: MarketingImageSection
+      fields:
+        - display: boolean
+        - order: number
+        - sectionTitle: string (optional)
+        - image: string
+        - imageAlt: string (optional)
+
+    - name: MarketingImageTextItem
+      fields:
+        - image: string
+        - imageAlt: string
+        - title: string
+        - description: string
+
+    - name: MarketingImageText
+      fields:
+        - display: boolean
+        - order: number
+        - sectionTitle: string (optional)
+        - items: MarketingImageTextItem[]
+
+    - name: MarketingTextImage
+      fields:
+        - display: boolean
+        - order: number
+        - sectionTitle: string (optional)
+        - heading: string
+        - description: string
+        - image: string
+        - imageAlt: string
+        - imageLocation: "left" | "right"
+
+    - name: MarketingCustomerReviewItem
+      fields:
+        - customerName: string
+        - heading: string
+        - review: string
+        - rate: number
+        - date: string
+        - verified: boolean
+
+    - name: MarketingCustomerReviews
+      fields:
+        - display: boolean
+        - order: number
+        - sectionTitle: string (optional)
+        - ratingText: string
+        - ratingValue: number
+        - reviewCount: number
+        - reviewString: string
+        - reviews: MarketingCustomerReviewItem[]
+        - itemsPerSlideDesktop: number (optional)
+        - itemsPerSlideTablet: number (optional)
+        - itemsPerSlideMobile: number (optional)
+        - titleAlignment: "left" | "center" | "right" (optional)
+
+    - name: MarketingFaqItem
+      fields:
+        - question: string
+        - answer: string
+
+    - name: MarketingFaq
+      fields:
+        - display: boolean
+        - order: number
+        - sectionTitle: string (optional)
+        - faqs: MarketingFaqItem[]
+
+    - name: MarketingComponents
+      fields:
+        - display: boolean
+        - marketingPageHero: MarketingPageHero (optional)
+        - marketingCarouselSection: MarketingCarouselSection | MarketingCarouselSection[] (optional)
+        - marketingHowTo: MarketingHowTo | MarketingHowTo[] (optional)
+        - marketingImageSection: MarketingImageSection | MarketingImageSection[] (optional)
+        - marketingImageText: MarketingImageText | MarketingImageText[] (optional)
+        - marketingTextImage: MarketingTextImage | MarketingTextImage[] (optional)
+        - marketingCustomerReviews: MarketingCustomerReviews | MarketingCustomerReviews[] (optional)
+        - marketingFaq: MarketingFaq | MarketingFaq[] (optional)
+
+  zod_schemas:
+    - name: productSelectorOptionSchema
+      fields:
+        - productId: string
+        - optionText: string
+        - currentPrice: string (optional)
+        - originalPrice: string (optional)
+
+    - name: productSelectorRowSchema
+      fields:
+        - title: string
+        - options: array of productSelectorOptionSchema
+
+    - name: productSelectorSchema
+      fields:
+        - display: boolean
+        - order: number
+        - heading: string (optional)
+        - rows: array of productSelectorRowSchema
+        - ctaText: string (optional)
+
+    - name: marketingPageHeroSchema
+      fields:
+        - display: boolean
+        - order: number (optional)
+        - sectionTitle: string (optional)
+        - image: string
+        - imageAlt: string (optional)
+        - title: string
+        - subtitle: string (optional)
+        - features: array of string (optional)
+        - badgeText: string (optional)
+        - currentPrice: string (optional)
+        - originalPrice: string (optional)
+        - productSelector: productSelectorSchema (optional)
+        - showTimer: boolean (optional)
+        - timerDate: string (optional)
+        - textColor: string (optional)
+
+    - name: marketingCarouselSectionSchema
+      fields:
+        - display: boolean
+        - order: number
+        - sectionTitle: string (optional)
+        - badge: string (optional)
+        - bulletPoints: array of string
+        - images: array of string
+        - imageAlt: string (optional)
+
+    - name: marketingHowToStepSchema
+      fields:
+        - number: string
+        - title: string
+        - description: string
+
+    - name: marketingHowToSchema
+      fields:
+        - display: boolean
+        - order: number
+        - sectionTitle: string (optional)
+        - heading: string (optional)
+        - steps: array of marketingHowToStepSchema
+
+    - name: marketingImageSectionSchema
+      fields:
+        - display: boolean
+        - order: number
+        - sectionTitle: string (optional)
+        - image: string
+        - imageAlt: string (optional)
+
+    - name: marketingImageTextItemSchema
+      fields:
+        - image: string
+        - imageAlt: string
+        - title: string
+        - description: string
+
+    - name: marketingImageTextSchema
+      fields:
+        - display: boolean
+        - order: number
+        - sectionTitle: string (optional)
+        - items: array of marketingImageTextItemSchema
+
+    - name: marketingTextImageSchema
+      fields:
+        - display: boolean
+        - order: number
+        - sectionTitle: string (optional)
+        - heading: string
+        - description: string
+        - image: string
+        - imageAlt: string
+        - imageLocation: enum ["left", "right"]
+
+    - name: marketingCustomerReviewItemSchema
+      fields:
+        - customerName: string
+        - heading: string
+        - review: string
+        - rate: number
+        - date: string
+        - verified: boolean
+
+    - name: marketingCustomerReviewsSchema
+      fields:
+        - display: boolean
+        - order: number
+        - sectionTitle: string (optional)
+        - ratingText: string
+        - ratingValue: number
+        - reviewCount: number
+        - reviewString: string
+        - reviews: array of marketingCustomerReviewItemSchema
+        - itemsPerSlideDesktop: number (optional)
+        - itemsPerSlideTablet: number (optional)
+        - itemsPerSlideMobile: number (optional)
+        - titleAlignment: enum ["left", "center", "right"] (optional)
+
+    - name: marketingFaqItemSchema
+      fields:
+        - question: string
+        - answer: string
+
+    - name: marketingFaqSchema
+      fields:
+        - display: boolean
+        - order: number
+        - sectionTitle: string (optional)
+        - faqs: array of marketingFaqItemSchema
+
+    - name: MarketingComponentsSchema
+      description: Master schema for marketing pages with SEO fields
+      fields:
+        - display: boolean
+        - sEOTitle: string (optional)
+        - sEOHeader: string (optional)
+        - metaDescription: string (optional)
+        - marketingPageHero: marketingPageHeroSchema (optional)
+        - marketingCarouselSection: union of single or array (optional)
+        - marketingHowTo: union of single or array (optional)
+        - marketingImageSection: union of single or array (optional)
+        - marketingImageText: union of single or array (optional)
+        - marketingTextImage: union of single or array (optional)
+        - marketingCustomerReviews: union of single or array (optional)
+        - marketingFaq: union of single or array (optional)
+
+api_contracts: []
+
+dependencies:
+  external:
+    - zod: Schema validation library
+
+data_flow:
+  inputs:
+    - Marketing page data from CMS or API
+  processing:
+    - Validates structure with Zod schemas
+    - Supports multiple instances of same section type (array or single)
+  outputs:
+    - Type-safe MarketingComponents object
+    - Validation errors if schema mismatch
+
+business_logic:
+  - Hero section with optional countdown timer for promotions
+  - Product selector allows choosing between multiple product options with pricing
+  - Carousel section for showcasing features or images
+  - How-to sections with numbered steps
+  - Flexible image/text layouts (left/right positioning)
+  - Customer reviews with rating aggregation
+  - FAQ section for common questions
+  - All sections have display toggle and order field for layout control
+  - Union types allow single section or array of sections
+  - SEO metadata fields for search optimization
+
+error_handling:
+  - Zod validation catches type mismatches
+  - Optional fields don't cause validation errors when missing
+  - Enum validation for imageLocation and titleAlignment
+
+security:
+  - No authentication or authorization logic
+  - No sensitive data in interfaces
+  - Validate URLs and links in consuming code
+
+behavior:
+  - name: MarketingComponentsSchema (Zod schema export)
+    steps:
+      - Defines Zod validation schemas for all marketing page component types
+      - Each section schema validates display (boolean), order (number), and section-specific fields
+      - MarketingComponentsSchema is the master schema combining all section schemas
+      - Section fields that can be single or array use z.union([schema, z.array(schema)])
+      - Includes SEO metadata fields (sEOTitle, sEOHeader, metaDescription) as optional strings
+      - All sub-schemas (hero, carousel, howTo, imageSection, imageText, textImage, customerReviews, faq) are module-private; only MarketingComponentsSchema is exported
+      - No runtime functions - this is a pure type/schema definition module
+
+used_by:
+  - backend/services/json-service.yaml # Imports MarketingComponentsSchema for loadMarketingPageContent validation
+
+types:
+  MarketingPageHero:
+    description: Hero section for marketing pages with optional timer and product selector
+    fields:
+      - name: display
+        type: boolean
+      - name: order
+        type: number
+      - name: sectionTitle
+        type: string
+        optional: true
+      - name: image
+        type: string
+      - name: imageAlt
+        type: string
+        optional: true
+      - name: title
+        type: string
+      - name: subtitle
+        type: string
+        optional: true
+      - name: features
+        type: "string[]"
+        optional: true
+      - name: badgeText
+        type: string
+        optional: true
+      - name: currentPrice
+        type: string
+        optional: true
+      - name: originalPrice
+        type: string
+        optional: true
+      - name: productSelector
+        type: ProductSelector
+        optional: true
+      - name: showTimer
+        type: boolean
+        optional: true
+      - name: timerDate
+        type: string
+        optional: true
+      - name: textColor
+        type: string
+        optional: true
+
+  ProductSelectorOption:
+    description: A single product option in a selector row
+    fields:
+      - name: productId
+        type: string
+      - name: optionText
+        type: string
+      - name: currentPrice
+        type: string
+        optional: true
+      - name: originalPrice
+        type: string
+        optional: true
+
+  ProductSelectorRow:
+    description: A row of product selector options with a title
+    fields:
+      - name: title
+        type: string
+      - name: options
+        type: "ProductSelectorOption[]"
+
+  ProductSelector:
+    description: Product selector widget with rows of options and an optional CTA
+    fields:
+      - name: display
+        type: boolean
+      - name: order
+        type: number
+      - name: heading
+        type: string
+        optional: true
+      - name: rows
+        type: "ProductSelectorRow[]"
+      - name: ctaText
+        type: string
+        optional: true
+
+  MarketingCarouselSection:
+    description: Image carousel section with bullet points for marketing pages
+    fields:
+      - name: display
+        type: boolean
+      - name: order
+        type: number
+      - name: sectionTitle
+        type: string
+        optional: true
+      - name: badge
+        type: string
+        optional: true
+      - name: bulletPoints
+        type: "string[]"
+      - name: images
+        type: "string[]"
+      - name: imageAlt
+        type: string
+        optional: true
+
+  MarketingHowToStep:
+    description: A single numbered step in a how-to section
+    fields:
+      - name: number
+        type: string
+      - name: title
+        type: string
+      - name: description
+        type: string
+
+  MarketingHowTo:
+    description: How-to section with numbered steps
+    fields:
+      - name: display
+        type: boolean
+      - name: order
+        type: number
+      - name: sectionTitle
+        type: string
+        optional: true
+      - name: heading
+        type: string
+        optional: true
+      - name: steps
+        type: "MarketingHowToStep[]"
+
+  MarketingImageSection:
+    description: Full-width image section for marketing pages
+    fields:
+      - name: display
+        type: boolean
+      - name: order
+        type: number
+      - name: sectionTitle
+        type: string
+        optional: true
+      - name: image
+        type: string
+      - name: imageAlt
+        type: string
+        optional: true
+
+  MarketingImageTextItem:
+    description: A single image-text pair item
+    fields:
+      - name: image
+        type: string
+      - name: imageAlt
+        type: string
+      - name: title
+        type: string
+      - name: description
+        type: string
+
+  MarketingImageText:
+    description: Section with multiple image-text pair items
+    fields:
+      - name: display
+        type: boolean
+      - name: order
+        type: number
+      - name: sectionTitle
+        type: string
+        optional: true
+      - name: items
+        type: "MarketingImageTextItem[]"
+
+  MarketingTextImage:
+    description: Section with text alongside an image, configurable left/right position
+    fields:
+      - name: display
+        type: boolean
+      - name: order
+        type: number
+      - name: sectionTitle
+        type: string
+        optional: true
+      - name: heading
+        type: string
+      - name: description
+        type: string
+      - name: image
+        type: string
+      - name: imageAlt
+        type: string
+      - name: imageLocation
+        type: '"left" | "right"'
+
+  MarketingCustomerReviewItem:
+    description: A single customer review entry
+    fields:
+      - name: customerName
+        type: string
+      - name: heading
+        type: string
+      - name: review
+        type: string
+      - name: rate
+        type: number
+      - name: date
+        type: string
+      - name: verified
+        type: boolean
+
+  MarketingCustomerReviews:
+    description: Customer reviews section with rating summary and carousel config
+    fields:
+      - name: display
+        type: boolean
+      - name: order
+        type: number
+      - name: sectionTitle
+        type: string
+        optional: true
+      - name: ratingText
+        type: string
+      - name: ratingValue
+        type: number
+      - name: reviewCount
+        type: number
+      - name: reviewString
+        type: string
+      - name: reviews
+        type: "MarketingCustomerReviewItem[]"
+      - name: itemsPerSlideDesktop
+        type: number
+        optional: true
+      - name: itemsPerSlideTablet
+        type: number
+        optional: true
+      - name: itemsPerSlideMobile
+        type: number
+        optional: true
+      - name: titleAlignment
+        type: '"left" | "center" | "right"'
+        optional: true
+
+  MarketingFaqItem:
+    description: A single FAQ item with question and answer
+    fields:
+      - name: question
+        type: string
+      - name: answer
+        type: string
+
+  MarketingFaq:
+    description: FAQ section for marketing pages
+    fields:
+      - name: display
+        type: boolean
+      - name: order
+        type: number
+      - name: sectionTitle
+        type: string
+        optional: true
+      - name: faqs
+        type: "MarketingFaqItem[]"
+
+  MarketingComponents:
+    description: Master interface combining all marketing page sections
+    fields:
+      - name: display
+        type: boolean
+      - name: marketingPageHero
+        type: MarketingPageHero
+        optional: true
+      - name: marketingCarouselSection
+        type: "MarketingCarouselSection | MarketingCarouselSection[]"
+        optional: true
+      - name: marketingHowTo
+        type: "MarketingHowTo | MarketingHowTo[]"
+        optional: true
+      - name: marketingImageSection
+        type: "MarketingImageSection | MarketingImageSection[]"
+        optional: true
+      - name: marketingImageText
+        type: "MarketingImageText | MarketingImageText[]"
+        optional: true
+      - name: marketingTextImage
+        type: "MarketingTextImage | MarketingTextImage[]"
+        optional: true
+      - name: marketingCustomerReviews
+        type: "MarketingCustomerReviews | MarketingCustomerReviews[]"
+        optional: true
+      - name: marketingFaq
+        type: "MarketingFaq | MarketingFaq[]"
+        optional: true

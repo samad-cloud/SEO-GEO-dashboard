@@ -1,0 +1,137 @@
+name: SVGIcon
+source:
+  path: components/svg-icon/svg-icon.tsx
+  lines: 1-13
+  type: component
+
+description: |
+  Generic SVG icon component that dynamically imports and renders SVG icons from
+  the assets/icons directory. Uses Qwik's svgx plugin to import SVG files as
+  components. Accepts any SVG-specific props (fill, width, height, class, etc.)
+  and spreads them to the rendered icon.
+
+  Features:
+  - Dynamic icon import by name
+  - Accepts all standard SVG attributes
+  - Type-safe with QwikIntrinsicElements["svg"]
+  - Uses @svgx-dir plugin for icon imports
+
+exports:
+  - name: SVGIcon
+    type: component
+    description: Named export of SVGIcon component
+
+props:
+  name:
+    type: string
+    required: true
+    description: Name of SVG icon file (without extension, e.g., "arrow-down", "close")
+
+  ...props:
+    type: QwikIntrinsicElements["svg"]
+    required: false
+    description: |
+      Any valid SVG attributes (fill, width, height, class, viewBox, onClick$, etc.)
+      Examples:
+      - fill: string (e.g., "#fff", "currentColor")
+      - width: number | string (e.g., 24, "24px")
+      - height: number | string
+      - class: string (Tailwind classes)
+      - onClick$: QRL event handler
+
+component_structure: |
+  <Icon {...props} />
+
+  Where Icon is dynamically imported from assets/icons/{name}.svg
+
+behavior:
+  icon_resolution:
+    - importVars(name) dynamically imports icon component
+    - Icon lookup is case-sensitive (matches filename exactly)
+    - Icon must exist in src/assets/icons/ directory
+    - Returns component that renders SVG element
+
+  prop_spreading:
+    - All props except "name" are spread to SVG element
+    - Allows full customization of SVG attributes
+    - Supports Qwik-specific props (onClick$, etc.)
+
+usage_examples: |
+  <!-- Basic usage -->
+  <SVGIcon name="close" width={24} height={24} />
+
+  <!-- With fill and class -->
+  <SVGIcon name="arrow-down" fill="#333" class="rotate-90" />
+
+  <!-- With click handler -->
+  <SVGIcon
+    name="menu"
+    width={32}
+    height={32}
+    class="cursor-pointer"
+    onClick$={() => toggleMenu()}
+  />
+
+  <!-- Current color -->
+  <SVGIcon name="heart" fill="currentColor" class="text-pink-600" />
+
+interfaces:
+  SVGIconProps:
+    extends: QwikIntrinsicElements["svg"]
+    properties:
+      name:
+        type: string
+        required: true
+        description: Icon filename without extension
+
+dependencies:
+  qwik:
+    - component$ (from @builder.io/qwik)
+    - QwikIntrinsicElements (from @builder.io/qwik)
+
+  svgx:
+    - importVars (from @svgx-dir:/src/assets/icons)
+    - Note: @svgx-dir is a Vite plugin that imports all SVG files from directory
+
+data_dependencies:
+  icon_files:
+    location: src/assets/icons/
+    format: SVG files (*.svg)
+    examples:
+      - arrow-down.svg
+      - close.svg
+      - menu.svg
+      - heart.svg
+      - checkmark.svg
+
+error_handling:
+  missing_icon:
+    - If icon name doesn't exist, importVars() will fail
+    - Should show runtime error in development
+    - Production build will fail if icon missing
+
+styling:
+  customization:
+    - fill: Control icon color
+    - width/height: Control size
+    - class: Apply Tailwind/CSS classes
+    - viewBox: Override SVG viewBox (if needed)
+    - transform: Apply transformations (rotate, scale, etc.)
+
+used_by:
+  - CrossDomainNotification (close button)
+  - Breadcrumbs (back arrow)
+  - AccordionHeader (chevron)
+  - Many other components throughout app
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  SVGIconProps:
+    description: Component props interface — name plus all standard SVG element attributes
+    fields:
+      - name: name
+        type: string
+      - name: "...props"
+        type: "QwikIntrinsicElements[\"svg\"]"
+        optional: true

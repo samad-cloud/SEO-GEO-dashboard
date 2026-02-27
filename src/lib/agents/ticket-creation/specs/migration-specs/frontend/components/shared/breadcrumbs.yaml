@@ -1,0 +1,231 @@
+name: Breadcrumbs
+source:
+  path: components/share/breadcrumbs/breadcrumbs.tsx
+  lines: 1-117
+  type: component
+
+description: |
+  Renders breadcrumb navigation for category pages with schema.org structured data.
+  Displays navigation path from Home to current category/page. Responsive design:
+  - Mobile: Shows only back link to parent category
+  - Desktop: Shows full breadcrumb trail with separators
+
+  Features:
+  - Schema.org BreadcrumbList markup for SEO
+  - Matomo event tracking for breadcrumb clicks
+  - Customizable separator (default: "/")
+  - Last item is bold and non-clickable (current page)
+  - ARIA roles for accessibility (listbox, option)
+
+exports:
+  - name: default
+    type: component
+    description: Default export of Breadcrumbs component
+
+props:
+  data:
+    type: BreadCrumb[]
+    required: true
+    description: Array of breadcrumb items (title, qwikUrl, order)
+
+  separator:
+    type: string | JSXNode
+    required: false
+    default: "/"
+    description: Separator between breadcrumb items (can be string or custom element)
+
+component_structure: |
+  <nav aria-label="Breadcrumb">
+    <!-- Mobile view (md:hidden) -->
+    <div class="flex items-center md:hidden">
+      - Back arrow icon (SVGIcon rotated 90 degrees)
+      - Link to parent category (or Home if on first level)
+    </div>
+
+    <!-- Desktop view (hidden md:flex) -->
+    <ol role="listbox" itemScope itemType="BreadcrumbList">
+      <!-- Home link (always first) -->
+      <li itemProp="itemListElement" itemScope>
+        <a href="/" itemProp="item">
+          <span itemProp="name">Home</span>
+        </a>
+        <meta itemProp="position" content="1" />
+        <span class="separator">{separator}</span>
+      </li>
+
+      <!-- Data items -->
+      {data.map((item, index) => (
+        <li itemProp="itemListElement">
+          <!-- If last item: Non-clickable span (bold) -->
+          <!-- Else: Clickable link -->
+          <a/span itemProp="item/name">{item.title}</a/span>
+          <meta itemProp="position" content="{index + 2}" />
+          <meta itemProp="url" content="{item.qwikUrl}" />
+          {!isLast && <span class="separator">{separator}</span>}
+        </li>
+      ))}
+    </ol>
+  </nav>
+
+behavior:
+  mobile_view:
+    - Shows back arrow + parent category link
+    - If no parent (data.length <= 1), links to Home
+    - Parent link text: data[data.length - 2].title or "Home"
+
+  desktop_view:
+    - Shows full breadcrumb trail
+    - Home is always first item
+    - Each breadcrumb is clickable except the last
+    - Last item has aria-current="page" and is bold
+    - Separators between items (not after last)
+
+  click_tracking:
+    - All breadcrumb clicks trigger Matomo event:
+      - Category: CATEGORY
+      - Event: CLICK_BREADCRUMB
+      - Action: URL of clicked breadcrumb
+
+interfaces:
+  BreadCrumb:
+    properties:
+      title:
+        type: string
+        description: Display text for breadcrumb item
+      qwikUrl:
+        type: string
+        description: Navigation URL
+      order:
+        type: number
+        description: Position in breadcrumb hierarchy (used as React key)
+
+  CategoryBreadcrumbs:
+    properties:
+      data:
+        type: BreadCrumb[]
+        description: Breadcrumb items array
+      separator:
+        type: string | JSXNode
+        description: Separator between items
+
+child_components:
+  - SVGIcon:
+      path: ~/components/svg-icon/svg-icon
+      usage: Back arrow on mobile (name="arrow-down", rotated 90deg)
+
+dependencies:
+  qwik:
+    - component$ (from @builder.io/qwik)
+    - JSXNode type (from @builder.io/qwik)
+
+  services:
+    - BreadCrumb type (from ~/services/category-service)
+
+  analytics:
+    - MatomoCategory (from ~/utility/matomo)
+    - MatomoEvent (from ~/utility/matomo)
+    - pushMatomoEvent (from ~/utility/matomo)
+
+  components:
+    - SVGIcon (from ~/components/svg-icon/svg-icon)
+
+data_dependencies:
+  props:
+    - data: Array of BreadCrumb objects from category service
+
+  external_services:
+    - Matomo analytics for click tracking
+
+styling:
+  classes:
+    - text-[14px]: Base font size
+    - text-[18px]: Separator and arrow size
+    - font-bold: Last item and parent link
+    - hover:underline: Hover effect on links
+    - mx-2: Horizontal margin for separators
+    - rotate-90: Back arrow rotation
+
+  responsive:
+    - Mobile (default): Back button view only
+    - Desktop (md:): Full breadcrumb trail
+
+seo:
+  schema_org:
+    - itemType: https://schema.org/BreadcrumbList (list container)
+    - itemType: https://schema.org/ListItem (each breadcrumb)
+    - itemProp: position (1-indexed position)
+    - itemProp: name (display text)
+    - itemProp: url (navigation URL)
+
+  accessibility:
+    - aria-label="Breadcrumb" on nav
+    - role="listbox" on breadcrumb list
+    - role="option" on each item
+    - aria-selected="true/false" based on current page
+    - aria-current="page" on last item
+
+used_by: []
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  BreadCrumb:
+    description: Single breadcrumb item (imported from ~/services/category-service)
+    fields:
+      - name: title
+        type: string
+      - name: url
+        type: string
+      - name: qwikUrl
+        type: string
+      - name: order
+        type: number
+
+  CategoryBreadcrumbs:
+    description: Component props interface (exported)
+    fields:
+      - name: data
+        type: "BreadCrumb[]"
+      - name: separator
+        type: "string | JSXNode"
+        optional: true
+        default: "/"
+
+field_consumption:
+  BreadCrumb:
+    consumed:
+      - title: Displayed as link text or current-page span text
+      - qwikUrl: Used as href on clickable items and in schema.org meta itemProp="url"
+      - order: Used as React key on list items
+    ignored:
+      - url: Present in BreadCrumb type but not read by this component (qwikUrl used instead)
+
+visibility_map:
+  mobile_back_link_view:
+    condition: "viewport < md (Tailwind md:hidden)"
+    default: visible
+    notes: Shows back arrow + parent category link; hidden on md+ breakpoints
+  desktop_full_trail_view:
+    condition: "viewport >= md (Tailwind hidden md:flex)"
+    default: hidden
+    notes: Shows full ordered breadcrumb list; hidden on mobile
+  parent_link_text_home:
+    condition: "data.length <= 1"
+    default: hidden
+    notes: Mobile back link shows 'Home' text when there is no parent breadcrumb
+  parent_link_text_category:
+    condition: "data.length > 1"
+    default: visible
+    notes: Mobile back link shows data[data.length - 2].title when parent exists
+  breadcrumb_item_as_link:
+    condition: "item is not the last in the array (isLast === false)"
+    default: visible
+    notes: Renders as clickable anchor with href
+  breadcrumb_item_as_span:
+    condition: "item is the last in the array (isLast === true)"
+    default: hidden
+    notes: Renders as non-clickable bold span with aria-current="page"
+  separator_after_item:
+    condition: "isLast === false"
+    default: visible
+    notes: Separator span rendered after every item except the last

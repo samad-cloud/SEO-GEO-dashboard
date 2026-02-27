@@ -1,0 +1,39 @@
+name: ImageResolutionRoute
+source:
+  path: routes/image-resolution/index.tsx
+  lines: 1-9
+  type: route
+
+description: |
+  Static informational page about image resolution requirements.
+  Renders ImageResolutionContainer and uses its Head export.
+
+url_pattern: /image-resolution
+layout: default
+
+exports:
+  default: true
+  component: ImageResolutionContainer
+  head: true
+  head_source: "Imported from ImageResolutionContainer (Head export)"
+
+dependencies:
+  - "@builder.io/qwik"
+  - "@builder.io/qwik-city" (DocumentHead type)
+  - "~/components/image-resolution-page/containers/image-resolution-container"
+
+behavior:
+  - Renders container component
+  - Head metadata managed by container
+
+i18n_keys: []
+
+rewrite_routes:
+  DE: /bildauflosung
+  IT: /risoluzione-dell-immagine
+  ES: /resolucion-de-imagen
+
+used_by: []
+
+types:
+  notes: "Route component. Types defined in associated container component. No locally-defined interfaces."

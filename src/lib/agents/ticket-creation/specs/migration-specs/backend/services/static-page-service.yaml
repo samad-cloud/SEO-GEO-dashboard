@@ -1,0 +1,208 @@
+name: StaticPageService
+source: services/static-page-service.ts
+description: |
+  Defines interfaces and Zod schemas for static pages with FAQ sections. Supports rich text
+  formatting including special text (bold, italic, underline, links) and bulleted lists within
+  paragraphs. Provides structured data for FAQ content with display controls.
+
+exports:
+  types:
+    - name: FAQSection
+      fields:
+        - heading: string
+        - faqs: Faq[]
+        - order: number
+        - display: boolean
+
+    - name: Faq
+      fields:
+        - question: string
+        - answer: string[] (optional)
+        - paragraphs: Paragraph[] (optional)
+
+    - name: Bullet
+      fields:
+        - text: string
+        - specialText: SpecialText[]
+
+    - name: Paragraph
+      fields:
+        - text: string
+        - specialText: Array<SpecialText> | null
+        - bullets: Bullet[] | null (optional)
+
+    - name: SpecialText
+      fields:
+        - text: string
+        - href: string
+        - isBold: boolean
+        - isItalic: boolean
+        - isUnderline: boolean
+
+  zod_schemas:
+    - name: specialTextSchema
+      description: Validates special text formatting
+      fields:
+        - text: string
+        - href: string (optional, nullable)
+        - isBold: boolean (optional)
+
+    - name: paragraphSchema
+      description: Validates paragraph with special text and bullets
+      fields:
+        - text: string
+        - specialText: array of specialTextSchema (optional, nullable)
+        - bullets: any (nullable)
+
+    - name: faqSchema
+      description: Validates FAQ item with question and paragraphs
+      fields:
+        - question: string
+        - paragraphs: array of paragraphSchema
+
+    - name: FaqSectionSchema
+      description: Validates entire FAQ section
+      fields:
+        - order: number
+        - display: boolean
+        - heading: string
+        - faqs: array of faqSchema
+
+behavior:
+  - name: FAQSection (interface)
+    steps:
+      - Defines shape for FAQ section with heading, faqs array, order number, and display toggle
+  - name: Faq (interface)
+    steps:
+      - Defines FAQ item with required question string
+      - Has optional answer string array (simple text answers)
+      - Has optional paragraphs array (rich formatted answers with special text and bullets)
+  - name: SpecialText (interface)
+    steps:
+      - Defines rich text formatting with text, href link, isBold, isItalic, isUnderline flags
+  - name: Paragraph (interface)
+    steps:
+      - Defines paragraph with required text string
+      - Has nullable specialText array for inline formatting
+      - Has optional nullable bullets array for bulleted lists
+  - name: Bullet (interface)
+    steps:
+      - Defines bullet item with text and specialText array for formatted bullets
+  - name: FaqSectionSchema (Zod)
+    steps:
+      - Validates order as number, display as boolean, heading as string
+      - Validates faqs as array of faqSchema objects
+  - name: faqSchema (Zod, internal)
+    steps:
+      - Validates question as required string
+      - Validates paragraphs as array of paragraphSchema objects
+      - Does NOT validate optional "answer" field from the Faq interface
+  - name: paragraphSchema (Zod, internal)
+    steps:
+      - Validates text as required string
+      - Validates specialText as optional nullable array of specialTextSchema
+      - Validates bullets as any nullable (loose validation)
+  - name: specialTextSchema (Zod, internal)
+    steps:
+      - Validates text as required string
+      - Validates href as optional nullable string
+      - Validates isBold as optional boolean
+      - Does NOT validate isItalic or isUnderline from the SpecialText interface
+
+api_contracts: []
+
+dependencies:
+  external:
+    - zod: Schema validation library
+
+data_flow:
+  inputs:
+    - FAQ section data from CMS or API
+  processing:
+    - Validates structure with Zod schemas
+    - Supports rich text formatting
+  outputs:
+    - Type-safe FAQSection object
+    - Validation errors if schema mismatch
+
+business_logic:
+  - FAQ sections can be toggled with display boolean
+  - Order field controls rendering sequence
+  - Paragraphs support plain text with optional special formatting
+  - Special text can have links (href), bold, italic, underline
+  - Bullets can contain special text for formatted lists
+  - FAQ can have either simple answer array or structured paragraphs
+
+error_handling:
+  - Zod validation provides detailed error messages
+  - Optional fields (answer, paragraphs, bullets) don't require presence
+  - Nullable fields allow explicit null values
+
+security:
+  - No authentication or authorization
+  - Validate href URLs in consuming code to prevent XSS
+  - Special text formatting should be sanitized when rendering HTML
+
+used_by:
+  - backend/services/json-service.yaml (imports FaqSectionSchema for web content validation)
+
+types:
+  SpecialText:
+    description: Inline rich text formatting with optional link, bold, italic, and underline
+    fields:
+      - name: text
+        type: string
+      - name: href
+        type: string
+        description: Link URL for this text span
+      - name: isBold
+        type: boolean
+      - name: isItalic
+        type: boolean
+      - name: isUnderline
+        type: boolean
+
+  Bullet:
+    description: A bullet list item with optional inline formatting
+    fields:
+      - name: text
+        type: string
+      - name: specialText
+        type: "SpecialText[]"
+
+  Paragraph:
+    description: A text paragraph with optional inline formatting and bullet sub-list
+    fields:
+      - name: text
+        type: string
+      - name: specialText
+        type: "Array<SpecialText> | null"
+      - name: bullets
+        type: "Bullet[] | null"
+        optional: true
+
+  Faq:
+    description: A single FAQ item with question and either a simple answer array or rich paragraphs
+    fields:
+      - name: question
+        type: string
+      - name: answer
+        type: "string[]"
+        optional: true
+        description: Simple text answers (alternative to paragraphs)
+      - name: paragraphs
+        type: "Paragraph[]"
+        optional: true
+        description: Rich formatted answers (alternative to answer)
+
+  FAQSection:
+    description: A complete FAQ section with heading and ordered display control
+    fields:
+      - name: heading
+        type: string
+      - name: faqs
+        type: "Faq[]"
+      - name: order
+        type: number
+      - name: display
+        type: boolean

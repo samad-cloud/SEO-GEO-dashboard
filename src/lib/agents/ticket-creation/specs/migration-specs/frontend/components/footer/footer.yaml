@@ -1,0 +1,424 @@
+name: Footer
+source:
+  path: src/components/footer/footer.tsx
+  lines: 1-486
+  type: component
+
+description: |
+  Main footer component for homepage and general pages. Displays promotional banner,
+  trust indicators, plant-a-tree message, shipping banner, help section, footer links,
+  contact info, social media, worldwide regions, payment/shipping badges, and legal links.
+  Includes accordion behavior for mobile footer links.
+
+exports:
+  - type: default
+    name: Footer
+    kind: component
+
+props: []
+
+component_structure:
+  root: footer
+  className: "w-full bg-base-complementaryBg"
+  children:
+    - component: HomeBottomBanner (conditional on promoBanner)
+    - section: trust-indicators
+      children:
+        - component: TrustIndicator
+    - section: main-content
+      className: "bg-base-complementaryBg text-base-footerText w-full py-[20px]"
+      children:
+        - section: plant-a-tree
+        - component: FooterShippingBanner (conditional on shippingFooterBanner)
+        - component: OurHelp (excluded for DE, NL)
+        - section: mobile-accordion (mobile only)
+          children:
+            - component: Accordion
+              children:
+                - component: AccordionHeader
+                - component: AccordionDetails
+        - section: desktop-grid (desktop only)
+          children:
+            - footer link columns
+            - contact + social column
+    - section: worldwide-regions
+      children:
+        - country flags (US, UK, FR, IT, ES, DE, NL, IN, AE)
+    - section: trust-elements
+      children:
+        - payment partners (PayPal, Visa, Mastercard, Maestro, Amex, Apple, Amazon)
+        - shipping partners (region-specific logos)
+        - security (Sectigo SSL)
+    - section: copyright-legal
+      children:
+        - copyright text
+        - terms and privacy links
+    - component: FreshDeskWidget
+
+child_components:
+  - name: Accordion
+    path: "~/components/share/accordion/accordion"
+  - name: AccordionHeader
+    path: "~/components/share/accordion/accordion-header"
+  - name: AccordionDetails
+    path: "~/components/share/accordion/accordion-details"
+  - name: HomeBottomBanner
+    path: "~/components/homepage/home-bottom-banner"
+  - name: OurHelp
+    path: "~/components/share/our-help/our-help"
+  - name: TrustIndicator
+    path: "~/components/share/trust-indication/trust-indicator"
+  - name: FooterShippingBanner
+    path: "./footer-shipping-banner"
+  - name: FreshDeskWidget
+    path: "~/components/customer-service-components/fresh-desk-widget"
+  - name: Link
+    path: "@builder.io/qwik-city"
+  - name: Image
+    path: "@unpic/qwik"
+
+context_consumed:
+  - useLoadBanner (from layout route loader)
+    fields:
+      - promoBanner: PromoBanner | null
+      - shippingFooterBanner: ShippingFooterBanner | null
+
+state_management:
+  stores:
+    - name: footerData
+      type: array
+      description: Footer link sections with expanded state
+      structure:
+        - title: string
+        - links: array
+        - expanded: boolean
+        - id: number
+      initial: jsonFooter.footerLinks with expanded=false
+
+event_handlers:
+  - event: click (handleFooterAccordion)
+    description: Toggles accordion sections on mobile
+    implementation: |
+      Finds currently expanded section.
+      Collapses it if different from clicked section.
+      Toggles clicked section's expanded state.
+
+data_sources:
+  json:
+    - name: jsonHome
+      source: getHome()
+      fields:
+        - plant_tree: string
+    - name: jsonFooter
+      source: getFooter()
+      fields:
+        - footerLinks: array
+        - howToReachUs: object
+        - followUs: object
+        - printerpixWorldwide: object
+        - securedPayment: string
+        - certifiedDelivery: string
+        - securedBy: string
+        - copyright: string
+        - termsservice: string
+        - termsserviceHref: string
+        - privacy: string
+        - privacyHref: string
+    - name: trustIndicatorContent
+      source: getTrustIndicatorContent()
+      fields:
+        - trustIndicators.bottomContent
+
+responsive_behavior:
+  mobile:
+    - Footer links in accordion (collapsible sections)
+    - Contact and social centered
+    - Country flags without labels
+    - Trust elements stacked vertically
+  desktop:
+    - Footer links in grid layout (6 columns)
+    - Contact and social in rightmost column
+    - Country flags with labels
+    - Trust elements in 3-column layout
+
+footer_sections:
+  plant_a_tree:
+    icon: /images-q/plantatree-green.svg
+    text: jsonHome.plant_tree
+
+  footer_links:
+    layout: dynamic grid
+    source: jsonFooter.footerLinks
+    columns:
+      - title: string
+      - links: array
+        - name: string
+        - href: string
+
+  contact_info:
+    excluded_regions: [DE, NL]
+    items:
+      - email: jsonFooter.howToReachUs.email
+
+  social_media:
+    source: jsonFooter.followUs.links
+    items:
+      - name: string
+      - link: string
+      - image: string
+
+  worldwide_regions:
+    countries: [US, UK, FR, IT, ES, DE, NL, IN, AE]
+    display:
+      - flag image
+      - country name (desktop only)
+
+  payment_methods:
+    items: [PayPal, Visa, Mastercard, Maestro, Amex, Apple Pay, Amazon Pay]
+
+  shipping_partners:
+    image_path: "/images-q/footer/delivery/${settings().website}.svg"
+    dynamic: true (based on region)
+
+  security:
+    provider: Sectigo SSL
+    logo: /images-q/footer/Sectigo.svg
+
+dependencies:
+  qwik:
+    - component$
+    - useStore
+    - $
+  qwik-city:
+    - Link
+  unpic:
+    - Image
+  services:
+    - "~/utility/homepage-contents" (getHome, getFooter)
+    - "~/utility/share-content/share-contents" (getTrustIndicatorContent)
+  config:
+    - "~/config/settings" (settings)
+  layout:
+    - "~/routes/layout" (useLoadBanner)
+
+region_specific:
+  DE:
+    - Hides OurHelp component
+    - Hides contact info section
+  NL:
+    - Hides OurHelp component
+    - Hides contact info section
+
+external_links:
+  - Social media links (Facebook, Instagram, etc.)
+  - Terms and conditions
+  - Privacy policy
+
+internal_links:
+  - Footer navigation links (products, help, company info)
+
+images:
+  - Plant a tree icon
+  - Country flags (US, UK, FR, IT, ES, DE, NL, IN, AE)
+  - Payment logos (PayPal, Visa, Mastercard, Maestro, Amex, Apple, Amazon)
+  - Shipping partner logos (region-specific)
+  - Security badge (Sectigo)
+
+edge_cases:
+  - Region-specific contact info visibility (DE/NL hidden)
+  - Dynamic shipping logo based on region
+  - Accordion exclusive expansion (only one open at a time)
+  - External vs internal link handling (http vs relative)
+  - Current year in copyright (new Date().getFullYear())
+
+behavior:
+  - step: 1
+    action: "Consume promoBanner and shippingFooterBanner from the layout route loader (useLoadBanner)"
+  - step: 2
+    action: "Load static JSON data for homepage content (getHome), footer content (getFooter), and trust indicator content (getTrustIndicatorContent)"
+  - step: 3
+    action: "Initialize footerData store by mapping footer link sections with expanded=false and sequential id for accordion state"
+  - step: 4
+    action: "If promoBanner data exists, render HomeBottomBanner promotional section at the top of the footer"
+  - step: 5
+    action: "Render TrustIndicator component with bottomContent variant inside a centered container"
+  - step: 6
+    action: "Render plant-a-tree section with icon image and descriptive text from homepage JSON"
+  - step: 7
+    action: "If shippingFooterBanner data exists, render FooterShippingBanner with responsive images"
+  - step: 8
+    action: "Render OurHelp component unless the current region is DE or NL"
+  - step: 9
+    action: "On mobile (below md breakpoint), render contact info (email) and social media links centered, then footer link sections as an Accordion with exclusive expansion"
+  - step: 10
+    action: "On mobile accordion click, find and collapse the currently expanded section (if different from clicked), then toggle the clicked section's expanded state"
+  - step: 11
+    action: "On desktop (md and above), render footer links in a multi-column grid layout with contact info and social media in the rightmost column"
+  - step: 12
+    action: "Hide contact info section (How To Reach Us title and email) for DE and NL regions on desktop"
+  - step: 13
+    action: "Distinguish between internal links (rendered as Qwik Link for client-side navigation) and external links (rendered as plain <a> tags) by checking if href contains 'http'"
+  - step: 14
+    action: "Render worldwide regions section with country flag images for US, UK, FR, IT, ES, DE, NL, IN, AE; show country name labels only on desktop"
+  - step: 15
+    action: "Render trust elements section with three columns: payment partners (PayPal, Visa, Mastercard, Maestro, Amex, Apple Pay, Amazon Pay), shipping partners (region-specific logo from /images-q/footer/delivery/{region}.svg), and security badge (Sectigo SSL)"
+  - step: 16
+    action: "Render copyright section with dynamic year (new Date().getFullYear()) and Printerpix link"
+  - step: 17
+    action: "Render terms of service and privacy policy links from JSON data (dynamic hrefs from jsonFooter)"
+  - step: 18
+    action: "Render FreshDeskWidget component at the bottom for customer support chat"
+
+used_by: []
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  FooterLink:
+    description: A single navigation link entry
+    fields:
+      - name: name
+        type: string
+      - name: href
+        type: string
+
+  FooterLinkGroup:
+    description: A titled group of footer navigation links with runtime expansion state
+    fields:
+      - name: title
+        type: string
+      - name: links
+        type: "FooterLink[]"
+      - name: expanded
+        type: boolean
+        optional: true
+        notes: Added by useStore at runtime; not in JSON source
+      - name: id
+        type: number
+        optional: true
+        notes: Added by useStore at runtime (index)
+
+  SocialLink:
+    description: Social media link entry from jsonFooter.followUs.links
+    fields:
+      - name: name
+        type: string
+      - name: link
+        type: string
+      - name: image
+        type: string
+
+  ShippingFooterBanner:
+    description: Shipping banner data from useLoadBanner (json-service type)
+    fields:
+      - name: mobileShippingFooterBanner
+        type: string
+      - name: desktopShippingFooterBanner
+        type: string
+      - name: display
+        type: boolean
+      - name: background
+        type: string
+      - name: href
+        type: string
+        optional: true
+
+  PromoBanner:
+    description: Promotional banner data from useLoadBanner (json-service type)
+    fields:
+      - name: firstText1
+        type: string
+      - name: bgColor
+        type: string
+      - name: textColor
+        type: string
+      - name: bottomText1
+        type: string
+      - name: bottomText2
+        type: string
+      - name: bottomText3
+        type: string
+      - name: cta
+        type: "{ url: string; title: string; bgColor: string; textColor: string; mobileTextColor: string }"
+
+field_consumption:
+  useLoadBanner:
+    consumed:
+      - promoBanner: Passed to HomeBottomBanner; truthiness checked to conditionally render it
+      - shippingFooterBanner: Passed to FooterShippingBanner; truthiness checked to conditionally render it
+
+  jsonHome:
+    consumed:
+      - plant_tree: Rendered as paragraph text in the plant-a-tree section
+
+  jsonFooter:
+    consumed:
+      - footerLinks: Iterated to build accordion (mobile) and grid columns (desktop)
+      - howToReachUs.title: Section heading (hidden for DE and NL on both mobile and desktop)
+      - howToReachUs.email.name: Label before email link
+      - howToReachUs.email.value: mailto: href and link text
+      - followUs.title: Social section heading
+      - followUs.links: Social media icon links (name, link, image consumed)
+      - printerpixWorldwide.title: Worldwide section heading
+      - printerpixWorldwide.countries: Country name labels shown on desktop (indexed 0-8)
+      - securedPayment: Label above payment icons
+      - certifiedDelivery: Label above shipping icons
+      - securedBy: Label above Sectigo badge
+      - copyright: Copyright text prefix with dynamic year
+      - termsservice: Terms link text
+      - termsserviceHref: Used as href for terms link (dynamic, unlike FooterProductCategory which hardcodes it)
+      - privacy: Privacy link text
+      - privacyHref: Used as href for privacy link (dynamic)
+    ignored:
+      - howToReachUs.phone: Commented out; not rendered
+
+  trustIndicatorContent:
+    consumed:
+      - trustIndicators.bottomContent: Passed to TrustIndicator (variant="bottom")
+
+  settings:
+    consumed:
+      - website: Controls OurHelp visibility (≠ DE, ≠ NL), contact section visibility (≠ DE, ≠ NL on desktop; only ≠ DE on mobile), and shipping icon path
+
+visibility_map:
+  promo_banner:
+    condition: "promoBanner is truthy (from useLoadBanner)"
+    default: hidden
+
+  shipping_footer_banner:
+    condition: "shippingFooterBanner is truthy (from useLoadBanner)"
+    default: hidden
+
+  our_help_section:
+    condition: "settings().website !== 'DE' && settings().website !== 'NL'"
+    default: visible
+
+  how_to_reach_us_heading_mobile:
+    condition: "settings().website !== 'DE'"
+    default: visible
+    notes: Mobile check is !== 'DE' only; differs from desktop which also excludes NL
+
+  how_to_reach_us_contact_list_mobile:
+    condition: "settings().website !== 'DE'"
+    default: visible
+    notes: Mobile check is !== 'DE' only
+
+  how_to_reach_us_heading_desktop:
+    condition: "settings().website !== 'DE' && settings().website !== 'NL'"
+    default: visible
+
+  how_to_reach_us_contact_list_desktop:
+    condition: "settings().website !== 'DE' && settings().website !== 'NL'"
+    default: visible
+
+  mobile_footer_block:
+    condition: "always rendered; CSS visibility by Tailwind 'block md:hidden'"
+    default: visible on mobile only
+
+  desktop_footer_grid:
+    condition: "always rendered; CSS visibility by Tailwind 'hidden md:flex'"
+    default: visible on desktop only
+
+  country_name_labels:
+    condition: "always rendered; CSS visibility by Tailwind 'hidden md:block'"
+    default: hidden on mobile, visible on desktop

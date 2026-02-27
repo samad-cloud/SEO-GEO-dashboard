@@ -1,0 +1,122 @@
+name: UploadInput
+source: components/uploadcare/uploadcare.tsx
+description: >
+  Inline sub-component defined at the bottom of uploadcare.tsx. Renders a
+  single HTML file input element (type="file", multiple) that delegates click
+  and change events to QRL callbacks supplied by the parent (Uploadcare or
+  UploadModal). On click, it resets its own value to empty string so the same
+  file(s) can be re-selected after a prior upload. On change, it forwards the
+  native change event to handleChangeMultipleFiles. Carries an ARIA label for
+  accessibility. All upload logic lives in the parent; this component is
+  purely a styled, stateless input wrapper.
+
+exports:
+  - name: UploadInput
+    type: component$<UploadInputProps>
+    description: Non-exported inline component (not exported from the module)
+
+props:
+  - name: handleClick
+    type: "QRL<() => Promise<void>>"
+    required: true
+    description: >
+      QRL callback invoked inside the input's onClick handler, after the
+      input value has been reset. Supplied by Uploadcare (handleClick) which
+      conditionally calls handleAddToCart for upload_and_addcart mode.
+  - name: handleChangeMultipleFiles
+    type: "QRL<(e: any) => Promise<void>>"
+    required: true
+    description: >
+      QRL callback bound directly to onChange$. Receives the native change
+      event from which e.target.files is read by the parent handler to start
+      the upload flow.
+  - name: classes
+    type: string
+    required: true
+    description: >
+      CSS class string applied to the input element. Passed through from
+      the Uploadcare parent's own classes prop.
+  - name: id
+    type: string
+    required: false
+    description: >
+      HTML id attribute for the input. Defaults to the literal string
+      "upload" when not provided.
+
+component_structure:
+  - Single <input type="file"> element with multiple, aria-label, id,
+    class, onClick$, and onChange$ attributes. No child elements.
+
+behavior:
+  - On click:
+      1. The handleInputClick inner $ function fires.
+      2. e.target.value is set to empty string — resets the file input so
+         the same file(s) can be re-selected in a subsequent click without
+         the browser suppressing the change event.
+      3. handleClick() QRL is called (async, from parent scope).
+  - On change:
+      1. handleChangeMultipleFiles(e) QRL is called with the native event.
+      2. Parent reads e.target.files to extract the selected File objects.
+  - The multiple attribute is always present regardless of whether
+    single-file upload mode is intended.
+
+styling:
+  - class: passed through from parent classes prop (varies by consumer)
+  - aria-label: "Upload photos - drag and drop or click to browse" (static)
+  - id: "upload" (default) or value of id prop
+
+dependencies:
+  qwik:
+    - component$, $, type QRL from @builder.io/qwik
+
+used_by:
+  - Uploadcare
+  - UploadModal
+
+edge_cases:
+  - Value reset on click ensures re-selecting the same file triggers onChange
+    again (browser normally suppresses change if value unchanged).
+  - id defaults to "upload" — if multiple UploadInput instances appear on
+    the same page, duplicate ids are possible; callers should pass unique ids.
+  - The multiple attribute always allows selecting multiple files regardless
+    of the parent's single-file intent; file count validation is enforced
+    upstream by handleValidation in Uploadcare.
+
+notes:
+  - Not exported from the module. Only accessible within uploadcare.tsx scope.
+  - The reset of e.target.value happens synchronously before the async
+    handleClick() call, so there is no race condition.
+  - aria-label is hardcoded English text; it is not passed through the
+    qwik-speak translation system.
+
+types:
+  UploadInputProps:
+    description: Props interface for the UploadInput inline component
+    fields:
+      - name: handleClick
+        type: "QRL<() => Promise<void>>"
+      - name: handleChangeMultipleFiles
+        type: "QRL<(e: any) => Promise<void>>"
+      - name: classes
+        type: string
+      - name: id
+        type: string
+        optional: true
+
+field_consumption:
+  UploadInputProps:
+    consumed:
+      - handleClick: Called inside handleInputClick after value reset
+      - handleChangeMultipleFiles: Bound directly to onChange$
+      - classes: Applied as class attribute on the input
+      - id: Used for the id attribute; falls back to "upload" if absent
+    ignored: []
+
+visibility_map:
+  input_element:
+    condition: always rendered (no conditional logic inside UploadInput itself)
+    default: visible
+    notes: >
+      Visibility of UploadInput as a whole is controlled entirely by the
+      parent (Uploadcare renders it only when type !== "upload_replaced_image";
+      UploadModal renders it inside the Upload Photos button always).

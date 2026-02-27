@@ -1,0 +1,212 @@
+name: GuidelineSection
+source: components/guideline-section/guideline-section.tsx
+description: |
+  Displays holiday delivery guide section with deadline cards showing calendar dates
+  for various shipping options. Conditionally renders based on API data. Shows
+  expired deadlines with strikethrough styling.
+exports:
+  - default component (no props)
+
+props: {}
+
+component_structure:
+  - Fetches guideline data via useResource$ and getGuidelineSection service
+  - Main hero section with image + CTA (flex-row-reverse layout)
+  - Grid of delivery deadline cards below hero
+  - Each card shows: calendar icon, date number overlay, shipping type, deadline text
+  - Cards can be clickable (links) or static divs based on ctaUrl presence
+  - Uses conditional display based on holidayDeliveryGuide.display flag
+
+child_components:
+  - Resource: Qwik Resource component for async data
+  - Image: @unpic/qwik Image component with aspectRatio
+  - Link: Qwik City Link component
+
+data_structure:
+  holidayDeliveryGuide:
+    display: boolean
+    image: string (hero image URL)
+    heading: string
+    subHeading: string
+    description: string
+    sectionBgColor: string (CSS color)
+    mainTextColor: string (CSS color)
+    ctaText: string
+    ctaLink: string
+    ctaBgColor: string
+    ctaTextColor: string
+    data: array of deadline sections
+      - heading: string
+        text: string
+        ctaText: string
+        ctaUrl: string | undefined
+        imgSrc: string (calendar icon image)
+        deadline: string (ISO date) | undefined
+        sectionBgColor: string
+        textColor: string
+
+behavior:
+  - If display is false, renders nothing
+  - Hero section shows on left (desktop) with image on right
+  - Deadline cards render in flex wrap grid
+  - Date extraction: new Date(section.deadline).getDate()
+  - Expired check: isExpired(section.deadline) utility
+  - Expired deadlines get textDecoration: "line-through"
+  - If section.ctaUrl exists, card is wrapped in <a>, else <div>
+  - Matomo tracking on CTA clicks (CLICK_GUIDELINE_SECTION_CTA)
+
+styling:
+  - Responsive layout: flex-col on mobile, flex-row-reverse on desktop
+  - Hero image: 1/1 aspect ratio, object-cover
+  - Cards: basis-1/2 on mobile, lg:basis-0 lg:flex-grow on desktop
+  - Calendar date overlay: absolute z-[2], text-5xl md:text-7xl xl:text-8xl
+  - Card images: aspectRatio 105/62, w-4/5
+
+dependencies:
+  services:
+    - getGuidelineSection from ~/services/common-service
+  utilities:
+    - isExpired from ~/utility/date
+    - MatomoCategory, MatomoEvent from ~/utility/matomo
+    - pushMatomoEvent from ~/utility/matomo
+  components:
+    - Image from @unpic/qwik
+    - Link from @builder.io/qwik-city
+
+used_by: []
+
+security:
+  - Validate image URLs from API
+  - Sanitize heading/description text if contains user input
+  - Matomo events only track URLs, no PII
+
+notes:
+  - This is a promotional section, not core e-commerce functionality
+  - Typically used for seasonal campaigns (holiday deadlines)
+  - Deadline cards show calendar day number overlaid on calendar icon
+  - isExpired utility must handle timezone correctly for accurate strikethrough
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  HolidayDeliveryGuideResponse:
+    description: API response shape from getGuidelineSection() (from ~/services/common-service)
+    fields:
+      - name: holidayDeliveryGuide
+        type: HolidayDeliveryGuide
+
+  HolidayDeliveryGuide:
+    description: Main holiday delivery guide configuration object
+    fields:
+      - name: display
+        type: boolean
+      - name: order
+        type: number
+      - name: mainTextColor
+        type: string
+      - name: sectionBgColor
+        type: string
+      - name: subHeading
+        type: string
+      - name: heading
+        type: string
+      - name: description
+        type: string
+      - name: ctaLink
+        type: string
+      - name: ctaText
+        type: string
+      - name: ctaBgColor
+        type: string
+      - name: ctaTextColor
+        type: string
+      - name: image
+        type: string
+      - name: data
+        type: "Array<HolidayDeadlineItem>"
+
+  HolidayDeadlineItem:
+    description: Individual deadline card in the grid
+    fields:
+      - name: sectionBgColor
+        type: string
+      - name: textColor
+        type: string
+      - name: heading
+        type: string
+      - name: text
+        type: string
+      - name: ctaText
+        type: string
+      - name: ctaTextColor
+        type: string
+      - name: ctaBackgroundColor
+        type: string
+      - name: imgSrc
+        type: string
+      - name: ctaUrl
+        type: string
+      - name: deadline
+        type: string
+
+field_consumption:
+  HolidayDeliveryGuide:
+    consumed:
+      - display: Guard condition — component renders nothing when false
+      - image: Hero section image src
+      - heading: Hero section heading text and image alt fallback
+      - subHeading: Hero section subheading paragraph
+      - description: Hero section description paragraph
+      - sectionBgColor: Inline style backgroundColor on hero text block
+      - mainTextColor: Inline style color on hero text block
+      - ctaText: Hero CTA button label
+      - ctaLink: Hero CTA button href
+      - ctaBgColor: Inline style backgroundColor on hero CTA button
+      - ctaTextColor: Inline style color on hero CTA button
+      - data: Array of deadline cards rendered in the grid below hero
+    ignored:
+      - order: Present in API response but not used in render logic
+
+  HolidayDeadlineItem:
+    consumed:
+      - ctaUrl: Determines whether card is rendered as <a> (truthy) or <div> (falsy)
+      - imgSrc: Calendar icon image src
+      - deadline: Parsed via new Date().getDate() for day number overlay; checked by isExpired()
+      - heading: Displayed as text in card body; used as React key; alt fallback
+      - text: Displayed as bold text in card body; alt fallback
+      - ctaText: Displayed as text in card footer
+      - sectionBgColor: Inline style backgroundColor on card footer
+      - textColor: Inline style color on heading, text, and ctaText paragraphs
+    ignored:
+      - ctaTextColor: Present in type definition but not applied in render (textColor used instead)
+      - ctaBackgroundColor: Present in type definition but not applied in render (sectionBgColor used instead)
+
+visibility_map:
+  entire_component:
+    condition: "data !== null AND data.holidayDeliveryGuide.display === true"
+    default: hidden
+    notes: Resource onResolved returns null/false render when data is null or display is false
+  resource_pending_state:
+    condition: "useResource$ is loading"
+    default: hidden
+    notes: Renders empty <div></div> while API call is in progress
+  resource_error_state:
+    condition: "useResource$ rejects"
+    default: hidden
+    notes: Renders error message div with error.message text
+  deadline_card_as_anchor:
+    condition: "section.ctaUrl is truthy"
+    default: hidden
+    notes: Card rendered as clickable <a> with href and Matomo tracking when ctaUrl present
+  deadline_card_as_div:
+    condition: "section.ctaUrl is falsy"
+    default: visible
+    notes: Card rendered as static <div> when no ctaUrl
+  date_number_overlay:
+    condition: "section.deadline is truthy"
+    default: hidden
+    notes: Large date number absolutely positioned over calendar icon; hidden when deadline is undefined/empty
+  expired_strikethrough:
+    condition: "isExpired(section.deadline) === true"
+    default: hidden
+    notes: textDecoration line-through applied to card wrapper and date overlay when deadline is past

@@ -1,0 +1,260 @@
+name: ShopByCategory
+source: src/components/web-component/shop-by-category.tsx
+description: |
+  Category-based shopping guide section with two distinct visual modes controlled
+  by data.largeStyling. Standard mode (largeStyling=false) renders compact 122px-wide
+  cards with a bottom title label. Large mode (largeStyling=true) renders wide hero-style
+  cards (200px/250px/350px responsive) with an overlaid white card panel showing title
+  and "Explore Gifts" CTA — the overlay is styled differently for desktop (absolute
+  overlay with Image icon) vs. mobile (smaller overlay without icon). Both modes include
+  horizontal overflow scroll for many items and fire Matomo analytics on click.
+
+exports:
+  - name: default
+    type: component$<Props>
+    description: Default Qwik component export
+
+props:
+  - name: data
+    type: ShopByCategory
+    required: true
+    description: Category shopping guide data including heading, styling flag, categories array, and imageAspectRatio
+
+component_structure:
+  mode_selector:
+    condition: "!data.largeStyling"
+    standard_mode:
+      root_element: div
+      id: "{data.heading.toLowerCase().split(' ').join('-')}"
+      class: "home-category w-full border-b border-base-mainBorder px-[10px] lg:px-0 text-base-mainText container mx-auto"
+      children:
+        - h2 heading (home-category-name, configurable alignment)
+        - div scroll container
+        - flex row of anchor cards (122px width, image background div + title label)
+    large_mode:
+      root_element: div
+      id: "{data.heading.toLowerCase().split(' ').join('-')}"
+      class: "home-category my-[25px] w-full border-b border-base-mainBorder px-[10px] lg:px-0 text-base-mainText"
+      note: container mx-auto NOT applied in largeStyling mode
+      children:
+        - h2 heading (text-2xl md:text-4xl font-bold, configurable alignment)
+        - div scroll container
+        - flex row of anchor cards with absolute overlays for desktop and mobile
+
+child_components:
+  - name: Image
+    source: "@unpic/qwik"
+    purpose: "Large mode only: renders the arrow/go icon (/images-q/icons/go.svg) in the desktop overlay"
+    props:
+      - aspectRatio: "3/1"
+      - src: "/images-q/icons/go.svg"
+      - class: "max-w-[60px] inline"
+
+data_structure:
+  ShopByCategory:
+    display:
+      type: boolean
+      description: Whether to show this section (checked by parent, not component itself)
+    order:
+      type: number
+      description: Display order on page
+    heading:
+      type: string
+      description: Section heading text; also used to compute div id (lowercased, spaces→hyphens)
+    largeStyling:
+      type: boolean
+      description: When true, renders large hero-style cards; when false, renders compact cards
+    headingPosition:
+      type: string
+      description: >
+        Heading text alignment. Checked via `'center' === data.headingPosition.toLowerCase()`.
+        Only center alignment applies a text-center class; all other values render left-aligned.
+    categories:
+      type: "Categories[]"
+      description: Array of category items to display
+    imageAspectRatio:
+      type: string
+      description: Aspect ratio string for category images (e.g. "1/1"); falls back to "1/1" if falsy
+
+  Categories:
+    title:
+      type: string
+      description: Category display name
+    imgSrc:
+      type: string
+      description: >
+        Category image URL — used as CSS background-image with `url(.{item.imgSrc})` prefix.
+        Note the leading dot: the URL is prefixed with a dot in the template.
+    link:
+      type: string
+      description: Navigation href for the category anchor
+
+behavior:
+  - action: "Select rendering mode"
+    details: >
+      If !data.largeStyling: renders standard compact card mode.
+      If data.largeStyling: renders large hero card mode.
+      The ternary is at the root of the component return.
+  - action: "Compute section id from heading"
+    details: >
+      id = data.heading.toLowerCase().split(' ').join('-')
+      Example: "Shop by Category" → "shop-by-category"
+  - action: "Apply heading alignment"
+    details: >
+      Both modes check: 'center' === data.headingPosition.toLowerCase()
+      If true: adds text-center class to h2.
+      Standard mode: default class is font-semibold; large mode: text-2xl md:text-4xl font-bold.
+  - action: "Render standard mode category cards"
+    details: >
+      Each category is an anchor with href=item.link.
+      Image is a background-image div: `url(.${item.imgSrc})`, w-[122px], aspectRatio=data.imageAspectRatio||'1/1'.
+      Below image: div with py-5 text-center, span font-semibold text-sm with item.title.
+      Card has box-shadow: "rgba(99, 99, 99, 0.2) 0px 2px 8px 0px".
+  - action: "Render large mode category cards"
+    details: >
+      Each category is an anchor with href=item.link.
+      Image is a background-image div: `url(.${item.imgSrc})`, w-[200px] md:w-[250px] lg:w-[350px],
+      aspectRatio=data.imageAspectRatio||'1/1'.
+      Desktop overlay (hidden lg:flex): absolute white panel at bottom with item.title (bold),
+      "Explore Gifts" text from i18n (t("home.exploreGifts")), and go.svg Image icon.
+      Mobile overlay (flex lg:hidden): separate absolute white panel at bottom with item.title
+      and t("home.exploreGifts") text (no icon).
+  - action: "Fire Matomo analytics on click"
+    details: >
+      Both standard and large mode cards fire on anchor onClick$:
+      pushMatomoEvent(["trackEvent", MatomoCategory.COMMON, MatomoEvent.CLICK_SHOP_BY_CATEGORY, item.link])
+  - action: "i18n translation"
+    details: >
+      Large mode uses inlineTranslate() → t("home.exploreGifts") for the explore text in overlays.
+      Standard mode does NOT use any translation strings.
+
+styling:
+  standard_mode:
+    root: "home-category w-full border-b border-base-mainBorder px-[10px] lg:px-0 text-base-mainText container mx-auto"
+    heading: "home-category-name font-semibold w-full text-base-mainText [+ text-center if headingPosition=center]"
+    scroll_container: "pt-4 pb-6 overflow-x-auto w-full"
+    card_row: "flex flex-row items-center justify-between gap-3 px-4"
+    card: "rounded-md link_shop_by_category--{index} [box-shadow: rgba(99,99,99,0.2) 0px 2px 8px 0px]"
+    image_div: "w-[122px] bg-center bg-cover rounded-tl-md rounded-tr-md [aspectRatio]"
+    title_area: "py-5 text-center"
+    title: "font-semibold text-sm"
+  large_mode:
+    root: "home-category my-[25px] w-full border-b border-base-mainBorder px-[10px] lg:px-0 text-base-mainText"
+    heading: "home-category-name text-2xl md:text-4xl font-bold w-full text-base-mainText [+ text-center if headingPosition=center]"
+    card: "relative rounded-md link_shop_by_category--{index} [box-shadow]"
+    image_div: "w-[200px] md:w-[250px] lg:w-[350px] bg-center bg-cover rounded-tl-md rounded-tr-md aspect-"
+    desktop_overlay: "absolute left-[50%] -translate-x-[50%] bottom-[24px] w-[80%] border-[#FBF6F7] rounded bg-white p-4 flex-col hidden lg:flex"
+    mobile_overlay: "flex lg:hidden w-[80%] z-[5] absolute bg-[#fff] border border-[#FBF6F7] px-3 py-3 rounded left-1/2 transform -translate-x-1/2 bottom-[6px] -translate-y text-[14px] transition duration-300 origin-bottom-left block lg:hidden scale-100 opacity-90"
+
+dependencies:
+  qwik:
+    - component$ from @builder.io/qwik
+  routing:
+    - (standard anchor <a> tags used, not Link from qwik-city)
+  components:
+    - Image from @unpic/qwik (large mode only)
+  i18n:
+    - inlineTranslate from qwik-speak (large mode only, for home.exploreGifts)
+  analytics:
+    - MatomoCategory, MatomoEvent, pushMatomoEvent from ~/utility/matomo
+  types:
+    - ShopByCategory from ~/services/shop-by-category-service
+
+used_by:
+  - ShoppingGuide
+
+security:
+  - item.link values come from CMS — validate to prevent open redirect or javascript: URIs
+  - item.imgSrc is used as CSS background-image with a leading dot prefix — sanitize to prevent CSS injection
+  - data.heading used directly in div id generation — benign for id attributes but heading text is rendered as-is
+
+edge_cases:
+  - If data.headingPosition is not "center" (case-insensitive), heading renders without text-center
+  - If data.imageAspectRatio is falsy, falls back to "1/1" for the aspect ratio style
+  - If data.categories is empty, the flex row renders empty (no scroll)
+  - The image background-image URL is `url(.${item.imgSrc})` — the leading dot may break absolute URLs; expected value is a relative path like "/category/image.jpg"
+
+notes:
+  - Standard and large modes share the same data type but render visually distinct layouts
+  - Large mode does NOT apply "container mx-auto" — full-width layout
+  - The large mode image div has a stray trailing "aspect-" class with no value (likely a bug in source)
+  - Mobile overlay in large mode has `block lg:hidden` class twice (redundant with `flex lg:hidden`)
+  - Analytics class on cards uses `link_shop_by_category--{index}` in both modes
+  - Standard mode uses raw `<a>` tags; large mode also uses `<a>` tags (not Qwik Link)
+  - The go.svg icon in the desktop overlay is loaded from /images-q/icons/go.svg (local path)
+
+types:
+  Props:
+    description: Component props interface
+    fields:
+      - name: data
+        type: ShopByCategory
+
+  ShopByCategory:
+    description: Category shopping guide section data
+    source: ~/services/shop-by-category-service
+    fields:
+      - name: display
+        type: boolean
+      - name: order
+        type: number
+      - name: heading
+        type: string
+      - name: largeStyling
+        type: boolean
+      - name: headingPosition
+        type: string
+      - name: categories
+        type: "Categories[]"
+      - name: imageAspectRatio
+        type: string
+
+  Categories:
+    description: Individual category item
+    fields:
+      - name: title
+        type: string
+      - name: imgSrc
+        type: string
+      - name: link
+        type: string
+
+field_consumption:
+  ShopByCategory:
+    consumed:
+      - heading: Rendered as h2; also used to generate div id (lowercased, spaces→hyphens)
+      - largeStyling: Controls which rendering mode is used (ternary root condition)
+      - headingPosition: Checked `=== 'center'` (lowercased) to apply text-center class
+      - categories: Iterated to render each category card
+      - imageAspectRatio: Used as CSS aspectRatio on image div; falls back to "1/1" if falsy
+    ignored:
+      - display: Checked by parent (WebContentsComponent), not by this component
+      - order: Checked by parent for sorting, not used internally
+
+  Categories:
+    consumed:
+      - title: Rendered as text label in card
+      - imgSrc: Used as CSS background-image (url(.{imgSrc}))
+      - link: anchor href and Matomo event label
+    ignored: []
+
+visibility_map:
+  standard_mode:
+    condition: "!data.largeStyling"
+    default: visible when largeStyling is false
+
+  large_mode:
+    condition: "data.largeStyling === true"
+    default: visible when largeStyling is true
+
+  heading_center_alignment:
+    condition: "'center' === data.headingPosition.toLowerCase()"
+    default: left-aligned (no text-center class)
+
+  large_mode_desktop_overlay:
+    condition: "always rendered but hidden via hidden lg:flex classes"
+    default: hidden on mobile, visible on desktop (lg+)
+
+  large_mode_mobile_overlay:
+    condition: "always rendered but hidden via flex lg:hidden classes"
+    default: visible on mobile, hidden on desktop (lg+)

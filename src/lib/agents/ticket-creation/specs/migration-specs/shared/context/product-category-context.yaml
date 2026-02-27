@@ -1,0 +1,200 @@
+name: Product and Category Context
+source:
+  path: src/context/product-category-context.ts
+  lines: 1-40
+  type: qwik-context
+
+description: |
+  Defines three Qwik contexts used across the e-commerce storefront:
+  1. ProductContext - Provides product page data (single product)
+  2. CategoryContext - Provides category page data (product listings)
+  3. WebPageTypeContext - Tracks current page type (product vs category)
+
+  These contexts are consumed by components throughout the app to access
+  product/category data without prop drilling.
+
+exports:
+  - name: IProductDataContext
+    type: interface
+    description: Shape of data in ProductContext
+
+  - name: ProductContext
+    type: ContextId<IProductDataContext>
+    description: Context for product page data
+    key: "product"
+
+  - name: ICategoryContext
+    type: interface
+    description: Shape of data in CategoryContext
+
+  - name: CategoryContext
+    type: ContextId<ICategoryContext>
+    description: Context for category page data
+    key: "category"
+
+  - name: WebPageTypeContext
+    type: ContextId<Signal<WebPageTypeEnum>>
+    description: Context for tracking current page type
+    key: "webpagetype"
+
+behavior:
+  ProductContext:
+    description: |
+      Provides data for a single product page. Includes product details, coupon codes,
+      filter options, size options, theme data, and free shipping minimum quantity data.
+
+    usage: |
+      - Provider should be set in product page routes
+      - Consumers: Product page components, AddToCart buttons, size selectors, etc.
+
+  CategoryContext:
+    description: |
+      Provides data for category pages (product listings). Includes category details,
+      product JSON data for delivery deadlines, and quick links.
+
+    usage: |
+      - Provider should be set in category page routes
+      - Consumers: Category page components, product list, filters, etc.
+
+  WebPageTypeContext:
+    description: |
+      Tracks whether current page is a product page or category page.
+      Uses a Signal so components can reactively respond to page type changes.
+
+    usage: |
+      - Provider should be set at root or per-page level
+      - Consumers: Components that behave differently on product vs category pages
+
+data_flow:
+  - Product/Category routes fetch data via routeLoader$
+  - Route provides context via useContextProvider()
+  - Child components consume via useContext()
+
+dependencies:
+  internal:
+    - ~/services/category-service (CategoryQuickLinkSection type)
+    - ~/services/json-service (DeliveryDeadlineJSON type)
+    - ~/services/product-category-service (ProductOrCategoryLoadResponse, WebPageTypeEnum types)
+    - ~/services/product-page-service (FreeShippingMinimumQuantityData type)
+
+  external:
+    - "@builder.io/qwik" (Signal, createContextId)
+
+types:
+  IProductDataContext:
+    description: Product page context data
+    extends: Pick<ProductOrCategoryLoadResponse, ...>
+    fields:
+      - product: object (full product details)
+      - couponCode: string | null
+      - friendlyUrl: string (URL slug)
+      - machineToken: string (user session token)
+      - filterIndex: number | null
+      - refCode: string | null (referral code)
+      - firstSlideUrl: string | null (first product image)
+      - preselectedRefId: string | number | null
+      - sizeOptions: array (available sizes)
+      - instantProductThemeData: object | null (theme data for instant products)
+      - svgThemeId: string | number | null
+      - editor: object | null (editor config)
+      - themeUrl: string | null
+      - selectedFilter: object | null
+      - freeShippingMinimumQuantityData: FreeShippingMinimumQuantityData | null
+
+  ICategoryContext:
+    description: Category page context data
+    extends: Pick<ProductOrCategoryLoadResponse, ...>
+    fields:
+      - category: object (full category details)
+      - couponCode: string | null
+      - productJsonData: DeliveryDeadlineJSON | null (delivery deadline info for products)
+      - categoryQuickLinks: CategoryQuickLinkSection[] (quick navigation links)
+
+  WebPageTypeEnum:
+    description: Enum for page type
+    values:
+      - "product"
+      - "category"
+
+  FreeShippingMinimumQuantityData:
+    description: Free shipping threshold data
+    fields:
+      - minimumQuantity: number
+      - (other fields defined in product-page-service)
+
+  DeliveryDeadlineJSON:
+    description: Delivery deadline data for products
+    fields:
+      - (fields defined in json-service)
+
+  CategoryQuickLinkSection:
+    description: Quick link section for category navigation
+    fields:
+      - (fields defined in category-service)
+
+used_by:
+  - "~/routes/layout-category.tsx"
+  - "~/routes/layout-categoryproduct.tsx"
+  - "~/routes/layout-product.tsx"
+  - "~/routes/layout-instantproduct.tsx"
+  - "~/routes/[...productCategory]/index@categoryproduct.tsx"
+  - "~/components/category-page/category-page-top-banner-v2.tsx"
+  - "~/components/category-page/containers/common-category-container.tsx"
+  - "~/components/category-page/quick-view.tsx"
+  - "~/components/marketing-page/marketing-page-hero.tsx"
+  - "~/components/product-page/bulk-pricing.tsx"
+  - "~/components/product-page/bulk-pricing-v3.tsx"
+  - "~/components/product-page/bulk-pricing-v4.tsx"
+  - "~/components/product-page/bulk-pricing-accordion.tsx"
+  - "~/components/product-page/option-panel.tsx"
+  - "~/components/product-page/option-panel-v2.tsx"
+  - "~/components/product-page/option-panel-v3.tsx"
+  - "~/components/product-page/option-panel-v4.tsx"
+  - "~/components/product-page/option-panel-v5.tsx"
+  - "~/components/product-page/option-canvas-prints-panel.tsx"
+  - "~/components/product-page/option-canvas-prints-panel-hub.tsx"
+  - "~/components/product-page/option-fixed-theme-cards-panel.tsx"
+  - "~/components/product-page/option-photo-cards-panel.tsx"
+  - "~/components/product-page/option-ryzan-panel.tsx"
+  - "~/components/product-page/option-ryzan-panel-v2.tsx"
+  - "~/components/product-page/instant-product-option-panel.tsx"
+  - "~/components/product-page/product-delivery-date-v2.tsx"
+  - "~/components/product-page/product-page-top-banner.tsx"
+  - "~/components/product-page/product-page-top-banner-v2.tsx"
+  - "~/components/product-page/product-shop-design.tsx"
+  - "~/components/product-page/product-countdown-timer/product-flip-clock-v2.tsx"
+  - "~/components/product-page/product-carousel/product-carousel.tsx"
+  - "~/components/product-page/product-carousel/product-carousel-v2.tsx"
+  - "~/components/product-page/product-carousel/product-carousel-modern.tsx"
+  - "~/components/product-page/containers/product-page-container.tsx"
+  - "~/components/product-page/containers/product-page-selection.tsx"
+  - "~/components/product-page/containers/instant-product-page-container.tsx"
+  - "~/components/product-page/containers/templates/product-page-base-template.tsx"
+  - "~/components/product-page/containers/templates/product-page-basic-template.tsx"
+  - "~/components/product-page/containers/templates/product-page-fixed-template.tsx"
+  - "~/components/product-page/containers/templates/product-page-fixed-theme-template.tsx"
+  - "~/components/product-page/containers/templates/product-page-hub-template.tsx"
+  - "~/components/product-page/containers/templates/product-page-hub-chilld-template.tsx"
+  - "~/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-base-template.tsx"
+  - "~/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-bundled-template.tsx"
+  - "~/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-hub-bundled-template.tsx"
+  - "~/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-new-template.tsx"
+  - "~/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-new-template-v3.tsx"
+  - "~/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-template-v2.tsx"
+  - "~/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-factory.tsx"
+  - "~/components/product-page/containers/photo-calendars/photo-calendars-base-template.tsx"
+  - "~/components/product-page/containers/photo-calendars/photo-calendars-baloo-radio-template.tsx"
+  - "~/components/product-page/containers/photo-calendars/photo-calendars-daisy-template.tsx"
+  - "~/components/product-page/containers/photo-calendars/photo-calendars-jbc2024-template.tsx"
+  - "~/components/product-page/containers/photo-calendars/photo-calendars-factory.tsx"
+
+security:
+  - machineToken is sensitive, should not be logged or exposed
+  - Product/category data is public, but machineToken must be protected
+
+edge_cases:
+  - Context may be null if not provided (components should handle)
+  - freeShippingMinimumQuantityData may be null (no free shipping for product)
+  - couponCode may be null (no coupon applied)
+  - Various optional fields may be null depending on product/category type
+

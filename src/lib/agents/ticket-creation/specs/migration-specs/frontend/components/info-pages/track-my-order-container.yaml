@@ -1,0 +1,615 @@
+name: TrackMyOrderContainer
+source: src/components/track-my-order-page/containers/track-my-order-container.tsx
+description: |
+  Order tracking page with search form, multi-package selection, visual timeline,
+  and shipment details. Fetches tracking data from API based on order number,
+  displays progress bar, tracking history, and carrier link. Handles URL state
+  for sharing tracking links. Includes FAQ section and responsive design.
+
+exports:
+  - name: default
+    type: component
+    signature: component$(() => JSX.Element)
+    description: Main tracking container with form, tracking timeline, and FAQ
+
+  - name: Head
+    type: function
+    signature: () => DocumentHead
+    description: SEO metadata with robots: none
+
+component_structure:
+  type: container_with_form
+  layout: |
+    <div class="my-[50px] px-[15px]">
+      <h1 class="text-center font-medium mb-2 text-[26px]">
+        {track your order title}
+      </h1>
+      <div class="p-7">
+        {/* Order Number Search Form */}
+        <form onSubmit={submitOrderNumber}>
+          <input name="orderNumber" placeholder="Enter order number" required />
+          <button type="submit">
+            <SVGIcon name="search" />
+          </button>
+        </form>
+
+        {/* Multi-Order Package Selector (if multiple packages) */}
+        {multiOrders.length > 0 && <MultiOrderSelect />}
+
+        {/* Loading Spinner */}
+        {loading && <SVGIcon name="spinner" class="animate-spin" />}
+
+        {/* Tracking Timeline */}
+        {!loading && hasTracking && (
+          <>
+            <TrackingHistory trackingValue={computed} />
+            <ShipmentDetail
+              trackingCode={code}
+              carrierLink={link}
+              trackingMessage={message}
+            />
+          </>
+        )}
+
+        {/* Error State */}
+        {status === "failed" && <h3>Invalid Order Number</h3>}
+
+        {/* FAQ Section */}
+        <Faq />
+      </div>
+    </div>
+
+forms:
+  - name: orderNumberSearchForm
+    fields:
+      - name: orderNumber
+        type: text
+        validation: required
+        placeholder: i18n key
+        bind_to: trackingNo signal
+    submit_handler: submitOrderNumber
+    prevent_default: true
+    description: |
+      Searches for order tracking data by order number.
+      Clears multiOrders and fetches fresh tracking data.
+      Does NOT call external API directly - uses fetchTrackingData QRL.
+
+child_components:
+  - name: MultiOrderSelect
+    type: internal_component
+    props:
+      - multiOrders: Array<{CONumber, InvoiceNumber}>
+      - selectedOrder: Signal<number | null>
+      - fetchData: QRL<(orderNumber: string) => Promise<void>>
+    description: |
+      Tab selector for orders with multiple packages.
+      Displays "Package N / Total" buttons in pink/white toggle style.
+      Calls fetchData with CONumber when package clicked.
+
+  - name: TrackingHistory
+    type: internal_component
+    props:
+      - trackingValue: ComputedSignal containing shipment details and timeline
+    description: |
+      Visual timeline with progress bar, checkmarks, and status messages.
+      Displays two rows: top row with icons/lines, bottom row with dates/times.
+      Shows delivered status or final empty circle for pending delivery.
+      Includes hover popups for condensed view on mobile.
+
+  - name: ShipmentDetail
+    type: internal_component
+    props:
+      - trackingCode: string
+      - carrierLink: string
+      - trackingMessage: string (optional)
+    description: |
+      Displays tracking code and link to carrier site.
+      Shows tracking message if no carrier link available.
+      Button styled in pink (#E40080) linking to external carrier.
+
+  - name: Faq
+    type: internal_component
+    props: none
+    description: |
+      Static FAQ section with common tracking questions.
+      Includes questions about order status, missing items, and delivery issues.
+      Links to contact-us page with current site domain.
+
+api_calls:
+  - endpoint: getTrackingData
+    method: via service function
+    service: ~/services/tracking-service
+    parameters:
+      - siteCode: number (from hostname)
+      - orderNumber: string (from form or URL)
+    returns: |
+      {
+        Tracking: Array<TrackingItem> where TrackingItem = {
+          CONumber: string;
+          InvoiceNumber: number;
+          Updates?: {
+            ClassName: string; // includes "deliveredStatus" if delivered
+            ShipmentDate: string;
+            ShipmentTime: string;
+            LocalTimeZone: string;
+            MessageTitle: string;
+            MessageBody: string;
+            Location: string;
+          };
+        }
+      }
+    response_handling: |
+      IF Tracking[0].Updates exists:
+        - Single shipment or main shipment with tracking
+        - Store in orderTrackingData.Tracking
+        - Update URL with InvoiceNumber and CONumber
+      ELSE:
+        - Multiple packages without tracking yet
+        - Store in orderTrackingData.multiOrders
+        - Fetch tracking for first package (or selected package)
+        - Update URL with selected package numbers
+
+      Error handling:
+        - Catch failures, set status to "failed"
+        - Clear Tracking and multiOrders
+        - Display invalid number message
+
+state_management:
+  signals:
+    - name: loading
+      type: Signal<boolean>
+      initial: true
+      usage: Show spinner during API calls
+
+    - name: selectedOrderIndex
+      type: Signal<number | null>
+      initial: null
+      usage: Track which package is selected in multi-order view
+
+    - name: trackingNo
+      type: Signal<string | null>
+      initial: from URL params (trackingNo)
+      usage: Current order number being tracked
+
+    - name: packageNo
+      type: Signal<string | null>
+      initial: from URL params (packageNo)
+      usage: Current package number (for multi-package orders)
+
+  stores:
+    - name: orderTrackingData
+      type: useStore with deep reactivity
+      fields:
+        - Tracking: Array<TrackingItem>
+        - multiOrders: Array<{CONumber, InvoiceNumber}>
+        - status: null | "success" | "failed"
+      description: Main data store for tracking information
+
+  computed:
+    - name: trackingValue
+      type: useComputed$
+      dependencies: [orderTrackingData.Tracking]
+      returns: |
+        {
+          shipmentDetails: {
+            trackingCode: string;
+            carrierLink: string;
+            trackingMessage?: string;
+          };
+          progressBarValue: number;
+          isOrderDeliverd: boolean;
+          trackingHistory: Array<{
+            dayInWeek: string;
+            fullDate: string;
+            messageTitle: string;
+            messageBody: string;
+            timeStatus: string;
+            location: string;
+            isDeliveredItem: boolean;
+          }>;
+        }
+      description: Computed tracking data with formatted dates and status
+
+url_management:
+  query_params:
+    - trackingNo: order number
+    - packageNo: package number (optional, for multi-package orders)
+
+  update_behavior:
+    - Updates URL via window.history.replaceState without page reload
+    - Sets trackingNo and packageNo in search params
+    - Allows sharing of tracking links with pre-filled order info
+
+  initial_load:
+    - Reads trackingNo and packageNo from location.url.searchParams
+    - Triggers fetchTrackingData in useTask$ if trackingNo exists
+
+service_functions:
+  - name: getTrackingData
+    source: ~/services/tracking-service
+    description: Fetches tracking data from API
+
+  - name: getShipmentDetails
+    source: ~/services/tracking-service
+    description: Extracts shipment details from tracking data
+
+  - name: getProgressBarValue
+    source: ~/services/tracking-service
+    description: Calculates progress percentage for visual timeline
+
+  - name: getDayInWeek
+    source: ~/utility/date
+    description: Formats date to day name
+
+  - name: getFullDate
+    source: ~/utility/date
+    description: Formats date to full date string
+
+  - name: getSiteCode
+    source: ~/services/server
+    description: Determines site code from hostname
+
+  - name: getSiteSetting
+    source: ~/services/server
+    description: Returns site-specific settings (used for domain in FAQ)
+
+  - name: getUrlParams
+    source: ~/utility/http
+    description: Extracts query params from location
+
+i18n:
+  translation_keys:
+    - track_your_order.title
+    - track_your_order.label
+    - track_your_order.placeholder
+    - track_your_order.package (with interpolation: "Package {N} / {Total}")
+    - track_your_order.multi_shipments_inform
+    - track_your_order.invalid_number
+    - track_your_order.your_tracking_number
+    - track_your_order.real_time_update (contains HTML)
+    - track_your_order.view_courier
+    - track_your_order.faq
+    - track_your_order.where_order
+    - track_your_order.track_order_status_way
+    - track_your_order.missing_item_order
+    - track_your_order.multi_shipments_note
+    - track_your_order.check_status_missing_item
+    - track_your_order.why_order_not_delivered
+    - track_your_order.reason_title
+    - track_your_order.reason_1
+    - track_your_order.reason_2
+    - track_your_order.reason_3
+    - track_your_order.reason_4
+    - track_your_order.untraced_service_note (contains HTML)
+    - track_your_order.please_contact_on
+    - track_your_order.contact_us_link
+    - track_your_order.meta.title
+    - track_your_order.meta.description
+    - track_your_order.meta.keywords
+
+behavior:
+  - step: 1
+    action: "Initialize component state: loading signal (true), selectedOrderIndex signal (null), trackingNo and packageNo signals from URL query parameters, and orderTrackingData store with empty Tracking array, empty multiOrders, and null status"
+  - step: 2
+    action: "Define updateUrl QRL that updates browser URL search params (trackingNo and packageNo) using window.history.replaceState without page reload, enabling shareable tracking links"
+  - step: 3
+    action: "Define fetchTrackingData QRL that: sets loading=true, gets site code from hostname, calls getTrackingData API. If response has Updates on first tracking item, stores tracking data and updates URL. If no Updates (multi-package), stores multiOrders, fetches tracking for selected/first package, and updates URL. On error, clears data and sets status='failed'. Sets loading=false when done."
+  - step: 4
+    action: "On initial load (useTask$), if trackingNo exists in URL, automatically fetch tracking data for that order number with optional packageNo"
+  - step: 5
+    action: "Compute trackingValue from orderTrackingData.Tracking: extracts shipment details (tracking code, carrier link, message), calculates progress bar value, determines if order is delivered, and maps tracking history with formatted dates, times, timezones, message titles/bodies, and locations"
+  - step: 6
+    action: "Render search form with order number input. On submit, clear multiOrders and fetch tracking data for entered order number"
+  - step: 7
+    action: "If status is set: show multi-order package tab selector (if multiple packages exist) with numbered buttons. Clicking a package tab fetches tracking for that package's CONumber."
+  - step: 8
+    action: "If status is 'failed', show 'Invalid Order Number' message. If loading, show spinner. If tracking data exists and not loading, render TrackingHistory timeline with progress indicators and ShipmentDetail with tracking code and carrier link."
+  - step: 9
+    action: "TrackingHistory renders a visual timeline: top row with circle indicators (pink checkmarks for completed, black filled for pending, empty circle for future delivery), connected by lines. Bottom row shows day of week, full date, and message body. Condensed hover tooltips appear on medium screens when history has more than 4 items."
+  - step: 10
+    action: "ShipmentDetail shows tracking code and carrier link button (pink #E40080). If no carrier link but tracking message exists, shows message text. If carrier link contains 'https://', shows tracking number, real-time update note, and 'View courier' button linking to external carrier site."
+  - step: 11
+    action: "Render static FAQ section at bottom with common tracking questions: where is my order, missing items, why not delivered (with reasons list), and untraced service note with HTML content. Includes link to contact-us page using current site domain."
+
+used_by:
+  - "~/routes/track-my-order/index.tsx"
+  - "~/routes/ou-est-ma-commande/index.tsx"
+
+dependencies:
+  qwik:
+    - $
+    - component$
+    - QRL
+    - Signal
+    - useComputed$
+    - useSignal
+    - useStore
+    - useTask$
+  qwik_city:
+    - Link
+    - useLocation
+  qwik_speak:
+    - inlineTranslate
+  qwik_build:
+    - isBrowser
+  components:
+    - SVGIcon: ~/components/svg-icon/svg-icon
+  services:
+    - getSiteCode: ~/services/server
+    - getSiteSetting: ~/services/server
+    - getTrackingData: ~/services/tracking-service
+    - getProgressBarValue: ~/services/tracking-service
+    - getShipmentDetails: ~/services/tracking-service
+    - OrderTrackingResponse: ~/services/tracking-service (type)
+    - TrackingItem: ~/services/tracking-service (type)
+  utility:
+    - getDayInWeek: ~/utility/date
+    - getFullDate: ~/utility/date
+    - timezone: ~/utility/date (object/map)
+    - getUrlParams: ~/utility/http
+
+rendering:
+  features:
+    - Form submission with preventdefault:submit (Qwik syntax)
+    - Loading spinner with SVG animation (animate-spin)
+    - Conditional rendering based on status (success/failed/loading)
+    - Multi-package tab selector with dynamic styling
+    - Visual timeline with progress indicators
+    - Hover tooltips for condensed tracking history
+    - Responsive design (mobile first, desktop breakpoints)
+    - External links to carrier tracking sites (target="_blank")
+
+  responsive_breakpoints:
+    - Mobile: default, stacked layout
+    - md: 768px - horizontal form, border changes
+    - lg: 1024px - horizontal timeline, two-row layout
+    - xl: 1280px - full descriptions visible, no tooltips
+
+seo:
+  title_source: i18n key
+  robots: none
+  meta_tags:
+    - name: title
+    - name: description
+    - name: keywords
+    - name: google (notranslate)
+    - name: theme-color
+    - name: distribution
+    - name: rating
+    - name: author
+    - name: copyright
+    - name: google-signin-scope
+
+security:
+  - Uses dangerouslySetInnerHTML for i18n key "track_your_order.real_time_update"
+  - All tracking data comes from internal API service (not user-controlled)
+  - Order number input is validated but not sanitized (relies on API validation)
+
+edge_cases:
+  - Order number not found (status: failed)
+  - Multi-package order with missing packageNo param (defaults to first)
+  - Tracking data exists but no Updates object (shows multi-order selector)
+  - Carrier link missing (show tracking message instead)
+  - Single package order (no multi-order selector)
+  - Order delivered (full progress bar, delivered status)
+  - Order in transit (partial progress bar, pending delivery)
+
+types:
+  MultiOrderSelectPropType:
+    description: Props for the internal MultiOrderSelect component
+    fields:
+      - name: multiOrders
+        type: "Array<Pick<TrackingItem, 'CONumber' | 'InvoiceNumber'>>"
+      - name: selectedOrder
+        type: "Signal<number | null>"
+      - name: fetchData
+        type: "QRL<(orderNumber: string) => Promise<void>>"
+  ShipmentDetailPropType:
+    description: Props for the internal ShipmentDetail component
+    fields:
+      - name: trackingCode
+        type: string
+      - name: carrierLink
+        type: string
+      - name: trackingMessage
+        type: string
+        optional: true
+  TrackingHistoryType:
+    description: Shape of each entry in the computed trackingHistory array
+    fields:
+      - name: dayInWeek
+        type: string
+      - name: fullDate
+        type: string
+      - name: messageTitle
+        type: string
+      - name: messageBody
+        type: string
+      - name: timeStatus
+        type: string
+      - name: location
+        type: string
+      - name: isDeliveredItem
+        type: boolean
+  TrackingItem:
+    description: Shape of each item returned from the tracking API (imported from tracking-service)
+    fields:
+      - name: CONumber
+        type: string
+      - name: InvoiceNumber
+        type: number
+      - name: Updates
+        type: object
+        optional: true
+        fields:
+          - name: ClassName
+            type: string
+          - name: ShipmentDate
+            type: string
+          - name: ShipmentTime
+            type: string
+          - name: LocalTimeZone
+            type: string
+          - name: MessageTitle
+            type: string
+          - name: MessageBody
+            type: string
+          - name: Location
+            type: string
+  OrderTrackingResponse:
+    description: Root response shape from getTrackingData service (imported from tracking-service)
+    fields:
+      - name: Tracking
+        type: "Array<TrackingItem>"
+  OrderTrackingStore:
+    description: Extended store type used by useStore in this component
+    fields:
+      - name: Tracking
+        type: "Array<TrackingItem>"
+      - name: multiOrders
+        type: "Array<Pick<TrackingItem, 'CONumber' | 'InvoiceNumber'>>"
+      - name: status
+        type: "null | 'success' | 'failed'"
+
+field_consumption:
+  TrackingItem:
+    consumed:
+      - CONumber: Used as the order number argument when fetching per-package tracking data; also stored in multiOrders
+      - InvoiceNumber: Converted to string and written to the URL trackingNo param via updateUrl
+      - Updates: Presence checked (truthy/falsy) to determine single vs multi-package flow; all sub-fields consumed
+      - Updates.ClassName: Checked for the substring "deliveredStatus" to set isOrderDeliverd and to style timeline indicators
+      - Updates.ShipmentDate: Passed to getDayInWeek() and getFullDate() for formatted display
+      - Updates.ShipmentTime: Substring(0,5) taken for the timeStatus string
+      - Updates.LocalTimeZone: Looked up in the timezone map for display in timeStatus
+      - Updates.MessageTitle: Rendered as the step heading in TrackingHistory (lowercased with capitalize CSS)
+      - Updates.MessageBody: Rendered as body text in both mobile and desktop timeline rows; also embedded in timeStatus string
+      - Updates.Location: Rendered as the location string in trackingHistory entries
+    ignored: []
+  MultiOrderSelectPropType:
+    consumed:
+      - multiOrders: Iterated to render package tab buttons; length checked to conditionally show the selector
+      - selectedOrder: Read for active tab highlight styling; written when a tab is clicked
+      - fetchData: Called with order.CONumber when a package tab is clicked
+    ignored: []
+  ShipmentDetailPropType:
+    consumed:
+      - trackingCode: Rendered inside a span with id="tracking-code"; also guards outer render (falsy = nothing rendered)
+      - carrierLink: Checked for truthiness (hides component if empty); checked for "https://" substring to decide whether to render tracking number text and view-courier button
+      - trackingMessage: Rendered as a plain text paragraph when carrierLink is falsy but trackingMessage is truthy
+    ignored: []
+
+implementation_logic:
+  single_vs_multi_package_detection:
+    rule: |
+      After calling getTrackingData(siteCode, orderNumber):
+        IF data.Tracking[0].Updates is truthy → single-tracking flow:
+          Store data.Tracking in orderTrackingData.Tracking.
+          URL update uses Tracking[1] if it exists, otherwise Tracking[0]
+          (InvoiceNumber as trackingNo, CONumber as packageNo).
+        ELSE → multi-package flow:
+          Store data.Tracking in orderTrackingData.multiOrders.
+          Determine the index to auto-select:
+            IF packageNumber arg was provided, find its index in multiOrders by CONumber;
+            fall back to 0 if not found (findIndex returns -1).
+          Fetch tracking for multiOrders[index].CONumber as a second API call.
+          Store the second call's result in orderTrackingData.Tracking.
+          Set selectedOrderIndex to the resolved index.
+          Update URL using the original data.Tracking[selectedOrderIndex] entry.
+    critical: true
+  url_sync_without_navigation:
+    rule: |
+      updateUrl() writes trackingNo and packageNo into location.url.searchParams
+      and then calls window.history.replaceState with the resulting query string.
+      This updates the browser address bar without triggering a navigation or
+      component re-mount. If packageNo is empty/null, the param is deleted from
+      the URL rather than set to an empty string.
+    critical: false
+  auto_fetch_on_initial_load:
+    rule: |
+      useTask$ runs once server-side and once on first client hydration.
+      IF trackingNo.value (from URL params at mount time) is non-null, fetchTrackingData
+      is called with trackingNo.value and packageNo.value. This enables deep-link
+      sharing of tracking URLs.
+    critical: false
+  loading_state_lifecycle:
+    rule: |
+      loading is set to true at the start of fetchTrackingData and to false at the
+      end (in both success and catch paths). The initial value of loading is true,
+      so the spinner shows immediately on page load when trackingNo is present in
+      the URL and the auto-fetch fires. When no trackingNo is present, loading stays
+      true but the status-gated block is hidden so the spinner is not visible.
+    critical: false
+  messageBody_in_timeStatus:
+    rule: |
+      timeStatus is formatted as:
+        "{ShipmentTime.substring(0,5)} {timezone[LocalTimeZone]}  |  {MessageBody}"
+      The timezone map converts IANA/carrier timezone codes to human-readable labels.
+      This exact format must be preserved for the tooltip display in the desktop
+      condensed timeline view.
+    critical: false
+  isDeliveredItem_index_rule:
+    rule: |
+      isDeliveredItem is true ONLY for index 0 of the trackingHistory array AND
+      only when Updates.ClassName contains "deliveredStatus". All other items are
+      false regardless of ClassName. This means only the most recent tracking event
+      (index 0, the first element) can be marked as the delivery confirmation item.
+    critical: false
+  shipment_detail_carrier_link_branching:
+    rule: |
+      In ShipmentDetail:
+        IF carrierLink is falsy:
+          IF trackingMessage is truthy → render plain text paragraph
+          ELSE → render nothing (return null)
+        IF carrierLink is truthy:
+          IF trackingCode is falsy → render nothing (outer guard)
+          IF carrierLink contains "https://":
+            → render tracking number text, real_time_update HTML, and view-courier button
+          IF carrierLink does NOT contain "https://":
+            → render only the tracking code span (no button, no update text)
+    critical: true
+
+visibility_map:
+  status_gated_block:
+    condition: "orderTrackingData.status is non-null (truthy)"
+    default: hidden
+  multi_shipments_inform_message:
+    condition: "orderTrackingData.status is set AND orderTrackingData.multiOrders.length > 0"
+    default: hidden
+    notes: "Only visible on md+ screens (hidden md:block inverse — shown only on md+)"
+  failed_state_block:
+    condition: "orderTrackingData.status === 'failed'"
+    default: hidden
+  multi_order_select_component:
+    condition: "orderTrackingData.status !== 'failed' AND multiOrders.length > 0 (checked inside MultiOrderSelect)"
+    default: hidden
+  loading_spinner:
+    condition: "loading.value === true (inside the success branch, i.e. status !== 'failed')"
+    default: hidden
+  tracking_history_and_shipment_detail:
+    condition: "loading.value === false AND orderTrackingData.Tracking.length > 0 AND trackingValue.value is defined"
+    default: hidden
+  spacer_li_delivered_placeholder:
+    condition: "trackingValue.value.isOrderDeliverd === false (shown when NOT delivered)"
+    default: visible
+  desktop_second_row_ol:
+    condition: "always rendered on lg+ (hidden class on < lg)"
+    default: hidden on mobile
+  messageBody_full_text_desktop:
+    condition: "trackingHistory.length <= 4 OR (trackingHistory.length <= 3 AND isOrderDeliverd); shown as xl:block when condensed mode is active"
+    default: visible when history is short
+  messageBody_condensed_tooltip_trigger:
+    condition: "trackingHistory.length > 4 OR (trackingHistory.length > 3 AND NOT isOrderDeliverd)"
+    default: hidden
+  tooltip_popup_content:
+    condition: "showDescriptionIndex.value === current item index (on hover)"
+    default: hidden (scale-0)
+  checkmark_icon_in_indicator:
+    condition: "NOT (last item AND NOT isOrderDeliverd)"
+    default: visible
+  carrier_link_button_and_update_text:
+    condition: "carrierLink contains 'https://'"
+    default: hidden
+  tracking_message_paragraph:
+    condition: "carrierLink is falsy AND trackingMessage is truthy"
+    default: hidden
+

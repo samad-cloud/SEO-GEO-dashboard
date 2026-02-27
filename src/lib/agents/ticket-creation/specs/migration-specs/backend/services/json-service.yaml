@@ -1,0 +1,1273 @@
+name: JSON Service (Web Content Loader)
+source:
+  file: src/services/json-service.ts
+  lines: 1132
+  type: service
+  language: typescript
+
+description: |
+  Central service for loading dynamic web content from various sources:
+  1. Static JSON files hosted on CDN (region-specific banners, shipping policies, etc.)
+  2. API-driven web content via /WebContent/Get endpoint
+  3. Fallback to local backup files if remote content fails to load
+
+  Supports 26+ different content types via WebContentType enum, including:
+  - Site banners (strip banners, promo banners, dynamic promo)
+  - Delivery deadlines (per product category)
+  - Navigation menus
+  - Category-specific components (blankets, canvas, calendars, etc.)
+  - Shop by category/budget
+  - Holiday delivery guides
+  - FAQ sections
+  - Video popups
+  - Redirections
+  - Marketing page content
+
+  All content is validated against Zod schemas before returning.
+
+exports:
+  functions:
+    - name: loadShippingPolicy
+      signature: "async () => Promise<ShippingPolicyContent>"
+      description: Loads region-specific shipping policy from CDN JSON file
+      parameters: []
+      returns: ShippingPolicyContent
+
+    - name: loadBestSellerSection
+      signature: "async () => Promise<ProductSection>"
+      description: Loads region-specific best seller products from CDN JSON file
+      parameters: []
+      returns: ProductSection
+
+    - name: loadBannerContent
+      signature: "async () => Promise<Banner>"
+      description: Loads region-specific banners (strip, promo, shipping footer) from CDN
+      parameters: []
+      returns: Banner
+
+    - name: loadProductDynamicData
+      signature: "async () => Promise<DeliveryDeadlineJSON | null>"
+      description: Loads delivery deadlines and dynamic product data (carousel nudges, offer tags, clocks) from CDN
+      parameters: []
+      returns: DeliveryDeadlineJSON | null
+
+    - name: loadStoriesBanner
+      signature: "async () => Promise<StoriesBanner | null>"
+      description: Loads stories banner content (Instagram-style stories UI)
+      parameters: []
+      returns: StoriesBanner | null
+
+    - name: loadWebContent
+      signature: "async <T>(name: WebContentType) => Promise<T>"
+      description: |
+        Generic web content loader that fetches from /WebContent/Get API endpoint.
+        Validates response against Zod schema and falls back to backup file if validation fails.
+      parameters:
+        - name: name
+          type: WebContentType
+          description: Enum value identifying the content type to load
+      returns: Generic type T (validated content)
+
+    - name: loadProductPageWebcontent
+      signature: "async () => Promise<ProductWebContentResponse | null>"
+      description: Loads product page responsive grid configuration (__product_page_content__)
+      parameters: []
+      returns: ProductWebContentResponse | null
+
+    - name: loadMarketingPageContent
+      signature: "async (dynamicVal: string) => Promise<z.infer<typeof MarketingComponentsSchema> | null>"
+      description: |
+        Loads marketing page content by friendlyUrl (dynamicVal).
+        Returns validated page configuration with SEO metadata.
+      parameters:
+        - name: dynamicVal
+          type: string
+          description: Friendly URL identifier for the marketing page
+      returns: Validated marketing page content with SEO fields
+
+    - name: getBackUpFileContent
+      signature: "<T>(name: WebContentType) => T"
+      description: Returns backup/fallback content for a given WebContentType
+      parameters:
+        - name: name
+          type: WebContentType
+          description: Content type identifier
+      returns: Generic type T (backup content)
+
+    - name: getWebcontentSchema
+      signature: "(name: WebContentType) => z.ZodSchema"
+      description: Returns the Zod validation schema for a given WebContentType
+      parameters:
+        - name: name
+          type: WebContentType
+          description: Content type identifier
+      returns: Zod schema for validation
+
+  types:
+    - name: WebContentType
+      kind: enum
+      description: Enum of all supported web content types
+      values:
+        - BEST_SELLERS: "__best_sellers__"
+        - BANNERS: "__strip_banners__"
+        - DELIVERY_DEADLINES: "__delivery_deadlines__"
+        - MENU: "__menu__"
+        - MENU_V2: "__menu_v2__"
+        - SHIPPING_POLICY: "__shipping_policy__"
+        - CATEGORY_THEME_OPTIONS: "__category_theme_options__"
+        - HOMEPAGE_SEO_CONTENT: "__home_page_seo_content__"
+        - DYNAMIC_PROMO_BANNERS: "__dynamic_promo_banners__"
+        - DYNAMIC_PROMO_BANNER_CANVAS: "__dynamic_promo_banner_canvas__"
+        - PRINTBOX_THEMES: "__printbox_themes__"
+        - CATEGORY_THEME_IMAGE_FILTERS: "__category_theme_image_filters__"
+        - PRINTBOX_FILTER_IMAGES: "__printbox_filter_images__"
+        - SHOP_BY_CATEGORY: "__shop_by_category__"
+        - SHOP_BY_BUDGET: "__shop_by_budget__"
+        - HOLIDAY_DELIVERY_GUIDE: "__holiday_delivery_guide__"
+        - CATEGORY_COMPONENTS: "__category_components__"
+        - BLANKET_CATEGORY_COMPONENTS: "__blanket_category_components__"
+        - GLOBAL_CATEGORY_BANNER: "__global_category_banner__"
+        - FRAMED_PRINTS_CATEGORY_COMPONENTS: "__framed_prints_category_components__"
+        - CANVAS_CATEGORY_COMPONENTS: "__canvas_category_components__"
+        - CALENDAR_CATEGORY_COMPONENTS: "__calendar_category_components__"
+        - CATEGORY_QUICK_LINKS: "__category_quicklinks__"
+        - PB_LAYFLAT_CATEGORY_COMPONENTS: "__pb_layflat_category_components__"
+        - CSR_FAQ: "__csr_faqs__"
+        - VIDEO_POPUP: "__video_popup__"
+        - REDIRECTION: "__redirection__"
+        - PRESELECTED_ADDONS: "__preselected_addons__"
+        - FREE_SHIPPING_LABELS_TP: "__freeshipping_labels_tp__"
+
+    - name: ShippingPolicyContent
+      kind: interface
+      fields:
+        - title: string
+        - holidayShippingTitle: string
+        - holidayShippingDescription: string
+        - holidayShippingImageDesktopSrc: string
+        - holidayShippingImageMobileSrc: string
+        - href: string
+        - banner: ShippingPolicyBanner
+        - shippingByProductTable: ShippingByProductTable
+        - shippingPolicyTable: ShippingPolicyTable
+        - note: Note
+        - shopOurRange: ShopOurRange
+        - satisfactionGuarantee: SatisfactionGuarantee
+        - ourHelp: OurHelp
+
+    - name: ShippingPolicyBanner
+      kind: interface
+      fields:
+        - display: boolean
+        - imgMobile: string
+        - imgMobileAspectRatio: string
+        - imgDesktop: string
+        - imgDesktopAspectRatio: string
+
+    - name: ShippingByProductTable
+      kind: interface
+      fields:
+        - display: boolean
+        - header: string[]
+        - content: ProductRowContent[]
+
+    - name: ProductRowContent
+      kind: interface
+      fields:
+        - product: ItemContent
+        - deliveryTime: ItemContent
+        - info: ItemContent
+
+    - name: ItemContent
+      kind: interface
+      fields:
+        - text: string
+        - href: string
+        - textColor: string
+
+    - name: ShippingPolicyTable
+      kind: interface
+      fields:
+        - header: string[]
+        - content: Content[]
+
+    - name: Content
+      kind: interface
+      fields:
+        - name: string
+        - imgSrc: string
+        - deliveryTime: string
+        - info: string
+
+    - name: Note
+      kind: interface
+      fields:
+        - title: string
+        - content: string
+
+    - name: ShopOurRange
+      kind: interface
+      fields:
+        - title: string
+        - products: Product[]
+
+    - name: Product
+      kind: interface
+      fields:
+        - name: string
+        - imgSrc: string
+        - url: string
+
+    - name: SatisfactionGuarantee
+      kind: interface
+      fields:
+        - title: string
+        - description: string
+        - ctaText: string
+        - ctaLink: string
+
+    - name: OurHelp
+      kind: interface
+      fields:
+        - questionTitle: string
+        - content: string
+        - phoneNumberTitle: string
+        - phoneNumberValue: string
+        - emailTitle: string
+        - emailValue: string
+        - talkToAgent: string
+        - agentLink: string
+
+    - name: BestSellerCategory
+      kind: interface
+      fields:
+        - heading: string
+        - subheading: string
+        - categoryPageUrl: string
+        - productPages: ProductPage[]
+
+    - name: ProductPage
+      kind: interface
+      fields:
+        - caption: string
+        - bannerUrl: string
+        - bannerAltText: string
+        - productPageUrl: string
+        - price: number
+        - priceDisplay: string
+        - discountedPrice: number
+        - discountedPriceDisplay: string
+
+    - name: Banner
+      kind: interface
+      fields:
+        - stripBanner: StripBanner | null
+        - promoBanner: PromoBanner | null
+        - shippingFooterBanner: ShippingFooterBanner | null
+
+    - name: StripBanner
+      kind: interface
+      fields:
+        - banners: string[]
+        - bgColor: string
+        - textColor: string
+
+    - name: PromoBanner
+      kind: interface
+      fields:
+        - firstText1: string
+        - bgColor: string
+        - textColor: string
+        - bottomText1: string
+        - bottomText2: string
+        - bottomText3: string
+        - cta: Cta
+
+    - name: Cta
+      kind: interface
+      fields:
+        - url: string
+        - title: string
+        - bgColor: string
+        - textColor: string
+        - mobileTextColor: string
+
+    - name: ShippingFooterBanner
+      kind: interface
+      fields:
+        - mobileShippingFooterBanner: string
+        - desktopShippingFooterBanner: string
+        - display: boolean
+        - background: string
+        - href?: string
+
+    - name: DeliveryDeadlineJSON
+      kind: interface
+      description: Container for product-category-specific dynamic data
+      fields:
+        - blankets: ProductDynamicData
+        - photobooks: ProductDynamicData
+        - calendars: ProductDynamicData
+        - canvas: ProductDynamicData
+        - default: ProductDynamicData
+
+    - name: ProductDynamicData
+      kind: interface
+      description: Dynamic product page content (carousel nudges, clocks, delivery deadlines)
+      fields:
+        - carouselNudge: CarouselNudgeJSON
+        - offerTag: string
+        - carouselNudgeText: string
+        - showClock: boolean
+        - showDeliveryDeadlines: boolean
+        - useScriptForDeliveryDeadlines: boolean
+        - deliveryDeadline: string
+        - useDeliveryDeadline: boolean
+        - aboveClockText: string
+        - scriptDeadlines: ScriptDeadline[]
+        - hardcodedDeliveryDeadlines: HardcodedDeliveryDeadline[]
+
+    - name: CarouselNudgeJSON
+      kind: interface
+      fields:
+        - text: string
+        - bgColor: string
+        - textColor: string
+
+    - name: ScriptDeadline
+      kind: interface
+      description: Delivery deadline calculated using estimateDay script logic
+      fields:
+        - name: string
+        - estimateDay: number
+        - hardcodeDeliverydeadline: string
+        - rangeEstimateDay: string
+        - imgUrl: string
+
+    - name: HardcodedDeliveryDeadline
+      kind: interface
+      description: Hardcoded delivery deadline (no calculation)
+      fields:
+        - name: string
+        - estimateDay: string
+        - imgUrl: string
+
+    - name: PromoBannerData
+      kind: interface
+      description: Dynamic promo banner configuration (main + floating banners)
+      fields:
+        - default: object
+          nested:
+            - home: object
+              nested:
+                - main: MainBannerSection
+                - floating: FloatingBannerSection
+            - default: object
+              nested:
+                - main: MainBannerSection
+                - floating: FloatingBannerSection
+
+    - name: MainBannerSection
+      kind: interface
+      fields:
+        - desktop: MainBannerSectionByScreen
+        - mobile: MainBannerSectionByScreen
+
+    - name: MainBannerSectionByScreen
+      kind: interface
+      fields:
+        - backgroundColor: string
+        - ctaUrl: string
+        - ctaText: string
+        - ctaColor: string
+        - ctaPosition: 1 | 2 | 3
+        - ctaBgColor: string
+        - ctaDisplayMobile: true
+        - ctaDisplayDesktop: true
+        - sections: PromoBannerSections
+        - countdownSection: CountdownSection
+        - displayHome?: boolean
+        - displayProduct?: boolean
+        - displayCategory?: boolean
+        - display?: boolean
+
+    - name: FloatingBannerSection
+      kind: interface
+      fields:
+        - desktop: FloatingBannerSectionByScreen
+        - mobile: FloatingBannerSectionByScreen
+
+    - name: FloatingBannerSectionByScreen
+      kind: interface
+      extends: MainBannerSectionByScreen
+      fields:
+        - order: number[]
+
+    - name: PromoBannerSections
+      kind: interface
+      fields:
+        - section1: PromoBannerSection[]
+        - section2: PromoBannerSection[]
+        - section3: PromoBannerSection[]
+
+    - name: PromoBannerSection
+      kind: interface
+      fields:
+        - display: boolean
+        - text: string
+        - fontSize: string
+        - isBold: boolean
+        - isItalic: boolean
+        - isUnderline: boolean
+        - color: string
+        - type: string
+        - href?: string
+        - backgroundColor?: string
+
+    - name: CountdownSection
+      kind: interface
+      fields:
+        - display: boolean
+        - title: string
+        - expiryDateTime: string
+        - clockTextColor: string
+        - clockBgColor: string
+        - textColor: string
+
+    - name: StoriesBanner
+      kind: interface
+      fields:
+        - title: string
+        - backgroundColor: string
+        - stories: Array<{desktopImageUrl, mobileImageUrl, href}>
+
+    - name: RedirectionResponse
+      kind: interface
+      fields:
+        - data: RedirectionItem[]
+
+    - name: RedirectionItem
+      kind: interface
+      fields:
+        - source: string
+        - target: string
+        - redirectionCode: number
+
+    - name: WebContentResponse
+      kind: interface
+      description: API response from /WebContent/Get endpoint
+      fields:
+        - content: string (JSON string)
+        - sEOTitle?: string
+        - sEOHeader?: string
+        - metaDescription?: string
+        - metaKeywords?: string
+
+    - name: ProductWebContentResponse
+      kind: type
+      description: Responsive grid configuration for product pages
+      definition: "Record<keyof PlatinumProductTypeEnum, ProductWebContent>"
+
+    - name: ProductWebContent
+      kind: type
+      description: Breakpoint-specific grid settings
+      fields:
+        - default: ProductWebContentBreakpoint[]
+        - sm?: ProductWebContentBreakpoint[]
+        - md?: ProductWebContentBreakpoint[]
+        - lg?: ProductWebContentBreakpoint[]
+        - xl?: ProductWebContentBreakpoint[]
+        - "2xl"?: ProductWebContentBreakpoint[]
+
+    - name: ProductWebContentBreakpoint
+      kind: type
+      fields:
+        - container?: Record<string, string>
+        - item?: Record<string, string>
+
+  zod_schemas:
+    - NoteSchema
+    - ContentSchema
+    - ItemContentSchema
+    - ProductRowContentSchema
+    - ShippingByProductTableSchema
+    - ShippingPolicyTable
+    - ProductPageSchema
+    - ShopOurRangeSchema
+    - SatisfactionGuaranteeSchema
+    - OurHelpSchema
+    - ShippingPolicyBannerSchema
+    - ShippingPolicyContentSchema
+    - StripBannerSchema
+    - CtaSchema
+    - PromoBannerSchema
+    - ShippingFooterBannerSchema
+    - BannerSchema
+    - SeoContentSchema
+    - LargeOrderSeoContentSchema
+    - HomePageSeoContentSchema
+    - CarouselNudgeJSONSchema
+    - ScriptDeadlineSchema
+    - HardcodedDeliveryDeadlineSchema
+    - ProductDynamicDataSchema
+    - DeliveryDeadlineJSONSchema
+    - PromoBannerSectionSchema
+    - PromoBannerSectionsSchema
+    - CountdownSectionSchema
+    - MainBannerSectionSchema
+    - FloatingBannerSectionSchema
+    - PromoBannerDataSchema
+    - PromoBannerCanvasDataSchema
+    - RedirectionItemSchema
+    - RedirectionSchema
+    - PreselectedAddonsSchema
+    - FreeShippingMinimumQuantityDataSchema
+
+api_contracts:
+  cdn_endpoints:
+    - url: "https://www.{region-domain}/media/2024/02/shipping-policy-{region}.json"
+      method: GET
+      description: Region-specific shipping policy JSON
+      regions:
+        - US: printerpix.com
+        - GB: printerpix.co.uk
+        - FR: printerpix.fr
+        - NL: printerpix.nl
+      response_type: ShippingPolicyContent
+
+    - url: "https://www.{region-domain}/media/2024/02/best-sellers-{region}.json"
+      method: GET
+      description: Region-specific best seller products JSON
+      regions:
+        - US: printerpix.com
+        - GB: printerpix.co.uk
+        - FR: printerpix.fr
+        - NL: printerpix.nl
+      response_type: ProductSection
+
+    - url: "https://www.{region-domain}/media/2024/02/strip-banners-{region}.json"
+      method: GET
+      description: Region-specific banners (strip, promo, shipping footer)
+      regions:
+        - US: printerpix.com
+        - GB: printerpix.co.uk
+        - FR: printerpix.fr
+        - DE: printerpix.de
+        - NL: printerpix.nl
+      response_type: Banner
+
+    - url: "https://www.{region-domain}/media/2024/02/delivery-deadlines-{region}.json"
+      method: GET
+      description: Region-specific delivery deadlines and dynamic product data
+      regions:
+        - US: printerpix.com
+        - GB: printerpix.co.uk
+        - FR: printerpix.fr
+        - NL: printerpix.nl
+      response_type: DeliveryDeadlineJSON
+
+    - url: "https://www.printerpix.com/media/2024/03/stories-banner.json"
+      method: GET
+      description: Stories banner content (hardcoded to US domain)
+      response_type: StoriesBanner
+
+  api_endpoints:
+    - path: /WebContent/Get
+      method: GET
+      description: |
+        Generic web content API endpoint. Fetches any WebContentType by name parameter.
+        Returns JSON content as a string plus optional SEO metadata.
+      base_url: baseNewAPI() (from ~/config/http)
+      query_params:
+        - name: string (WebContentType enum value)
+      response_type: NewAPIResponse<WebContentResponse>
+      response_fields:
+        - status: "OK" | "ERROR"
+        - data.content: string (JSON string to be parsed)
+        - data.sEOTitle?: string
+        - data.sEOHeader?: string
+        - data.metaDescription?: string
+        - data.metaKeywords?: string
+      timeout: settings().READ_API_TIMEOUT
+      error_handling: Falls back to getBackUpFileContent() on error
+
+dependencies:
+  internal:
+    - "~/utility/homepage-contents" (getFooter, getHomeBestSellerCategory, getSitePromoBanner, getStripBanner)
+    - "../config/settings" (settings)
+    - "../utility/shipping-policy/shipping-policy-content" (getShippingPolicyContent)
+    - "./home-service" (ProductSectionSchema, ProductSection)
+    - "~/utility/http" (convertKeysToCamelCase, handleMultipleAPIRequests, HTTP_METHODS)
+    - "~/config/http" (NewAPIResponse, baseNewAPI)
+    - "~/utility/backup-json/backup-json-utilities" (26+ backup content getters)
+    - "./navigation-v3-service" (NavigationMenuSchema)
+    - "./product-category-service" (PlatinumProductTypeEnum)
+    - "./themes-service" (CategoryThemeImageFiltersSchema, PrintBoxImageFiltersSchema, PrintboxThemesResponseSchema, ThemeOptionsResponseSchema)
+    - "~/services/shop-by-category-service" (ShopByCategoryResponseSchema)
+    - "./shop-by-budget-service" (ShopByBudgetResponseSchema)
+    - "./holiday-delivery-service" (HolidayDeliveryGuideResponseSchema)
+    - "./common-service" (isDataReady)
+    - "./product-page-web-content-service" (CategoryComponentsSchema)
+    - "./marketing-page-web-content-service" (MarketingComponentsSchema)
+    - "./category-service" (CategoryQuickLinksResponseSchema, GlobalCategoryBannerSchema)
+    - "./static-page-service" (FaqSectionSchema)
+    - "./shop-page-service" (VideoPopupSchema)
+
+  external:
+    - "@builder.io/qwik-city" (z from zod)
+
+data_flow:
+  content_loading_strategy:
+    - step: 1
+      action: Determine content source (CDN JSON vs API)
+      notes: Some content is static JSON on CDN, others fetched via /WebContent/Get API
+
+    - step: 2
+      action: Select region-specific URL or API parameters
+      notes: Uses settings().website to pick correct region (US, GB, FR, DE, NL)
+
+    - step: 3
+      action: Fetch remote content (CDN fetch or API call)
+      notes: CDN uses native fetch(), API uses baseNewAPI() or handleMultipleAPIRequests()
+
+    - step: 4
+      action: Parse JSON response
+      notes: CDN responses are direct JSON, API responses have content as JSON string
+
+    - step: 5
+      action: Validate against Zod schema
+      notes: getWebcontentSchema() returns appropriate schema for validation
+
+    - step: 6
+      action: Return validated content OR fall back to backup
+      notes: If validation fails or error occurs, call getBackUpFileContent()
+
+  web_content_types_and_sources:
+    - type: BEST_SELLERS
+      source: CDN JSON (loadBestSellerSection) OR API (__best_sellers__)
+      schema: ProductSectionSchema
+      backup: getBestSellersBackup()
+
+    - type: BANNERS
+      source: CDN JSON (loadBannerContent)
+      schema: BannerSchema
+      backup: getBannersBackup()
+
+    - type: DELIVERY_DEADLINES
+      source: CDN JSON (loadProductDynamicData)
+      schema: DeliveryDeadlineJSONSchema
+      backup: getDeliveryDeadlinesBackup()
+
+    - type: MENU / MENU_V2
+      source: API (__menu__ / __menu_v2__)
+      schema: NavigationMenuSchema
+      backup: getMenuBackup()
+
+    - type: SHIPPING_POLICY
+      source: CDN JSON (loadShippingPolicy) OR API (__shipping_policy__)
+      schema: ShippingPolicyContentSchema
+      backup: getShippingPolicyBackup()
+
+    - type: DYNAMIC_PROMO_BANNERS
+      source: API (__dynamic_promo_banners__)
+      schema: PromoBannerDataSchema
+      backup: getDynamicPromoBannersBackUp()
+
+    - type: DYNAMIC_PROMO_BANNER_CANVAS
+      source: API (__dynamic_promo_banner_canvas__)
+      schema: PromoBannerCanvasDataSchema
+      backup: getDynamicPromoBannerCanvasBackUp()
+
+    - type: CATEGORY_COMPONENTS
+      source: API (__category_components__)
+      schema: CategoryComponentsSchema
+      backup: getCategoryBackup()
+
+    - type: BLANKET_CATEGORY_COMPONENTS
+      source: API (__blanket_category_components__)
+      schema: CategoryComponentsSchema
+      backup: getBlanketsCategoryBackup()
+
+    - type: FRAMED_PRINTS_CATEGORY_COMPONENTS
+      source: API (__framed_prints_category_components__)
+      schema: CategoryComponentsSchema
+      backup: getFramedPrintsCategoryBackup()
+
+    - type: CANVAS_CATEGORY_COMPONENTS
+      source: API (__canvas_category_components__)
+      schema: CategoryComponentsSchema
+      backup: getCanvasCategoryBackup()
+
+    - type: CALENDAR_CATEGORY_COMPONENTS
+      source: API (__calendar_category_components__)
+      schema: CategoryComponentsSchema
+      backup: getCalendarCategoryBackup()
+
+    - type: GLOBAL_CATEGORY_BANNER
+      source: API (__global_category_banner__)
+      schema: GlobalCategoryBannerSchema
+      backup: getGlobalCategoryBannerBackup()
+
+    - type: CATEGORY_QUICK_LINKS
+      source: API (__category_quicklinks__)
+      schema: CategoryQuickLinksResponseSchema
+      backup: getCategoryQuickLinksBackup()
+
+    - type: PB_LAYFLAT_CATEGORY_COMPONENTS
+      source: API (__pb_layflat_category_components__)
+      schema: CategoryComponentsSchema
+      backup: getPbLayFlatCategoryBackup()
+
+    - type: SHOP_BY_CATEGORY
+      source: API (__shop_by_category__)
+      schema: ShopByCategoryResponseSchema
+      backup: getShopByCategory()
+
+    - type: SHOP_BY_BUDGET
+      source: API (__shop_by_budget__)
+      schema: ShopByBudgetResponseSchema
+      backup: getShopByBudget()
+
+    - type: HOLIDAY_DELIVERY_GUIDE
+      source: API (__holiday_delivery_guide__)
+      schema: HolidayDeliveryGuideResponseSchema
+      backup: getHolidayDeliveryGuide()
+
+    - type: CATEGORY_THEME_OPTIONS
+      source: API (__category_theme_options__)
+      schema: ThemeOptionsResponseSchema
+      backup: "{ cards: [], photobooks: [], default: [] }"
+
+    - type: PRINTBOX_THEMES
+      source: API (__printbox_themes__)
+      schema: PrintboxThemesResponseSchema
+      backup: getPrintBoxThemesDataBackUp()
+
+    - type: CATEGORY_THEME_IMAGE_FILTERS
+      source: API (__category_theme_image_filters__)
+      schema: CategoryThemeImageFiltersSchema
+      backup: getCategoryThemeImageFiltersBackUp()
+
+    - type: PRINTBOX_FILTER_IMAGES
+      source: API (__printbox_filter_images__)
+      schema: PrintBoxImageFiltersSchema
+      backup: getPrintFilterImagesBackUp()
+
+    - type: HOMEPAGE_SEO_CONTENT
+      source: API (__home_page_seo_content__)
+      schema: HomePageSeoContentSchema
+      backup: getHomePageSEOContentBackUp()
+
+    - type: CSR_FAQ
+      source: API (__csr_faqs__)
+      schema: FaqSectionSchema
+      backup: "{ display: false }"
+
+    - type: VIDEO_POPUP
+      source: API (__video_popup__)
+      schema: VideoPopupSchema
+      backup: getVideoPopupBackup()
+
+    - type: REDIRECTION
+      source: API (__redirection__)
+      schema: RedirectionSchema
+      backup: getRedirectionBackup()
+
+    - type: PRESELECTED_ADDONS
+      source: API (__preselected_addons__)
+      schema: PreselectedAddonsSchema
+      backup: "{ standard: {}, multi: {} }"
+
+    - type: FREE_SHIPPING_LABELS_TP
+      source: API (__freeshipping_labels_tp__)
+      schema: FreeShippingMinimumQuantityDataSchema
+      backup: "[]"
+
+  marketing_page_content_flow:
+    - step: 1
+      action: Call loadMarketingPageContent(dynamicVal) with friendly URL
+
+    - step: 2
+      action: Query /WebContent/Get with name = dynamicVal
+
+    - step: 3
+      action: Parse response.data.content as JSON
+      notes: Handle case where API returns array (take first element)
+
+    - step: 4
+      action: Extract SEO fields from response.data (not from content)
+      fields: [sEOTitle, sEOHeader, metaDescription]
+
+    - step: 5
+      action: Validate against MarketingComponentsSchema
+
+    - step: 6
+      action: Return validated data with SEO fields OR null on failure
+
+business_logic:
+  region_selection:
+    description: All region-specific content uses settings().website to determine URL/parameters
+    logic: |
+      switch (settings().website) {
+        case "US": return US_URL;
+        case "GB": return UK_URL;
+        case "FR": return FR_URL;
+        case "DE": return DE_URL;
+        case "NL": return NL_URL;
+        default: return US_URL;
+      }
+
+  validation_strategy:
+    description: Two-tier validation with Zod schemas and backup fallback
+    logic: |
+      1. Fetch remote content
+      2. Parse JSON
+      3. Get schema: getWebcontentSchema(name)
+      4. Validate: schema.safeParse(result)
+      5. If validation succeeds: return result
+      6. If validation fails OR fetch fails: return getBackUpFileContent(name)
+
+  content_key_transformation:
+    description: Best sellers API response uses snake_case, converted to camelCase
+    example: "convertKeysToCamelCase(result.bestSellerCategory)"
+
+  marketing_page_special_handling:
+    description: Marketing page API may return array or object, handle both cases
+    logic: |
+      let result = JSON.parse(responseData.content);
+      if (Array.isArray(result)) {
+        result = result[0];
+      }
+
+  seo_metadata_extraction:
+    description: For marketing pages, SEO fields are in response data, not content JSON
+    logic: |
+      result.sEOTitle = responseData.sEOTitle;
+      result.sEOHeader = responseData.sEOHeader;
+      result.metaDescription = responseData.metaDescription;
+
+error_handling:
+  cdn_fetch_errors:
+    trigger: fetch() to CDN URL throws error
+    action: Return backup content from local utility functions
+    example: "catch (error) { return getShippingPolicyContent() }"
+
+  api_request_errors:
+    trigger: handleMultipleAPIRequests or baseNewAPI call fails
+    action: Return backup content via getBackUpFileContent(name)
+    example: "catch (error) { return getBackUpFileContent<T>(name) }"
+
+  validation_failures:
+    trigger: Zod schema.safeParse() returns success = false
+    action: Return backup content via getBackUpFileContent(name)
+    example: "if (!schema.safeParse(result).success) { return getBackUpFileContent<T>(name) }"
+
+  null_responses:
+    description: Some loaders return null on failure (not backup)
+    examples:
+      - loadProductDynamicData: returns null on error
+      - loadStoriesBanner: returns null on error
+      - loadProductPageWebcontent: returns null on error
+      - loadMarketingPageContent: returns null on error or validation failure
+
+  timeout_handling:
+    description: API requests use READ_API_TIMEOUT from settings
+    config: "timeout: settings().READ_API_TIMEOUT"
+
+performance_considerations:
+  caching:
+    description: No explicit caching in this service, relies on browser cache for CDN URLs and API response caching
+    notes: CDN URLs include versioned query params (?v=60494.3374886) for cache busting
+
+  validation_overhead:
+    description: All content validated with Zod schemas before returning
+    impact: Adds validation time but prevents invalid data from entering application
+
+  backup_file_size:
+    description: Backup files imported from ~/utility/backup-json/backup-json-utilities
+    notes: 26+ backup getters imported, may impact bundle size
+
+security_notes:
+  - description: No authentication required for CDN JSON files (public URLs)
+  - description: /WebContent/Get API endpoint uses baseNewAPI() which may include auth headers
+  - description: Marketing page content includes user-controlled dynamicVal in API query
+    risk: Potential SSRF if dynamicVal not sanitized upstream
+  - description: All content validated against Zod schemas to prevent malformed data injection
+
+behavior:
+  - name: loadShippingPolicy
+    steps:
+      - Reads settings().website to determine the current region
+      - Selects a region-specific CDN URL for shipping policy JSON (US → printerpix.com, GB → printerpix.co.uk, FR → printerpix.fr, NL → printerpix.nl; defaults to US)
+      - Performs a fetch() to the selected CDN URL
+      - Parses the JSON response
+      - Returns the result cast as ShippingPolicyContent
+      - On any error, falls back to getShippingPolicyContent() from the shipping-policy-content utility
+
+  - name: loadBestSellerSection
+    steps:
+      - Reads settings().website to determine the current region
+      - Selects a region-specific CDN URL for best seller products JSON (US, GB, FR, NL; defaults to US)
+      - Performs a fetch() to the selected CDN URL
+      - Parses the JSON response
+      - Extracts the bestSellerCategory field from the response object
+      - Converts all keys to camelCase using convertKeysToCamelCase(result.bestSellerCategory)
+      - Returns the result cast as ProductSection
+      - On any error, falls back to getHomeBestSellerCategory() from homepage-contents utility
+
+  - name: loadBannerContent
+    steps:
+      - Reads settings().website to determine the current region
+      - Selects a region-specific CDN URL for strip banners JSON (US, GB, FR, DE, NL; defaults to US)
+      - Performs a fetch() to the selected CDN URL
+      - Parses the JSON response
+      - Returns the result cast as Banner (containing stripBanner, promoBanner, shippingFooterBanner)
+      - On any error, constructs a fallback Banner object by calling getStripBanner(), getSitePromoBanner(), and getFooter() from homepage-contents utility
+      - Maps footer.shippingDatesBanner fields (desktopImageUrl, mobileImageUrl, display, background) to ShippingFooterBanner shape
+
+  - name: loadProductDynamicData
+    steps:
+      - Reads settings().website to determine the current region
+      - Selects a region-specific CDN URL for delivery deadlines JSON (US, GB, FR, NL; defaults to US)
+      - Performs a fetch() to the selected CDN URL
+      - Parses the JSON response
+      - Returns the result cast as DeliveryDeadlineJSON (containing blankets, photobooks, calendars, canvas, default keys)
+      - On any error, returns null (no backup fallback)
+
+  - name: loadStoriesBanner
+    steps:
+      - Hardcoded to fetch from printerpix.com domain (US only, no region switching)
+      - Performs a fetch() to the stories-banner.json CDN URL
+      - Parses the JSON response
+      - Returns the result cast as StoriesBanner
+      - On any error, returns null (no backup fallback)
+
+  - name: loadWebContent
+    steps:
+      - Accepts a WebContentType enum value as the name parameter
+      - Calls handleMultipleAPIRequests to make a GET request to /WebContent/Get with params { name } and settings().READ_API_TIMEOUT
+      - Uses "soft" error handling mode for the API request
+      - Checks if the response is valid using isDataReady(response)
+      - If valid, parses response.data.content as JSON (the content field is a JSON string)
+      - Retrieves the appropriate Zod schema by calling getWebcontentSchema(name)
+      - Validates the parsed result using schema.safeParse(result)
+      - If validation succeeds, returns the parsed result as type T
+      - If validation fails, falls back to getBackUpFileContent<T>(name)
+      - If isDataReady fails, falls back to getBackUpFileContent<T>(name)
+      - On any error (catch), falls back to getBackUpFileContent<T>(name)
+
+  - name: loadProductPageWebcontent
+    steps:
+      - Calls baseNewAPI().get to make a GET request to /WebContent/Get with params { name: "__product_page_content__" }
+      - Checks if response.data.status === "OK"
+      - If OK, parses response.data.data.content as JSON
+      - Returns the result cast as ProductWebContentResponse (Record of PlatinumProductTypeEnum keys to breakpoint grid configs)
+      - If status is not "OK", returns null
+      - On any error, returns null (no backup fallback)
+
+  - name: loadMarketingPageContent
+    steps:
+      - Accepts a dynamicVal string parameter (the friendly URL identifying the marketing page)
+      - Calls handleMultipleAPIRequests to make a GET request to /WebContent/Get with params { name: dynamicVal } and settings().READ_API_TIMEOUT
+      - Uses "soft" error handling mode
+      - Checks if the response is valid using isDataReady(response)
+      - If valid, extracts response.data and parses response.data.content as JSON
+      - If the parsed result is an Array, takes the first element (result[0])
+      - Copies SEO metadata from response.data onto the result object (sEOTitle, sEOHeader, metaDescription)
+      - Validates the result against MarketingComponentsSchema using safeParse
+      - If validation succeeds, returns validationResult.data typed as z.infer<typeof MarketingComponentsSchema>
+      - If validation fails, returns null
+      - If isDataReady fails, returns null
+      - On any error, returns null
+
+  - name: getBackUpFileContent
+    steps:
+      - Accepts a WebContentType enum value and returns the corresponding backup content
+      - Uses a switch statement mapping each of the 26+ WebContentType values to its backup getter function
+      - BEST_SELLERS → getBestSellersBackup()
+      - BANNERS → getBannersBackup()
+      - DELIVERY_DEADLINES → getDeliveryDeadlinesBackup()
+      - MENU and MENU_V2 → getMenuBackup()
+      - SHIPPING_POLICY → getShippingPolicyBackup()
+      - CATEGORY_THEME_OPTIONS → inline { cards: [], photobooks: [], default: [] }
+      - HOMEPAGE_SEO_CONTENT → getHomePageSEOContentBackUp()
+      - DYNAMIC_PROMO_BANNERS → getDynamicPromoBannersBackUp()
+      - DYNAMIC_PROMO_BANNER_CANVAS → getDynamicPromoBannerCanvasBackUp()
+      - PRINTBOX_FILTER_IMAGES → getPrintFilterImagesBackUp()
+      - PRINTBOX_THEMES → getPrintBoxThemesDataBackUp()
+      - CATEGORY_THEME_IMAGE_FILTERS → getCategoryThemeImageFiltersBackUp()
+      - SHOP_BY_CATEGORY → getShopByCategory()
+      - SHOP_BY_BUDGET → getShopByBudget()
+      - HOLIDAY_DELIVERY_GUIDE → getHolidayDeliveryGuide()
+      - CATEGORY_COMPONENTS → getCategoryBackup()
+      - BLANKET_CATEGORY_COMPONENTS → getBlanketsCategoryBackup()
+      - GLOBAL_CATEGORY_BANNER → getGlobalCategoryBannerBackup()
+      - FRAMED_PRINTS_CATEGORY_COMPONENTS → getFramedPrintsCategoryBackup()
+      - CANVAS_CATEGORY_COMPONENTS → getCanvasCategoryBackup()
+      - CALENDAR_CATEGORY_COMPONENTS → getCalendarCategoryBackup()
+      - CATEGORY_QUICK_LINKS → getCategoryQuickLinksBackup()
+      - PB_LAYFLAT_CATEGORY_COMPONENTS → getPbLayFlatCategoryBackup()
+      - CSR_FAQ → inline { display: false }
+      - VIDEO_POPUP → getVideoPopupBackup()
+      - REDIRECTION → getRedirectionBackup()
+      - PRESELECTED_ADDONS → inline { standard: {}, multi: {} }
+      - FREE_SHIPPING_LABELS_TP → inline []
+      - default → getBestSellersBackup()
+      - Returns the backup content cast as generic type T
+
+  - name: getWebcontentSchema
+    steps:
+      - Accepts a WebContentType enum value and returns the matching Zod validation schema
+      - Uses a switch statement mapping each WebContentType to its Zod schema
+      - BEST_SELLERS → ProductSectionSchema (from home-service)
+      - BANNERS → BannerSchema
+      - DELIVERY_DEADLINES → DeliveryDeadlineJSONSchema
+      - MENU and MENU_V2 → NavigationMenuSchema (from navigation-v3-service)
+      - SHIPPING_POLICY → ShippingPolicyContentSchema
+      - CATEGORY_THEME_OPTIONS → ThemeOptionsResponseSchema (from themes-service)
+      - HOMEPAGE_SEO_CONTENT → HomePageSeoContentSchema
+      - DYNAMIC_PROMO_BANNERS → PromoBannerDataSchema
+      - DYNAMIC_PROMO_BANNER_CANVAS → PromoBannerCanvasDataSchema
+      - PRINTBOX_FILTER_IMAGES → PrintBoxImageFiltersSchema (from themes-service)
+      - PRINTBOX_THEMES → PrintboxThemesResponseSchema (from themes-service)
+      - CATEGORY_THEME_IMAGE_FILTERS → CategoryThemeImageFiltersSchema (from themes-service)
+      - SHOP_BY_CATEGORY → ShopByCategoryResponseSchema (from shop-by-category-service)
+      - SHOP_BY_BUDGET → ShopByBudgetResponseSchema (from shop-by-budget-service)
+      - HOLIDAY_DELIVERY_GUIDE → HolidayDeliveryGuideResponseSchema (from holiday-delivery-service)
+      - CATEGORY_COMPONENTS, BLANKET_, FRAMED_PRINTS_, CANVAS_, CALENDAR_, PB_LAYFLAT_ → CategoryComponentsSchema (from product-page-web-content-service)
+      - GLOBAL_CATEGORY_BANNER → GlobalCategoryBannerSchema (from category-service)
+      - CATEGORY_QUICK_LINKS → CategoryQuickLinksResponseSchema (from category-service)
+      - CSR_FAQ → FaqSectionSchema (from static-page-service)
+      - VIDEO_POPUP → VideoPopupSchema (from shop-page-service)
+      - REDIRECTION → RedirectionSchema
+      - PRESELECTED_ADDONS → PreselectedAddonsSchema
+      - FREE_SHIPPING_LABELS_TP → FreeShippingMinimumQuantityDataSchema
+      - default → ProductSectionSchema
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  WebContentType:
+    description: Enum of all supported web content type identifiers for loadWebContent
+    kind: enum
+    values:
+      - BEST_SELLERS: "__best_sellers__"
+      - BANNERS: "__strip_banners__"
+      - DELIVERY_DEADLINES: "__delivery_deadlines__"
+      - MENU: "__menu__"
+      - MENU_V2: "__menu_v2__"
+      - SHIPPING_POLICY: "__shipping_policy__"
+      - CATEGORY_THEME_OPTIONS: "__category_theme_options__"
+      - HOMEPAGE_SEO_CONTENT: "__home_page_seo_content__"
+      - DYNAMIC_PROMO_BANNERS: "__dynamic_promo_banners__"
+      - DYNAMIC_PROMO_BANNER_CANVAS: "__dynamic_promo_banner_canvas__"
+      - PRINTBOX_THEMES: "__printbox_themes__"
+      - CATEGORY_THEME_IMAGE_FILTERS: "__category_theme_image_filters__"
+      - PRINTBOX_FILTER_IMAGES: "__printbox_filter_images__"
+      - SHOP_BY_CATEGORY: "__shop_by_category__"
+      - SHOP_BY_BUDGET: "__shop_by_budget__"
+      - HOLIDAY_DELIVERY_GUIDE: "__holiday_delivery_guide__"
+      - CATEGORY_COMPONENTS: "__category_components__"
+      - BLANKET_CATEGORY_COMPONENTS: "__blanket_category_components__"
+      - GLOBAL_CATEGORY_BANNER: "__global_category_banner__"
+      - FRAMED_PRINTS_CATEGORY_COMPONENTS: "__framed_prints_category_components__"
+      - CANVAS_CATEGORY_COMPONENTS: "__canvas_category_components__"
+      - CALENDAR_CATEGORY_COMPONENTS: "__calendar_category_components__"
+      - CATEGORY_QUICK_LINKS: "__category_quicklinks__"
+      - PB_LAYFLAT_CATEGORY_COMPONENTS: "__pb_layflat_category_components__"
+      - CSR_FAQ: "__csr_faqs__"
+      - VIDEO_POPUP: "__video_popup__"
+      - REDIRECTION: "__redirection__"
+      - PRESELECTED_ADDONS: "__preselected_addons__"
+      - FREE_SHIPPING_LABELS_TP: "__freeshipping_labels_tp__"
+
+  Banner:
+    description: Aggregated banner content returned by loadBannerContent
+    fields:
+      - name: stripBanner
+        type: "StripBanner | null"
+      - name: promoBanner
+        type: "PromoBanner | null"
+      - name: shippingFooterBanner
+        type: "ShippingFooterBanner | null"
+
+  StripBanner:
+    description: Strip/ticker banner content
+    fields:
+      - name: banners
+        type: "string[]"
+      - name: bgColor
+        type: string
+      - name: textColor
+        type: string
+
+  DeliveryDeadlineJSON:
+    description: Container for per-product-category dynamic delivery deadline data
+    fields:
+      - name: blankets
+        type: ProductDynamicData
+      - name: photobooks
+        type: ProductDynamicData
+      - name: calendars
+        type: ProductDynamicData
+      - name: canvas
+        type: ProductDynamicData
+      - name: default
+        type: ProductDynamicData
+
+  ProductDynamicData:
+    description: Dynamic product page content for a single product category
+    fields:
+      - name: carouselNudge
+        type: CarouselNudgeJSON
+      - name: offerTag
+        type: string
+      - name: carouselNudgeText
+        type: string
+      - name: showClock
+        type: boolean
+      - name: showDeliveryDeadlines
+        type: boolean
+      - name: useScriptForDeliveryDeadlines
+        type: boolean
+      - name: deliveryDeadline
+        type: string
+      - name: useDeliveryDeadline
+        type: boolean
+      - name: aboveClockText
+        type: string
+      - name: scriptDeadlines
+        type: "ScriptDeadline[]"
+      - name: hardcodedDeliveryDeadlines
+        type: "HardcodedDeliveryDeadline[]"
+
+  ScriptDeadline:
+    description: Delivery deadline entry using script-based estimation
+    fields:
+      - name: name
+        type: string
+      - name: estimateDay
+        type: number
+      - name: hardcodeDeliverydeadline
+        type: string
+      - name: rangeEstimateDay
+        type: string
+      - name: imgUrl
+        type: string
+
+  ShippingPolicyContent:
+    description: Full shipping policy page content loaded by loadShippingPolicy
+    fields:
+      - name: title
+        type: string
+      - name: holidayShippingTitle
+        type: string
+      - name: holidayShippingDescription
+        type: string
+      - name: holidayShippingImageDesktopSrc
+        type: string
+      - name: holidayShippingImageMobileSrc
+        type: string
+      - name: href
+        type: string
+      - name: banner
+        type: ShippingPolicyBanner
+      - name: shippingByProductTable
+        type: ShippingByProductTable
+      - name: shippingPolicyTable
+        type: ShippingPolicyTable
+      - name: note
+        type: Note
+      - name: shopOurRange
+        type: ShopOurRange
+      - name: satisfactionGuarantee
+        type: SatisfactionGuarantee
+      - name: ourHelp
+        type: OurHelp
+
+field_consumption:
+  WebContentAPIResponse:
+    consumed:
+      - data: The content payload — validated against the WebContentType-specific Zod schema
+    ignored:
+      - status: Not checked — validation failure triggers fallback
+      - message: Not consumed
+
+  DeliveryDeadlineJSON:
+    consumed:
+      - blankets: Used for blanket product pages
+      - photobooks: Used for photobook product pages
+      - calendars: Used for calendar product pages
+      - canvas: Used for canvas product pages
+      - default: Fallback for product types not matching the above
+    ignored: []
+
+  ProductDynamicData:
+    consumed:
+      - showClock: Controls whether countdown clock renders
+      - showDeliveryDeadlines: Controls whether delivery deadline section renders
+      - useScriptForDeliveryDeadlines: Switches between script-calculated vs hardcoded deadlines
+      - scriptDeadlines: Used when useScriptForDeliveryDeadlines is true
+      - hardcodedDeliveryDeadlines: Used when useScriptForDeliveryDeadlines is false
+      - carouselNudge: Rendered as carousel overlay text
+      - offerTag: Rendered as product offer badge
+    ignored:
+      - deliveryDeadline: Legacy field — superseded by scriptDeadlines/hardcodedDeliveryDeadlines
+      - useDeliveryDeadline: Legacy flag — not consumed in current templates
+
+implementation_logic:
+  load_web_content_schema_validation_with_fallback:
+    rule: |
+      loadWebContent follows this pipeline:
+        1. POST to /WebContent/Get with the WebContentType name
+        2. Validate API response against the type-specific Zod schema (getWebcontentSchema)
+        3. If validation succeeds: return validated data
+        4. If validation fails OR API errors: return getBackUpFileContent(name) instead
+      This ensures callers always receive valid typed data even when the API is down or
+      returns malformed content. The backup files are bundled with the app.
+    critical: true
+
+  region_specific_cdn_url_construction:
+    rule: |
+      loadShippingPolicy, loadBestSellerSection, loadBannerContent, and loadProductDynamicData
+      all construct their CDN URLs using settings().website (the current region's domain).
+      For example: https://admin.printerpix.{tld}/json/strip-banners.json
+      There is no single CDN URL — each region has its own admin subdomain.
+    critical: false
+
+  load_marketing_page_content_dynamic_route:
+    rule: |
+      loadMarketingPageContent takes a dynamicVal (friendlyUrl) and fetches from
+      /WebContent/Get?name=__marketing__&dynamicVal={friendlyUrl}. This allows the
+      same function to load any marketing page by its URL slug. The response is
+      validated against MarketingComponentsSchema.
+    critical: false
+
+used_by:
+  - frontend/components/banner/strip-banner.yaml # Imports StripBanner type for strip banner component props
+  - frontend/components/banner/dynamic-promo-banner-v2.yaml # Imports CountdownSection, FloatingBannerSection, MainBannerSection, PromoBannerData, PromoBannerSection types
+  - frontend/components/footer/footer-product-category.yaml # Imports PromoBanner, ShippingFooterBanner types for footer rendering
+  - frontend/components/footer/footer-shipping-banner.yaml # Imports ShippingFooterBanner type for shipping footer banner component
+  - frontend/components/shared/home-bottom-banner.yaml # Imports PromoBanner type for home bottom banner component
+  - frontend/layouts/layout-default.yaml # Uses StripBanner data from loadBannerContent in default layout
+  - frontend/layouts/layout-containerless.yaml # Uses StripBanner data, calls loadWebContent for REDIRECTION in containerless layout
+  - frontend/layouts/layout-categoryproduct.yaml # Calls loadWebContent for DELIVERY_DEADLINES, CATEGORY_QUICK_LINKS; imports WebContentType
+  - frontend/routes/home-page.yaml # Consumes banner data (mainPromoBanner, floatingPromoBanner) derived from json-service types
+  - frontend/routes/shipping-policy.yaml # Calls loadWebContent<ShippingPolicyContent>(WebContentType.SHIPPING_POLICY) in routeLoader$
+  - shared/context/product-category-context.yaml # Imports DeliveryDeadlineJSON type for product category context
+  - shared/context/web-content-context.yaml # Consumes PromoBannerResponse/banner data originating from json-service promo banner types
+  - backend/services/product-page-service.yaml # Imports DeliveryDeadlineJSON, FloatingBannerSection, MainBannerSection, ProductDynamicData, ProductWebContentBreakpoint, ProductWebContentResponse types
+  - backend/services/common-service.yaml # Imports Banner, FloatingBannerSection, MainBannerSection types for getBanner/getPromoBanners functions
+  - backend/services/home-service.yaml # Imports FloatingBannerSection, MainBannerSection types; exports ProductSectionSchema consumed by json-service
+  - backend/services/middle-ware-service.yaml # Imports loadWebContent, WebContentType, RedirectionResponse for URL redirection middleware
+  - backend/services/themes-service.yaml # Exports schemas consumed by json-service (ThemeOptionsResponseSchema, PrintboxThemesResponseSchema, etc.)
+  - backend/services/navigation-v3-service.yaml # Exports NavigationMenuSchema consumed by json-service for MENU/MENU_V2 validation
+  - backend/services/marketing-page-web-content-service.yaml # Exports MarketingComponentsSchema consumed by json-service for loadMarketingPageContent validation
+  - backend/services/product-page-web-content-service.yaml # Exports CategoryComponentsSchema consumed by json-service for category component validation
+  - backend/services/product-category-service.yaml # Exports PlatinumProductTypeEnum type consumed by json-service for ProductWebContentResponse
+  - backend/services/static-page-service.yaml # Exports FaqSectionSchema consumed by json-service for CSR_FAQ validation
+  - backend/services/holiday-delivery-service.yaml # Exports HolidayDeliveryGuideResponseSchema consumed by json-service; also imports from json-service
+  - backend/services/shop-page-service.yaml # Exports VideoPopupSchema consumed by json-service for VIDEO_POPUP validation
+  - backend/services/shop-by-category-service.yaml # Exports ShopByCategoryResponseSchema consumed by json-service; also imports from json-service
+  - backend/services/shop-by-budget-service.yaml # Exports ShopByBudgetResponseSchema consumed by json-service; also imports from json-service
+  - backend/services/category-service.yaml # Exports CategoryQuickLinksResponseSchema, GlobalCategoryBannerSchema consumed by json-service

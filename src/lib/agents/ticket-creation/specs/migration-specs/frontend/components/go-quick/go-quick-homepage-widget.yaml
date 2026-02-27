@@ -1,0 +1,257 @@
+name: GoQuickHomepageWidget
+source: components/go-quick/go-quick-homepage-widget.tsx
+description: >
+  Homepage widget for the GoQuick photo upload feature. Renders a visually prominent,
+  full-width banner with a pink-to-purple gradient background, animated floating circles,
+  and a glowing border effect. Contains an invisible Uploadcare file input overlay that
+  allows users to upload one or more photos. On successful upload, navigates the user
+  to /go-quick with the uploaded S3 keys as query parameters. Displays upload progress
+  via an overlay component. Tracks uploads via both Matomo analytics and GoQuick's
+  server-side event tracking API. Logs errors to Sentry.
+
+exports:
+  - name: default
+    type: component
+    description: Default-exported Qwik component with no props (self-contained widget)
+
+props: {}
+  # This component takes no props. It manages its own internal state.
+
+component_structure:
+  root_element: div
+  root_classes: >
+    relative overflow-hidden bg-gradient-to-r from-[#f02480] via-purple-600 to-[#f02480]
+    rounded-lg shadow-2xl mb-6 border-2 border-white/20 animate-glow
+    min-h-[168px] lg:min-h-[188px]
+  layers:
+    - name: upload_progress_overlay
+      description: >
+        Conditionally rendered UploadProgress component shown when uploadProgress.started is true.
+        Displays upload percentage and file size.
+      condition: uploadProgress.started === true
+    - name: gradient_overlay
+      description: >
+        Semi-transparent dark gradient overlay (from-black/10 via-transparent to-black/10)
+        providing depth to the background.
+    - name: animated_background_elements
+      description: >
+        Seven floating circles of varying sizes (w-6 to w-16) with white/yellow tints,
+        using pulse and bounce animations with staggered delays.
+        Contained in an opacity-20 wrapper. Purely decorative.
+    - name: content_area
+      description: >
+        Main content area at z-10 with container mx-auto layout. Contains a dashed
+        border upload zone with the Uploadcare input, title, feature badges, and
+        upload button.
+      sub_layers:
+        - name: dashed_upload_zone
+          description: >
+            Border-dashed white/50 rounded container with hover effects (border-white/70,
+            bg-white/5). Contains the invisible Uploadcare file input positioned absolute
+            over the entire zone at z-20.
+        - name: title_section
+          description: >
+            Left-aligned section with a circular icon container (lightning bolt SVG),
+            translated title (go_quick.title), and drag-drop text (desktop only).
+        - name: feature_badges_desktop
+          description: >
+            Three inline badges shown only on lg+ screens: AI Powered, Up to 3 Photos,
+            Pro Quality. Each with an icon SVG and translated label.
+        - name: upload_button_section
+          description: >
+            Right-aligned section with "Up to 3 photos" text and a white pill-shaped
+            button with image icon and translated "Upload" label.
+        - name: feature_badges_mobile
+          description: >
+            Three smaller inline badges shown only on mobile (lg:hidden). Same content
+            as desktop badges but with smaller icons and text.
+
+child_components:
+  - name: Uploadcare
+    source: components/uploadcare/uploadcare
+    props:
+      id: '"homepage-upload-input"'
+      classes: '"absolute inset-0 opacity-0 cursor-pointer z-20"'
+      type: '"upload_and_return"'
+      handleNewS3: "handleNewS3 callback"
+      uploadProgress: "uploadProgress store object"
+      multipleFileUpload: "multipleFileUpload signal (boolean, default true)"
+    description: >
+      Invisible file upload input that covers the entire dashed upload zone.
+      Uses Uploadcare service for file handling. Returns S3 keys via handleNewS3 callback.
+      Supports multiple file uploads.
+
+  - name: UploadProgress
+    source: components/uploadcare/uploadprogress
+    props:
+      percents: "100 * uploadProgress.progress (0-100 range)"
+      fileSize: "uploadProgress.fileSize"
+      multipleFileUpload: "multipleFileUpload signal"
+    condition: uploadProgress.started === true
+    description: >
+      Visual progress indicator shown during active file upload. Displays percentage
+      complete and file size information.
+
+data_structure:
+  internal_state:
+    - name: uploadProgress
+      type: store
+      shape:
+        fileSize: number
+        progress: number (0.0 to 1.0)
+        started: boolean
+      initial:
+        fileSize: 0
+        progress: 0.0
+        started: false
+      description: Tracks file upload progress. Mutated by Uploadcare component.
+
+    - name: multipleFileUpload
+      type: signal
+      value_type: boolean
+      initial: true
+      description: Flag indicating multiple file upload is enabled.
+
+  i18n_keys:
+    - go_quick.title
+    - go_quick.widget.drag_drop
+    - go_quick.widget.ai_powered
+    - go_quick.widget.up_to_3_photos
+    - go_quick.widget.pro_quality
+    - go_quick.widget.upload
+    - go_quick.widget.quality
+
+behavior:
+  - action: file_upload_initiated
+    description: >
+      User clicks anywhere in the dashed upload zone, which triggers the invisible
+      Uploadcare input. Uploadcare handles the file selection dialog and upload process.
+      During upload, uploadProgress.started becomes true and progress/fileSize update,
+      causing the UploadProgress overlay to appear.
+
+  - action: upload_complete
+    trigger: Uploadcare calls handleNewS3 with array of S3 keys
+    steps:
+      - Push Matomo trackEvent with category GO_QUICK ("goQuick") and action GO_QUICK_IMAGE_UPLOAD ("addGoQuickImageUpload")
+      - Call goQuickTrackEvent('homepage_upload') which is a server-side function that posts to the AI photo placement API
+      - Build URLSearchParams with each S3 key appended as "photos" parameter
+      - Navigate to /go-quick?photos=key1&photos=key2&...
+    error_handling: >
+      On any error, logs to Sentry via logHTTPDataToSentry with event API_ERROR_RESPONSE,
+      type ERROR, stringified error data, and url description "go-quick homepage widget handleNewS3".
+      Error is caught silently (no user-facing error UI).
+
+  - action: upload_error
+    description: >
+      If handleNewS3 throws, the error is caught and logged to Sentry. The user sees
+      no error message. The widget remains in its original state.
+
+styling:
+  approach: scoped_styles_and_tailwind
+  custom_animations:
+    - name: pulse-slow
+      keyframes: "0%,100% opacity:1; 50% opacity:0.8"
+      duration: 3s
+      timing: ease-in-out infinite
+    - name: bounce-subtle
+      keyframes: "0%,100% translateY(0); 50% translateY(-2px)"
+      duration: 2s
+      timing: ease-in-out infinite
+    - name: glow
+      keyframes: >
+        0%,100% box-shadow: 0 0 5px rgba(255,255,255,0.3);
+        50% box-shadow: 0 0 20px rgba(255,255,255,0.6), 0 0 30px rgba(240,36,128,0.3)
+      duration: 2s
+      timing: ease-in-out infinite
+  brand_colors:
+    primary_pink: "#f02480"
+    purple: "purple-600 (Tailwind)"
+  responsive_breakpoints:
+    - lg (1024px): Shows larger icons, desktop feature badges, drag-drop text, larger min-height
+    - below lg: Shows mobile-optimized layout with smaller badges
+
+dependencies:
+  internal:
+    - components/uploadcare/uploadcare (file upload handler)
+    - components/uploadcare/uploadprogress (progress display)
+    - services/go-quick-service (goQuickTrackEvent server function)
+    - utility/matomo (pushMatomoEvent, MatomoCategory, MatomoEvent)
+    - utility/sentry (logHTTPDataToSentry, ESentryEvent, ESentryType)
+  external:
+    - qwik-speak (inlineTranslate for i18n)
+  framework:
+    - "@builder.io/qwik" (component$, $, useSignal, useStore, useStylesScoped$)
+    - "@builder.io/qwik-city" (useNavigate)
+
+used_by:
+  - file: routes/index@containerless.tsx
+    context: >
+      Rendered directly on the homepage below the main carousel. Imported as
+      GoQuickHomepageWidget and placed as a standalone component in the page layout.
+
+security:
+  - S3 keys are passed as URL query parameters (visible in browser history/URL bar)
+  - No user authentication required to upload photos
+  - Uploadcare handles file validation and upload security
+  - Error details are logged to Sentry (not exposed to users)
+
+notes:
+  - The component is entirely self-contained with no props - it manages its own upload state
+  - The Uploadcare input is invisible (opacity-0) and positioned over the dashed upload zone
+  - The component uses scoped styles for custom animations alongside Tailwind utility classes
+  - The carousel version (go-quick-carousel-widget) is very similar but receives uploadProgress and multipleFileUpload as props instead of managing them internally
+  - On the homepage, enableGoQuickWidget is currently set to false on the DynamicCarousel, meaning only this standalone widget is active (not the carousel version)
+  - The gradient uses the brand pink #f02480 and Tailwind purple-600
+  - Feature badges use different i18n keys on mobile vs desktop (go_quick.widget.quality vs go_quick.widget.pro_quality)
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  UploadProgressStore:
+    description: Internal useStore shape tracking file upload state
+    fields:
+      - name: fileSize
+        type: number
+        default: 0
+      - name: progress
+        type: number
+        default: 0.0
+        notes: "0.0 to 1.0 range; multiplied by 100 when passed to UploadProgress"
+      - name: started
+        type: boolean
+        default: false
+
+implementation_logic:
+  event_name_distinction:
+    rule: |
+      This widget calls goQuickTrackEvent('homepage_upload').
+      The carousel variant (GoQuickCarouselWidget) uses 'homepage_banner_upload'.
+      These are distinct server-side tracking events and must not be swapped.
+    critical: true
+
+  sentry_error_logging:
+    rule: |
+      On handleNewS3 failure, errors are logged to Sentry via logHTTPDataToSentry with:
+        event: ESentryEvent.API_ERROR_RESPONSE
+        type: ESentryType.ERROR
+        data: JSON.stringify(error)
+        url: "go-quick homepage widget handleNewS3"
+      No user-facing error message is shown. The carousel variant uses console.error only.
+    critical: false
+
+visibility_map:
+  upload_progress_overlay:
+    condition: "uploadProgress.started is true"
+    default: hidden (UploadProgress component not rendered until upload begins)
+
+  desktop_feature_badges:
+    condition: "viewport >= lg breakpoint (1024px)"
+    default: hidden (class 'hidden lg:flex')
+
+  mobile_feature_badges:
+    condition: "viewport < lg breakpoint"
+    default: visible (class 'lg:hidden')
+
+  drag_drop_subtitle:
+    condition: "viewport >= lg breakpoint"
+    default: hidden (class 'hidden lg:block')

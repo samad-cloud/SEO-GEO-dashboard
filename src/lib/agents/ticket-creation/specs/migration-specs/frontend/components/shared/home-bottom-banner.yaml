@@ -1,0 +1,145 @@
+name: HomeBottomBanner
+source: components/homepage/home-bottom-banner.tsx
+description: |
+  Promotional banner component displaying marketing text with CTA button.
+  Supports custom colors via props. Includes region-specific width handling
+  for French site.
+exports:
+  - default component
+
+props:
+  data:
+    type: PromoBanner
+    required: true
+    description: Banner content and styling configuration
+
+component_structure:
+  - Horizontal flexbox banner with text section and CTA button
+  - Text section: Two lines of bold text (bottomText1, bottomText2 + bottomText3)
+  - Optional CTA button (if cta.url exists)
+  - Dynamic background and text colors from data props
+
+child_components:
+  - Link: Qwik City Link component for CTA
+
+data_structure:
+  PromoBanner:
+    bgColor: string (CSS color for banner background)
+    textColor: string (CSS color for text)
+    bottomText1: string
+    bottomText2: string
+    bottomText3: string
+    cta:
+      url: string | undefined
+      title: string
+      bgColor: string (CSS color for button background)
+      textColor: string (CSS color for button text)
+
+behavior:
+  - Renders full-width banner with custom background color
+  - Text section width adjusts for FR region: w-[70%] md:w-auto on mobile
+  - CTA button only renders if cta.url is truthy
+  - Responsive text sizing: text-[12px] md:text-base for content
+  - Button sizing: py-2 px-4 md:px-10
+
+styling:
+  - Banner: my-4 py-4, flex items-center, justify-between on mobile, justify-center on desktop
+  - Text: text-[12px] md:text-base, font-bold
+  - Button: py-2 px-4 md:px-10, rounded-md, font-bold, text-center
+  - Region-specific (FR): Text section gets narrower width on mobile
+  - Dynamic inline styles for colors
+
+dependencies:
+  qwik:
+    - component$ from @builder.io/qwik
+    - Link from @builder.io/qwik-city
+  config:
+    - settings from ~/config/settings
+  types:
+    - PromoBanner from ~/services/json-service
+
+used_by: []
+
+security:
+  - Sanitize bottomText1/2/3 if contains user-generated content
+  - Validate cta.url is safe (no javascript: protocol)
+  - Color values should be validated to prevent CSS injection
+
+notes:
+  - Simple promotional banner, likely used on homepage or global header
+  - FR-specific styling suggests copy length issues in French locale
+  - Commented code shows previous support for "precent" field (percentage display)
+  - CTA renders as Link (client-side navigation) not external anchor
+  - Could be used for sales announcements, promotions, shipping offers
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  BottomPromoBannerProps:
+    description: Component props interface
+    fields:
+      - name: data
+        type: PromoBanner
+
+  PromoBanner:
+    description: Banner content and styling configuration (imported from ~/services/json-service)
+    fields:
+      - name: firstText1
+        type: string
+      - name: bgColor
+        type: string
+      - name: textColor
+        type: string
+      - name: bottomText1
+        type: string
+      - name: bottomText2
+        type: string
+      - name: bottomText3
+        type: string
+      - name: cta
+        type: Cta
+
+  Cta:
+    description: Call-to-action button configuration (from ~/services/json-service)
+    fields:
+      - name: url
+        type: string
+      - name: title
+        type: string
+      - name: bgColor
+        type: string
+      - name: textColor
+        type: string
+      - name: mobileTextColor
+        type: string
+
+field_consumption:
+  PromoBanner:
+    consumed:
+      - bgColor: Inline style backgroundColor on banner wrapper div
+      - textColor: Inline style color on banner wrapper div
+      - bottomText1: Rendered in first bold paragraph
+      - bottomText2: Rendered in second bold paragraph (before bottomText3)
+      - bottomText3: Rendered in second bold paragraph (after bottomText2)
+      - cta: CTA object; cta.url used as condition; cta.title, cta.bgColor, cta.textColor used in button
+    ignored:
+      - firstText1: Present in PromoBanner type but not rendered by this component
+
+  Cta:
+    consumed:
+      - url: Truthy check determines whether CTA button is rendered; used as Link href
+      - title: Displayed as button label text
+      - bgColor: Inline style backgroundColor on CTA Link button
+      - textColor: Inline style color on CTA Link button
+    ignored:
+      - mobileTextColor: Present in Cta type but not used in this component
+
+visibility_map:
+  cta_button:
+    condition: "data.cta.url is truthy"
+    default: hidden
+    notes: Link button is only rendered when cta.url has a non-empty value
+  fr_text_width_constraint:
+    condition: "settings().website === 'FR'"
+    default: hidden
+    notes: "Text section gets 'w-[70%] md:w-auto' class on FR site to accommodate longer French copy"

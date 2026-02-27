@@ -1,0 +1,274 @@
+name: EmailSubscription
+source: components/category-page/email-subscription.tsx
+description: >
+  Email newsletter subscription form for category pages. Displays a heading, subheading,
+  email input field, and submit button. On submission, validates the email and sends a
+  registration request to the Emarsys email marketing platform. Shows a "Subscribed"
+  confirmation state on success. Supports theme-based and custom color styling.
+
+exports:
+  default:
+    type: component
+    description: Email subscription form component (default export)
+  is_3_valid:
+    type: function
+    signature: "(input: string) => boolean"
+    description: >
+      Validates that the input is not empty and matches email format.
+      Returns true if valid, false otherwise.
+  SubscribeForm:
+    type: type
+    description: Form data type derived from SubscribeSchema (valibot)
+  SubscribeSchema:
+    type: object (valibot schema)
+    description: >
+      Valibot validation schema for the subscribe form with a single field "inp_3"
+      requiring minimum length 1 and valid email format.
+
+props:
+  data:
+    type: SubscribeToMail
+    required: true
+    description: Content data for the subscription section (heading, subheading, placeholder, colors, CTA text)
+  theme:
+    type: "CategoryTheme | null"
+    required: false
+    description: Optional category theme for fallback colors
+
+component_structure:
+  root: div (py-8 mx-3)
+  layout: >
+    Heading and subheading at top, followed by a form with inline email input and submit button.
+  heading_section:
+    - h3: data.heading, styled with data.textColor or theme.primaryText
+    - p: data.subHeading, styled with data.textColor or theme.primaryText
+  form:
+    library: "@modular-forms/qwik (useForm)"
+    fields:
+      - name: inp_3
+        type: email input
+        placeholder: "data.placeHolderText || 'Enter Email Address'"
+        styling: "rounded-md px-8 py-3 min-w-[250px] border-none text-black"
+        disabled_state: pointer-events-none when subscribed
+    submit_button:
+      text: "data.ctaText (normal state) or 'Subscribed' (after success)"
+      styling: "font-bold rounded-md px-5 h-[48px] min-w-[250px] border-none"
+      success_color: "rgb(12, 167, 137) (green)"
+      normal_color: "data.ctaBackgroundColor || theme.primary"
+      text_color: "data.ctaTextColor || theme.primaryText"
+
+child_components: []
+
+data_structure:
+  SubscribeToMail:
+    source: "~/services/category-service"
+    fields:
+      heading: string
+      subHeading: string
+      placeHolderText: string
+      textColor: string
+      backgroundColor: string
+      ctaBackgroundColor: string
+      ctaText: string
+      ctaTextColor: string
+  CategoryTheme:
+    source: "~/services/category-service"
+    fields:
+      primary: string
+      secondary: string
+      primaryText: string
+      secondaryText: string
+  SubscribeForm:
+    fields:
+      inp_3: string (email address)
+
+behavior:
+  form_state:
+    - Uses useForm from @modular-forms/qwik with initial value { inp_3: "" }
+    - Tracks two state flags via useStore: isSubscribed (boolean), isEmailValied (boolean, note: typo in original)
+  validation:
+    - Client-side email validation via is_3_valid function using regex /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    - Also has valibot schema validation (SubscribeSchema) with minLength(1) and email() validators
+    - If validation fails: isEmailValied = false, isSubscribed = false, form does not submit
+  submission:
+    endpoint: "https://suite56.emarsys.net/u/register.php"
+    method: GET (via fetch with mode "no-cors")
+    query_params:
+      - CID: "1023069904" (hardcoded)
+      - SID: "" (empty)
+      - f: "547"
+      - p: "2"
+      - a: "r"
+      - inp_14: "184"
+      - optin: "y"
+      - inp_4582: "GB" (hardcoded country)
+      - inp_3: user's email address (from form values)
+    on_success: "isEmailValied = true, isSubscribed = true"
+    on_error: "isEmailValied = true, isSubscribed = false"
+  post_submit_state:
+    - Button text changes to "Subscribed"
+    - Button background changes to green (rgb(12, 167, 137))
+    - Email input becomes non-interactive (pointer-events-none)
+  event_handling:
+    - Form onSubmit calls stopPropagation on the event
+
+styling:
+  framework: Tailwind CSS
+  responsive:
+    mobile:
+      - Form fields stack in a wrapping flex row with gap
+      - Centered alignment
+      - Heading and subheading centered
+    desktop:
+      - Form fields displayed inline
+      - Left-aligned on large screens (lg:justify-start, lg:text-left)
+  key_classes:
+    - "button_email_subscription--submit" (submit button identifier class)
+    - "pointer-events-none" (input when subscribed)
+
+dependencies:
+  - "@modular-forms/qwik": useForm hook, Form/Field components, SubmitHandler type
+  - "valibot": email, minLength, object, string validators; Input type
+  - "~/services/category-service": SubscribeToMail, CategoryTheme type definitions
+
+used_by:
+  - components/web-component/web-contents-component.tsx
+  - components/web-component/web-contents-component-v3.tsx
+
+security:
+  - Email submission uses no-cors mode, so response is opaque (cannot read response data)
+  - Emarsys endpoint parameters include hardcoded CID and country code
+  - No sensitive user data beyond email address is transmitted
+  - Form includes client-side email validation but server-side validation is handled by Emarsys
+
+notes:
+  - The state property "isEmailValied" contains a typo (should be "isEmailValid") -- preserve this behavior
+  - Emarsys endpoint uses GET-style registration via query parameters
+  - Country code "GB" is hardcoded in the Emarsys URL -- not dynamically derived from region settings
+  - The no-cors fetch mode means success/failure is determined solely by whether fetch throws
+  - The SubscribeSchema valibot validation and the is_3_valid function provide redundant validation
+  - The form field name "inp_3" matches Emarsys expected parameter naming
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  Props:
+    description: Component props interface (defined inline in the file)
+    fields:
+      - name: data
+        type: SubscribeToMail
+      - name: theme
+        type: "CategoryTheme | null"
+        optional: true
+
+  SubscribeToMail:
+    description: Content configuration for the subscription section
+    source: ~/services/category-service
+    fields:
+      - name: heading
+        type: string
+      - name: subHeading
+        type: string
+      - name: placeHolderText
+        type: string
+      - name: textColor
+        type: string
+      - name: backgroundColor
+        type: string
+      - name: ctaBackgroundColor
+        type: string
+      - name: ctaText
+        type: string
+      - name: ctaTextColor
+        type: string
+
+  CategoryTheme:
+    description: Theme colors used as fallback when data-level colors are absent
+    source: ~/services/category-service
+    fields:
+      - name: primary
+        type: string
+      - name: secondary
+        type: string
+      - name: primaryText
+        type: string
+      - name: secondaryText
+        type: string
+
+  SubscribeForm:
+    description: Form data shape derived from SubscribeSchema (valibot)
+    fields:
+      - name: inp_3
+        type: string
+
+  SubscribedStatus:
+    description: Internal useStore state tracking subscription result
+    fields:
+      - name: isSubscribed
+        type: boolean
+      - name: isEmailValied
+        type: boolean
+        notes: "Typo preserved from source — spelt 'isEmailValied' not 'isEmailValid'"
+
+field_consumption:
+  SubscribeToMail:
+    consumed:
+      - heading: Rendered as h3 element text
+      - subHeading: Rendered as p element text
+      - placeHolderText: Used as placeholder attribute on email input; falls back to "Enter Email Address"
+      - textColor: Applied as inline style color on heading and subheading; falls back to theme.primaryText
+      - ctaBackgroundColor: Applied as inline style backgroundColor on submit button (normal state); falls back to theme.primary
+      - ctaText: Submit button text in normal (unsubscribed) state
+      - ctaTextColor: Applied as inline style color on submit button; falls back to theme.primaryText
+    ignored:
+      - backgroundColor: Present in the SubscribeToMail type but not used in the component's render output
+
+  CategoryTheme:
+    consumed:
+      - primary: Fallback backgroundColor for submit button when ctaBackgroundColor is absent
+      - primaryText: Fallback color for heading, subheading, and button text when textColor/ctaTextColor are absent
+    ignored:
+      - secondary: Not referenced
+      - secondaryText: Not referenced
+
+implementation_logic:
+  dual_validation:
+    rule: |
+      Email validation is performed by two independent mechanisms:
+        1. is_3_valid(values.inp_3) — custom regex check (/^[^\s@]+@[^\s@]+\.[^\s@]+$/),
+           called inside the onSubmit$ handler. Failure sets isEmailValied=false and blocks submission.
+        2. SubscribeSchema (valibot) — passed to useForm but NOT called explicitly inside handleSubmit.
+           The valibot schema is available for form-level validation but the submit handler bypasses it
+           and re-validates manually via is_3_valid.
+      Only is_3_valid actually gates submission in the current implementation.
+    critical: false
+
+  no_cors_success_detection:
+    rule: |
+      The Emarsys fetch is made with { mode: "no-cors" }, which returns an opaque response.
+      Success is defined as "fetch did not throw" (try block completes).
+      A 4xx or 5xx HTTP response from Emarsys will still be treated as success because
+      no-cors mode prevents reading the response status. Only a network error triggers
+      the catch branch and sets isSubscribed=false.
+    critical: true
+
+  hardcoded_emarsys_params:
+    rule: |
+      Several Emarsys query parameters are hardcoded and not derived from component props or context:
+        CID=1023069904  (Emarsys account ID)
+        f=547, p=2, a=r (form/page identifiers)
+        inp_14=184      (subscription list ID)
+        optin=y         (confirmed opt-in flag)
+        inp_4582=GB     (country code — always GB regardless of region)
+      Only inp_3 (the email address) is dynamic.
+    critical: true
+
+visibility_map:
+  email_input_interactive:
+    condition: "subscribedStatus.isSubscribed is false"
+    default: interactive (pointer-events-none class added only after successful subscription)
+
+  submit_button_subscribed_state:
+    condition: "subscribedStatus.isSubscribed is true"
+    default: "normal state (shows data.ctaText with data.ctaBackgroundColor)"
+    notes: "When true: text changes to 'Subscribed', background changes to rgb(12, 167, 137)"

@@ -1,0 +1,274 @@
+name: Faq
+source: src/components/web-component/faq.tsx
+description: |
+  FAQ accordion component (V1) that renders questions and answers in a two-column
+  grid layout using HTML <details>/<summary> elements with custom animated expand/collapse
+  behavior. FAQs are split evenly across two columns (left column gets ceil(n/2) items).
+  Answers support markdown-to-HTML conversion. Unlike FaqSectionV2 (which is always expanded),
+  this component is accordion-style: items start closed (max-height: 0px) and expand to
+  max-height: 2000px with a 300ms transition when clicked. Link colors are theme-aware
+  (uses theme.primary or fallbacks to #F02480). Fires Matomo analytics on each FAQ click.
+  Includes a 500ms delayed first-open behavior: the very first accordion opened after mount
+  gets a 500ms delay before opening.
+
+exports:
+  - name: default
+    type: component$<FaqContentProps>
+    description: Default Qwik component export
+
+props:
+  - name: content
+    type: FaqContent
+    required: true
+    description: FAQ content data with heading, faqs array, and order number
+  - name: theme
+    type: "CategoryTheme | null"
+    required: false
+    description: Optional category theme. Used to set link color in FAQ answers (theme.primary or #F02480 fallback)
+
+component_structure:
+  root:
+    element: div
+    id: "faq-{content.order}"
+    class: "font-semibold flex flex-col items-center faq_wrapper"
+    children:
+      - div.flex.items-center.justify-center
+        - h2 (text-2xl font-bold text-center pb-8)
+      - div.mt-6.grid.grid-cols-1.md:grid-cols-2.gap-6.w-full.max-w-full
+        - div.flex.flex-col.space-y-5 (left column)
+          - accordion[id="accordion-{i}"] × ceil(n/2) items
+        - div.flex.flex-col.space-y-5 (right column)
+          - accordion[id="accordion-{i + firstColumnFaqs}"] × remaining items
+
+  accordion_item:
+    element: "accordion (custom element tag)"
+    id: "accordion-{i}"
+    class: "flex justify-center text-left w-full min-h-[90px]"
+    children:
+      - details
+        class: "content-center py-6 w-full md:mx-0 bg-[#FBF6F7] [&_svg]:open:-rotate-180 accordion_faq_accordion--{i}"
+        onClick$: Matomo event + expandFaq(i)
+        children:
+          - summary (preventdefault:click)
+            class: "cursor-pointer relative px-4 md:px-8"
+            children:
+              - strong (text-sm lg:text-base font-bold) — question text
+              - SVGIcon name="arrow-down" (absolutely positioned right, rotates on open)
+          - div.collapsible-faq-area (answer area, animated via max-height)
+            style: "transition: all 300ms ease-in-out; max-height: 0px"
+            class: "overflow-hidden max-h-[0] py-5 px-4"
+            children:
+              - div.font-normal.faq-content.text-sm.lg:text-base (dangerouslySetInnerHTML of answer HTML)
+
+child_components:
+  - name: SVGIcon
+    source: "~/components/svg-icon/svg-icon"
+    purpose: Renders the expand/collapse arrow icon on each accordion summary
+    props:
+      - name: "arrow-down"
+      - width: "16"
+      - height: "16"
+      - class: "duration-300 absolute top-[50%] -translate-y-[50%] right-4 md:right-8"
+
+data_structure:
+  FaqContent:
+    heading:
+      type: string
+      description: Section h2 heading text; fallback "Customer Answers and questions" if falsy
+    subHeading:
+      type: string
+      description: Defined in FaqContent type but NOT rendered by this component
+    faqs:
+      type: "{ question: string; answer: string }[]"
+      description: Array of FAQ items
+    order:
+      type: number
+      description: Used to generate unique root div id (faq-{order}) and anchor ids
+
+behavior:
+  - action: "Split FAQs into two columns"
+    details: >
+      firstColumnFaqs = Math.ceil(content.faqs.length / 2).
+      Left column: content.faqs.slice(0, firstColumnFaqs).
+      Right column: content.faqs.slice(firstColumnFaqs).
+      For odd counts: left has one more than right. Examples: 5 items → 3 left + 2 right.
+  - action: "Custom accordion expand/collapse"
+    details: >
+      Each details element uses preventdefault:click on summary to prevent native toggle behavior.
+      onClick$ fires pushMatomoEvent then calls expandFaq(i).
+      expandFaq(i) queries #accordion-{i} → finds <details> and .collapsible-faq-area within it.
+      To OPEN: if !detail.open && answer.maxHeight == "0px":
+        - If first click ever (clicked.value=false): waits 500ms, then sets detail.open=true and maxHeight="2000px", also sets clicked.value=true.
+        - If not first click: immediately sets detail.open=true and maxHeight="2000px".
+      To CLOSE: sets maxHeight="0px", then after 300ms timeout sets detail.open=false.
+  - action: "Reset expand state on window resize"
+    details: >
+      useOnWindow("resize"): sets isExpaned.value=true (signal maintained but not currently used in render).
+  - action: "Inject dynamic theme-aware styles"
+    details: >
+      faqStyles computed signal generates CSS string with theme.primary (fallback #F02480) as link color.
+      CSS injected via <style dangerouslySetInnerHTML={faqStyles.value}> at end of component.
+      Also injects via useStylesScoped$ for summary strong and summary::marker styles.
+  - action: "Render answer content"
+    details: >
+      Each FAQ answer div uses dangerouslySetInnerHTML={convertMarkdownToHtml(faq.answer)}.
+      The answer div has class "faq-content" for style targeting.
+  - action: "Fire Matomo analytics on FAQ click"
+    details: >
+      details onClick$: pushMatomoEvent(["trackEvent", MatomoCategory.COMMON, MatomoEvent.CLICK_FAQ_SECTION, faq.question || ""])
+  - action: "Arrow icon rotation on open"
+    details: >
+      details element has Tailwind class "[&_svg]:open:-rotate-180" — SVG icon rotates 180° when details is open.
+      SVGIcon has duration-300 class for smooth rotation.
+
+styling:
+  scoped_css_useStylesScoped:
+    "summary strong": "width: calc(100% - 40px); display: inline-block"
+    "summary::marker": "display: none; content: ''"
+    "details[open]": "padding-bottom: 0px"
+    "@media (max-width: 768px) summary:after": "font-size: 1em"
+  dynamic_injected_css:
+    note: "Computed via faqStyles useComputed$, injected via <style dangerouslySetInnerHTML>"
+    ".collapsible-faq-area a": "color: {theme?.primary || '#F02480'}; font-weight: bold"
+    ".faq-content > p": "margin-top: 12px; margin-bottom: 12px"
+    ".faq-content ul": "list-style-type: disc; margin-left: 16px; margin-top/bottom: 12px"
+    ".faq-content ol": "list-style-type: decimal; margin-left: 16px; margin-top/bottom: 12px"
+  wrapper: "font-semibold flex flex-col items-center faq_wrapper"
+  grid: "mt-6 grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-full"
+  column: "flex flex-col space-y-5"
+  accordion_wrapper: "flex justify-center text-left w-full min-h-[90px]"
+  details: "content-center py-6 w-full md:mx-0 bg-[#FBF6F7] [&_svg]:open:-rotate-180 accordion_faq_accordion--{i}"
+  summary: "cursor-pointer relative px-4 md:px-8"
+  question: "text-sm lg:text-base font-bold"
+  answer_container: "collapsible-faq-area overflow-hidden max-h-[0] py-5 px-4"
+  answer_content: "font-normal faq-content text-sm lg:text-base md:px-4"
+
+dependencies:
+  qwik:
+    - $, component$, useComputed$, useOnWindow, useSignal, useStylesScoped$ from @builder.io/qwik
+  components:
+    - SVGIcon from ~/components/svg-icon/svg-icon
+  services:
+    - convertMarkdownToHtml from ~/services/markdown-service
+  analytics:
+    - MatomoCategory, MatomoEvent, pushMatomoEvent from ~/utility/matomo
+  types:
+    - FaqContent from ~/services/web-component-service
+    - CategoryTheme from ~/services/category-service
+
+used_by:
+  - ContactUsContainer
+
+security:
+  - FAQ answers rendered via dangerouslySetInnerHTML after markdown conversion — CMS content must be sanitized
+  - Dynamic CSS injected via dangerouslySetInnerHTML on <style> tag — uses theme.primary color, not user input
+  - Uses direct DOM manipulation (document.querySelector, element.style, detail.open) — replace with React state in Next.js
+
+edge_cases:
+  - Heading fallback: if content.heading is falsy, renders "Customer Answers and questions"
+  - Question fallback: if faq.question is falsy, renders "Question" (in strong element)
+  - If content.faqs is empty, both columns render empty (no accordion items)
+  - The expandFaq function uses document.querySelector — will not work if component is server-rendered without hydration
+  - Double-click: if answer is already open, clicking again closes it (maxHeight→0, details.open=false after 300ms)
+  - The 500ms delay only applies to the VERY FIRST click (before clicked.value is set to true)
+  - i18n: no translation strings used (all text is from content or hardcoded English fallbacks)
+
+notes: |
+  KEY DISTINCTION from FaqSectionV2:
+  - Faq (V1, this component): accordion — items start closed, click to expand/collapse, uses <details>/<summary>
+  - FaqSectionV2: always-expanded inline two-column layout, no accordion behavior, includes JSON-LD structured data
+  - Faq uses theme-aware link colors (theme.primary); FaqSectionV2 hardcodes #F02084
+  - Faq does NOT emit JSON-LD structured data; FaqSectionV2 does
+  - Faq fires Matomo events on each FAQ click; FaqSectionV2 does not
+  The subHeading field from FaqContent is NOT rendered by this component.
+  The isExpaned signal is declared and updated on resize but never used in render (unused state).
+  Uses custom <accordion> element tag (not a standard HTML element — will need to become a div or React component wrapper).
+  In Next.js migration, replace DOM manipulation with React state (open/closed per item) and CSS transitions.
+  The right column FAQ index offset for Matomo event: i + firstColumnFaqs is used for expandFaq call but NOT for Matomo event — right column Matomo uses just index i (local variable), which may cause id mismatch with the accordion element.
+
+types:
+  FaqContentProps:
+    description: Component props interface
+    fields:
+      - name: content
+        type: FaqContent
+      - name: theme
+        type: "CategoryTheme | null"
+        optional: true
+
+  FaqContent:
+    description: FAQ section data
+    source: ~/services/web-component-service
+    fields:
+      - name: heading
+        type: string
+      - name: subHeading
+        type: string
+      - name: faqs
+        type: "{ question: string; answer: string }[]"
+      - name: order
+        type: number
+
+  CategoryTheme:
+    description: Optional category theme for dynamic link color
+    source: ~/services/category-service
+    fields:
+      - name: primary
+        type: string
+        description: Used as link color in FAQ answer content
+
+field_consumption:
+  FaqContent:
+    consumed:
+      - heading: Rendered as h2 (with fallback "Customer Answers and questions")
+      - faqs: Split into two columns; each item's question and answer rendered
+      - order: Used to build root div id (faq-{order}) and accordion ids
+    ignored:
+      - subHeading: Defined in type but NOT rendered by this component
+
+  CategoryTheme:
+    consumed:
+      - primary: Used as link color in dynamically injected CSS (.collapsible-faq-area a color)
+    ignored:
+      - primaryText: Not used
+      - (all other theme fields): Not used
+
+  FaqItem (from faqs array):
+    consumed:
+      - question: Rendered in strong as accordion summary; also passed to Matomo event
+      - answer: Converted via convertMarkdownToHtml and rendered via dangerouslySetInnerHTML
+
+implementation_logic:
+  first_open_delay:
+    rule: |
+      The very first accordion opened uses a 500ms delay before expanding (setTimeout 500ms).
+      Subsequent opens are immediate. The `clicked` signal tracks whether any accordion has been
+      opened yet — once set to true it is never reset. This behavior is independent of which
+      accordion is clicked first.
+    critical: false
+
+  accordion_id_indexing:
+    rule: |
+      Left column items: accordion id = "accordion-{i}" where i is 0-based within slice(0, firstColumnFaqs).
+      Right column items: accordion id = "accordion-{i + firstColumnFaqs}" where i is 0-based within slice(firstColumnFaqs).
+      expandFaq is called with the correct combined index for right column items (i + firstColumnFaqs).
+      However the Matomo event for right column uses the local `i` variable (not i + firstColumnFaqs),
+      passing only the local index as label (inconsistency with left column which uses the correct question text).
+    critical: false
+
+visibility_map:
+  accordion_answer_area:
+    condition: "detail.open === true AND answer.style.maxHeight !== '0px'"
+    default: closed (max-height: 0px, detail.open: false)
+
+  arrow_icon_rotation:
+    condition: "details element has 'open' attribute"
+    default: arrow pointing down (not rotated); rotates 180° when open via [&_svg]:open:-rotate-180
+
+  heading_fallback:
+    condition: "content.heading is falsy"
+    default: renders content.heading when truthy; fallback "Customer Answers and questions" when falsy
+
+  question_fallback:
+    condition: "faq.question is falsy"
+    default: renders faq.question when truthy; fallback "Question" when falsy

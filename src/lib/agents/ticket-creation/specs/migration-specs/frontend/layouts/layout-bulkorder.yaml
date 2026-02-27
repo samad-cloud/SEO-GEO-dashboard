@@ -1,0 +1,116 @@
+name: Bulk Order Layout
+source:
+  path: src/routes/layout-bulkorder.tsx
+  lines: 1-24
+  type: qwik-layout
+
+description: |
+  Simplified layout for bulk order pages. Displays a minimal header with a back button
+  and contact info, but no menu. No banners, no footer, just the core page content.
+
+  This layout is applied to specific routes (bulk order pages) and overrides the default
+  layout.tsx for those routes.
+
+exports:
+  - name: default
+    type: component
+    description: Simplified bulk order layout component
+
+behavior:
+  rendering:
+    structure: |
+      1. Container with back button (↪ rotated 180°) + Header
+      2. <main> container with <Slot /> (child routes rendered here)
+
+    back_button:
+      - Anchor tag linking to "/" (home page)
+      - Icon: ↪ rotated 180° (rotate-180 class)
+      - Size: 25px × 50px
+      - Position: Left side of header
+      - Mobile: ml-6 (margin-left)
+      - Desktop: ml-0 (no margin-left)
+
+    header:
+      - Shows contact info (showContact={true})
+      - Hides menu (showMenu={false})
+      - Takes full width (w-full)
+
+    main:
+      - Standard container (container mx-auto lg:px-[10px])
+      - Child pages render in <Slot />
+
+  differences_from_default_layout:
+    - NO middleware (no onRequest)
+    - NO routeLoaders (no banners, no country detection)
+    - NO globalActions (no cart actions)
+    - NO banners (strip, promo)
+    - NO footer
+    - NO CrossDomainNotification
+    - YES back button (not in default layout)
+    - Simplified Header (contact only, no menu)
+
+data_flow:
+  - No middleware, no loaders
+  - Static rendering only
+  - Child pages render in <Slot />
+
+dependencies:
+  internal:
+    - ../components/header/header (Header component)
+
+  external:
+    - "@builder.io/qwik" (component$, Slot)
+
+styling:
+  container:
+    - container mx-auto lg:px-[10px] relative
+
+  back_button_wrapper:
+    - w-full flex flex-row
+
+  back_button:
+    - w-[25px] h-[50px] flex items-center justify-center cursor-pointer
+    - Icon: rotate-180 text-[25px] ml-6 md:ml-0
+
+  header_wrapper:
+    - w-full
+
+used_by:
+  - "~/routes/bulk-ordering/index@bulkorder.tsx"
+
+security:
+  - No cart actions, no auth required for this layout
+  - Back button uses standard anchor tag (no security concerns)
+
+edge_cases:
+  - Back button always navigates to "/" (home), not browser history
+  - Header always shows contact, never shows menu
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  HeaderProps:
+    description: Props accepted by the Header component (from components/header/header.tsx)
+    fields:
+      - name: showMenu
+        type: boolean
+        optional: true
+        default: true
+      - name: showContact
+        type: boolean
+        optional: true
+        default: true
+      - name: isFixed
+        type: boolean
+        optional: true
+        default: false
+
+visibility_map:
+  header_menu:
+    condition: "Header prop showMenu — always false in this layout"
+    default: hidden (menu never shown in bulk order layout)
+
+  header_contact:
+    condition: "Header prop showContact — always true in this layout"
+    default: visible (contact info always shown)
+

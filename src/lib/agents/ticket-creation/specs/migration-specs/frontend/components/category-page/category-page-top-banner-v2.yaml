@@ -1,0 +1,149 @@
+name: CategoryPageTopBannerV2
+source: src/components/category-page/category-page-top-banner-v2.tsx
+description: |
+  Campaign/promotional top banner for category pages. Renders one of two banner variants
+  with a strict priority order:
+    1. CampaignPromoBanner — if campaignInfo prop is provided
+    2. MainBanner (floatingBanner) — if campaignInfo is null/falsy but
+       category.productPageContent.floatingBanner.main is present
+    3. Nothing — if neither condition is met
+
+  Used by CommonCategoryContainer twice: once for desktop positioning (above banner,
+  hidden on mobile) and once for mobile positioning (below banner, hidden on desktop).
+  The wrapping visibility logic (hidden lg:block / block lg:hidden) is applied by the
+  parent, not by this component itself.
+
+exports:
+  - name: default
+    type: component$<ProductPageTopBannerProps>
+    description: Default Qwik component export
+  - name: ProductPageTopBannerProps
+    type: interface
+    description: Props interface (exported name reuses product-page naming convention)
+
+props:
+  - name: campaignInfo
+    type: "CampaignInfo | null"
+    required: true
+    description: Campaign promotional data. If non-null, CampaignPromoBanner is rendered. If null, floatingBanner fallback is attempted.
+
+context_consumed:
+  - name: CategoryContext
+    source: "~/context/product-category-context"
+    fields:
+      - category.productPageContent.floatingBanner.main: Used as fallback when campaignInfo is null
+
+component_structure:
+  - ConditionalBranch_1: campaignInfo truthy → CampaignPromoBanner
+  - ConditionalBranch_2: campaignInfo falsy AND floatingBanner.main present → MainBanner with type="category"
+  - ConditionalBranch_3: neither → renders null (empty fragment)
+
+child_components:
+  - name: CampaignPromoBanner
+    source: "~/components/product-page/campaign-promo-banner"
+    purpose: Full campaign promotional banner with countdown/CTA
+    props:
+      - campaignInfo: CampaignInfo (the prop passed directly)
+  - name: MainBanner
+    source: "~/components/banner/dynamic-promo-banner-v2"
+    purpose: Dynamic promotional floating banner
+    props:
+      - data: MainBannerSection (from category.productPageContent.floatingBanner.main)
+      - type: "category" (hardcoded string)
+
+data_structure:
+  CampaignInfo:
+    source: "~/services/product-page-service"
+    fields:
+      - offer: string
+      - stripBannerContent: string
+      - image: string
+      - expiryDateTime: string
+      - clockColor: string
+      - ctas: "CampaignCta[]"
+      - banner: CampaignBanner
+
+behavior:
+  - Reads CategoryContext to access category.productPageContent.floatingBanner.main
+  - If campaignInfo prop is truthy: renders CampaignPromoBanner with campaignInfo
+  - Else if category.productPageContent?.floatingBanner?.main is truthy: renders MainBanner with that data and type="category"
+  - Else: renders nothing (returns null via empty fragment)
+  - Visibility (desktop-only vs mobile-only) is controlled entirely by the parent (CommonCategoryContainer) wrapping divs
+
+dependencies:
+  qwik:
+    - component$, useContext from "@builder.io/qwik"
+  components:
+    - CampaignPromoBanner from "~/components/product-page/campaign-promo-banner"
+    - MainBanner from "~/components/banner/dynamic-promo-banner-v2"
+  contexts:
+    - CategoryContext from "~/context/product-category-context"
+  types:
+    - CampaignInfo from "~/services/product-page-service"
+
+used_by:
+  - CommonCategoryContainer
+
+security:
+  - No direct HTML rendering; all content passed to child components
+  - CampaignInfo and floatingBanner data originate from server-side CMS/API responses
+
+edge_cases:
+  - campaignInfo is null AND floatingBanner.main is undefined: component renders nothing
+  - category.productPageContent is null: optional chaining prevents error, falls through to null render
+  - Both campaignInfo and floatingBanner are present: campaignInfo takes priority
+
+notes:
+  - The exported props interface is named ProductPageTopBannerProps despite being used on a category page — this is a naming inconsistency inherited from the product-page equivalent
+  - This component is rendered twice by CommonCategoryContainer (once desktop-hidden-mobile, once mobile-hidden-desktop) to achieve responsive campaign banner placement relative to the main category banner
+
+types:
+  ProductPageTopBannerProps:
+    description: Component props interface
+    fields:
+      - name: campaignInfo
+        type: "CampaignInfo | null"
+
+  CampaignInfo:
+    description: Campaign promotional data from product-page-service
+    source: "~/services/product-page-service"
+    fields:
+      - name: offer
+        type: string
+      - name: stripBannerContent
+        type: string
+      - name: image
+        type: string
+      - name: expiryDateTime
+        type: string
+      - name: clockColor
+        type: string
+      - name: ctas
+        type: "CampaignCta[]"
+      - name: banner
+        type: CampaignBanner
+
+field_consumption:
+  CampaignInfo:
+    consumed:
+      - "(entire object)": Passed directly to CampaignPromoBanner; this component does not read individual fields
+    ignored: []
+
+  CategoryContext:
+    consumed:
+      - "category.productPageContent.floatingBanner.main": Used as data for MainBanner fallback
+    ignored:
+      - "(all other category fields)": Not accessed by this component
+
+visibility_map:
+  campaign_promo_banner:
+    condition: campaignInfo prop is truthy
+    default: hidden (rendered only when campaign is configured)
+
+  main_banner_floating:
+    condition: "campaignInfo is falsy AND category.productPageContent?.floatingBanner?.main is truthy"
+    default: hidden (rendered only when floatingBanner is configured and no campaign)
+
+  entire_component_output:
+    condition: Either campaignInfo or floatingBanner.main is present
+    default: renders nothing (empty) if neither is provided

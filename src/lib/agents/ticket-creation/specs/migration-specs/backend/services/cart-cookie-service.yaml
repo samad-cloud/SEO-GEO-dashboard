@@ -1,0 +1,437 @@
+name: CartCookieService
+source: services/cart-services/cookie.ts
+description: >
+  Cookie utility service for cart and session management across the Printerpix e-commerce
+  storefront. Provides both client-side (document.cookie) and server-side (Qwik request
+  cookie) functions for reading, writing, and deleting cookies. Also handles shipping method
+  persistence via cookies, cookie response processing from API calls, and provides a
+  well-known cookie name registry (CookieName constant).
+
+exports:
+  - name: setShippingMethodCookies
+    type: function
+    description: Persists all shipping method properties to individual cookies
+  - name: getShippingMethodCookies
+    type: function
+    description: Reads shipping method properties from cookies and returns a structured object
+  - name: setCookie
+    type: function
+    description: Sets a client-side cookie with name, value, optional domain, and expiry (default 90 days)
+  - name: getCookie
+    type: function
+    description: Reads a cookie value by name from document.cookie, returns empty string if not found
+  - name: eraseCookie
+    type: function
+    description: Deletes a cookie by setting its expiry to the past
+  - name: checkCookieExist
+    type: function
+    description: Returns boolean indicating whether a cookie with the given name exists
+  - name: getBaseDomainName
+    type: function
+    description: >
+      Extracts the base domain from a hostname
+      (e.g., www.printerpix.com becomes .printerpix.com)
+  - name: getDomainNames
+    type: function
+    description: Returns array of domain strings - the full hostname and the base domain
+  - name: CookieName
+    type: constant_object
+    description: Registry of well-known cookie names used across the cart system
+  - name: setCookieData
+    type: server_function
+    description: Server-side function to set a cookie with base domain and 90-day maxAge
+  - name: getCookieDataOnServer
+    type: server_function
+    description: Server-side function to read all CookieName cookies plus MACHINE_TOKEN and customerGuid
+  - name: getCookieDataOnClient
+    type: function
+    description: Client-side equivalent of getCookieDataOnServer, reads from document.cookie
+  - name: updateCookieData
+    type: server_function
+    description: Server-side function to process CookieResponse (update and remove cookies)
+  - name: CookieItemResponse
+    type: interface
+    description: Shape for individual cookie items in API responses
+  - name: CookieResponse
+    type: interface
+    description: Shape for cookie update/remove responses from the API
+
+data_structure:
+  CookieName:
+    VC: MODI_VC
+    VCM: MODI_VCMASTER
+    CART: MODI_CART
+    AFF: MODI_AFF
+    COUPON: MODI_COUPON
+    REMOVED: MODI_REMOVED
+    EDITOR: editor
+    description: >
+      Registry of well-known cookie names. VC = Voucher Code, VCM = Master Coupon Code
+      (based on voucher code), CART = cart identifier string, AFF = affiliate tracking,
+      COUPON = coupon code, REMOVED = removed voucher tracking, EDITOR = editor state.
+
+  CookieItemResponse:
+    fields:
+      - name: key
+        type: string
+        description: Cookie name
+      - name: value
+        type: string
+        description: Cookie value
+      - name: expires
+        type: string | null
+        description: Expiration date string or null (null means use default 28-day maxAge)
+
+  CookieResponse:
+    fields:
+      - name: updatedItems
+        type: Array<CookieItemResponse>
+        description: Cookies to set or update
+      - name: removedItems
+        type: Array<CookieItemResponse>
+        description: Cookies to delete
+
+  ShippingMethodCookieShape:
+    fields:
+      - name: Charge
+        type: number | string
+        description: Shipping charge amount (parsed as float from cookie, empty string if not set)
+      - name: ConstName
+        type: string
+        description: Constant name identifier for the shipping method
+      - name: DisplayName
+        type: string
+        description: User-facing display name
+      - name: IsForDomestic
+        type: boolean | string
+        description: Whether method is for domestic shipping (parsed from JSON, empty string if not set)
+      - name: IsForInternational
+        type: boolean | string
+        description: Whether method is for international shipping (parsed from JSON, empty string if not set)
+      - name: Name
+        type: string
+        description: Shipping method name
+      - name: ShippingMethodGuid
+        type: string
+        description: GUID identifier for the shipping method
+
+behavior:
+  setCookie:
+    inputs:
+      - name: cname
+        type: any
+        description: Cookie name
+      - name: cvalue
+        type: any
+        description: Cookie value
+      - name: domainSet
+        type: string
+        default: empty string
+        description: Optional domain to set (e.g., .printerpix.com). If empty, no domain attribute is set.
+      - name: exdays
+        type: number
+        default: 90
+        description: Number of days until expiration
+    output: void
+    steps:
+      - Creates a Date object and adds exdays to current date
+      - Builds cookie string with format name=value;expires=UTC_string;path=/;domain=domainSet
+      - Sets document.cookie
+
+  getCookie:
+    inputs:
+      - name: name
+        type: string
+        description: Cookie name to retrieve
+    output: string
+    steps:
+      - Splits document.cookie by semicolon
+      - Trims leading spaces from each cookie segment
+      - Finds segment starting with name=
+      - Returns decodeURIComponent of the value portion
+      - Returns empty string if not found
+
+  eraseCookie:
+    inputs:
+      - name: name
+        type: any
+        description: Cookie name to delete
+      - name: domain
+        type: string
+        default: empty string
+        description: Optional domain. If not provided, uses getBaseDomainName(window.location.hostname)
+    output: void
+    steps:
+      - Determines domain (parameter or auto-detected base domain)
+      - Calls setCookie with exdays = -10 (past date) and empty value to expire the cookie
+
+  checkCookieExist:
+    inputs:
+      - name: name
+        type: string
+        description: Cookie name to check
+    output: boolean
+    steps:
+      - Splits document.cookie by semicolon
+      - Checks if any trimmed segment starts with name=
+      - Returns true if found, false otherwise
+
+  getBaseDomainName:
+    inputs:
+      - name: hostname
+        type: string
+        description: Full hostname (e.g., www.printerpix.com or checkout.printerpix.co.uk)
+    output: string
+    steps:
+      - Splits hostname by dot
+      - If more than one segment, joins all segments except the first with dot prefix
+      - Returns .printerpix.com from www.printerpix.com
+      - Returns .printerpix.co.uk from www.printerpix.co.uk
+      - If only one segment (e.g., localhost), returns the hostname as-is
+
+  getDomainNames:
+    inputs: none
+    output: string[]
+    steps:
+      - Starts with array containing window.location.hostname
+      - Computes base domain (all segments except first, prefixed with dot)
+      - If base domain has length > 0, adds it to array
+      - Returns array (e.g., [www.printerpix.com, .printerpix.com])
+
+  setShippingMethodCookies:
+    inputs:
+      - name: shippingMethod
+        type: any
+        description: Shipping method object with Charge, ConstName, DisplayName, etc.
+    output: void
+    steps:
+      - Sets 7 individual cookies with sm_ prefix for each shipping method property
+      - Cookie names are sm_charge, sm_constname, sm_displayname, sm_isfordomestic,
+        sm_isforinternational, sm_IsForRemoteArea, sm_name, sm_guid
+
+  getShippingMethodCookies:
+    inputs: none
+    output: ShippingMethodCookieShape
+    steps:
+      - Reads 7 cookies with sm_ prefix
+      - Parses Charge as float (or empty string if not set)
+      - Parses IsForDomestic and IsForInternational via JSON.parse (boolean from string)
+      - Returns structured object
+
+  setCookieData_server:
+    inputs:
+      - name: key
+        type: string
+      - name: value
+        type: string
+    output: void
+    steps:
+      - Sets cookie on server response using Qwik this.cookie.set()
+      - Domain is set to base domain of request URL hostname
+      - Path is /
+      - MaxAge is 90 days
+
+  getCookieDataOnServer:
+    inputs: none
+    output: "{ cookieData: Array<{key, value}> | null, machineToken: string, customerGuid: string }"
+    steps:
+      - Iterates over all keys in CookieName constant
+      - Reads each cookie value from server request via this.cookie.get()
+      - Filters out entries with empty values
+      - Also reads MACHINE_TOKEN cookie (session identifier)
+      - Also reads customerGuid cookie (from cookieKey.customerGuid = customerGuid)
+      - Returns null for cookieData if no CookieName cookies are set
+
+  getCookieDataOnClient:
+    inputs: none
+    output: "{ cookieData: Array<{key, value}> | null, machineToken: string, customerGuid: string }"
+    steps:
+      - Same logic as getCookieDataOnServer but reads from document.cookie via getCookie()
+      - Returns null for cookieData if no CookieName cookies are set
+
+  updateCookieData_server:
+    inputs:
+      - name: cookieData
+        type: CookieResponse
+    output: void
+    steps:
+      - For each item in updatedItems, sets cookie on server response
+      - If item has expires, uses that as expiration date
+      - If item has no expires, uses 28-day maxAge default
+      - All cookies set with path / and base domain
+      - For each item in removedItems, deletes cookie from server response
+      - Delete uses path / and base domain
+
+dependencies:
+  internal:
+    - module: ./gtm/data-layer-mapper
+      imports: [cookieKey]
+      description: Provides cookie key names, specifically customerGuid key name
+  external:
+    - package: "@builder.io/qwik-city"
+      imports: [server$]
+      description: Used for server-side cookie operations (setCookieData, getCookieDataOnServer, updateCookieData)
+
+used_by:
+  - module: components/cross-domain-notification
+    usage: setCookie and getBaseDomainName for dismissal cookie
+  - module: Cart page and checkout flows
+    usage: Shipping method cookie persistence, voucher/coupon cookie management
+  - module: GTM data layer
+    usage: Cookie reading for analytics tracking
+  - module: Authentication flows
+    usage: MACHINE_TOKEN and customerGuid cookie reading
+  - module: API service layer
+    usage: updateCookieData processes cookie instructions from cart API responses
+
+security:
+  - MACHINE_TOKEN cookie contains the user session identifier and must be handled securely
+  - customerGuid cookie contains customer identifier
+  - Cookies are set on base domain (cross-subdomain accessible)
+  - No HttpOnly or Secure flags are set on client-side cookies (document.cookie limitation)
+  - Server-side cookies via setCookieData also do not explicitly set HttpOnly/Secure
+  - Cookie values are URL-decoded when read via getCookie (decodeURIComponent)
+
+notes:
+  - There is a mix of client-side (document.cookie) and server-side (Qwik server$) cookie operations.
+    In Next.js, server-side cookies should use next/headers cookies() API or
+    Route Handler/Server Action patterns.
+  - The sm_IsForRemoteArea cookie is set in setShippingMethodCookies but never read in
+    getShippingMethodCookies (asymmetric read/write).
+  - Default cookie expiry is 90 days for most cookies, 28 days for updateCookieData defaults.
+  - The CookieName registry uses MODI_ prefix, suggesting legacy naming from an older system.
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  CookieName:
+    description: Registry of well-known cookie name constants (const object, not enum)
+    fields:
+      - name: VC
+        type: string
+        notes: "Value: MODI_VC — voucher code"
+      - name: VCM
+        type: string
+        notes: "Value: MODI_VCMASTER — master coupon code derived from voucher"
+      - name: CART
+        type: string
+        notes: "Value: MODI_CART — cart identifier string"
+      - name: AFF
+        type: string
+        notes: "Value: MODI_AFF — affiliate tracking"
+      - name: COUPON
+        type: string
+        notes: "Value: MODI_COUPON — coupon code"
+      - name: REMOVED
+        type: string
+        notes: "Value: MODI_REMOVED — removed voucher tracking"
+      - name: EDITOR
+        type: string
+        notes: "Value: editor — editor state"
+
+  CookieItemResponse:
+    description: Single cookie instruction from API response
+    fields:
+      - name: key
+        type: string
+        notes: Cookie name to set or delete
+      - name: value
+        type: string
+      - name: expires
+        type: "string | null"
+        notes: Expiry date string; null means use 28-day maxAge default
+
+  CookieResponse:
+    description: Cookie update/remove instructions returned by cart API endpoints
+    fields:
+      - name: updatedItems
+        type: "Array<CookieItemResponse>"
+        notes: Cookies to set or update
+      - name: removedItems
+        type: "Array<CookieItemResponse>"
+        notes: Cookies to delete
+
+  ShippingMethodCookieShape:
+    description: Structured object returned by getShippingMethodCookies
+    fields:
+      - name: Charge
+        type: "number | string"
+        notes: Parsed as float; empty string if cookie not set
+      - name: ConstName
+        type: string
+      - name: DisplayName
+        type: string
+      - name: IsForDomestic
+        type: "boolean | string"
+        notes: Parsed via JSON.parse; empty string if not set
+      - name: IsForInternational
+        type: "boolean | string"
+        notes: Parsed via JSON.parse; empty string if not set
+      - name: Name
+        type: string
+      - name: ShippingMethodGuid
+        type: string
+
+  CookieDataResult:
+    description: Return type of getCookieDataOnServer and getCookieDataOnClient
+    fields:
+      - name: cookieData
+        type: "Array<{key: string, value: string}> | null"
+        notes: null if no CookieName cookies are present
+      - name: machineToken
+        type: string
+        notes: MACHINE_TOKEN cookie value (empty string if not set)
+      - name: customerGuid
+        type: string
+        notes: customerGuid cookie value (empty string if not set)
+
+field_consumption:
+  CookieResponse:
+    consumed:
+      - updatedItems: Each item processed — key/value set as cookie; expires used if present, else 28-day maxAge
+      - removedItems: Each item processed — cookie deleted by key
+    ignored: []
+
+  CookieItemResponse (in updateCookieData):
+    consumed:
+      - key: Cookie name to set or delete
+      - value: Cookie value to set
+      - expires: If non-null, used as cookie expiration date; if null, 28-day maxAge is used
+    ignored: []
+
+implementation_logic:
+  base_domain_extraction:
+    rule: |
+      getBaseDomainName splits hostname by "." and joins all segments except the first
+      with a leading dot. Examples:
+        "www.printerpix.com"     → ".printerpix.com"
+        "www.printerpix.co.uk"  → ".printerpix.co.uk"
+        "localhost"              → "localhost" (single segment, no change)
+      This enables cross-subdomain cookie sharing (e.g., www, checkout, qt-api all
+      share cookies on .printerpix.co.uk).
+    critical: true
+
+  shipping_method_cookie_asymmetry:
+    rule: |
+      setShippingMethodCookies writes 8 cookies including sm_IsForRemoteArea.
+      getShippingMethodCookies reads only 7 cookies — sm_IsForRemoteArea is never read back.
+      This is an asymmetric read/write and may be a bug or deliberate (write-only telemetry).
+    critical: false
+
+  update_cookie_data_expiry_logic:
+    rule: |
+      updateCookieData processes CookieResponse from API:
+        - If CookieItemResponse.expires is non-null: use expires as cookie expiry date
+        - If CookieItemResponse.expires is null: use 28-day maxAge default
+      This is different from setCookieData (90-day default) and setCookie (also 90-day default).
+      The 28-day default is specific to cart-related cookie updates from API responses.
+    critical: false
+
+  server_vs_client_cookie_parity:
+    rule: |
+      getCookieDataOnServer (server$) and getCookieDataOnClient have identical logic:
+      both read all CookieName cookies plus MACHINE_TOKEN and customerGuid.
+      getCookieDataOnServer uses Qwik's this.cookie.get() (request cookie accessor).
+      getCookieDataOnClient uses getCookie() (document.cookie reader).
+      They return the same CookieDataResult shape.
+    critical: false

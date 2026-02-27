@@ -1,0 +1,167 @@
+name: AboutUsRoute
+source:
+  path: routes/about-us/index.tsx
+  lines: 1-105
+  type: route
+
+description: |
+  Company information page displaying:
+  - Banner image
+  - Our mission section
+  - Highlights (alternating image/text sections)
+  - Company culture and values
+  - Company image
+  - Help section (if not NL)
+  - Customer support image (if not NL)
+
+  Content loaded from getAboutUsContent() utility.
+
+url_pattern: /about-us
+layout: default
+
+exports:
+  default: true
+  component: |
+    Renders multi-section page with:
+    - Title (aboutUsContent.title)
+    - Banner image
+    - Our mission (title + description)
+    - Highlights (alternating left/right image layout, even index = image left)
+    - Company culture and values (sections with title + description)
+    - Company image
+    - Help section with contact link (if not NL)
+    - Customer support image (if not NL)
+
+  head: true
+  head_content: |
+    title: "Printerpix | About Us"
+
+dependencies:
+  - "@builder.io/qwik"
+  - "@builder.io/qwik-city" (DocumentHead)
+  - "@unpic/qwik" (Image)
+  - "~/utility/about-us/about-us-content" (getAboutUsContent)
+  - "~/config/settings"
+
+data_dependencies:
+  - getAboutUsContent() returns AboutUsContent object
+  - settings().website for NL region check
+
+behavior:
+  - Highlights alternate flex-row and flex-row-reverse for desktop (index % 2)
+  - Padding alternates (pl-8 for even, pr-8 for odd)
+  - Description fields use dangerouslySetInnerHTML for HTML content
+  - Help section includes link to agent chat (talkToAgent)
+  - Phone number and email sections commented out in code
+  - NL region hides help and customer support sections
+
+i18n_keys: []
+
+rewrite_routes:
+  NL: /over-ons
+  DE: /uber-uns
+  IT: /chi-siamo
+  ES: /sobre-nosotros
+
+used_by: []
+
+types:
+  AboutUsHighlight:
+    description: A single alternating image/text section on the about-us page
+    fields:
+      - name: title
+        type: string
+        description: Section heading text
+      - name: description
+        type: string
+        description: Section body text; may contain HTML markup (rendered via dangerouslySetInnerHTML)
+      - name: imgUrl
+        type: string
+        description: Absolute image path for this highlight
+
+  AboutUsMission:
+    description: The "Our Mission" section data
+    fields:
+      - name: title
+        type: string
+        description: Mission section heading
+      - name: description
+        type: string
+        description: Mission section body text
+
+  AboutUsCultureSection:
+    description: A single entry within the companyCultureAndValues.content array
+    fields:
+      - name: title
+        type: string
+        description: Subsection heading (e.g. "Collaboration")
+      - name: description
+        type: string
+        description: Subsection body; may contain HTML markup (rendered via dangerouslySetInnerHTML)
+
+  AboutUsCompanyCultureAndValues:
+    description: The "Company Culture & Values" aggregate section
+    fields:
+      - name: title
+        type: string
+        description: Section heading
+      - name: content
+        type: "AboutUsCultureSection[]"
+        description: Array of culture/value subsections
+
+  AboutUsOurHelp:
+    description: The "Need Help?" contact section
+    fields:
+      - name: title
+        type: string
+        description: Section heading
+      - name: description
+        type: string
+        description: Introductory support text
+      - name: phoneNumberTitle
+        type: string
+        description: Label for phone number (commented-out in rendered output)
+      - name: phoneNumberValue
+        type: string
+        description: Phone number value (commented-out in rendered output)
+      - name: emailTitle
+        type: string
+        description: Label for email address (commented-out in rendered output)
+      - name: emailValue
+        type: string
+        description: Email address value (commented-out in rendered output)
+      - name: talkToAgent
+        type: string
+        description: Link text for the agent chat CTA
+      - name: agentLink
+        type: string
+        description: URL for the agent chat / support ticket link
+
+  AboutUsContent:
+    description: Full shape of the object returned by getAboutUsContent(); sourced from per-region JSON files
+    source: "~/utility/about-us/about-us-content"
+    fields:
+      - name: title
+        type: string
+        description: Page heading
+      - name: bannerImageUrl
+        type: string
+        description: Top banner image path
+      - name: ourMission
+        type: AboutUsMission
+        description: Mission section data
+      - name: highlights
+        type: "AboutUsHighlight[]"
+        description: Alternating image/text sections (even-index = image left)
+      - name: companyCultureAndValues
+        type: AboutUsCompanyCultureAndValues
+        description: Culture and values section
+      - name: ourCompanyImageUrl
+        type: string
+        description: Full-width company image path rendered below culture section
+      - name: ourHelp
+        type: AboutUsOurHelp
+        description: Help/contact section (hidden for NL region)
+      - name: customerSupportImageUrl
+        type: string
+        description: Customer support image path (hidden for NL region)

@@ -1,0 +1,249 @@
+name: PaymentMethodsContainer
+source: src/components/payment-methods-page/containers/payment-methods-container.tsx
+description: Information page displaying supported payment methods with region-specific variations (NL has different layout and methods)
+
+exports:
+  default:
+    type: component
+    signature: "component$(() => JSX.Element)"
+    description: Main container component that displays payment method grid
+  Head:
+    type: function
+    signature: "() => DocumentHead"
+    description: Document head configuration with SEO metadata
+
+component_structure:
+  root:
+    element: div
+    classes: "min-h-[450px] mt-[50px] mb-[80px] text-center"
+    children:
+      - element: div
+        classes: "px-2 lg:px-24"
+        children:
+          - element: div
+            classes: "flex flex-wrap -mx-6 pb-5"
+            description: Grid container for payment method cards
+            children:
+              - element: div
+                iterate_over: paymentMethodsInUse
+                key: paymentMethod.name
+                classes: |
+                  Conditional:
+                  - IF website !== "NL": "text-center flex-[0_0_50%] md:flex-[0_0_25%] md:max-w-[25%] px-6"
+                  - IF website === "NL": "text-center flex-[0_0_50%] md:flex-[0_0_33%] md:max-w-[33%] px-6"
+                children:
+                  - element: div
+                    classes: |
+                      text-center mb-6 transition-all duration-300 px-3 pt-3 pb-4 lg:px-6 lg:pt-6
+                      lg:pb-8 flex flex-col items-center justify-center border border-[#FBF6F7] rounded
+                      hover:bg-[#FBF6F7] dark:hover:bg-[#000000] dark:hover:text-[#FFFFFF] custom-style
+                    children:
+                      - element: img
+                        src: paymentMethod.img
+                        alt: paymentMethod.name
+                        width: 120
+                        height: 74
+                      - element: p
+                        classes: "text-center mt-6"
+                        text: paymentMethod.name
+          - element: div
+            classes: "w-full max-w-[500px] mx-auto"
+            description: Notification text container
+            children:
+              - element: p
+                classes: "font-bold"
+                text: t("payment.payment_notification1")
+              - element: p
+                text: t("payment.payment_notification2")
+              - element: p
+                text: t("payment.payment_thankyou")
+
+behavior:
+  payment_methods_data:
+    standard:
+      - name: American Express
+        icon: /images-q/icons/american-express.svg
+      - name: Amazon
+        icon: /images-q/icons/amazon.svg
+      - name: Apple Pay
+        icon: /images-q/icons/apple-pay.svg
+      - name: Mastercard
+        icon: /images-q/icons/mastercard.svg
+      - name: Afterpay (US) / Klarna (others)
+        icon: /images-q/icons/afterpay.svg OR /images-q/icons/klarna.svg
+        conditional: Based on settings().website == "US"
+      - name: PayPal
+        icon: /images-q/icons/paypal.svg
+      - name: Visa
+        icon: /images-q/icons/visa.svg
+      - name: Maestro
+        icon: /images-q/icons/maestro.svg
+
+    netherlands:
+      - name: American Express
+        icon: /images-q/icons/american-express.svg
+      - name: Apple Pay
+        icon: /images-q/icons/apple-pay.svg
+      - name: Mastercard
+        icon: /images-q/icons/mastercard.svg
+      - name: PayPal
+        icon: /images-q/icons/paypal.svg
+      - name: Visa
+        icon: /images-q/icons/visa.svg
+      - name: Maestro
+        icon: /images-q/icons/maestro.svg
+
+  region_logic:
+    NL: Uses paymentMethodsNL (6 items, 3-column grid)
+    others: Uses paymentMethods (8 items, 4-column grid)
+
+  styling:
+    scoped_styles: ".custom-style:hover {text-shadow:0px 0px 1px black;}"
+    hover_effect: Cards have background color change and text shadow on hover
+    dark_mode: Different background colors in dark mode for cards
+
+child_components: []
+
+i18n:
+  translation_keys:
+    - payment.payment_notification1
+    - payment.payment_notification2
+    - payment.payment_thankyou
+    - payment.meta.title
+  library: qwik-speak
+  method: inlineTranslate()
+
+static_content:
+  payment_icons:
+    - path: /images-q/icons/american-express.svg
+      dimensions: 120x74
+    - path: /images-q/icons/amazon.svg
+      dimensions: 120x74
+    - path: /images-q/icons/apple-pay.svg
+      dimensions: 120x74
+    - path: /images-q/icons/mastercard.svg
+      dimensions: 120x74
+    - path: /images-q/icons/afterpay.svg
+      dimensions: 120x74
+      region: US only
+    - path: /images-q/icons/klarna.svg
+      dimensions: 120x74
+      region: Non-US
+    - path: /images-q/icons/paypal.svg
+      dimensions: 120x74
+    - path: /images-q/icons/visa.svg
+      dimensions: 120x74
+    - path: /images-q/icons/maestro.svg
+      dimensions: 120x74
+
+images:
+  all_icons:
+    width: 120
+    height: 74
+    format: svg
+    location: /images-q/icons/
+
+used_by:
+  - "~/routes/payment-methods/index.tsx"
+  - "~/routes/methode-de-paiment/index.tsx"
+
+dependencies:
+  framework:
+    - "@builder.io/qwik": [component$, useStylesScoped$]
+  i18n:
+    - "qwik-speak": [inlineTranslate]
+  config:
+    - "~/config/settings": [settings]
+
+data_dependencies:
+  settings:
+    - field: website
+      values: ["US", "GB", "NL", "FR", "DE", "IT", "ES"]
+      purpose: Determine which payment methods to display and grid layout
+
+seo:
+  head_config:
+    title: t("payment.meta.title")
+    meta_tags:
+      - name: title
+        content: t("payment.meta.title")
+      - name: google
+        content: notranslate
+      - name: theme-color
+        content: "#ffffff"
+      - name: distribution
+        content: Global
+      - name: rating
+        content: Safe For Kids
+      - name: author
+        content: printerpix
+      - name: copyright
+        content: printerpix
+      - name: google-signin-scope
+        content: profile email
+      - name: robots
+        content: none
+
+responsive_design:
+  mobile:
+    grid: 2 columns (50% each)
+    padding: px-2
+  tablet_desktop:
+    grid_standard: 4 columns (25% each)
+    grid_NL: 3 columns (33% each)
+    padding: lg:px-24
+
+edge_cases:
+  - Unknown website setting: Falls back to standard payment methods
+  - Missing translation keys: Should display key names
+  - Missing payment icons: Image alt text provides fallback
+
+security:
+  no_sensitive_data: true
+  no_authentication_required: true
+  content_type: Static informational content
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  PaymentMethod:
+    description: A single payment method entry used to render an icon card
+    fields:
+      - name: img
+        type: string
+        description: Path to the SVG icon, e.g. /images-q/icons/visa.svg
+      - name: name
+        type: string
+        description: Display name shown below the icon, e.g. "Visa"
+
+  SiteSettings:
+    description: Shape of the value returned by settings() — only the consumed field is listed
+    source: ~/config/settings
+    fields:
+      - name: website
+        type: string
+        description: Region code, e.g. "US", "NL", "GB"
+
+field_consumption:
+  SiteSettings:
+    consumed:
+      - website: Controls which payment method list to use (NL vs standard) and which CSS grid class to apply to each card
+    ignored:
+      - All other settings fields are not accessed by this component
+
+  PaymentMethod:
+    consumed:
+      - img: Passed as src attribute of the payment icon <img>
+      - name: Passed as alt attribute of the icon and rendered as <p> label below it
+    ignored: []
+
+visibility_map:
+  payment_card_grid_standard_layout:
+    condition: settings().website !== "NL"
+    default: visible
+    notes: Uses 4-column grid (md:flex-[0_0_25%]) for all regions except NL
+
+  payment_card_grid_nl_layout:
+    condition: settings().website === "NL"
+    default: hidden
+    notes: Uses 3-column grid (md:flex-[0_0_33%]) only for NL region; also uses paymentMethodsNL (6 items) instead of paymentMethods (8 items)

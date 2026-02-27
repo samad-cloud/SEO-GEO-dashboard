@@ -1,0 +1,216 @@
+name: UploadProgress
+source: components/uploadcare/uploadprogress.tsx
+description: >
+  Full-screen upload progress overlay with a radial (circular) progress
+  indicator. Displays upload percentage, completed/total file size in MB,
+  and contextual text that changes between "uploading" and "preparing"
+  states. Uses a conic-gradient CSS technique with a mask for the circular
+  progress ring. The overlay has a dark background (#292929) and covers the
+  entire viewport.
+
+exports:
+  default:
+    type: component
+    description: "UploadProgress - full-screen radial progress overlay"
+
+props:
+  percents:
+    type: number
+    required: true
+    description: >
+      Upload progress percentage (0-100). Drives the radial progress ring
+      visual, the percentage text display, and the completed size calculation.
+  fileSize:
+    type: number
+    required: true
+    description: >
+      Total file size in megabytes. Used to display total size and calculate
+      completed size (fileSize * percents / 100).
+  multipleFileUpload:
+    type: "Signal<boolean> | boolean"
+    required: false
+    description: >
+      Indicates whether multiple files are being uploaded. Determines which
+      i18n text to display ('product.multipleImageUpload' or
+      'product.singleImageUpload'). Accepts both a Qwik Signal or a plain
+      boolean value.
+
+component_structure:
+  layout:
+    - "Full-screen fixed overlay (upload-container)"
+    - "Radial progress ring (conic-gradient circle with mask)"
+    - "Centered content overlay:"
+    - "  - Percentage text (e.g., '75%')"
+    - "  - Size display (e.g., '3.75 MB | 5.00MB')"
+    - "  - Status text with animated ellipsis dots"
+    - "  - After 100%: 'Give us a moment' + 'We are preparing...' text"
+
+child_components: []
+
+data_structure:
+  afterLoadingText_signal:
+    type: "Signal<boolean>"
+    default: false
+    description: >
+      Toggles to true 1 second after progress reaches 100%. Switches
+      display from upload progress text to "preparing" message.
+
+behavior:
+  progress_tracking:
+    visual_update: >
+      useVisibleTask$ tracks percents changes and updates the CSS custom
+      property --progress on the .RadialProgress element. Uses
+      element.style.setProperty and aria-valuenow attribute.
+    percentage_display: "percents.toFixed() + '%' (no decimal places)"
+    size_display: "completedSize.toFixed(2) + ' MB | ' + fileSize.toFixed(2) + 'MB'"
+    completed_size_calc: "(fileSize * percents) / 100.0"
+
+  post_upload_transition:
+    trigger: "percents >= 100"
+    delay: "1000ms timeout"
+    effect: "afterLoadingText signal set to true"
+    cleanup: "Timeout cleared on component cleanup"
+
+  text_states:
+    during_upload:
+      single_file: "i18n key 'product.singleImageUpload'"
+      multiple_files: "i18n key 'product.multipleImageUpload'"
+      suffix: "Animated ellipsis dots (pink/magenta #F02480)"
+    after_upload:
+      line_1: "i18n key 'product.giveUsAMoment' (bold, centered)"
+      line_2: "i18n key 'product.weArePreparing' (bold, centered, with animated ellipsis)"
+
+  multipleFileUpload_handling:
+    - "If prop is a boolean, uses it directly"
+    - "If prop is a Signal, reads .value"
+    - "Determines which upload message text to show"
+
+  animated_ellipsis:
+    description: >
+      Three dots that fade in and out sequentially. Each dot has a
+      staggered animation delay (0s, 0.1s, 0.2s).
+    animation: "ellipsis-dot keyframes: 0% opacity:0, 50% opacity:1, 100% opacity:0"
+    duration: "1s infinite loop"
+    color: "#F02480 (Printerpix pink/magenta)"
+
+styling:
+  scoped_css:
+    upload_container:
+      position: "fixed"
+      left: 0
+      top: 0
+      overflow: auto
+      background_color: "#292929 (dark gray)"
+    radial_progress:
+      size: "85vmin (mobile), 55vmin (desktop lg+)"
+      min_size: "150px"
+      hue: 328 (pink/magenta)
+      track_bg: "hsl(233 34% 92%) (light blue-gray)"
+      hole_size: "65% (inner transparent area)"
+      technique: >
+        Conic gradient for progress ring, masked with radial-gradient
+        to create the donut hole. --progress CSS property drives the
+        gradient stop position.
+      z_index: "9999"
+    ellipsis_animation:
+      keyframes: "opacity 0 -> 1 -> 0, 1s infinite"
+      stagger: "0s, 0.1s, 0.2s delays for each dot"
+  tailwind_classes:
+    container: "flex items-center justify-center flex-col w-screen h-screen z-[999999]"
+    progress_text: "text-4xl font-bold text-white"
+    size_text: "text-xs md:text-2xl mb-4 mt-2 text-white"
+    status_text: "text-white text-sm md:text-base"
+    preparing_text: "font-bold w-full text-center"
+  accessibility:
+    role: progressbar
+    aria_valuenow: "dynamic (0 to 100)"
+    aria_valuemin: 0
+    aria_valuemax: 100
+
+dependencies:
+  external:
+    - "qwik-speak (inlineTranslate for i18n text)"
+  internal: []
+
+used_by:
+  - components/carousels/dynamic-carousel.tsx (shown over carousel during GoQuick upload)
+  - components/uploadcare/uploadcare.tsx (imported but UploadProgress is managed by parent)
+  - "30+ files across product pages, option panels, canvas tools, designer layouts, go-quick widgets"
+
+security:
+  - No user input rendered as HTML
+  - Pure display component with no data fetching or mutation
+  - No external resources loaded
+
+notes:
+  - The component uses a CSS conic-gradient technique for the progress ring, which has broad browser support but may need a fallback for very old browsers
+  - The z-index is extremely high (999999 on container, 9999 on ring) to ensure it overlays everything
+  - File size is expected in MB (already converted by the parent component)
+  - The 1-second delay before showing "preparing" text provides a smooth transition UX
+  - The --progress CSS custom property is set via JavaScript (setProperty), not React/Qwik state
+  - The component assumes it will be shown/hidden by the parent (no internal visibility toggle)
+  - The scoped CSS has a nested CSS rule (&::before) which relies on CSS nesting support
+  - The radial progress uses mask-image which may need -webkit-mask-image for Safari compatibility
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  ProgressProps:
+    description: Component props interface (defined inline in the file)
+    fields:
+      - name: percents
+        type: number
+        notes: "Upload progress 0–100. Drives the conic-gradient ring, percentage text, and completed size calculation."
+      - name: fileSize
+        type: number
+        notes: "Total file size in megabytes (pre-converted by parent — NOT bytes)."
+      - name: multipleFileUpload
+        type: "Signal<boolean> | boolean"
+        optional: true
+        notes: "Determines which i18n upload message to show. Accepts both a Qwik Signal and a plain boolean."
+
+field_consumption:
+  ProgressProps:
+    consumed:
+      - percents: Used in three ways — (1) passed to setProgress() to update --progress CSS property and aria-valuenow; (2) rendered as percentage text via percents.toFixed(); (3) triggers afterLoadingText transition when >= 100
+      - fileSize: Used to compute completedSize (fileSize * percents / 100); rendered as total size in the "X MB | Y MB" display
+      - multipleFileUpload: Read as boolean (directly or via .value if Signal); selects between product.multipleImageUpload and product.singleImageUpload i18n keys
+
+implementation_logic:
+  progress_css_imperative_update:
+    rule: |
+      The radial progress ring is NOT driven by Qwik reactive state.
+      Instead, useVisibleTask$ tracks percents changes and imperatively calls
+      element.style.setProperty('--progress', `${percents.toFixed()}%`) and
+      element.setAttribute('aria-valuenow', value) on the .RadialProgress DOM element.
+      This bypasses Qwik's rendering cycle for the ring animation to avoid flicker.
+    critical: true
+
+  post_upload_preparing_transition:
+    rule: |
+      When percents >= 100, a 1000ms timeout sets afterLoadingText.value = true.
+      This changes the status text from "uploading/preparing" + animated dots to
+      a two-line "Give us a moment / We are preparing..." message.
+      The timeout is registered in useVisibleTask$ cleanup to prevent memory leaks
+      if the component unmounts before the timeout fires.
+    critical: false
+
+  multiple_file_upload_prop_normalisation:
+    rule: |
+      The multipleFileUpload prop may be either a plain boolean or a Qwik Signal<boolean>.
+      The component normalises this at render time:
+        const multiUpload = typeof multipleFileUpload === 'boolean'
+          ? multipleFileUpload
+          : multipleFileUpload?.value
+      This allows the component to be used both by GoQuickHomepageWidget (passes a Signal)
+      and by any parent that passes a plain boolean.
+    critical: false
+
+visibility_map:
+  upload_status_text:
+    condition: "afterLoadingText.value is false"
+    default: visible (shown during active upload, before 100% + 1s delay)
+
+  preparing_text:
+    condition: "afterLoadingText.value is true"
+    default: hidden (shown 1 second after percents reaches 100)

@@ -1,0 +1,400 @@
+name: HomepageService
+source:
+  path: services/homepage-service.ts
+  lines: 1-124
+  type: service
+
+description: |
+  Legacy homepage service file containing type definitions for the homepage data model,
+  a direct internal API fetch function, and client-side utility functions for lazy loading
+  and debouncing. NOTE: This file is distinct from services/home-service.ts which contains
+  the MAIN getHomepage() function used by the homepage route. The getHomepage() in THIS file
+  fetches from an internal IP address (http://10.10.30.62:9180/api/Homepage) and is NOT
+  used by the homepage routeLoader. The lazyLoading() QRL function IS actively used by
+  the homepage component for scroll-based progressive loading.
+
+exports:
+  functions:
+    - name: getHomepage
+      signature: "async function getHomepage(controller?: AbortController): Promise<Homepage>"
+      description: |
+        Fetches homepage data from internal API endpoint. This is a LEGACY function that
+        calls the internal network IP directly. The main homepage route uses getHomepage()
+        from home-service.ts instead (which calls /homepage/getv2 via handleMultipleAPIRequests).
+      params:
+        - name: controller
+          type: AbortController (optional)
+          description: Optional AbortController for request cancellation
+      returns:
+        type: Homepage
+        description: Raw homepage data including homepageDTO and cookies
+      side_effects:
+        - Makes GET request to http://10.10.30.62:9180/api/Homepage
+        - Uses internal network IP (not accessible from public internet)
+
+    - name: lazyLoading
+      signature: "QRL<(selector: string, onVisible: QRL<(id: string) => void>) => void>"
+      description: |
+        Client-side lazy loading utility using Qwik's $ (QRL) function. Queries all elements
+        matching the given CSS selector, checks if each is visible in the viewport using
+        getBoundingClientRect(), and calls onVisible callback with the element's ID for
+        elements that are in view. Removes the data-lazy attribute after triggering to
+        prevent re-processing.
+      params:
+        - name: selector
+          type: string
+          description: "CSS selector to find lazy-loadable elements (e.g., '[data-lazy]')"
+        - name: onVisible
+          type: "QRL<(id: string) => void>"
+          description: Callback invoked with the element's ID when it scrolls into view
+      returns:
+        type: void
+      side_effects:
+        - Accesses document.querySelectorAll (client-side only)
+        - Reads element.getBoundingClientRect() for viewport check
+        - Removes data-lazy attribute from visible elements
+      behavior:
+        - Iterates all elements matching selector
+        - For each element, checks if rect.top >= 0 AND rect.top <= window.innerHeight
+        - If visible AND has an id attribute, calls onVisible(id)
+        - Removes data-lazy attribute to mark as loaded (prevents re-triggering)
+
+    - name: debounce
+      signature: "QRL<(func: Function, delay: number) => (...args: any[]) => void>"
+      description: |
+        Creates a debounced version of a function using Qwik's $ (QRL). Returns a new
+        function that delays invoking func until delay milliseconds have elapsed since
+        the last invocation.
+      params:
+        - name: func
+          type: Function
+          description: The function to debounce
+        - name: delay
+          type: number
+          description: Delay in milliseconds before invoking
+      returns:
+        type: "(...args: any[]) => void"
+        description: Debounced function that resets its timer on each call
+      side_effects:
+        - Uses setTimeout/clearTimeout for timing
+        - Maintains closure over timeout variable
+
+  types:
+    - name: Homepage
+      description: Top-level response from the internal homepage API
+      fields:
+        - homepageDTO: HomepageDto
+        - cookies: Cookies[]
+
+    - name: HomepageDto
+      description: Full homepage view model from internal API
+      fields:
+        - cssBox: any
+        - showFlyingAngel: boolean
+        - showFlyingAngelCountDown: boolean
+        - pageTitle: string
+        - h1: string
+        - metaTitle: string
+        - metaKeywords: string
+        - metaDescription: string
+        - aboutUsTitle: string
+        - aboutUsContent: string
+        - satisfactionTitle: string
+        - satisfactionContent: string
+        - homepageBanners: HomepageBanner[]
+        - homepageAssociations: HomepageAssociation[]
+        - otherBanners: OtherBanners
+        - storeWideMessages: any
+        - showCountDown: boolean
+        - timerDateEnd: string
+
+    - name: HomepageBanner
+      description: Banner image data for homepage carousel
+      fields:
+        - mobileBannerUrl: string
+        - bannerUrl: string
+        - bannerAltText: string
+        - bannerNavUrl: string
+
+    - name: HomepageAssociation
+      description: Category/product association section on homepage
+      fields:
+        - heading: string
+        - subheading: string
+        - categoryPageUrl: string
+        - productPages: ProductPage[]
+        - buttonCaption: string
+
+    - name: ProductPage
+      description: Individual product within a homepage association
+      fields:
+        - caption: string
+        - bannerUrl: string
+        - bannerAltText: string
+        - productPageUrl: string
+        - productReferenceCode: string
+        - price: number
+        - discountedPrice: number
+
+    - name: OtherBanners
+      description: Collection of secondary banner placements
+      fields:
+        - middle: Middle
+        - bottom: Bottom
+        - strips: Strip[]
+        - flyingAngel: FlyingAngel
+
+    - name: Middle
+      description: Middle-position banner (all fields nullable)
+      fields:
+        - mobileBannerUrl: any
+        - bannerUrl: any
+        - bannerAltText: any
+        - bannerNavUrl: any
+
+    - name: Bottom
+      description: Bottom-position banner (all fields nullable)
+      fields:
+        - mobileBannerUrl: any
+        - bannerUrl: any
+        - bannerAltText: any
+        - bannerNavUrl: any
+
+    - name: Strip
+      description: Horizontal strip banner
+      fields:
+        - mobileBannerUrl: string (optional)
+        - bannerUrl: string (optional)
+        - bannerAltText: string (optional)
+        - bannerNavUrl: string (optional)
+
+    - name: FlyingAngel
+      description: Flying angel promotional overlay (all fields nullable)
+      fields:
+        - mobileBannerUrl: any
+        - bannerUrl: any
+        - bannerAltText: any
+        - bannerNavUrl: any
+
+    - name: Cookies
+      description: Cookie directives returned by homepage API
+      fields:
+        - hours: number (cookie lifetime in hours)
+        - cookieKey: string
+        - cookieValue: string
+
+data_structure:
+  api_contracts:
+    - endpoint: "http://10.10.30.62:9180/api/Homepage"
+      method: GET
+      description: |
+        LEGACY internal API endpoint. Fetches raw homepage data. This endpoint is on the
+        internal network (10.10.30.62:9180) and is NOT the same as /homepage/getv2 used
+        by the main home-service.ts.
+      request:
+        params: none
+        supports_abort: true (via AbortController signal)
+      response:
+        type: Homepage
+        fields:
+          - homepageDTO: Full homepage view model
+          - cookies: Array of cookie directives
+
+behavior:
+  - getHomepage fetches from internal IP - only works within Printerpix network
+  - lazyLoading checks viewport visibility on each scroll event
+  - Elements must have both data-lazy attribute AND an id attribute to be lazy-loaded
+  - data-lazy attribute is removed after first visibility detection (one-time trigger)
+  - Visibility check is top-edge based: element's top must be between 0 and window.innerHeight
+  - debounce creates standard debounce pattern with closure-based timeout tracking
+
+dependencies:
+  internal: []
+  external:
+    - "@builder.io/qwik": $, QRL type
+
+used_by:
+  - routes/index@containerless.tsx (imports lazyLoading for scroll-based progressive rendering)
+
+types:
+  Homepage:
+    description: Top-level response from the legacy internal homepage API
+    fields:
+      - name: homepageDTO
+        type: HomepageDto
+      - name: cookies
+        type: "Cookies[]"
+
+  HomepageDto:
+    description: Full homepage view model from the legacy internal API
+    fields:
+      - name: cssBox
+        type: any
+      - name: showFlyingAngel
+        type: boolean
+      - name: showFlyingAngelCountDown
+        type: boolean
+      - name: pageTitle
+        type: string
+      - name: h1
+        type: string
+      - name: metaTitle
+        type: string
+      - name: metaKeywords
+        type: string
+      - name: metaDescription
+        type: string
+      - name: aboutUsTitle
+        type: string
+      - name: aboutUsContent
+        type: string
+      - name: satisfactionTitle
+        type: string
+      - name: satisfactionContent
+        type: string
+      - name: homepageBanners
+        type: "HomepageBanner[]"
+      - name: homepageAssociations
+        type: "HomepageAssociation[]"
+      - name: otherBanners
+        type: OtherBanners
+      - name: storeWideMessages
+        type: any
+      - name: showCountDown
+        type: boolean
+      - name: timerDateEnd
+        type: string
+
+  HomepageBanner:
+    description: Banner image data for homepage carousel
+    fields:
+      - name: mobileBannerUrl
+        type: string
+      - name: bannerUrl
+        type: string
+      - name: bannerAltText
+        type: string
+      - name: bannerNavUrl
+        type: string
+
+  HomepageAssociation:
+    description: Category/product association section on homepage
+    fields:
+      - name: heading
+        type: string
+      - name: subheading
+        type: string
+      - name: categoryPageUrl
+        type: string
+      - name: productPages
+        type: "ProductPage[]"
+      - name: buttonCaption
+        type: string
+
+  ProductPage:
+    description: Individual product within a homepage association (NOTE — includes productReferenceCode which is absent in home-service.ts ProductPage)
+    fields:
+      - name: caption
+        type: string
+      - name: bannerUrl
+        type: string
+      - name: bannerAltText
+        type: string
+      - name: productPageUrl
+        type: string
+      - name: productReferenceCode
+        type: string
+      - name: price
+        type: number
+      - name: discountedPrice
+        type: number
+
+  OtherBanners:
+    description: Collection of secondary banner placements
+    fields:
+      - name: middle
+        type: Middle
+      - name: bottom
+        type: Bottom
+      - name: strips
+        type: "Strip[]"
+      - name: flyingAngel
+        type: FlyingAngel
+
+  Middle:
+    description: Middle-position banner (all fields any/nullable)
+    fields:
+      - name: mobileBannerUrl
+        type: any
+      - name: bannerUrl
+        type: any
+      - name: bannerAltText
+        type: any
+      - name: bannerNavUrl
+        type: any
+
+  Bottom:
+    description: Bottom-position banner (all fields any/nullable)
+    fields:
+      - name: mobileBannerUrl
+        type: any
+      - name: bannerUrl
+        type: any
+      - name: bannerAltText
+        type: any
+      - name: bannerNavUrl
+        type: any
+
+  Strip:
+    description: Horizontal strip banner (all fields optional)
+    fields:
+      - name: mobileBannerUrl
+        type: string
+        optional: true
+      - name: bannerUrl
+        type: string
+        optional: true
+      - name: bannerAltText
+        type: string
+        optional: true
+      - name: bannerNavUrl
+        type: string
+        optional: true
+
+  FlyingAngel:
+    description: Flying angel promotional overlay (all fields any/nullable)
+    fields:
+      - name: mobileBannerUrl
+        type: any
+      - name: bannerUrl
+        type: any
+      - name: bannerAltText
+        type: any
+      - name: bannerNavUrl
+        type: any
+
+  Cookies:
+    description: Cookie directives returned by the legacy homepage API
+    fields:
+      - name: hours
+        type: number
+        description: Cookie lifetime in hours
+      - name: cookieKey
+        type: string
+      - name: cookieValue
+        type: string
+
+security:
+  - Internal API endpoint (10.10.30.62) should never be exposed to client-side code
+  - No authentication on the internal API call
+  - Cookie directives from API could set arbitrary cookies (trust required)
+
+notes:
+  - THIS FILE IS DISTINCT FROM services/home-service.ts
+  - home-service.ts contains the PRIMARY getHomepage() used by the route (calls /homepage/getv2)
+  - This file's getHomepage() is a LEGACY function calling internal IP directly
+  - The ProductPage type here has productReferenceCode field which is NOT in home-service.ts ProductPage
+  - The HomepageDto here uses HomepageAssociation (not ProductSection as in home-service.ts)
+  - lazyLoading is a Qwik QRL function ($) - in Next.js this should become a React hook or utility
+  - debounce is a Qwik QRL function ($) - in Next.js use lodash.debounce or custom React hook
+  - The Cookies type suggests the API can instruct the frontend to set specific cookies with TTL

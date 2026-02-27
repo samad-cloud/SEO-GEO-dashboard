@@ -1,0 +1,124 @@
+name: ProductTypeTable
+source: components/product-type-table/product-type-table.tsx
+description: |
+  Renders a pricing table showing shipping charges for different product types
+  across various shipping methods (Economy, Standard, Expedite, Rush). Two-row
+  structure per product: product name row + pricing row.
+exports:
+  - default component
+
+props:
+  data:
+    type: Array<DeliveryRateCardType>
+    required: true
+    description: Array of delivery rate objects with product info and pricing
+  currencySymbol:
+    type: string
+    required: true
+    description: Currency symbol to display (not used in current implementation)
+
+component_structure:
+  - Table with dynamic columns based on first item's shippingChargeDisplay keys
+  - useTask$ to extract column titles from data[0].shippingChargeDisplay
+  - thead: Column headers (Product Type, Quantity, Economy, Standard, etc.)
+  - tbody: For each product, render 2 rows
+    - Row 1: Product name (spanning all but last column) + Quantity
+    - Row 2: Shipping prices for each method
+
+child_components:
+  - Fragment: Qwik Fragment for grouping rows without extra DOM
+
+data_structure:
+  DeliveryRateCardType:
+    name: string (product name)
+    qty: number | string (quantity)
+    shippingChargeDisplay: Record<string, string>
+      - Keys: Column names (e.g., "Product Type", "Economy", "Standard")
+      - Values: Display strings (e.g., "$12.99", "20 items")
+
+behavior:
+  - Column titles extracted from Object.keys(data[0].shippingChargeDisplay)
+  - First row per product: name spans (colTitles.length - 1), last cell shows qty
+  - Second row: Maps through colTitles and displays shippingChargeDisplay[columnName]
+  - Table is scrollable horizontally on overflow
+  - All cells center-aligned except product name (left-aligned)
+
+styling:
+  - Table: border border-solid, text-[1.1rem], full width
+  - Header cells: bg-[#FBF6F7], border-[#1A1A1A], p-3
+  - Product name row: bg-[#FBF6F7]
+  - Price row: white background
+  - Container: w-full p-4 overflow-auto
+
+dependencies:
+  qwik:
+    - component$, Fragment, useSignal, useTask$
+  types:
+    - DeliveryRateCardType from ~/services/delivery-rates.service
+
+used_by: []
+
+security:
+  - Input data should be validated server-side before passing to component
+  - No XSS risk as all data displayed is from controlled API
+
+notes:
+  - currencySymbol prop is passed but not used in current implementation
+  - Column structure is dynamic based on API response
+  - Table assumes at least one data item to extract column names
+  - Row pairing (name + prices) is important for visual clarity
+  - Could be used on shipping/delivery pages to show rate options
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  ProductTypeTableProps:
+    description: Anonymous inline props type for the component
+    fields:
+      - name: data
+        type: "Array<DeliveryRateCardType>"
+      - name: currencySymbol
+        type: string
+
+  DeliveryRateCardType:
+    description: Delivery rate card data (imported from ~/services/delivery-rates.service)
+    fields:
+      - name: referenceCode
+        type: string
+      - name: name
+        type: string
+      - name: qty
+        type: number
+      - name: shippingChargeDisplay
+        type: "Record<string, any>"
+
+  IProductTypeItem:
+    description: Alternative flat type also exported from this file (not used directly in component render)
+    fields:
+      - name: productName
+        type: string
+      - name: quantity
+        type: number
+      - name: economyPrice
+        type: "null | string"
+      - name: standardPrice
+        type: "null | string"
+      - name: expeditePrice
+        type: "null | string"
+      - name: rushPrice
+        type: "null | string"
+
+field_consumption:
+  ProductTypeTableProps:
+    consumed:
+      - data: Iterated to render table rows; data[0].shippingChargeDisplay used to extract column titles
+    ignored:
+      - currencySymbol: Declared in props type but destructured away and never referenced in render
+
+  DeliveryRateCardType:
+    consumed:
+      - name: Displayed in first row, left-aligned, spanning all columns except the last
+      - qty: Displayed in first row, last column cell
+      - shippingChargeDisplay: Keys used as column header titles; values used as price cells in second row
+    ignored:
+      - referenceCode: Present in type but not used in render

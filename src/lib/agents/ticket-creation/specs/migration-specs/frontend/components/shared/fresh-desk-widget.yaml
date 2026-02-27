@@ -1,0 +1,85 @@
+name: FreshDeskWidget
+source: components/customer-service-components/fresh-desk-widget.tsx
+description: |
+  Injects Freshdesk customer support widget script dynamically on page load.
+  Widget ID varies by region. Script loads with 2-second delay for performance.
+  Includes messenger configuration for eager loading.
+exports:
+  - default component (no props)
+
+props: {}
+
+component_structure:
+  - useOnWindow("load") hook to execute script injection on page load
+  - Injects fcWidgetMessengerConfig inline script (eagerLoad: true)
+  - Creates Freshdesk script element with region-specific widgetId
+  - Appends script to document.body after 2000ms delay
+
+child_components: None
+
+data_structure:
+  fcWidgetMessengerConfig:
+    config:
+      eagerLoad: boolean (true)
+
+  region_widget_mapping:
+    GB: "76a9516f-1537-4f3c-a7ea-9ed6d9ae42e4"
+    FR: "fd9eb8fd-bf45-4153-a861-81d188531f27"
+    US: "1cf2e5fe-3ac9-4843-9932-376cfb2df091"
+    DE: "6b7d6305-dc5f-4580-b867-446edfa417c6"
+    ES: "0adc20c2-cda4-45bc-8862-c3e1e953d1c9"
+    IT: "f2b25ecd-251d-4db7-a8a9-1bdd289f85dd"
+    NL: "47fb83ac-5805-4d4f-a362-edd44e94d626"
+    IN: "283f24a9-d290-424a-8d78-5d4ee5531dbd"
+    AE: "f42bf355-07de-4b8b-88eb-f681faf7cdae"
+    default: "" (empty string for unknown regions)
+
+behavior:
+  - On window load: Determine region from settings().website
+  - Get corresponding Freshdesk widget ID for region
+  - Create script element with src: //eu.fw-cdn.com/12483765/534484.js
+  - Set attributes: chat="true", widgetId={region-specific}, async="true"
+  - Wait 2000ms (setTimeout), then append script to document.body
+  - Widget appears as floating chat button on page after load
+
+script_attributes:
+  - src: "//eu.fw-cdn.com/12483765/534484.js"
+  - chat: "true"
+  - widgetId: Region-specific UUID
+  - async: "true"
+
+styling:
+  - No component styling (Freshdesk widget styles itself)
+  - Commented code shows previous Botpress hiding: iframe.bpFab {display: none}
+
+dependencies:
+  qwik:
+    - $, component$, useOnWindow from @builder.io/qwik
+  config:
+    - settings from ~/config/settings
+
+used_by: []
+
+security:
+  - Script src is from Freshdesk CDN (eu.fw-cdn.com) - trusted third party
+  - Widget IDs are hardcoded UUIDs - safe
+  - dangerouslySetInnerHTML used for config - safe as content is controlled
+  - No user input in script injection
+
+notes:
+  - 2-second delay prevents blocking initial page render
+  - useOnWindow("load") ensures DOM is ready before script injection
+  - eslint-disable qwik/no-use-visible-task indicates this is acceptable use
+  - Commented Botpress hiding suggests previous chat widget migration
+  - Widget ID per region enables localized support experiences
+  - eagerLoad config tells Freshdesk to initialize widget immediately
+  - Script is protocol-relative (//eu.fw-cdn.com) for http/https compatibility
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  FcWidgetMessengerConfig:
+    description: Inline script config injected into window before Freshdesk loads
+    fields:
+      - name: config
+        type: "{ eagerLoad: boolean }"

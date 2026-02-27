@@ -1,0 +1,228 @@
+name: TrustIndicator
+source:
+  path: components/share/trust-indication/trust-indicator.tsx
+  lines: 1-53
+  type: component
+
+description: |
+  Trust badges/indicators component displaying icons with titles and descriptions
+  (e.g., "5-star reviews", "Fast shipping", "Secure checkout"). Used to build
+  customer confidence. Supports two layout variants: "top" and "bottom".
+
+  Variants:
+  - "top": Icon + text side-by-side on mobile, desktop (horizontal layout)
+  - "bottom": Icon above text on mobile (vertical), side-by-side on desktop
+
+  Features:
+  - Responsive 2/4 column grid (2 columns mobile, 4 desktop)
+  - Optimized images via @unpic/qwik
+  - Customizable data array
+  - Two layout variants
+
+exports:
+  - name: default
+    type: component
+    description: Default export of TrustIndicator component
+
+props:
+  data:
+    type: IconItem[]
+    required: true
+    description: Array of trust indicator items (imageUrl, title, desc)
+
+  variant:
+    type: "top" | "bottom"
+    required: true
+    description: Layout variant (affects mobile layout)
+
+component_structure: |
+  <div class="flex flex-wrap trust_indicator_wrapper">
+    {data.map((section, i) => (
+      <div class="column md:flex-[0_0_25%] flex-[0_0_50%]">
+        <Image
+          src={section.imageUrl}
+          alt="Rating Star"
+          width={50}
+          height={50}
+          class="icon"
+        />
+        <div class="text">
+          <p class="font-bold">{section.title}</p>
+          <p>{section.desc}</p>
+        </div>
+      </div>
+    ))}
+  </div>
+
+behavior:
+  layout_variants:
+    top:
+      mobile:
+        - Icon and text side-by-side (flex-row)
+        - Text left-aligned
+        - Description hidden on mobile
+      desktop:
+        - Icon and text side-by-side (flex-row)
+        - Text left-aligned
+        - Description visible
+
+    bottom:
+      mobile:
+        - Icon above text (flex-col)
+        - Text centered
+        - Description visible
+      desktop:
+        - Icon and text side-by-side (flex-row)
+        - Text left-aligned
+        - Description visible
+
+interfaces:
+  IconItem:
+    properties:
+      imageUrl:
+        type: string
+        description: URL/path to icon image
+      title:
+        type: string
+        description: Main title text (e.g., "5-star reviews")
+      desc:
+        type: string
+        description: Description text (e.g., "Over 10,000 reviews")
+
+  TrustProps:
+    properties:
+      data:
+        type: IconItem[]
+        description: Array of trust indicators
+      variant:
+        type: "top" | "bottom"
+        description: Layout variant
+
+dependencies:
+  qwik:
+    - component$ (from @builder.io/qwik)
+
+  images:
+    - Image (from @unpic/qwik)
+
+data_dependencies:
+  props:
+    - data: Array of IconItem objects
+    - variant: Layout variant string
+
+styling:
+  classes:
+    container:
+      - flex flex-wrap: Flex grid
+      - px-3 lg:px-0: Horizontal padding (mobile only)
+      - -mx-2: Negative horizontal margin (row container)
+      - trust_indicator_wrapper: Custom class (for styling hooks)
+
+    column:
+      - md:flex-[0_0_25%] lg:max-w-[25%]: 25% width on desktop (4 columns)
+      - flex-[0_0_50%] max-w-[50%]: 50% width on mobile (2 columns)
+      - flex flex-row/flex-col: Horizontal/vertical based on variant
+      - lg:flex-row: Always horizontal on desktop
+      - items-center: Vertically centered
+      - px-2: Column padding
+      - mb-3 lg:mb-0: Bottom margin on mobile only
+
+    icon:
+      - w-[36px] h-[36px] lg:w-[50px] lg:h-[50px]: 36x36 mobile, 50x50 desktop
+      - mb-2 (variant=bottom): Bottom margin when vertical
+      - mr-2 (variant=top): Right margin when horizontal
+      - lg:mr-2 lg:mb-0: Desktop always horizontal
+
+    text:
+      - text-center (variant=bottom): Centered on mobile
+      - text-left (variant=top): Left-aligned on mobile
+      - lg:text-left: Always left-aligned on desktop
+      - ml-0 md:ml-2: Left margin on desktop
+
+    title:
+      - font-bold: Bold weight
+      - text-[13px] md:text-base: 13px mobile, 16px desktop
+
+    description:
+      - block (variant=bottom): Visible on mobile
+      - hidden (variant=top): Hidden on mobile
+      - lg:block: Always visible on desktop
+      - text-[13px] md:text-base: 13px mobile, 16px desktop
+
+responsive:
+  mobile_default:
+    - 2 columns (50% width each)
+    - variant=top: Horizontal layout, desc hidden
+    - variant=bottom: Vertical layout, desc visible
+    - Icon 36x36
+
+  desktop_md_lg:
+    - 4 columns (25% width each)
+    - Always horizontal layout
+    - Description always visible
+    - Icon 50x50
+
+accessibility:
+  considerations:
+    - Images have alt text ("Rating Star" - should be dynamic based on context)
+    - Title and description provide context
+
+used_by: []
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  IconItem:
+    description: Individual trust indicator data item
+    fields:
+      - name: imageUrl
+        type: string
+      - name: title
+        type: string
+      - name: desc
+        type: string
+
+  TrustProps:
+    description: Component props interface
+    fields:
+      - name: data
+        type: "IconItem[]"
+      - name: variant
+        type: '"top" | "bottom"'
+
+field_consumption:
+  IconItem:
+    consumed:
+      - imageUrl: Image src attribute for the trust icon
+      - title: Displayed as bold paragraph text
+      - desc: Displayed as second paragraph (visibility depends on variant and breakpoint)
+
+visibility_map:
+  column_flex_direction_vertical:
+    condition: "variant === 'bottom' AND viewport < lg"
+    default: hidden
+    notes: "flex-col applied on mobile when variant=bottom (icon above text)"
+  column_flex_direction_horizontal:
+    condition: "variant === 'top' OR viewport >= lg"
+    default: visible
+    notes: "flex-row applied on mobile when variant=top; lg:flex-row always applies on desktop"
+  icon_bottom_margin:
+    condition: "variant === 'bottom'"
+    default: hidden
+    notes: "mb-2 class on icon when variant=bottom (vertical layout)"
+  icon_right_margin:
+    condition: "variant === 'top'"
+    default: visible
+    notes: "mr-2 class on icon when variant=top (horizontal layout)"
+  text_centered:
+    condition: "variant === 'bottom'"
+    default: hidden
+    notes: "text-center class on text container when variant=bottom on mobile"
+  text_left_aligned:
+    condition: "variant === 'top'"
+    default: visible
+    notes: "text-left class on text container when variant=top on mobile"
+  description_paragraph:
+    condition: "variant === 'bottom' OR viewport >= lg"
+    default: hidden
+    notes: "'block' when variant=bottom; 'hidden' when variant=top on mobile; 'lg:block' always shows on desktop"

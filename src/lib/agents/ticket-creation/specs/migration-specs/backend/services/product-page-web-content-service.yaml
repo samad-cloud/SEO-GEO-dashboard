@@ -1,0 +1,352 @@
+name: ProductPageWebContentService
+source: services/product-page-web-content-service.ts
+description: |
+  Defines interfaces and Zod schemas for product category page components including
+  product sections, reviews, FAQs, blog posts, trust signals, UGC sections, and theme
+  configuration. Contains comprehensive validation schemas for all category page content types.
+
+exports:
+  types:
+    - name: CategoryComponents
+      fields:
+        - display: boolean
+        - typeOptionSection: TypeOption2[]
+        - productSections: ProductSection[]
+        - subscribeToMail: any
+        - topCtaButton: TopCtaButton
+        - bottomPageCta: BottomPageCta
+        - showPrice: boolean
+        - blogSection: CategoryBlogSection
+        - featuresSlideshow: CategoryFeaturesSlides
+        - reviewsCollectionSortOrder: number
+        - customerReviews: CustomerReview
+        - midpageBanner: MidPageBanner
+        - cards: Cards
+        - trustSignals: TrustSignals
+        - ugcSection: UgcSection
+        - midBanner: MidBanner
+        - faqSection: FAQSection
+        - seoContent: SeoContent
+        - typeOption2: any
+        - typeOption4: any
+        - theme: CategoryTheme
+        - productPages: ProductPages[]
+
+  zod_schemas:
+    - name: specialTextSchema
+      description: Validates special text with optional href and bold styling
+      fields:
+        - text: string
+        - href: string (optional, nullable)
+        - isBold: boolean (optional)
+
+    - name: paragraphSchema
+      description: Validates paragraph with text, special text array, and bullets
+      fields:
+        - text: string
+        - specialText: array of specialTextSchema (optional, nullable)
+        - bullets: any (nullable)
+
+    - name: contentSchema
+      description: Validates slide content with image, heading, text, and CTA
+      fields:
+        - image: string
+        - heading: string
+        - textContent: string
+        - ctaText: string
+        - ctaUrl: string
+
+    - name: slideSchema
+      description: Validates generic slide with heading and content array
+      fields:
+        - heading: string
+        - content: array of contentSchema
+
+    - name: cardSchema
+      description: Validates reusable card with image, heading, text, and buttons
+      fields:
+        - image: string
+        - heading: string
+        - textContent: string
+        - buttons: array of {ctaText: string, href: string}
+
+    - name: faqSchema
+      description: Validates FAQ item with question and paragraphs
+      fields:
+        - question: string
+        - paragraphs: array of paragraphSchema
+
+    - name: videoBannerSchema
+      description: Validates video banner with overlay text and CTA
+      fields:
+        - display: boolean
+        - video: string (optional, nullable)
+        - overlayText: string (optional, nullable)
+        - overlayTextColorDesktop: string (optional, nullable)
+        - overlayTextColorMobile: string (optional, nullable)
+        - overlayBg: string (optional, nullable)
+        - ctaText: string (optional, nullable)
+        - ctaUrl: string (optional, nullable)
+
+    - name: signalSchema
+      description: Validates trust signal with image, heading, and text
+      fields:
+        - image: string
+        - heading: string
+        - textContent: string
+
+    - name: reviewSchema
+      description: Validates customer review item
+      fields:
+        - heading: string
+        - review: string
+        - reviewer: string
+        - reviewDate: string
+
+    - name: customerReviewsSchema
+      description: Validates customer reviews section
+      fields:
+        - order: number
+        - score: string
+        - starsImage: string
+        - reviewCount: string
+        - display: boolean
+        - reviews: array of reviewSchema
+
+    - name: productSectionSchema
+      description: Validates product section with lists and display options
+      fields:
+        - type: string
+        - heading: string
+        - listBestSellers: array of number
+        - listPremiums: array of number
+        - newProducts: array of number
+        - showPrice: boolean
+        - showOriginalPrice: boolean
+        - displayPercentageDiscount: boolean (optional)
+        - backgroundColor: string
+        - order: number
+        - from: number (optional)
+        - to: number (optional)
+        - repeatedProducts: array of number
+        - ctaText: string (nullable)
+        - ctaUrl: string (nullable)
+        - description: any (nullable)
+        - display: boolean
+        - showQuickView: boolean (optional)
+
+    - name: productPageSchema
+      description: Validates individual product page item
+      fields:
+        - heading: string
+        - description: string
+        - image: string
+        - url: string
+
+    - name: productPagesSchema
+      description: Validates product pages section
+      fields:
+        - heading: string
+        - order: number
+        - display: boolean
+        - pages: array of productPageSchema
+
+    - name: themeSchema
+      description: Validates category theme colors
+      fields:
+        - primary: string
+        - primaryText: string
+        - secondary: string
+        - secondaryText: string
+
+    - name: blogPostSchema
+      description: Validates blog post item
+      fields:
+        - image: string
+        - heading: string
+        - urlText: string
+        - url: string
+
+    - name: blogSectionSchema
+      description: Validates blog section with posts
+      fields:
+        - display: boolean
+        - order: number
+        - heading: string
+        - textContent: string
+        - blogPosts: array of blogPostSchema
+
+    - name: midpageBannerSchema
+      description: Validates midpage banner with desktop/mobile images
+      fields:
+        - order: number
+        - heading: string (nullable)
+        - display: boolean
+        - desktop: string
+        - mobile: string
+        - textContent: string (nullable)
+        - videoCtaText: string (nullable)
+        - ctaVideoUrl: string (nullable)
+
+    - name: CategoryComponentsSchema
+      description: Master schema validating entire category components structure
+      fields:
+        - display: boolean
+        - videoBanner: videoBannerSchema (optional)
+        - productSections: array of productSectionSchema
+        - productPages: array of productPagesSchema (optional, nullable)
+        - subscribeToMail: any (nullable)
+        - topCtaButton: object with href, heading, text, specialText, ctaText, ctaColor, ctaTextColor
+        - bottomPageCta: object with order, href, ctaText, ctaColor, ctaTextColor, display
+        - blogSection: blogSectionSchema (optional)
+        - featuresSlideshow: object with display, order, heading, slides array
+        - reviewsCollectionSortOrder: number (optional)
+        - customerReviews: customerReviewsSchema (optional)
+        - midpageBanner: midpageBannerSchema (optional)
+        - cards: object with display, order, heading, cardList, buttonColor, buttonTextColor (optional)
+        - trustSignals: object with display, order, heading, description, signals array
+        - ugcSection: object with display, order, heading, subheading, ugc array, textContent, ctaText, ctaUrl
+        - midBanner: object with desktopImage, display, imageAlt, order, mobileImage
+        - faqSection: object with order, display, heading, faqs array
+        - seoContent: object with display, order, sections array (nullable)
+        - theme: themeSchema
+        - typeOption2: any (nullable)
+        - typeOption4: any (nullable)
+
+  commented_code:
+    - getCategoryComponents: Commented function that would load web content from WebContentType.CATEGORY_COMPONENTS
+
+behavior:
+  - name: CategoryComponents (interface)
+    steps:
+      - Defines the shape for category page content with all sub-sections
+      - Contains display toggle, product sections, CTA buttons, blog, reviews, UGC, FAQ, SEO, and theme
+  - name: CategoryComponentsSchema (Zod schema)
+    steps:
+      - Validates entire category components structure at runtime
+      - Uses nested sub-schemas for each section (videoBanner, productSections, blogSection, etc.)
+      - Many fields are optional or nullable to handle partial CMS data
+      - Enforces required fields like display (boolean), productSections (array), theme colors
+      - Sub-schemas validate cards (image, heading, textContent, buttons), FAQs (question, paragraphs), reviews (heading, review, reviewer, reviewDate), etc.
+  - name: Zod sub-schemas (specialTextSchema, paragraphSchema, faqSchema, etc.)
+    steps:
+      - Each defines validation for a reusable content block
+      - specialTextSchema validates text with optional href and bold styling
+      - paragraphSchema validates text with optional specialText array and bullets
+      - contentSchema validates slide content (image, heading, textContent, CTA)
+      - faqSchema validates FAQ item with question and array of paragraphs
+      - reviewSchema validates review with heading, review text, reviewer name, and date
+      - productSectionSchema validates product list with best sellers, premiums, new products, pricing display options, and order
+      - themeSchema validates primary/secondary color pairs with text colors
+  - name: getCategoryComponents (commented out)
+    steps:
+      - Would call loadWebContent with WebContentType.CATEGORY_COMPONENTS
+      - Currently disabled (entire function body is commented out)
+
+api_contracts: []
+
+dependencies:
+  internal:
+    - "./category-service": All type imports (BottomPageCta, Cards, CategoryBlogSection, etc.)
+    - "~/components/customer-review/customer-review": CustomerReview type
+  external:
+    - zod: Schema validation library
+
+data_flow:
+  inputs:
+    - Category component data from API or CMS
+  processing:
+    - Zod schemas validate structure and types
+    - Nested validation for complex structures (FAQs, blogs, products)
+  outputs:
+    - Type-safe CategoryComponents object
+    - Validation errors if data doesn't match schema
+
+business_logic:
+  - Product sections can show best sellers, premiums, or new products
+  - Each section has configurable order for layout
+  - Optional video banner with overlay text and colors
+  - Trust signals for building customer confidence
+  - UGC (user-generated content) section for social proof
+  - SEO content sections for search optimization
+  - Theme customization with primary/secondary colors
+  - Quick view option for products
+  - Percentage discount display toggle
+
+error_handling:
+  - Zod validation provides detailed error messages
+  - Optional fields marked with .optional() or .nullable()
+  - Default validation for all required fields
+
+security:
+  - No authentication or authorization logic
+  - Validation prevents malformed data
+  - Special text can contain href links (validate in consuming code)
+
+used_by:
+  - backend/services/json-service.yaml (imports CategoryComponentsSchema for web content validation)
+
+types:
+  CategoryComponents:
+    description: Master interface for all category page content sections
+    fields:
+      - name: display
+        type: boolean
+      - name: typeOptionSection
+        type: "TypeOption2[]"
+        description: From ~/services/category-service
+      - name: productSections
+        type: "ProductSection[]"
+        description: From ~/services/category-service
+      - name: subscribeToMail
+        type: any
+      - name: topCtaButton
+        type: TopCtaButton
+        description: From ~/services/category-service
+      - name: bottomPageCta
+        type: BottomPageCta
+        description: From ~/services/category-service
+      - name: showPrice
+        type: boolean
+      - name: blogSection
+        type: CategoryBlogSection
+        description: From ~/services/category-service
+      - name: featuresSlideshow
+        type: CategoryFeaturesSlides
+        description: From ~/services/category-service
+      - name: reviewsCollectionSortOrder
+        type: number
+      - name: customerReviews
+        type: CustomerReview
+        description: From ~/components/customer-review/customer-review
+      - name: midpageBanner
+        type: MidPageBanner
+        description: From ~/services/category-service
+      - name: cards
+        type: Cards
+        description: From ~/services/category-service
+      - name: trustSignals
+        type: TrustSignals
+        description: From ~/services/category-service
+      - name: ugcSection
+        type: UgcSection
+        description: From ~/services/category-service
+      - name: midBanner
+        type: MidBanner
+        description: From ~/services/category-service
+      - name: faqSection
+        type: FAQSection
+        description: From ~/services/category-service
+      - name: seoContent
+        type: SeoContent
+        description: From ~/services/category-service
+      - name: typeOption2
+        type: any
+      - name: typeOption4
+        type: any
+      - name: theme
+        type: CategoryTheme
+        description: From ~/services/category-service
+      - name: productPages
+        type: "ProductPages[]"
+        description: From ~/services/category-service

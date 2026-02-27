@@ -1,0 +1,392 @@
+name: UgcSectionComponent
+source: components/web-component/ugc-section.tsx
+description: >
+  User-generated content section that displays customer reviews with images/videos.
+  Has two distinct display modes determined by content.type:
+  - "Slider": Horizontally scrollable row of review cards (images or videos) with optional CTA button.
+  - "Flip" (default): Complex flip-card grid layout with 3D CSS rotateX animations. Cards auto-flip
+    every 15 seconds when page is focused, showing front/back content. Layout uses a large card (40%),
+    two stacked small cards (20%), and another large card with video (40%).
+
+exports:
+  - name: default
+    type: component
+    description: >
+      UgcSectionComponent (default export). Delegates to SliderUGC or FlipUGC based on content.type.
+
+props:
+  - name: content
+    type: UgcSection
+    required: true
+    description: >
+      UGC section data containing heading, subheading, ugc items array, CTA text/url,
+      text content (markdown), display flag, and type ("Slider" or "Flip").
+  - name: theme
+    type: "CategoryTheme | null"
+    required: false
+    description: "Optional category theme. Used for CTA button and image placeholder colors in Slider mode."
+
+component_structure:
+  type: conditional
+  condition: "content.type == 'Slider'"
+  if_true:
+    component: SliderUGC
+    props: "content, theme"
+  if_false:
+    component: FlipUGC
+    props: "content, theme"
+
+child_components:
+  - name: SliderUGC
+    type: internal
+    description: "Horizontally scrollable UGC review slider"
+  - name: FlipUGC
+    type: internal
+    description: "3D flip-card grid UGC display"
+  - name: Video
+    source: "~/components/media/video"
+    description: "Video player component for UGC videos"
+  - name: Image
+    source: "@unpic/qwik"
+    description: "Optimized image component"
+
+data_structure:
+  UgcSection:
+    order: number
+    heading: string
+    subheading: "string | null"
+    ugc: UGC[]
+    textContent: string (markdown)
+    ctaText: string
+    ctaUrl: string
+    ctaTextColor: string (optional)
+    ctaBackgroundColor: string (optional)
+    display: boolean
+    type: "string (optional) - 'Slider' or 'Flip'"
+
+  UGC:
+    image: string
+    imageAlt: string (optional)
+    video: "string | null (optional)"
+    videoPoster: string (optional)
+    review: string
+    reviewer: string
+    backImage: string (optional, Flip mode only)
+    backImageAlt: string (optional, Flip mode only)
+    backVideo: string (optional, Flip mode only)
+    backVideoPoster: string (optional, Flip mode only)
+    backReview: string (optional, Flip mode only)
+    backReviewer: string (optional, Flip mode only)
+
+behavior:
+  slider_mode:
+    - action: "Render heading and subheading"
+      details: >
+        Heading rendered as h3 (text-center font-bold text-2xl mb-4) when truthy.
+        Subheading rendered as p (text-[14px] text-center mb-3) when truthy.
+    - action: "Calculate dynamic wrapper widths"
+      details: >
+        Wrapper width: w-[{80 * ugc.length}vw] on mobile, md:w-full on desktop.
+        Item width: w-[80vw] on mobile, md:flex-[0_0_{100/ugc.length}%] on desktop.
+        Calculated in useTask$ tracking location.url and content changes.
+    - action: "Render UGC items (image or video)"
+      details: >
+        Each item is either a Video component (when review.video exists) or an Image component.
+        Video: autoplay=false, loop=true, controls=true, with poster and normalVideoLoad.
+        Image: full width with alt text fallback to review text or "User generated content".
+        Below media: review text (italic, centered, 14px) and reviewer name (gray #B0AEAE, centered).
+    - action: "Horizontal scroll on mobile"
+      details: >
+        Container has overflow-x-scroll on mobile, overflow-x-visible on desktop.
+        Scrollbar hidden via scrollbarWidth: "none".
+    - action: "Render optional CTA button"
+      details: >
+        When content.ctaText is truthy, renders a centered CTA link button.
+        Button styled with theme.primary background (fallback #F02480) and theme.primaryText color (fallback #FFF).
+        Note: actual color logic uses content.ugc as truthy check (always true if ugc array has items).
+    - action: "Track Matomo analytics on CTA click"
+      details: >
+        On CTA button click, fires pushMatomoEvent with:
+        ["trackEvent", MatomoCategory.COMMON, MatomoEvent.CLICK_UGC_SECTION_CTA, content.ctaUrl]
+    - action: "Video state management"
+      details: >
+        Uses useStore for videoStateStore with an array of boolean states (one per UGC item, all initially true).
+        Passed to Video components for coordinated play/pause control.
+
+  flip_mode:
+    - action: "Lazy load on scroll"
+      details: >
+        Content is NOT rendered initially (loadUgc signal starts false).
+        Loads when user scrolls (window:onScroll$ triggers createUgc function).
+        Also loads on window load event via useOnWindow("load", ...).
+        Once loaded, removes scroll listener from #ugc-section element.
+    - action: "Render flip card grid layout"
+      details: >
+        Grid has 3 containers arranged horizontally on desktop (flex-row):
+        1. Large card (lg:w-[40%], 1:1 aspect ratio) - ugc[0] front/back images
+        2. Two stacked small cards (lg:w-[20%], 2:1 on mobile, 1:2 on desktop) - ugc[1] and ugc[2] front/back images
+        3. Large card (lg:w-[40%], 1:1 aspect ratio) - ugc[3] front/back VIDEOS
+    - action: "3D flip card animation"
+      details: >
+        Cards use CSS 3D transforms (perspective: 1000px, rotateX).
+        Auto-flip every 15 seconds via setInterval when page has focus.
+        Each card flips with staggered delay (i * 100ms).
+        Flipping paused when window loses focus, resumed on focus.
+        Initial transform is rotateX(180deg) showing the "back" side first.
+    - action: "Review overlay on hover"
+      details: >
+        Each card face has a review overlay (.ugc-review) that slides up on hover.
+        Overlay has semi-transparent white background (rgba(255,255,255, 0.8)).
+        Shows review text and reviewer name.
+        Animation: 300ms ease-in-out transition on top and opacity.
+    - action: "Heading and description section"
+      details: >
+        Left panel (lg:w-[30%]) contains heading, subheading, and textContent (markdown).
+        textContent rendered via dangerouslySetInnerHTML with convertMarkdownToHtml.
+    - action: "Background styling"
+      details: >
+        Section has bg-base-complementaryBg background color and text-base-complementaryText text color.
+        Inner container has bg-[#f0f0f0] background.
+
+styling:
+  slider:
+    heading: "text-center font-bold text-2xl mb-4"
+    subheading: "text-[14px] text-center mb-3"
+    scroll_container: "overflow-x-scroll overflow-y-hidden md:overflow-x-visible md:overflow-y-visible"
+    scrollbar: "scrollbarWidth: 'none'"
+    review_text: "mt-4 text-[14px] italic text-center"
+    reviewer: "mt-4 text-[14px] text-center text-[#B0AEAE]"
+    cta_button: "rounded-md px-16 py-4 font-bold inline-block w-fit cta_ugc_section"
+
+  flip:
+    outer_wrapper: "w-full p-[10px] bg-base-complementaryBg"
+    container: "flex flex-col lg:flex-row w-full bg-[#f0f0f0] p-5 text-base-complementaryText overflow-hidden box-border"
+    headings_panel: "text-center box-border w-full lg:w-[30%] xl:w-[25%] flex flex-col justify-center items-center mb-4"
+    items_panel: "flex flex-wrap w-full lg:w-[70%] xl:w-[75%]"
+    large_card: "m-auto w-full max-w-[483px] max-h-[483px] lg:w-[40%] min-h-[220px] aspect-ratio: 1/1"
+    small_cards: "w-full max-w-[480px] min-h-[110px] m-auto lg:w-[20%] aspect-[2/1] lg:aspect-[1/2] flex flex-wrap"
+    card_animation: "transition: transform 0.8s ease-in-out; transform-style: preserve-3d"
+    review_overlay: "background: rgba(255,255,255, 0.8); transition: all 300ms ease-in-out"
+
+dependencies:
+  services:
+    - name: markdown-service
+      function: convertMarkdownToHtml
+      description: "Converts textContent markdown to HTML (Flip mode)"
+  analytics:
+    - name: matomo
+      functions:
+        - pushMatomoEvent
+      constants:
+        - MatomoCategory.COMMON
+        - MatomoEvent.CLICK_UGC_SECTION_CTA
+      description: "Analytics tracking for CTA button clicks (Slider mode)"
+  routing:
+    - name: useLocation
+      source: "@builder.io/qwik-city"
+      description: "Gets current location URL for tracking content changes (Slider mode)"
+  types:
+    - name: UgcSection
+      source: "~/services/category-service"
+    - name: CategoryTheme
+      source: "~/services/category-service"
+
+used_by:
+  - "WebContentsComponent (web-contents-component.tsx) - renders UGC sections"
+
+security:
+  - "Uses dangerouslySetInnerHTML for textContent markdown (Flip mode)"
+  - "Review text and reviewer names rendered as plain text (safe)"
+  - "CTA URLs come from CMS - should be validated"
+  - "Flip mode manipulates DOM directly (document.querySelectorAll) - replace with React refs"
+
+notes:
+  - >
+    The Flip mode directly manipulates the DOM using document.querySelectorAll and
+    element.style.transform. In Next.js, replace with React refs and state-driven animations.
+  - >
+    Flip mode expects EXACTLY 4 UGC items (ugc[0] through ugc[3]). Items 0-2 show images,
+    item 3 shows video. This is a fixed layout, not dynamic.
+  - >
+    The flip animation uses setInterval(15000ms) and is paused/resumed based on window focus.
+    Both the onScroll handler and the onLoad handler set up the same flip interval logic
+    (code duplication in source).
+  - >
+    Slider mode uses Qwik's useTask$ to recalculate CSS widths when content or location changes.
+    In Next.js, use useMemo or CSS calculations instead.
+  - "The CTA button color logic has a subtle bug: it checks 'content.ugc' (truthy if array exists) instead of theme"
+  - "FlipUGC uses useOnWindow('load', ...) which fires on initial page load AND on subsequent navigations in Qwik"
+  - "Video component in Slider mode receives videoStateStore for coordinated play/pause across all items"
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  UgcSectionComponentProps:
+    description: Component props (named Props type in source)
+    fields:
+      - name: content
+        type: UgcSection
+      - name: theme
+        type: "CategoryTheme | null"
+        optional: true
+
+  UgcSection:
+    description: UGC section data from category-service
+    source: ~/services/category-service
+    fields:
+      - name: order
+        type: number
+      - name: heading
+        type: string
+      - name: subheading
+        type: "string | null"
+      - name: ugc
+        type: "UGC[]"
+      - name: textContent
+        type: string
+      - name: ctaText
+        type: string
+      - name: ctaUrl
+        type: string
+      - name: ctaTextColor
+        type: string
+        optional: true
+      - name: ctaBackgroundColor
+        type: string
+        optional: true
+      - name: display
+        type: boolean
+      - name: type
+        type: string
+        optional: true
+
+  UGC:
+    description: Individual UGC item with front/back content for Flip mode or single content for Slider mode
+    source: ~/services/category-service
+    fields:
+      - name: image
+        type: string
+      - name: imageAlt
+        type: string
+        optional: true
+      - name: video
+        type: "string | null"
+        optional: true
+      - name: videoPoster
+        type: string
+        optional: true
+      - name: review
+        type: string
+      - name: reviewer
+        type: string
+      - name: backImage
+        type: string
+        optional: true
+      - name: backImageAlt
+        type: string
+        optional: true
+      - name: backVideo
+        type: string
+        optional: true
+      - name: backVideoPoster
+        type: string
+        optional: true
+      - name: backReview
+        type: string
+        optional: true
+      - name: backReviewer
+        type: string
+        optional: true
+
+  CategoryTheme:
+    description: Optional category theme for CTA button colors (Slider mode)
+    source: ~/services/category-service
+    fields:
+      - name: primary
+        type: string
+      - name: secondary
+        type: string
+      - name: primaryText
+        type: string
+      - name: secondaryText
+        type: string
+
+field_consumption:
+  UgcSection:
+    consumed:
+      - type: Determines which sub-component renders ("Slider" → SliderUGC, anything else → FlipUGC)
+      - heading: Rendered as h3 (Slider) or in headings panel (Flip) when truthy
+      - subheading: Rendered as p (Slider) or in headings panel (Flip) when truthy
+      - ugc: Iterated in Slider mode; indexed directly (ugc[0-3]) in Flip mode
+      - ctaText: Renders CTA button in Slider mode when truthy
+      - ctaUrl: Used as href and in Matomo event for CTA button (Slider mode)
+      - textContent: Rendered via dangerouslySetInnerHTML in Flip mode headings panel
+    ignored:
+      - order: Not used by this component (used by parent wrapper)
+      - display: Not checked by this component (parent decides whether to render it)
+      - ctaTextColor: Declared in type but not used (CTA uses theme.primaryText instead)
+      - ctaBackgroundColor: Declared in type but not used (CTA uses theme.primary instead)
+
+  UGC:
+    consumed:
+      - image: Image src (Slider and Flip front)
+      - imageAlt: Image alt in Slider mode; falls back to review text or "User generated content"
+      - video: Determines whether Video or Image renders in a Slider item
+      - videoPoster: Passed as poster to Video component
+      - review: Rendered as review text below media
+      - reviewer: Rendered as reviewer name below review
+      - backImage: Back face image in Flip mode (ugc[0], ugc[1], ugc[2])
+      - backImageAlt: Alt text for back face image in Flip mode
+      - backVideo: Back face video in Flip mode (ugc[3])
+      - backVideoPoster: Poster for back face video in Flip mode
+      - backReview: Review text on back face in Flip mode
+      - backReviewer: Reviewer name on back face in Flip mode
+
+  CategoryTheme:
+    consumed:
+      - primary: CTA button backgroundColor (Slider mode; falls back to #F02480)
+      - primaryText: CTA button text color (Slider mode; falls back to #FFF)
+    ignored:
+      - secondary: Not used
+      - secondaryText: Not used
+
+visibility_map:
+  SliderUGC:
+    condition: "content.type == 'Slider'"
+    default: hidden
+
+  FlipUGC:
+    condition: "content.type != 'Slider' (or type is absent)"
+    default: visible
+
+  slider_heading:
+    condition: "content.heading is truthy (Slider mode)"
+    default: hidden
+
+  slider_subheading:
+    condition: "content.subheading is truthy (Slider mode)"
+    default: hidden
+
+  slider_item_video:
+    condition: "review.video is truthy (Slider mode — per UGC item)"
+    default: "hidden (Image rendered instead)"
+
+  slider_item_image:
+    condition: "review.video is falsy (Slider mode — per UGC item)"
+    default: visible
+
+  slider_cta_button:
+    condition: "content.ctaText is truthy (Slider mode)"
+    default: hidden
+
+  flip_content:
+    condition: "loadUgc signal is true (Flip mode — lazy loaded on scroll)"
+    default: hidden
+
+  flip_heading:
+    condition: "content.heading is truthy (Flip mode — always rendered once loadUgc is true)"
+    default: visible
+
+  flip_subheading:
+    condition: "content.subheading is truthy (Flip mode)"
+    default: hidden

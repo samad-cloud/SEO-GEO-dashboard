@@ -1,0 +1,191 @@
+name: BlogCategorySection
+source: components/category-page/blog-category-section.tsx
+description: >
+  Renders a blog posts section within category pages. Displays an optional heading,
+  optional descriptive text, and a grid of blog post cards. Each card shows an image
+  with hover zoom effect, a heading, and a CTA link. Fires Matomo analytics events
+  when CTA links are clicked.
+
+exports:
+  default:
+    type: component
+    description: Blog category section component (default export)
+
+props:
+  heading:
+    type: string
+    required: false
+    description: >
+      Section heading text. Rendered via dangerouslySetInnerHTML, so may contain
+      HTML markup. Only rendered if truthy.
+  textContent:
+    type: string
+    required: false
+    description: Descriptive paragraph text displayed next to the heading. Only rendered if truthy.
+  blogPosts:
+    type: "Array<{ image: string; imageAlt?: string; heading: string; urlText: string; url: string }>"
+    required: true
+    description: Array of blog post objects to render as cards in the grid.
+  order:
+    type: number
+    required: true
+    description: Display order index for this section within the category page.
+  display:
+    type: boolean
+    required: true
+    description: Whether this section should be displayed (controlled by parent).
+
+component_structure:
+  root: div
+  layout: >
+    Top-level div with top border and padding. Contains a flex row (column on mobile)
+    for heading + text, followed by a flex-wrap grid of blog post cards.
+  heading_row:
+    - element: h3
+      condition: props.heading is truthy
+      rendering: dangerouslySetInnerHTML (supports HTML in heading)
+      width: "25% on desktop, full on mobile"
+      alignment: "left on desktop, center on mobile"
+    - element: p
+      condition: props.textContent is truthy
+      width: flex-1
+      alignment: "left on desktop, center on mobile"
+  blog_grid:
+    layout: flex-wrap with negative horizontal margin, top margin, vertical gap
+    item_width: "100% on mobile, 33.33% on desktop (3 columns)"
+    each_item:
+      - image_container: div with overflow-hidden, group hover effect
+      - image: optimized Image component, 784x506, lazy loaded, scales to 125% on group hover with 300ms transition
+      - heading: p element below image
+      - cta_link: anchor tag with underline, dynamic class "cta_blog_category--{index}"
+
+child_components:
+  - name: Image
+    source: "@unpic/qwik"
+    description: Optimized image component with lazy loading
+
+data_structure:
+  CategoryBlogSection:
+    source: "~/services/category-service"
+    fields:
+      heading: string
+      textContent: string
+      blogPosts: "Array<{ image: string; imageAlt?: string; heading: string; urlText: string; url: string }>"
+      order: number
+      display: boolean
+
+behavior:
+  rendering:
+    - Section heading and text are conditionally rendered only when truthy
+    - Blog posts are rendered in a responsive grid (1 column mobile, 3 columns desktop)
+    - Images have a hover zoom animation (scale to 125% over 300ms)
+    - Blog post headings use the heading field as the React key
+  analytics:
+    - Each CTA link click fires a Matomo trackEvent
+    - Category: MatomoCategory.CATEGORY ("category")
+    - Action: MatomoEvent.CLICK_BLOG_CATEGORY_SECTION_CTA ("clickBlogCategorySectionCta")
+    - Name: the blog post URL
+  navigation:
+    - CTA links navigate via standard anchor href to blog.url
+  accessibility:
+    - Images use imageAlt for alt text, falling back to empty string if not provided
+
+styling:
+  framework: Tailwind CSS
+  responsive:
+    mobile:
+      - Single column layout for blog cards (100% width)
+      - Heading and text centered, stacked vertically
+    desktop:
+      - Three-column grid for blog cards (33.33% each)
+      - Heading takes 25% width, text takes remaining space, left-aligned
+  key_classes:
+    - "pt-5 border-t blog_category_wrapper" (root)
+    - "group-hover:scale-125 transition-all duration-300" (image hover zoom)
+    - "cta_blog_category--{index}" (dynamic CTA class per blog post)
+
+dependencies:
+  - "@unpic/qwik": Image component for optimized image rendering
+  - "~/services/category-service": CategoryBlogSection type definition
+  - "~/utility/matomo": pushMatomoEvent, MatomoCategory, MatomoEvent
+
+used_by:
+  - components/web-component/web-contents-component.tsx
+  - components/web-component/web-contents-component-v3.tsx
+  - components/marketing-page/generateMComponents.tsx
+  - components/photo-books/blog-category-section.tsx (variant)
+  - components/mothers-day/blog-category-section.tsx (variant)
+
+security:
+  - heading prop uses dangerouslySetInnerHTML -- content must be sanitized server-side before passing
+  - All other text fields are rendered as plain text children (safe)
+
+notes:
+  - The heading uses dangerouslySetInnerHTML which is a potential XSS vector; ensure CMS data is sanitized
+  - Images use fixed dimensions 784x506 for the optimized Image component
+  - The component receives its props from the CategoryBlogSection interface which includes order and display fields, but those are used by the parent for rendering decisions, not by this component directly
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  CategoryBlogSection:
+    description: Component props — matches the CategoryBlogSection interface from category-service
+    fields:
+      - name: heading
+        type: string
+        optional: true
+      - name: textContent
+        type: string
+        optional: true
+      - name: blogPosts
+        type: "Array<BlogPost>"
+      - name: order
+        type: number
+      - name: display
+        type: boolean
+
+  BlogPost:
+    description: Individual blog post entry inside the blogPosts array
+    fields:
+      - name: image
+        type: string
+      - name: imageAlt
+        type: string
+        optional: true
+      - name: heading
+        type: string
+      - name: urlText
+        type: string
+      - name: url
+        type: string
+
+field_consumption:
+  CategoryBlogSection:
+    consumed:
+      - heading: Conditionally rendered as h3 via dangerouslySetInnerHTML when truthy
+      - textContent: Conditionally rendered as p element when truthy
+      - blogPosts: Iterated to produce blog post cards (image, heading, CTA link)
+    ignored:
+      - order: Present on the interface but not read inside this component (used by parent for ordering)
+      - display: Present on the interface but not read inside this component (parent controls visibility)
+
+  BlogPost:
+    consumed:
+      - image: Passed as src to Image component
+      - imageAlt: Used as alt text; falls back to empty string if absent
+      - heading: Displayed as paragraph text below image; also used as React key
+      - urlText: Text content of the CTA anchor
+      - url: href of the CTA anchor; also passed to Matomo as event name
+
+visibility_map:
+  heading_h3:
+    condition: "props.heading is truthy"
+    default: hidden (not rendered when heading is falsy or empty string)
+
+  textContent_p:
+    condition: "props.textContent is truthy"
+    default: hidden (not rendered when textContent is falsy or empty string)
+
+  blog_post_grid:
+    condition: "props.blogPosts.length > 0"
+    default: visible (renders empty div if array is empty — no explicit guard)

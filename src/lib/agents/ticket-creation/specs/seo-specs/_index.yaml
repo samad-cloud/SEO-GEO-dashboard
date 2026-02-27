@@ -1,0 +1,307 @@
+schema_version: "1.0"
+purpose: |
+  Entry point for AI agents working with the PrinterPix e-commerce frontend.
+  Maps URLs to page specs, provides agent workflows, and lists all regions/domains.
+
+  For detailed implementation specs, see: ../migration-specs/
+  For SEO contracts and page-centric views, see files in this directory.
+
+agent_workflows:
+  seo_agent:
+    description: "For agents auditing SEO issues on specific pages"
+    steps:
+      - step: 1
+        action: "Identify the URL pattern from the routing_table below"
+        detail: "Match the URL to find which page spec file to read"
+      - step: 2
+        action: "Read the page spec file (pages/*.yaml)"
+        detail: "Contains seo_contract with expected title, meta, structured data, heading hierarchy"
+      - step: 3
+        action: "Check the file_chain in the page spec"
+        detail: "Shows which service functions generate the SEO elements, which files own them"
+      - step: 4
+        action: "If you need to verify against live API data, read _api-guide.yaml"
+        detail: "Contains pre-generated MACHINE_TOKENs and example API calls per region"
+      - step: 5
+        action: "For cross-cutting concerns (middleware, hreflang, cookies), read _architecture.yaml"
+        detail: "Global systems that affect all pages"
+
+  developer_agent:
+    description: "For agents modifying code that affects SEO"
+    steps:
+      - step: 1
+        action: "Identify which page(s) your change affects via the routing_table"
+      - step: 2
+        action: "Read the page spec to understand the SEO contract you must preserve"
+      - step: 3
+        action: "Check _component-registry.yaml or _service-registry.yaml for the component/service you're modifying"
+        detail: "Quick lookup: name -> file path, props, SEO relevance"
+      - step: 4
+        action: "Read the detailed migration-spec for the file you're changing"
+        detail: "Full implementation detail in ../migration-specs/{spec_path}"
+      - step: 5
+        action: "Verify your changes don't break the seo_contract defined in the page spec"
+
+routing_table:
+  # Home page (containerless layout)
+  - pattern: "/"
+    page_spec: "pages/home.yaml"
+    layout: "containerless"
+    i18n_rewrites: {}
+    notes: "Home page — same URL path across all regions. Uses separate API endpoint (POST /homepage/getv2)."
+
+  # Dynamic catch-all route (most traffic)
+  - pattern: "/[...productCategory]"
+    examples:
+      - "/canvas-prints/"
+      - "/photo-gifts/"
+      - "/photo-books/hardcover-photo-book/"
+      - "/canvas-prints/single-canvas-print/"
+    page_spec: "pages/product-category.yaml"
+    layout: "categoryproduct"
+    notes: "Handles BOTH category pages and product detail pages. Server determines type via webPageType field."
+
+  # Info pages (default layout)
+  - pattern: "/about-us"
+    page_spec: "pages/about-us.yaml"
+    layout: "default"
+    i18n_rewrites:
+      NL: "/over-ons"
+      DE: "/uber-uns"
+      IT: "/chi-siamo"
+      ES: "/sobre-nosotros"
+
+  - pattern: "/shipping-policy"
+    page_spec: "pages/shipping-policy.yaml"
+    layout: "default"
+    i18n_rewrites:
+      NL: "/bezorgmethoden"
+      DE: "/lieferbedingungen"
+      IT: "/politica-di-spedizione"
+      ES: "/politica-de-envio"
+
+  - pattern: "/delivery-rates"
+    page_spec: "pages/delivery-rates.yaml"
+    layout: "default"
+    i18n_rewrites:
+      NL: "/leveringstarieven"
+      FR: "/tarifs-de-livraison"
+      IT: "/tariffe-di-spedizione"
+      ES: "/entrega"
+
+  - pattern: "/payment-methods"
+    page_spec: "pages/payment-methods.yaml"
+    layout: "default"
+    i18n_rewrites:
+      NL: "/betalingsmethoden"
+      DE: "/zahlungsarten"
+      IT: "/modalita-di-pagamento"
+      ES: "/formas-de-pago"
+
+  - pattern: "/photo-quality"
+    page_spec: "pages/photo-quality.yaml"
+    layout: "default"
+    i18n_rewrites:
+      NL: "/fotokwaliteit"
+      DE: "/fotoqualitat"
+      IT: "/qualita-foto"
+      ES: "/calidad-foto"
+
+  - pattern: "/image-resolution"
+    page_spec: "pages/image-resolution.yaml"
+    layout: "default"
+    i18n_rewrites:
+      DE: "/bildauflosung"
+      IT: "/risoluzione-dell-immagine"
+      ES: "/resolucion-de-imagen"
+
+  - pattern: "/terms-and-conditions"
+    page_spec: "pages/terms-and-conditions.yaml"
+    layout: "default"
+    i18n_rewrites:
+      NL: "/voorwaarden"
+      DE: "/geschaftsbedingungen"
+      IT: "/termini-e-condizioni"
+      ES: "/terminos-y-condiciones"
+
+  - pattern: "/track-my-order"
+    page_spec: "pages/track-my-order.yaml"
+    layout: "default"
+    i18n_rewrites:
+      NL: "/track-mijn-bestelling"
+      DE: "/meine-bestellung-verfolgen"
+      IT: "/dove-si-trova-il-mio-ordine"
+      ES: "/donde-esta-mi-orden"
+
+  - pattern: "/contact-us"
+    page_spec: "pages/contact-us.yaml"
+    layout: "default"
+    i18n_rewrites:
+      NL: "/contacteer-ons"
+      DE: "/kontaktieren-sie-uns"
+      IT: "/contattaci"
+      ES: "/contactos"
+
+  - pattern: "/returns-policy"
+    page_spec: "pages/returns-policy.yaml"
+    layout: "default"
+    i18n_rewrites:
+      NL: "/retourneerbeleid"
+      DE: "/ruckgaberecht"
+      IT: "/termini-di-restituzione"
+      ES: "/cambios-y-devoluciones"
+
+  - pattern: "/satisfaction-guarantee"
+    page_spec: "pages/satisfaction-guarantee.yaml"
+    layout: "default"
+    i18n_rewrites:
+      FR: "/garantie-satisfaction"
+
+  - pattern: "/why-choose-printerpix"
+    page_spec: "pages/why-choose-printerpix.yaml"
+    layout: "default"
+    i18n_rewrites:
+      NL: "/waarom-printerpix"
+      DE: "/warum-printerpix"
+      IT: "/perche-printerpix"
+      ES: "/por-que-elegir-printerpix"
+
+  # Bulk ordering (custom layout)
+  - pattern: "/bulk-ordering"
+    page_spec: "pages/bulk-ordering.yaml"
+    layout: "bulkorder"
+    i18n_rewrites: {}
+
+  # Sitemaps (server-side XML, no layout)
+  - pattern: "/sitemap-index.xml"
+    page_spec: "pages/sitemap-index.yaml"
+    layout: null
+  - pattern: "/sitemap-pages.xml"
+    page_spec: "pages/sitemap-pages.yaml"
+    layout: null
+  - pattern: "/sitemap-products.xml"
+    page_spec: "pages/sitemap-products.yaml"
+    layout: null
+  - pattern: "/sitemap-categories.xml"
+    page_spec: "pages/sitemap-categories.yaml"
+    layout: null
+
+region_registry:
+  - code: GB
+    domain: "www.printerpix.co.uk"
+    api_endpoint: "https://qt-api.printerpix.co.uk"
+    locale: "en-GB"
+    currency: GBP
+    currency_symbol: "£"
+    site_code: 4
+    country_guid: "278d5504-7815-4b20-9f2d-99d2e213c2aa"
+    is_default: true
+
+  - code: US
+    domain: "www.printerpix.com"
+    api_endpoint: "https://qt-api.printerpix.com"
+    locale: "en-US"
+    currency: USD
+    currency_symbol: "$"
+    site_code: 6
+    country_guid: "80533730-cab7-4c17-b509-5e6ce6b5ad00"
+
+  - code: DE
+    domain: "www.printerpix.de"
+    api_endpoint: "https://qt-api.printerpix.de"
+    locale: "de-DE"
+    currency: EUR
+    currency_symbol: "€"
+    site_code: 16
+    country_guid: "5d4e3ffd-0298-40a3-99c3-9174b5f77ea1"
+
+  - code: FR
+    domain: "www.printerpix.fr"
+    api_endpoint: "https://qt-api.printerpix.fr"
+    locale: "fr-FR"
+    currency: EUR
+    currency_symbol: "€"
+    site_code: 10
+    country_guid: "a273cb1e-3e09-43b4-b556-b4d32ce235a4"
+
+  - code: IT
+    domain: "www.printerpix.it"
+    api_endpoint: "https://qt-api.printerpix.it"
+    locale: "it-IT"
+    currency: EUR
+    currency_symbol: "€"
+    site_code: 13
+    country_guid: "262f2dd3-5a16-4cf0-ac14-3c7ce7e617e6"
+
+  - code: ES
+    domain: "www.printerpix.es"
+    api_endpoint: "https://qt-api.printerpix.es"
+    locale: "es-ES"
+    currency: EUR
+    currency_symbol: "€"
+    site_code: 12
+    country_guid: "4f041906-d729-43db-aa56-0e196d1a2840"
+
+  - code: NL
+    domain: "www.printerpix.nl"
+    api_endpoint: "https://qt-api.printerpix.nl"
+    locale: "nl-NL"
+    currency: EUR
+    currency_symbol: "€"
+    site_code: 14
+    country_guid: "1076c5f2-730e-4314-88a5-dd82f78e1b77"
+
+  - code: IN
+    domain: "www.printerpix.in"
+    api_endpoint: "https://qt-api.printerpix.in"
+    locale: "en-IN"
+    currency: INR
+    currency_symbol: "₹"
+    site_code: null
+    country_guid: null
+    notes: "IN region not fully documented in source code — site_code and country_guid to be confirmed"
+
+  - code: AE
+    domain: "www.printerpix.ae"
+    api_endpoint: "https://qt-api.printerpix.ae"
+    locale: "en-AE"
+    currency: AED
+    currency_symbol: "د.إ"
+    site_code: null
+    country_guid: null
+    notes: "AE region not fully documented in source code — site_code and country_guid to be confirmed"
+
+file_index:
+  global:
+    - file: "_index.yaml"
+      description: "This file — master entry point"
+    - file: "_architecture.yaml"
+      description: "Middleware pipeline, region config, hreflang, API infrastructure, cookies, layouts"
+    - file: "_api-guide.yaml"
+      description: "API testing guide with pre-generated tokens and example requests"
+    - file: "_component-registry.yaml"
+      description: "Component quick-lookup: name -> file path, SEO relevance"
+    - file: "_service-registry.yaml"
+      description: "Service quick-lookup: name -> file path, SEO-relevant functions"
+  pages:
+    - file: "pages/home.yaml"
+      description: "Home page — SEO contract, structured data, homepage API"
+    - file: "pages/product-category.yaml"
+      description: "Dynamic catch-all — category and product pages"
+    - file: "pages/about-us.yaml"
+    - file: "pages/shipping-policy.yaml"
+    - file: "pages/delivery-rates.yaml"
+    - file: "pages/payment-methods.yaml"
+    - file: "pages/photo-quality.yaml"
+    - file: "pages/image-resolution.yaml"
+    - file: "pages/terms-and-conditions.yaml"
+    - file: "pages/track-my-order.yaml"
+    - file: "pages/contact-us.yaml"
+    - file: "pages/returns-policy.yaml"
+    - file: "pages/satisfaction-guarantee.yaml"
+    - file: "pages/why-choose-printerpix.yaml"
+    - file: "pages/bulk-ordering.yaml"
+    - file: "pages/sitemap-index.yaml"
+    - file: "pages/sitemap-pages.yaml"
+    - file: "pages/sitemap-products.yaml"
+    - file: "pages/sitemap-categories.yaml"

@@ -1,0 +1,200 @@
+name: GlobalSearch
+source: src/components/global-search/global-search.tsx
+description: |
+  Full-text product and category search component powered by the Orama
+  in-browser search engine. Renders a search input with live-as-you-type
+  results (300 ms debounce) and an exact-match search on Enter. Displays
+  results grouped by "Categorieën" (categories) and "Producten" (products)
+  with product thumbnails on desktop, and a flat list on mobile. Has a
+  separate mobile UX: a search icon button that slides in a full-width
+  overlay bar from the right.
+
+  REGION NOTE: This component is only rendered for the NL region. See
+  Header.region_specific.NL. All placeholder text and section headings are
+  in Dutch ("Zoek je favoriete product", "Categorieën", "Producten").
+
+exports:
+  - name: default
+    type: component$
+    description: Default Qwik component export (no props)
+
+component_structure:
+  root: div
+  children:
+    - MobileSearchButton: visible on < lg (block lg:hidden)
+    - MobileSearchOverlay: fixed full-width bar, slides in from right when showMobileSearch=true
+    - DesktopSearchBar: hidden lg:flex, always visible at lg+
+
+data_structure:
+  ProductInput:
+    - type: "'product' | 'category' | 'url'"
+    - title: string
+    - keywords: string
+    - description: string
+    - url: string
+    - imageUrl: "string | undefined"
+
+behavior:
+  - On mount: call initializeOramaDB() to pre-initialize the Orama in-browser index
+  - User types in search input:
+      1. Call handleInputChange(value)
+      2. Clear any pending debounce timer
+      3. Set a 300ms debounce timer that calls onLiveSearch(value)
+      4. onLiveSearch: if term is empty or whitespace, clear searchResults; otherwise call execSearchLive(term)
+      5. execSearchLive returns max 10 hits; map each hit.document into searchResults signal
+  - User presses Enter:
+      1. Call onSearch(keywordSignal.value)
+      2. execSearch returns all matching hits (no limit); map hit.document into searchResults signal
+  - User presses Escape: clear searchResults (hide dropdown)
+  - productSearchItems computed: filter searchResults where type === "product"
+  - categorySearchItems computed: filter searchResults where type === "category"
+  - Desktop results dropdown:
+      - Shows categories section (if categorySearchItems.length > 0): labeled "Categorieën", up to 10 items
+      - Shows products section (if productSearchItems.length > 0): labeled "Producten", up to 5 items with thumbnail image
+  - Mobile results dropdown: shows up to 10 results from searchResults (unfiltered) as plain links
+  - Mobile UX: clicking search icon sets showMobileSearch=true; clicking close icon sets showMobileSearch=false and resets searchResults
+  - Both inputs share id="global-search-input" (duplicate id — implementation detail)
+
+styling:
+  mobile_button: "p-2 block lg:hidden border-none outline-none"
+  mobile_overlay:
+    base: "fixed flex items-center lg:hidden top-[36.5px] p-2 left-0 w-full h-[60px] bg-white z-[9999] transition-all duration-500"
+    open: "translate-x-0"
+    closed: "translate-x-full"
+  desktop_bar: "hidden lg:flex group relative h-[40px] items-center rounded border px-4 w-full lg:w-[800px] focus-within:border-[#f02084] transition-colors duration-300"
+  input: "h-full w-full border-none outline-none"
+  desktop_results_dropdown: "h-[320px] overflow-y-auto overflow-x-hidden lg:h-fit absolute top-[48px] left-0 w-full border rounded bg-white z-[9999]"
+  mobile_results_dropdown: "overflow-y-auto overflow-x-hidden h-fit absolute top-[48px] left-0 w-full border rounded bg-white z-[9999]"
+  category_header: "border-b border-b-[#000] font-bold px-4 py-2"
+  category_item: "block py-2 px-4 truncate hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
+  product_item: "py-2 px-4 flex items-center min-w-0 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
+  product_image: "mr-4 flex-shrink-0 (60x60px)"
+  product_title: "truncate font-medium"
+  product_description: "truncate text-[12px] italic font-normal text-gray-600"
+  search_icon: "mr-2 fill-[#000] group-hover:fill-[#f02084] transition-all duration-300 cursor-pointer (20x20)"
+  close_icon: "mr-2 fill-[#000] cursor-pointer (20x20)"
+
+dependencies:
+  qwik:
+    - component$, useSignal, $, useComputed$ from @builder.io/qwik
+  components:
+    - SVGIcon from ~/components/svg-icon/svg-icon
+    - Image from @unpic/qwik
+  services:
+    - execSearch, execSearchLive, initializeOramaDB from ~/services/orama-service
+  types:
+    - ProductInput from ~/services/orama-service
+
+used_by:
+  - Header
+
+security:
+  - All search is performed client-side against a pre-loaded in-browser Orama index (no API calls at search time)
+  - No user data is transmitted; search term stays in-memory
+  - execSearch and execSearchLive are server$ functions that run as server actions in Qwik; the Orama DB is initialized server-side with static JSON data files
+
+edge_cases:
+  - Empty search term: onLiveSearch returns early, clears results — no API call made
+  - Rapid typing: debounce timer cleared on each keystroke; only the final value after 300ms triggers search
+  - No results: searchResults remains empty; results dropdown is not rendered (conditional on searchResults.length > 0)
+  - Only categories, no products (or vice versa): each results section rendered independently based on computed signals
+  - Duplicate id "global-search-input": both mobile and desktop inputs use the same id; acceptable in this context as only one is visible at a time
+
+notes:
+  - The Orama database is populated from static JSON files: NLSearchData (default), INSearchData, AESearchData — loaded by getDataInput() based on settings().website
+  - Dutch-language placeholder and section headings are hardcoded; no i18n keys used in this component
+  - This component is rendered only for the NL region by the Header — do not render globally in the Next.js migration without preserving that condition
+  - The desktop results box has a fixed height of 320px on desktop (lg:h-fit relaxes it at lg+)
+
+# ── NEW SECTIONS ────────────────────────────────────────────────────────────
+
+types:
+  ProductInput:
+    description: Single search result document stored in the Orama index
+    source: ~/services/orama-service
+    fields:
+      - name: type
+        type: "'product' | 'category' | 'url'"
+        description: Discriminator for result grouping
+      - name: title
+        type: string
+        description: Display name shown in results
+      - name: keywords
+        type: string
+        description: Indexed keywords for search boosting
+      - name: description
+        type: string
+        description: Short product/category description shown under title in product rows
+      - name: url
+        type: string
+        description: Navigation target for the result link
+      - name: imageUrl
+        type: "string | undefined"
+        description: Thumbnail URL shown only in product rows (60x60)
+
+field_consumption:
+  ProductInput:
+    consumed:
+      - type: Used to split results into categorySearchItems and productSearchItems computed signals
+      - title: Displayed as link text in all result rows; used as React key
+      - url: Used as href for result <a> links
+      - imageUrl: Displayed as thumbnail in desktop product rows only
+      - description: Displayed in italic below title in desktop product rows
+    ignored:
+      - keywords: Indexed by Orama for search; never read directly by the component
+
+visibility_map:
+  mobile_search_button:
+    condition: always rendered (CSS hides at lg+)
+    default: visible on < lg
+
+  mobile_search_overlay:
+    condition: showMobileSearch signal === true
+    default: hidden (translate-x-full, off-screen right)
+
+  desktop_search_bar:
+    condition: always rendered (CSS hides below lg)
+    default: hidden on < lg, visible at lg+
+
+  results_dropdown_desktop:
+    condition: searchResults.value.length > 0
+    default: hidden
+
+  results_dropdown_mobile:
+    condition: searchResults.value.length > 0
+    default: hidden
+
+  categories_section_in_desktop:
+    condition: categorySearchItems.value.length > 0
+    default: hidden
+
+  products_section_in_desktop:
+    condition: productSearchItems.value.length > 0
+    default: hidden
+
+implementation_logic:
+  debounce_live_search:
+    rule: |
+      On every keypress, the previous debounce timer is cancelled via
+      clearTimeout and a new 300ms timer is set. Only when the user stops
+      typing for 300ms does onLiveSearch fire. This prevents a search
+      request on every keystroke.
+    critical: true
+
+  enter_vs_live_search:
+    rule: |
+      Pressing Enter calls execSearch (no limit, exact mode), while
+      live-typing calls execSearchLive (limit 10, tolerance 2 for fuzzy
+      matching, threshold 0 to include low-scoring matches). The two
+      functions return different result sets; Enter is the "full" search.
+    critical: true
+
+  result_grouping:
+    rule: |
+      Desktop results are split into two computed signals:
+        categorySearchItems = results where type === "category"
+        productSearchItems  = results where type === "product"
+      Mobile results use the raw searchResults array (no grouping).
+      Each section is capped: categories → 10, products → 5 on desktop;
+      all results → 10 on mobile.
+    critical: false

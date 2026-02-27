@@ -1,0 +1,40 @@
+page_id: contact-us
+description: "Contact page with contact information and FAQ section."
+
+url:
+  pattern: "/contact-us"
+  layout: "default"
+  i18n_rewrites:
+    NL: "/contacteer-ons"
+    DE: "/kontaktieren-sie-uns"
+    IT: "/contattaci"
+    ES: "/contactos"
+
+seo_contract:
+  title:
+    source: "Managed by ContactUsContainer"
+  meta_description:
+    source: "Managed by ContactUsContainer"
+  canonical:
+    pattern: "{domain}/contact-us"
+  robots:
+    value: "Standard"
+  structured_data: "None"
+  hreflang:
+    count: 8
+    known_issues:
+      - "Hreflang incorrect for NL, DE, IT, ES rewritten URLs"
+
+file_chain:
+  route:
+    file: "src/routes/contact-us/index.tsx"
+    spec: "../migration-specs/frontend/routes/contact-us.yaml"
+  layout:
+    file: "src/routes/layout.tsx"
+    spec: "../migration-specs/frontend/layouts/layout-default.yaml"
+  page_component:
+    name: "ContactUsContainer"
+    file: "src/components/contact-us/containers/contact-us-container.tsx"
+    spec: "../migration-specs/frontend/components/info-pages/contact-us-container.yaml"
+  middleware:
+    ref: "_architecture.yaml → middleware_pipeline"

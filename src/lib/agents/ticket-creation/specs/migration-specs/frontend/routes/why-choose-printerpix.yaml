@@ -1,0 +1,65 @@
+name: WhyChoosePrinterpixRoute
+source:
+  path: routes/why-choose-printerpix/index.tsx
+  lines: 1-61
+  type: route
+
+description: |
+  Static marketing page explaining why customers should choose Printerpix.
+  Displays three main sections:
+  - Commit to quality
+  - Safe and secure
+  - Stand behind product
+
+  All content is i18n localized.
+
+url_pattern: /why-choose-printerpix
+layout: default
+
+exports:
+  default: true
+  component: |
+    Renders centered content with:
+    - Page title
+    - Three sections with headings and descriptions
+    - All text from i18n translations
+
+  head: true
+  head_behavior: |
+    Returns localized meta tags:
+    - title, description, keywords from i18n
+    - Standard meta tags (google, theme-color, distribution, rating, author, copyright, google-signin-scope, robots)
+
+dependencies:
+  - "@builder.io/qwik"
+  - "qwik-speak" (inlineTranslate)
+
+behavior:
+  - Pure content display, no data loading
+  - All text uses inlineTranslate for i18n
+  - Responsive padding (15px mobile, 180px desktop)
+
+i18n_keys:
+  - why_choose_printerpix.title
+  - why_choose_printerpix.commit_quality
+  - why_choose_printerpix.commit_quality_description_1
+  - why_choose_printerpix.safe_and_secure
+  - why_choose_printerpix.safe_and_secure_description_1
+  - why_choose_printerpix.safe_and_secure_description_2
+  - why_choose_printerpix.stand_behind_product
+  - why_choose_printerpix.stand_behind_product_description_1
+  - why_choose_printerpix.stand_behind_product_description_2
+  - why_choose_printerpix.meta.title
+  - why_choose_printerpix.meta.description
+  - why_choose_printerpix.meta.keywords
+
+rewrite_routes:
+  NL: /waarom-printerpix
+  DE: /warum-printerpix
+  IT: /perche-printerpix
+  ES: /por-que-elegir-printerpix
+
+used_by: []
+
+types:
+  notes: "Route component. No locally-defined interfaces. All content sourced from inlineTranslate() i18n keys."

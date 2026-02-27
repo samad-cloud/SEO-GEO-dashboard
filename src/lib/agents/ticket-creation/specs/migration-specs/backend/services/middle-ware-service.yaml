@@ -1,0 +1,428 @@
+name: MiddleWareService
+source: src/services/middle-ware-service.ts
+description: |
+  Middleware service for request interception and cookie management in Qwik application.
+  Handles URL redirections, MACHINE_TOKEN generation, UTM parameter tracking, and affiliate ID cookies.
+  Provides authentication middleware for protected routes.
+
+exports:
+  - name: cookieAndRedirectionMiddleware
+    signature: 'async (event: RequestEvent<QwikCityPlatform>) => Promise<void>'
+    description: |
+      Core middleware that runs on every request to handle:
+      1. URL redirections (301/302)
+      2. MACHINE_TOKEN cookie generation for new visitors
+      3. UTM parameter tracking (90-day cookies)
+      4. Affiliate pixid tracking and GCLAW cookie generation
+      5. Coupon code cookie setting
+    inputs:
+      - name: event
+        type: RequestEvent<QwikCityPlatform>
+        fields:
+          - cookie: Cookie manager
+          - url: URL object
+          - query: URLSearchParams
+          - redirect: Redirect function
+          - request: Request object
+    throws:
+      - Redirect exception if URL matches redirection rules
+
+  - name: checkCurrentLoginSession
+    signature: 'async (event: RequestEvent<QwikCityPlatform>) => Promise<void>'
+    description: |
+      Authentication middleware for protected routes.
+      Verifies user is logged in via MACHINE_TOKEN and redirects to login if not authenticated.
+    inputs:
+      - name: event
+        type: RequestEvent<QwikCityPlatform>
+        fields:
+          - cookie: Cookie manager
+          - redirect: Redirect function
+          - sharedMap: Request-scoped cache
+          - next: Continue to next middleware
+    throws:
+      - Redirect to /login/register/ if not authenticated
+
+api_contracts:
+  - endpoint: loadWebContent(WebContentType.REDIRECTION)
+    description: Loads URL redirection rules from JSON config
+    returns:
+      data: Array<RedirectionResponse>
+    structure:
+      - source: string (URL path to match)
+      - target: string (destination URL)
+      - redirectionCode: number (301 or 302)
+
+  - endpoint: getNewMachineToken
+    description: Generates new MACHINE_TOKEN for visitor tracking
+    inputs:
+      - tracking_string: '{url} | {ip} | {user-agent}'
+    returns: string (UUID token) or non-string on failure
+
+  - endpoint: getCurrentLoginSession
+    description: Fetches current user session from MACHINE_TOKEN
+    inputs:
+      - machineToken: string
+    returns:
+      - isAnonymous: boolean
+      - (other user session fields)
+
+types:
+  - name: RequestEvent
+    source: '@builder.io/qwik-city'
+    description: Qwik request event object
+    fields:
+      - cookie: Cookie manager
+      - url: URL object
+      - query: URLSearchParams
+      - redirect: (code: number, url: string) => never
+      - request: Request object
+      - sharedMap: Map for request-scoped data
+      - next: () => Promise<void>
+
+  - name: RedirectionResponse
+    source: '~/services/json-service'
+    description: URL redirection configuration
+    fields:
+      - source: string (path to redirect from)
+      - target: string (path to redirect to)
+      - redirectionCode: number (301 permanent, 302 temporary)
+
+  - name: WebContentType
+    source: '~/services/json-service'
+    description: Enum for web content types
+    value: REDIRECTION
+
+dependencies:
+  internal:
+    - '@builder.io/qwik-city': RequestEvent
+    - '~/services/accounts-service': getCurrentLoginSession, getNewMachineToken
+    - '~/services/cart-services/cookie': getBaseDomainName
+    - '~/services/json-service': loadWebContent, WebContentType, RedirectionResponse
+    - '~/services/cart-services/gtm/data-layer-mapper': cookieKey
+  external:
+    - None (all dependencies are internal)
+
+data_flow:
+  redirection_flow:
+    inputs:
+      - Current request URL pathname
+      - Redirection rules from JSON config
+    transformations:
+      - Load redirection rules via loadWebContent(REDIRECTION)
+      - Find matching redirection by source === url.pathname
+      - If found: throw redirect(code, target)
+    outputs:
+      - HTTP 301/302 redirect if match found
+      - Continue to next middleware if no match
+
+  machine_token_flow:
+    inputs:
+      - MACHINE_TOKEN cookie (if exists)
+      - Request URL, IP, user-agent
+      - Bot detection via user-agent header
+    conditions:
+      - No MACHINE_TOKEN cookie exists
+      - URL does NOT contain "undefined"
+      - User-agent does NOT contain "bot"
+    transformations:
+      - Build tracking string: '{url} | {x-src-ip} | {user-agent}'
+      - Call getNewMachineToken(trackingString)
+      - If token returned as string: set MACHINE_TOKEN cookie (90 days)
+    outputs:
+      - MACHINE_TOKEN cookie set with base domain, 90-day expiry
+
+  utm_tracking_flow:
+    inputs:
+      - URL query parameters
+      - Any parameter key containing "utm"
+    transformations:
+      - Extract all utm_* parameters from query
+      - For each utm parameter: set cookie with same name/value (90 days)
+    outputs:
+      - Individual cookies for each UTM parameter (utm_source, utm_campaign, etc.)
+
+  affiliate_pixid_flow:
+    inputs:
+      - Query parameter: pixid
+      - Query parameter: gclid (Google Click ID)
+    transformations:
+      - If pixid exists:
+        1. Set pixId cookie (90 days)
+        2. Generate Unix timestamp in seconds
+        3. Set pixIdUnixTimestamp cookie (90 days)
+        4. If NO gclid: Set GCLAW cookie with format "GCL.{timestamp}.{pixid}" (90 days)
+    outputs:
+      - pixId cookie (from cookieKey.pixId)
+      - pixIdUnixTimestamp cookie (from cookieKey.pixIdUnixTimestamp)
+      - GCLAW cookie (from cookieKey.GCLAW) if gclid not present
+
+  coupon_tracking_flow:
+    inputs:
+      - Query parameter: couponcode (case-insensitive)
+    transformations:
+      - Extract couponcode from queryParams (lowercase keys)
+      - If couponcode exists: set MODI_COUPON cookie (90 days)
+    outputs:
+      - MODI_COUPON cookie with coupon code value
+
+  authentication_flow:
+    inputs:
+      - MACHINE_TOKEN cookie
+      - SharedMap cache (request-scoped)
+    transformations:
+      - Check if MACHINE_TOKEN cookie exists
+      - If exists: Get session from sharedMap or fetch via getCurrentLoginSession
+      - Check if session.isAnonymous === false
+      - If logged in: call next() to continue
+      - If anonymous or no token: redirect to /login/register/
+    outputs:
+      - Continue to protected route if authenticated
+      - HTTP 302 redirect to /login/register/ if not
+
+business_logic:
+  redirection_priority:
+    description: |
+      Redirection check happens FIRST, before any cookie logic.
+      If a redirection match is found, throw redirect immediately (no other middleware runs).
+
+  machine_token_generation_conditions:
+    description: |
+      MACHINE_TOKEN is only generated when ALL conditions are true:
+      1. No existing MACHINE_TOKEN cookie
+      2. URL does not contain "undefined" (malformed requests)
+      3. User-agent does not contain "bot" (skip bots/crawlers)
+
+      This prevents:
+      - Overwriting existing tokens
+      - Generating tokens for invalid requests
+      - Wasting tokens on search engine crawlers
+
+  utm_parameter_extraction:
+    description: |
+      Query parameters are normalized to lowercase keys before extraction.
+      Any parameter with "utm" in the key name is stored as a cookie.
+      This captures: utm_source, utm_medium, utm_campaign, utm_content, utm_term, etc.
+
+  pixid_and_gclaw_logic:
+    description: |
+      pixid (affiliate ID) triggers multiple cookie writes:
+      1. Store pixid itself
+      2. Store timestamp when pixid was received
+      3. Generate GCLAW cookie ONLY if gclid is NOT present
+
+      GCLAW format: "GCL.{unix_seconds}.{pixid}"
+
+      This prevents overwriting Google Click ID data (gclid) with affiliate data.
+
+  cookie_domain_strategy:
+    description: |
+      ALL cookies use getBaseDomainName(url.hostname) for domain.
+      This ensures cookies work across subdomains (e.g., www.printerpix.com and printerpix.com).
+
+  authentication_caching:
+    description: |
+      checkCurrentLoginSession uses sharedMap to cache session within the request.
+      This prevents multiple DB/API calls for the same session in a single request.
+
+  login_redirect_behavior:
+    description: |
+      Protected routes redirect to /login/register/ (302 temporary redirect).
+      Both anonymous sessions and missing MACHINE_TOKEN trigger the redirect.
+
+error_handling:
+  redirection_not_found:
+    strategy: No error thrown, middleware continues normally
+    description: If no matching redirection, middleware proceeds to next logic
+
+  machine_token_generation_failure:
+    strategy: Check if result is string before setting cookie
+    description: Only set cookie if getNewMachineToken returns valid string token
+
+  login_session_fetch_failure:
+    strategy: Treat as anonymous (redirect to login)
+    description: If getCurrentLoginSession fails or returns falsy, redirect to login
+
+  missing_machine_token:
+    strategy: Redirect to /login/register/
+    description: Protected routes require MACHINE_TOKEN to exist
+
+cookie_operations:
+  written_cookies:
+    - name: MACHINE_TOKEN
+      value: UUID string from getNewMachineToken
+      max_age: 90 days
+      path: /
+      domain: Base domain
+      condition: No existing token, not bot, valid URL
+
+    - name: utm_* (dynamic)
+      value: Query parameter value
+      max_age: 90 days
+      path: /
+      domain: Base domain
+      condition: Query param contains "utm"
+
+    - name: pixId
+      value: Query parameter pixid
+      max_age: 90 days
+      path: /
+      domain: Base domain
+      condition: pixid query param exists
+
+    - name: pixIdUnixTimestamp
+      value: Unix timestamp in seconds
+      max_age: 90 days
+      path: /
+      domain: Base domain
+      condition: pixid query param exists
+
+    - name: GCLAW
+      value: GCL.{timestamp}.{pixid}
+      max_age: 90 days
+      path: /
+      domain: Base domain
+      condition: pixid exists AND gclid does NOT exist
+
+    - name: MODI_COUPON
+      value: Coupon code from query param
+      max_age: 90 days
+      path: /
+      domain: Base domain
+      condition: couponcode query param exists
+
+  read_cookies:
+    - MACHINE_TOKEN: Used for authentication and session retrieval
+
+  cookie_lifetime:
+    All cookies: 90 days (maxAge: [90, "days"])
+
+redirects:
+  - trigger: URL matches redirection rules
+    type: Dynamic (301 or 302 from config)
+    target: From redirection config
+    source: cookieAndRedirectionMiddleware
+
+  - trigger: No MACHINE_TOKEN cookie
+    type: 302 (temporary)
+    target: /login/register/
+    source: checkCurrentLoginSession
+
+  - trigger: Session is anonymous
+    type: 302 (temporary)
+    target: /login/register/
+    source: checkCurrentLoginSession
+
+middleware_execution_order:
+  cookieAndRedirectionMiddleware:
+    1. Check redirections (may throw redirect)
+    2. Generate MACHINE_TOKEN if needed
+    3. Capture UTM parameters
+    4. Track affiliate pixid
+    5. Store coupon code
+
+  checkCurrentLoginSession:
+    1. Verify MACHINE_TOKEN exists
+    2. Fetch/cache login session
+    3. Verify session is not anonymous
+    4. Call next() or redirect to login
+
+security:
+  bot_filtering:
+    description: Prevents token generation for bots by checking user-agent header
+    header: user-agent
+    pattern: Contains "bot" (case-sensitive)
+
+  cookie_domain:
+    description: Cookies scoped to base domain (allows subdomain access)
+    function: getBaseDomainName
+
+  token_tracking:
+    description: MACHINE_TOKEN generation logs URL, IP, and user-agent for audit
+    data_logged:
+      - Request URL
+      - x-src-ip header (client IP)
+      - user-agent header
+
+  anonymous_session_handling:
+    description: Even with valid MACHINE_TOKEN, anonymous sessions cannot access protected routes
+
+  no_httponly_flag:
+    description: Cookies are JavaScript-accessible (no HttpOnly flag set)
+    risk: Vulnerable to XSS attacks
+
+performance:
+  redirection_check:
+    description: Runs on every request, uses array.find() on redirection rules
+    optimization: Consider using Map or Set for O(1) lookup
+
+  session_caching:
+    description: sharedMap prevents duplicate session fetches within single request
+    benefit: Reduces DB/API calls for authentication checks
+
+  utm_cookie_writes:
+    description: Each UTM parameter triggers individual cookie write
+    impact: Multiple requests with many UTM params could slow response
+
+data_dependencies:
+  json_config:
+    - Redirection rules (RedirectionResponse[])
+    source: loadWebContent(WebContentType.REDIRECTION)
+
+  external_services:
+    - getNewMachineToken API/service
+    - getCurrentLoginSession API/service
+
+  cookies:
+    - MACHINE_TOKEN (user tracking)
+    - pixId, pixIdUnixTimestamp, GCLAW (affiliate tracking)
+    - MODI_COUPON (marketing)
+    - utm_* (analytics)
+
+  request_headers:
+    - user-agent (bot detection)
+    - x-src-ip (client IP logging)
+
+query_parameters_tracked:
+  - utm_*: Marketing attribution (utm_source, utm_medium, etc.)
+  - pixid: Affiliate/partner ID
+  - gclid: Google Click ID (influences GCLAW cookie)
+  - couponcode: Promotional coupon (case-insensitive)
+
+behavior:
+  - name: cookieAndRedirectionMiddleware
+    steps:
+      - Destructures cookie, url, query, redirect from the RequestEvent
+      - Loads redirection rules by calling loadWebContent(WebContentType.REDIRECTION)
+      - Searches for a matching redirection where source === url.pathname
+      - If match found, throws redirect with the configured redirectionCode and target URL (stops all further processing)
+      - Checks if MACHINE_TOKEN cookie is absent AND URL does not contain "undefined" AND user-agent does not contain "bot"
+      - If all conditions met, builds a tracking string as "{url} | {x-src-ip} | {user-agent}"
+      - Calls getNewMachineToken(trackingString) to generate a new token
+      - If result is a non-empty string, sets MACHINE_TOKEN cookie with 90-day expiry on base domain
+      - Normalizes all URL query parameter keys to lowercase
+      - Iterates query parameters, finds any key containing "utm", and sets each as a cookie (90-day expiry, base domain)
+      - If pixid query param exists, sets pixId cookie, generates Unix timestamp and sets pixIdUnixTimestamp cookie
+      - If pixid exists but gclid does NOT exist, sets GCLAW cookie with format "GCL.{timestamp}.{pixid}"
+      - If couponcode query param exists (case-insensitive), sets MODI_COUPON cookie with the coupon value
+
+  - name: checkCurrentLoginSession
+    steps:
+      - Destructures cookie, redirect, sharedMap, next from the RequestEvent
+      - Checks if MACHINE_TOKEN cookie exists and has a value
+      - If no MACHINE_TOKEN, throws redirect(302, "/login/register/")
+      - If MACHINE_TOKEN exists, checks sharedMap for cached currentLoginSession
+      - If not cached, calls getCurrentLoginSession(machineToken) to fetch from API
+      - If session exists and isAnonymous is false, caches session in sharedMap and calls next()
+      - If session is anonymous or falsy, throws redirect(302, "/login/register/")
+
+constants:
+  cookie_max_age: 90 days
+  login_redirect_url: /login/register/
+  login_redirect_code: 302
+  gclaw_prefix: "GCL"
+
+used_by:
+  - frontend/layouts/layout-default.yaml # Calls cookieAndRedirectionMiddleware in default layout onRequest
+  - frontend/layouts/layout-containerless.yaml # Calls cookieAndRedirectionMiddleware in containerless layout onRequest
+  - frontend/layouts/layout-categoryproduct.yaml # Calls cookieAndRedirectionMiddleware and checkCurrentLoginSession

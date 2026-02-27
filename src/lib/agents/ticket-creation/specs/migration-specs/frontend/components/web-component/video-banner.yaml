@@ -1,0 +1,305 @@
+name: VideoBanner
+source: components/web-component/video-banner.tsx
+description: >
+  A hero video banner component that displays auto-playing background videos
+  (separate mobile/desktop sources) with a text overlay containing heading,
+  description, and a CTA button. Clicking the overlay or CTA button opens a
+  full-screen video popup modal. The layout differs significantly between
+  mobile and desktop: desktop shows the overlay on the video itself, while
+  mobile shows text content below the video.
+
+exports:
+  default:
+    type: component
+    name: VideoBanner
+    export_type: default
+  VideoBannerProps:
+    type: interface
+    export_type: named
+
+props:
+  data:
+    type: VideoBanner
+    required: true
+    description: Contains video URLs, text content, CTA styling, and popup video URL
+
+component_structure:
+  root:
+    element: div
+    classes: "relative w-full h-auto"
+    children:
+      - section: background_videos
+        element: div
+        classes: "relative"
+        children:
+          - element: video (mobile)
+            classes: "w-full md:hidden aspect-[767/384]"
+            attributes: autoplay, loop, muted, playsInline
+            source: data.mobileVideoUrl (type video/mp4)
+          - element: video (desktop)
+            classes: "w-full hidden md:block aspect-[5/1]"
+            attributes: autoplay, loop, muted, playsInline
+            source: data.desktopVideoUrl (type video/mp4)
+          - element: SVGIcon (play button)
+            name: "play"
+            dimensions: 64x64
+            fill: "#fff"
+            classes: "block opacity-70 lg:hidden absolute top-[50%] left-[50%] -translate-x-[50%] -translate-y-[50%]"
+            note: Only visible on mobile/tablet (hidden on lg)
+
+      - section: desktop_overlay (clickable)
+        element: div
+        classes: "absolute cursor-pointer w-full top-0 left-0 h-full text-center lg:text-left button_video_banner_toggle"
+        on_click: fires Matomo CLICK_VIEW_VIDEO_POPUP event, sets showVideoPopup to true
+        children:
+          - element: div (desktop content container, hidden on mobile)
+            classes: "hidden lg:flex relative container mx-auto flex-col justify-start lg:justify-center h-full px-6 pt-2 lg:pt-0"
+            children:
+              - element: h1
+                classes: "hidden lg:block font-bold text-2xl md:text-4xl mb-2 md:mb-4 text-[#1A1A1A] lg:text-[#fff]"
+                content: data.heading
+              - element: div (flex column)
+                children:
+                  - element: p
+                    classes: "hidden lg:block text-lg md:text-2xl mb-4 text-[#1A1A1A] lg:text-[#fff]"
+                    content: data.description
+                  - element: div (button container)
+                    classes: "mb-0 lg:mb-4"
+                    children:
+                      - element: button
+                        classes: "py-2 md:py-4 px-4 md:px-16 text-center font-bold text-xs md:text-2xl rounded-sm md:rounded-md whitespace-nowrap button_video_banner_toggle"
+                        inline_style:
+                          backgroundColor: data.ctaBackgroundColor
+                          color: data.ctaTextColor
+                        content: data.ctaText
+                        on_click: fires Matomo CLICK_VIEW_VIDEO_POPUP, sets showVideoPopup to true
+
+      - section: mobile_text_content (below video)
+        element: div
+        classes: "lg:hidden relative w-full top-0 left-0 h-full text-center lg:text-left"
+        children:
+          - element: div (container)
+            classes: "container mx-auto flex flex-col justify-start lg:justify-center h-full px-6 pt-2 lg:pt-0"
+            children:
+              - element: h1
+                classes: "font-bold text-2xl md:text-4xl mb-2 md:mb-4 text-[#1A1A1A] lg:text-[#fff]"
+                content: data.heading
+              - element: p
+                classes: "text-lg md:text-2xl text-[#1A1A1A] lg:text-[#fff]"
+                content: data.description
+
+      - section: video_popup_modal
+        conditional: showVideoPopup is true
+        element: div
+        classes: "fixed z-[1000] top-0 left-0 w-screen h-screen bg-[#000000bf] flex items-center justify-center"
+        children:
+          - element: span (close button)
+            classes: "absolute text-white cursor-pointer text-[36px] top-[20px] right-[40px] font-bold"
+            content: "x"
+            on_click: sets showVideoPopup to false
+          - element: video
+            classes: "w-full aspect-square max-w-[800px]"
+            attributes: controls, autoplay, loop, playsInline
+            source: data.popup.videoUrl (type video/mp4)
+
+child_components:
+  - name: SVGIcon
+    source: ../svg-icon/svg-icon
+    props:
+      name: "play"
+      width: 64
+      height: 64
+      fill: "#fff"
+
+data_structure:
+  VideoBanner:
+    mobileVideoUrl:
+      type: string
+      description: URL for the mobile background video (shown below md breakpoint)
+    desktopVideoUrl:
+      type: string
+      description: URL for the desktop background video (shown at md breakpoint and above)
+    heading:
+      type: string
+      description: Banner heading text displayed over/below the video
+    description:
+      type: string
+      description: Banner description text displayed over/below the video
+    ctaText:
+      type: string
+      description: Call-to-action button text
+    ctaTextColor:
+      type: string
+      description: CTA button text color (CSS color value)
+    ctaBackgroundColor:
+      type: string
+      description: CTA button background color (CSS color value)
+    popup:
+      type: object
+      properties:
+        videoUrl:
+          type: string
+          description: URL for the popup video (higher quality / full version)
+
+behavior:
+  state:
+    showVideoPopup:
+      type: boolean
+      initial: false
+      description: Controls visibility of the full-screen video popup modal
+  background_video:
+    - Two separate video elements for mobile and desktop (not a single responsive video)
+    - Mobile video has aspect ratio 767:384 (approximately 2:1)
+    - Desktop video has aspect ratio 5:1 (ultra-wide banner format)
+    - Both auto-play, loop, are muted, and use playsInline
+    - A play icon overlay appears on mobile/tablet (hidden on lg) to indicate video is playable
+  text_overlay:
+    desktop:
+      - Text content overlaid on the video (absolute positioned)
+      - Heading, description, and CTA button visible on lg screens
+      - Text color is white on lg (#fff), dark on smaller screens (#1A1A1A)
+      - Entire overlay area is clickable to open popup
+    mobile:
+      - Text content rendered BELOW the video (not overlaid)
+      - Only heading and description shown (no CTA button on mobile)
+      - Text color is dark (#1A1A1A)
+      - Clicking the video overlay (above) opens the popup
+  popup_modal:
+    - Full-screen fixed overlay with semi-transparent black background (rgba 0,0,0,0.75)
+    - Contains a video player with controls, autoplay, loop
+    - Video is square aspect ratio, max-width 800px
+    - Close button is an "x" character in top-right corner
+    - Opens when overlay or CTA button is clicked
+    - Closes when "x" is clicked
+    - z-index 1000 ensures it's above all other content
+  analytics:
+    - Matomo CLICK_VIEW_VIDEO_POPUP event fires when overlay div is clicked (category COMMON)
+    - A second Matomo push on the CTA button uses only the event name without category (potential bug)
+    - Both trigger showVideoPopup = true
+
+styling:
+  approach: Tailwind CSS utility classes with inline styles for dynamic colors
+  responsive_breakpoints:
+    - md: toggles between mobile and desktop videos, text size changes
+    - lg: toggles between overlay text (on video) and below-video text layout, hides play icon
+  inline_styles:
+    - CTA button backgroundColor from data.ctaBackgroundColor
+    - CTA button color from data.ctaTextColor
+  custom_classes:
+    - "button_video_banner_toggle": CSS class on overlay and CTA button for targeting
+  z_index:
+    - Popup modal uses z-[1000]
+
+dependencies:
+  - name: SVGIcon
+    source: ../svg-icon/svg-icon
+    purpose: Renders the play button icon overlay on mobile
+  - name: web-component-service
+    purpose: VideoBanner type definition
+    import: "type VideoBanner"
+  - name: matomo utility
+    purpose: Analytics event tracking
+    imports:
+      - MatomoCategory
+      - MatomoEvent
+      - pushMatomoEvent
+
+used_by:
+  - components/web-component/web-contents-component.tsx (filtered by componentType == "Mid-Page")
+  - components/web-component/web-contents-component-v3.tsx
+  - components/category-page/containers/common-category-container.tsx
+
+security:
+  - Video URLs come from CMS; should be validated against allowed video hosting domains
+  - data.ctaBackgroundColor and data.ctaTextColor are used in inline styles; should be sanitized to prevent CSS injection
+  - Popup overlay should handle Escape key for accessibility
+
+notes:
+  - The desktop overlay div covers the entire video area and is always clickable, even when the CTA button is not visible on smaller screens
+  - The CTA button's Matomo push only sends the event name without MatomoCategory (inconsistent with the overlay's event push which includes the category) - this appears to be a bug in the source
+  - Mobile text content is NOT overlaid on the video but rendered as a separate section below it
+  - The play icon is purely decorative - it does not trigger any action itself, the overlay div handles the click
+  - There is commented-out code for a mobile CTA button that was likely removed during iteration
+  - The popup video uses square aspect ratio while background videos use landscape ratios
+  - The close button is a plain "x" text character, not an icon
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  VideoBannerProps:
+    description: Named exported props interface
+    fields:
+      - name: data
+        type: VideoBanner
+
+  VideoBanner:
+    description: Video banner data from web-component-service
+    source: ~/services/web-component-service
+    fields:
+      - name: mobileVideoUrl
+        type: string
+      - name: desktopVideoUrl
+        type: string
+      - name: heading
+        type: string
+      - name: description
+        type: string
+      - name: ctaText
+        type: string
+      - name: ctaTextColor
+        type: string
+      - name: ctaBackgroundColor
+        type: string
+      - name: popup
+        type: VideoBannerPopup
+
+  VideoBannerPopup:
+    description: Popup video configuration nested within VideoBanner
+    fields:
+      - name: videoUrl
+        type: string
+
+field_consumption:
+  VideoBanner:
+    consumed:
+      - mobileVideoUrl: Source src for mobile video element (shown below md breakpoint)
+      - desktopVideoUrl: Source src for desktop video element (shown md+)
+      - heading: Rendered as h1 in both desktop overlay and mobile text section
+      - description: Rendered as p in both desktop overlay and mobile text section
+      - ctaText: Button label in desktop overlay CTA button
+      - ctaTextColor: Inline style color on CTA button
+      - ctaBackgroundColor: Inline style backgroundColor on CTA button
+      - popup.videoUrl: Source src for popup modal video
+
+visibility_map:
+  mobile_video:
+    condition: "always rendered"
+    default: "visible below md (Tailwind: w-full md:hidden)"
+
+  desktop_video:
+    condition: "always rendered"
+    default: "visible on md+ (Tailwind: w-full hidden md:block)"
+
+  play_icon_overlay:
+    condition: "always rendered"
+    default: "visible on mobile/tablet (Tailwind: block opacity-70 lg:hidden)"
+
+  desktop_overlay_text_container:
+    condition: "always rendered (the overlay div is always present)"
+    default: "visible on lg+ (Tailwind: hidden lg:flex)"
+
+  desktop_heading:
+    condition: "always rendered inside desktop overlay"
+    default: "visible on lg+ (Tailwind: hidden lg:block)"
+
+  desktop_description:
+    condition: "always rendered inside desktop overlay"
+    default: "visible on lg+ (Tailwind: hidden lg:block)"
+
+  mobile_text_section:
+    condition: "always rendered"
+    default: "visible below lg (Tailwind: lg:hidden)"
+
+  video_popup_modal:
+    condition: "showVideoPopup signal is true"
+    default: hidden

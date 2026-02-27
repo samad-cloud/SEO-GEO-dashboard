@@ -1,0 +1,220 @@
+name: TrustSignalsSection
+source: components/web-component/trust-signals.tsx
+description: >
+  Trust signals display section that renders a heading with optional description text and a grid
+  of signal badges/guarantees. Each signal consists of an image, heading (rendered as HTML), and
+  text content. The description supports markdown-to-HTML conversion. Theme-aware link coloring
+  via injected CSS styles.
+
+exports:
+  - name: default
+    type: component
+    description: TrustSignalsSection component (default export)
+
+props:
+  - name: content
+    type: TrustSignals
+    required: true
+    description: >
+      Trust signals data object containing heading, optional description (markdown),
+      and an array of signal items.
+  - name: theme
+    type: "CategoryTheme | null"
+    required: false
+    description: "Optional category theme. Controls link color in description (defaults to #F02480)."
+
+component_structure:
+  type: fragment
+  children:
+    - element: div (header row)
+      class: "flex items-center md:items-start flex-col md:flex-row"
+      children:
+        - element: h2 (heading)
+          class: >
+            w-full text-center md:text-left md:w-3/12 font-bold text-3xl mb-4
+            (when description exists: md:w-3/12; when no description: md:w-full md:text-center)
+          content: "{content.heading}"
+          description: >
+            Heading takes 3/12 width on desktop when description present.
+            Takes full width and centers when no description.
+        - element: div (description)
+          condition: "content.description is truthy"
+          class: "flex-1 md:pl-4 trust-signals-description"
+          html: "dangerouslySetInnerHTML={convertMarkdownToHtml(content.description)}"
+    - element: div (signals grid)
+      class: "flex flex-wrap px-3 -mx-2 md:-mx-5"
+      children:
+        - element: div (signal item)
+          iteration: "content.signals.map()"
+          key: "section.heading"
+          class: "flex-[0_0_50%] max-w-[50%] md:flex-[0_0_25%] md:max-w-[25%] px-2 md:px-5 text-center mb-4"
+          children:
+            - element: div (image wrapper)
+              class: "flex justify-center"
+              children:
+                - element: Image
+                  props:
+                    src: "{section.image}"
+                    alt: "{section.heading || 'Feature'}"
+                    class: "w-full h-auto"
+            - element: p (signal heading)
+              class: "mt-4 font-bold"
+              html: "dangerouslySetInnerHTML={section.heading}"
+              description: "Heading rendered as HTML to support rich text formatting"
+            - element: p (signal text)
+              class: "mt-4"
+              content: "{section.textContent}"
+    - element: style
+      html: "dangerouslySetInnerHTML={trustSignalsStyles.value}"
+      description: "Dynamic theme-aware CSS injection for link colors"
+
+child_components:
+  - name: Image
+    source: "@unpic/qwik"
+    description: "Optimized image component - replace with Next.js Image"
+
+data_structure:
+  TrustSignals:
+    heading: string
+    description: string (markdown, optional/empty string)
+    signals:
+      - image: string (URL)
+        imageAlt: string
+        heading: string (may contain HTML)
+        textContent: string
+
+behavior:
+  - action: "Render header section with heading and optional description"
+    details: >
+      On mobile: heading and description stack vertically, both centered.
+      On desktop: heading takes 3/12 width (left-aligned), description takes remaining space with left padding.
+      If no description, heading takes full width and is centered on both mobile and desktop.
+  - action: "Render signals grid"
+    details: >
+      Signals displayed in a flex-wrap grid. Mobile: 2 columns (50% each).
+      Desktop (md+): 4 columns (25% each). Each signal shows centered image,
+      bold heading (rendered as HTML), and plain text content.
+  - action: "Dynamic CSS injection for theme colors"
+    details: >
+      Injects a <style> tag that sets link colors in the description area.
+      Links inside .trust-signals-description get bold weight and theme.primary color
+      (defaults to #F02480 if no theme provided).
+
+styling:
+  dynamic_css:
+    ".trust-signals-description a": "font-weight: bold; color: {theme.primary || '#F02480'}"
+  layout:
+    header: "flex items-center md:items-start flex-col md:flex-row"
+    heading_with_desc: "w-full text-center md:text-left md:w-3/12 font-bold text-3xl mb-4"
+    heading_without_desc: "w-full text-center md:text-left md:w-full md:text-center font-bold text-3xl mb-4"
+    signals_grid: "flex flex-wrap px-3 -mx-2 md:-mx-5"
+    signal_item: "flex-[0_0_50%] max-w-[50%] md:flex-[0_0_25%] md:max-w-[25%] px-2 md:px-5 text-center mb-4"
+
+dependencies:
+  services:
+    - name: markdown-service
+      function: convertMarkdownToHtml
+      description: "Converts markdown description to HTML"
+  types:
+    - name: TrustSignals
+      source: "~/services/web-component-service"
+    - name: CategoryTheme
+      source: "~/services/category-service"
+
+used_by:
+  - "WebContentsComponent (web-contents-component.tsx) - renders trust signals sections"
+
+security:
+  - "Uses dangerouslySetInnerHTML for description (markdown) and signal headings (may contain HTML)"
+  - "Signal heading is rendered as raw HTML - ensure CMS content is sanitized"
+  - "Dynamic CSS injection via style tag"
+
+notes:
+  - "Signal headings use dangerouslySetInnerHTML, not text content - they may contain HTML formatting"
+  - "Image alt text falls back to section.heading or 'Feature' if heading is falsy"
+  - "The grid uses flex-based layout (not CSS Grid) with negative margins for gutter compensation"
+  - "Heading width class changes dynamically based on whether description exists"
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  TrustSignalsProps:
+    description: Component props interface
+    fields:
+      - name: content
+        type: TrustSignals
+      - name: theme
+        type: "CategoryTheme | null"
+        optional: true
+
+  TrustSignals:
+    description: Trust signals data from web-component-service
+    source: ~/services/web-component-service
+    fields:
+      - name: heading
+        type: string
+      - name: description
+        type: string
+      - name: signals
+        type: "Array<TrustSignalItem>"
+
+  TrustSignalItem:
+    description: Individual signal badge within TrustSignals.signals
+    fields:
+      - name: image
+        type: string
+      - name: imageAlt
+        type: string
+      - name: heading
+        type: string
+      - name: textContent
+        type: string
+
+  CategoryTheme:
+    description: Optional category theme for link color in injected CSS
+    source: ~/services/category-service
+    fields:
+      - name: primary
+        type: string
+      - name: secondary
+        type: string
+      - name: primaryText
+        type: string
+      - name: secondaryText
+        type: string
+
+field_consumption:
+  TrustSignals:
+    consumed:
+      - heading: Rendered as h2; its width class changes based on whether description exists
+      - description: Rendered as HTML via dangerouslySetInnerHTML when truthy; also controls h2 width class
+      - signals: Iterated to render signal badge items (image + heading + textContent)
+
+  TrustSignalItem:
+    consumed:
+      - image: Passed as src to Image component
+      - imageAlt: Used as alt on Image (falls back to section.heading or "Feature")
+      - heading: Rendered via dangerouslySetInnerHTML in a p element (may contain HTML)
+      - textContent: Rendered as plain text in a p element
+
+  CategoryTheme:
+    consumed:
+      - primary: Used in injected CSS for link color inside .trust-signals-description (falls back to #F02480)
+    ignored:
+      - secondary: Not used
+      - primaryText: Not used
+      - secondaryText: Not used
+
+visibility_map:
+  description_block:
+    condition: "content.description is truthy"
+    default: hidden
+
+  heading_narrow_width:
+    condition: "content.description is truthy"
+    default: "hidden (md:w-3/12 applied only when description present)"
+    notes: "Without description, heading takes md:w-full md:text-center"
+
+  heading_full_width:
+    condition: "content.description is falsy"
+    default: visible

@@ -1,0 +1,937 @@
+name: Category Service
+source:
+  file: src/services/category-service.ts
+  line_count: 1011
+  type: service
+  language: typescript
+
+description: |
+  Service responsible for fetching and processing category page data from the API.
+  Handles category metadata, product sections, banners, FAQs, reviews, SEO content,
+  breadcrumbs, and schema.org structured data generation. Also provides utility functions
+  for filtering photobook products and getting flipbook data.
+
+exports:
+  types:
+    - name: Banner
+      description: Category page banner with desktop/mobile images
+    - name: CategoryFeaturesSlides
+      description: Feature slideshow section with nested slides and content
+    - name: MidPageBanner
+      description: Mid-page promotional banner with video CTA
+    - name: MidBanner
+      description: Simplified mid-page banner
+    - name: CategoryBlogSection
+      description: Blog posts section for category pages
+    - name: UGC
+      description: User-generated content item (image, video, review)
+    - name: UgcSection
+      description: UGC section with multiple UGC items
+    - name: FAQSection
+      description: Frequently asked questions section
+    - name: CategoryMetaData
+      description: SEO meta tags and Open Graph data
+    - name: CategoryProductItem
+      description: Individual product displayed in category
+    - name: CategoryProduct
+      description: Group of products with title
+    - name: TrustSignals
+      description: Trust signals section with icons
+    - name: BottomPageCta
+      description: Bottom page call-to-action
+    - name: Section
+      description: Generic content section
+    - name: CategorySoties
+      description: Category stories section with images
+    - name: SeoContent
+      description: SEO text content sections
+    - name: BreadCrumbParent
+      description: Parent breadcrumb item
+    - name: BreadCrumb
+      description: Breadcrumb navigation item
+    - name: CategoryTheme
+      description: Category page color theme
+    - name: CategoryOptionType2
+      description: Category option with images and bullets
+    - name: CategoryShopData
+      description: Shop/collection data for category
+    - name: TypeOption2
+      description: Type option section with multiple types
+    - name: CategoryPage
+      description: Complete category page data structure
+    - name: PageBanners
+      description: Page banner with CTAs
+    - name: Cta
+      description: Call-to-action button
+    - name: Popup
+      description: Popup configuration for CTA
+    - name: ProductSectionType
+      description: Enum for product section display types
+    - name: ProductSection
+      description: Section of products with display settings
+    - name: ProductPage
+      description: Product page reference
+    - name: ProductPages
+      description: Group of product pages
+    - name: Product
+      description: Product item with basic info
+    - name: ContentSection
+      description: Generic content section with various types
+    - name: Icon
+      description: Icon with heading and description
+    - name: Content
+      description: Content item with image and CTAs
+    - name: CtaButton
+      description: CTA button with type, text, URL
+    - name: Banner2
+      description: Simple banner with desktop/mobile images
+    - name: FaqContent
+      description: FAQ content with sort order
+    - name: Faq
+      description: Single FAQ item
+    - name: Bullet
+      description: Bullet point with special text
+    - name: Paragraph
+      description: Paragraph with special text and bullets
+    - name: SpecialText
+      description: Styled text with link and formatting
+    - name: signal
+      description: Trust signal item
+    - name: FeatureContent
+      description: Feature content with image and CTA
+    - name: FeatureSlide
+      description: Feature slide with multiple content items
+    - name: FeatureSection
+      description: Feature section with multiple slides
+    - name: Card
+      description: Card with image and buttons
+    - name: Cards
+      description: Cards section with multiple cards
+    - name: TopCtaButton
+      description: Top CTA button with full styling
+    - name: CustomerReviewsOldVersion
+      description: Old version customer reviews flag
+    - name: SubscribeToMail
+      description: Email subscription section
+    - name: ListProduct
+      description: Product in list with refCode
+    - name: CategoryPageRequest
+      description: Request parameters for category page
+    - name: GlobalCategoryBanner
+      description: Global category banner configuration
+    - name: CategoryQuickLinkSection
+      description: Quick links section for category navigation
+
+  enums:
+    - name: ProductSectionType
+      values:
+        - Slideshow
+        - FlipImage
+        - StandardWithDescription
+        - StandardWithoutDescription
+        - SlideshowWithDescription
+        - FlipImageSlider
+        - SlideShowWithPopup
+
+  functions:
+    - name: filterRefCodes
+      signature: (listProducts: ListProduct[], shape: string) => ListProduct
+      description: Filters photobook products by shape (Square/Landscape) and returns cheapest/most expensive
+
+    - name: getFlipbookData
+      signature: async (productData: CategoryProductItem, couponCode: string) => Promise<any[] | false>
+      description: Fetches flipbook data from API and formats photo arrays
+
+    - name: getCategoryPage
+      signature: async (request: CategoryPageRequest) => Promise<CategoryPage>
+      description: Main function to fetch category page data from API
+
+    - name: getCategoryItemsSchema
+      signature: (productSections: ProductSection[], url: URL, categoryData: CategoryPage) => object[]
+      description: Generates schema.org ItemList structured data for products
+
+    - name: getCategoryHeadData
+      signature: (categoryData: CategoryPage, url: URL) => object
+      description: Generates HTML head meta tags, links, and structured data scripts
+
+    - name: getDesignLinkByProductType
+      signature: (productType: PlatinumProductTypeEnum) => string
+      description: Returns design tool URL for specific product type and region
+
+  constants:
+    - name: designCategoryLinksByProductType
+      type: array
+      description: Region-specific design URLs for photobook, calendar, blanket products
+
+  schemas:
+    - name: GlobalCategoryBannerSchema
+      description: Zod schema for global category banner
+
+    - name: CategoryQuickLinkSectionSchema
+      description: Zod schema for quick link section
+
+    - name: CategoryQuickLinksResponseSchema
+      description: Zod schema for quick links array response
+
+api_contracts:
+  - endpoint: /CategoryPage/GetByFriendlyUrlV3
+    method: POST
+    description: Fetches complete category page data by friendly URL
+    request:
+      friendlyUrl: string (required)
+      couponCode: string (optional)
+      gclId: string (optional - Google Click ID)
+      pixId: string (optional - Pixel ID)
+      utm_id: string (optional)
+      utm_source: string (optional)
+      utm_medium: string (optional)
+      utm_campaign: string (optional)
+      utm_term: string (optional)
+      utm_content: string (optional)
+      utm_creative_format: string (optional)
+      utm_marketing_tactic: string (optional)
+      utm_source_platform: string (optional)
+      wbraid: string (optional - Google Ads)
+      gbraid: string (optional - Google Ads)
+      unixTimestamp: string (optional)
+    response:
+      type: CategoryPage
+      fields:
+        canonicalUrl: string
+        webPageType: WebPageTypeEnum
+        pageTitle: string
+        categoryName: string
+        metaDescription: string
+        metaKeywords: string
+        contentTitle: string
+        banner: Banner
+        productSections: ProductSection[] | null
+        contentSections: ContentSection[]
+        topProducts: ProductSection | null
+        midProducts: ProductSection | null
+        bottomProducts: ProductSection | null
+        flippedImagesProducts: ProductSection | null
+        slideshowImagesProducts: ProductSection | null
+        faqSection: FAQSection | null
+        featuresSlideshow: CategoryFeaturesSlides | null
+        featuresSlideshow2: CategoryFeaturesSlides | null
+        midpageBanner: MidPageBanner | null
+        blogSection: CategoryBlogSection | null
+        cards: Cards | null
+        trustSignals: TrustSignals | null
+        ugcSection: UgcSection | null
+        metaData: CategoryMetaData | null
+        reviewsCollection: (CustomerReview & { order: number; display: boolean }) | null
+        midBanner: MidBanner | null
+        midBanners: MidBanner[] | null
+        topCtaButton: TopCtaButton
+        customerReviews: CustomerReviewsOldVersion
+        subscribeToMail: SubscribeToMail | null
+        bottomPageCta: BottomPageCta | null
+        seoContent: SeoContent | null
+        breadcrumbs: BreadCrumb[] | null
+        breadcrumbsNavigation: BreadCrumb[] | null
+        stories: CategorySoties | null
+        typeOptionSection: TypeOption2[] | null
+        theme: CategoryTheme | null
+        productPageContent: ProductPageContent | null
+        campaignInfo: CampaignInfo | null
+        platinumProductType: PlatinumProductTypeEnum
+        shops: CategoryShopData[]
+        collections: CategoryShopData[]
+        pageBanners: PageBanners[]
+        topPageContent: string | null
+        standardShippingPrice: number
+    timeout: settings().READ_API_TIMEOUT
+    cache_strategy: hard
+
+  - endpoint: "{quickView URL with {couponCode}}"
+    method: GET
+    description: Fetches flipbook data for photobook products
+    request:
+      couponCode: string (URL parameter replacement)
+    response_gb:
+      Data:
+        flipbookData:
+          shapes: array of flipbook shapes
+    response_other:
+      data:
+        flipbookData:
+          shapes: array of flipbook shapes
+    notes: |
+      - URL comes from CategoryProductItem.quickView field
+      - {couponCode} is replaced in URL before request
+      - Response structure differs between GB and other regions
+      - GB uses response.data.Data.flipbookData
+      - Other regions use response.data.data.flipbookData
+
+types:
+  Banner:
+    imageUrl: string
+    imageMobileUrl: string
+    alt: string | null
+    title: string | null
+    order: number
+    display: boolean
+
+  CategoryFeaturesSlides:
+    heading: string
+    slides: array
+      - heading: string
+        content: array
+          - heading: string
+            textContent: string
+            ctaText: string (optional)
+            image: string
+            ctaUrl: string (optional)
+    order: number
+    display: boolean
+
+  MidPageBanner:
+    desktopImageUrl: string
+    mobileImageUrl: string
+    imageAlt: string
+    url: string
+    textContent: string
+    videoCtaText: string
+    ctaVideoUrl: string
+    order: number
+
+  MidBanner:
+    desktopImage: string
+    mobileImage: string
+    imageAlt: string
+    order: number
+    href: string
+    display: boolean
+
+  CategoryBlogSection:
+    heading: string
+    textContent: string
+    blogPosts: array
+      - image: string
+        imageAlt: string (optional)
+        heading: string
+        urlText: string
+        url: string
+    order: number
+    display: boolean
+
+  UGC:
+    image: string
+    imageAlt: string (optional)
+    video: string | null (optional)
+    videoPoster: string (optional)
+    review: string
+    reviewer: string
+    backImage: string (optional)
+    backImageAlt: string (optional)
+    backVideo: string (optional)
+    backVideoPoster: string (optional)
+    backReview: string (optional)
+    backReviewer: string (optional)
+
+  UgcSection:
+    order: number
+    heading: string
+    subheading: string | null
+    ugc: UGC[]
+    textContent: string
+    ctaText: string
+    ctaUrl: string
+    ctaTextColor: string (optional)
+    ctaBackgroundColor: string (optional)
+    display: boolean
+    type: string (optional)
+
+  FAQSection:
+    heading: string
+    faqs: Faq[]
+    order: number
+    display: boolean
+
+  CategoryMetaData:
+    title: string
+    description: string
+    keywords: string
+    googleSigninScope: string
+    googleSigninClientId: string
+    distribution: string
+    rating: string
+    author: string
+    copyright: string
+    themeColor: string
+    ogTitle: string
+    ogType: string
+    ogUrl: string
+    ogDescription: string
+    ogSitename: string
+    ogLocale: string
+    ogAppId: string
+    ogImage: string
+    twitterCard: string
+    twitterSite: string
+    twitterTitle: string
+    twitterDescription: string
+    twitterImage: string
+    isIndex: boolean
+
+  CategoryProductItem:
+    actualPageUrl: string
+    title: string
+    url: string
+    qwikFriendUrl: string | null (optional)
+    listImageUrls: string[] | null (optional)
+    imageUrl: string
+    imageAlt: string
+    isBestSeller: boolean
+    isPremium: boolean
+    description: string
+    displayDescription: string
+    price: string
+    discountedPrice: string
+    isPriceCenterd: boolean
+    isNew: boolean
+    quickView: string | null
+    miniDescription: string
+    mobileImage: string
+
+  CategoryProduct:
+    title: string | null
+    products: CategoryProductItem[]
+    order: number
+    display: boolean
+
+  TrustSignals:
+    heading: string
+    description: string
+    specialText: SpecialText[] | null
+    signals: array
+      - image: string
+        heading: string
+        textContent: string
+    order: number
+    display: boolean
+
+  BottomPageCta:
+    order: number
+    href: string
+    ctaText: string
+    ctaColor: string
+    ctaTextColor: string
+    display: boolean
+
+  Section:
+    heading: string
+    paragraphs: Paragraph[]
+    display: boolean
+
+  CategorySoties:
+    heading: string
+    subheading: string | null
+    images: string[]
+    order: number
+    display: boolean
+
+  SeoContent:
+    order: number
+    sections: Section[]
+    display: boolean
+
+  BreadCrumbParent:
+    name: string
+    href: string
+
+  BreadCrumb:
+    title: string
+    url: string
+    qwikUrl: string
+    order: number
+
+  CategoryTheme:
+    primary: string
+    secondary: string
+    primaryText: string
+    secondaryText: string
+
+  CategoryOptionType2:
+    heading: string
+    descr: string | null
+    imgMobile: string
+    imgDesktop: string
+    bullets: string[] | null
+    href: string (optional)
+
+  CategoryShopData:
+    display: boolean
+    event: string
+    friendlyUrl: string
+    heading: string
+    order: number
+
+  TypeOption2:
+    heading: string
+    descr: string
+    imgMobile: string | null
+    imgDesktop: string | null
+    types: CategoryOptionType2[]
+    order: number (optional)
+    expandDescriptionText: string (optional)
+    expandDescriptionIsUrl: boolean (optional)
+    showIcon: boolean (optional)
+    display: boolean
+    version: string (optional)
+
+  CategoryPage:
+    canonicalUrl: string
+    webPageType: WebPageTypeEnum
+    pageTitle: string
+    categoryName: string
+    metaDescription: string
+    metaKeywords: string
+    contentTitle: string
+    banner: Banner
+    productSections: ProductSection[] | null
+    contentSections: ContentSection[]
+    topProducts: ProductSection | null
+    midProducts: ProductSection | null
+    bottomProducts: ProductSection | null
+    flippedImagesProducts: ProductSection | null
+    slideshowImagesProducts: ProductSection | null
+    faqSection: FAQSection | null
+    featuresSlideshow: CategoryFeaturesSlides | null
+    featuresSlideshow2: CategoryFeaturesSlides | null
+    midpageBanner: MidPageBanner | null
+    blogSection: CategoryBlogSection | null
+    cards: Cards | null
+    trustSignals: TrustSignals | null
+    ugcSection: UgcSection | null
+    metaData: CategoryMetaData | null
+    reviewsCollection: (CustomerReview & { order: number; display: boolean }) | null
+    midBanner: MidBanner | null
+    midBanners: MidBanner[] | null
+    topCtaButton: TopCtaButton
+    customerReviews: CustomerReviewsOldVersion
+    subscribeToMail: SubscribeToMail | null
+    bottomPageCta: BottomPageCta | null
+    seoContent: SeoContent | null
+    breadcrumbs: BreadCrumb[] | null
+    breadcrumbsNavigation: BreadCrumb[] | null
+    stories: CategorySoties | null
+    typeOptionSection: TypeOption2[] | null
+    theme: CategoryTheme | null
+    productPageContent: ProductPageContent | null
+    campaignInfo: CampaignInfo | null
+    platinumProductType: PlatinumProductTypeEnum
+    shops: CategoryShopData[]
+    collections: CategoryShopData[]
+    pageBanners: PageBanners[]
+    topPageContent: string | null
+    standardShippingPrice: number
+
+  PageBanners:
+    display: boolean
+    order: number
+    isFullScreen: boolean
+    desktopImg: string
+    mobileImg: string
+    href: string
+    text: string
+    ctas: Cta[]
+
+  Cta:
+    text: string
+    href: string (optional)
+    popup: Popup (optional)
+    bgColor: string
+    textColor: string
+    onBanner: boolean
+
+  Popup:
+    isVideo: boolean
+    href: string
+
+  ProductSection:
+    actualPageUrl: string
+    heading: string | null
+    type: ProductSectionType
+    order: number
+    lowestPrice: string
+    ctaText: string | null
+    ctaUrl: string | null
+    description: string | null
+    showPrice: boolean
+    showOriginalPrice: boolean
+    backgroundColor: string
+    sortOrder: number
+    displayPercentageDiscount: boolean
+    products: CategoryProductItem[]
+    display: boolean
+
+  ProductPage:
+    heading: string
+    description: string
+    image: string
+    url: string
+
+  ProductPages:
+    heading: string
+    order: number
+    display: boolean
+    pages: ProductPage[]
+
+  Product:
+    name: string
+    imageSrc: string
+    url: string
+    description: string (optional)
+    price: number (optional)
+    discountPrice: number (optional)
+    imageAltText: string (optional)
+
+  ContentSection:
+    type: string
+    sortOrder: number
+    heading: string
+    paragraphs: string[] (optional)
+    icons: Icon[] (optional)
+    content: Content[] (optional)
+    banners: Banner2[] (optional)
+
+  Icon:
+    heading: string
+    description: string
+    icon: string
+
+  Content:
+    heading: string
+    description: string
+    imageSrc: string
+    imageAltText: string
+    ctaButtons: CtaButton[]
+
+  CtaButton:
+    type: string
+    text: string
+    url: string
+
+  Banner2:
+    imageSrc: string
+    imageMobileSrc: string
+
+  FaqContent:
+    heading: string
+    sortOrder: number (optional - for mothers-day)
+    order: number (optional - for hard coded data)
+    faqs: Faq[]
+
+  Faq:
+    question: string
+    answer: string[] (optional)
+    paragraphs: Paragraph[] (optional)
+
+  Bullet:
+    text: string
+    specialText: SpecialText[]
+
+  Paragraph:
+    text: string
+    specialText: SpecialText[] | null
+    bullets: Bullet[] | null (optional)
+
+  SpecialText:
+    text: string
+    href: string
+    isBold: boolean
+    isItalic: boolean
+    isUnderline: boolean
+
+  signal:
+    image: string
+    heading: string
+    textContent: string
+
+  FeatureContent:
+    image: string
+    heading: string
+    textContent: string
+    ctaText: string
+    ctaUrl: string
+
+  FeatureSlide:
+    heading: string
+    content: FeatureContent[]
+
+  FeatureSection:
+    order: number
+    heading: string
+    slides: FeatureSlide[]
+
+  Card:
+    image: string
+    mobileImage: string
+    heading: string
+    textContent: string
+    buttons: array | null
+      - ctaText: string
+        href: string
+
+  Cards:
+    heading: string
+    order: number
+    cardList: Card[]
+    display: boolean
+    buttonColor: string
+    buttonTextColor: string
+
+  TopCtaButton:
+    href: string
+    heading: string
+    text: string
+    ctaText: string
+    ctaColor: string
+    ctaTextColor: string
+    backgroundColor: string
+    specialText: SpecialText[]
+    display: boolean
+
+  CustomerReviewsOldVersion:
+    display: boolean
+    order: number
+
+  SubscribeToMail:
+    heading: string
+    subHeading: string
+    placeHolderText: string
+    textColor: string
+    backgroundColor: string
+    ctaBackgroundColor: string
+    ctaText: string
+    ctaTextColor: string
+
+  ListProduct:
+    refCode: string
+    discountedPrice: string
+    price: string
+    productCTA: string
+
+  CategoryPageRequest:
+    friendlyUrl: string (required)
+    couponCode: string (optional)
+    gclId: string (optional)
+    pixId: string (optional)
+    utm_id: string (optional)
+    utm_source: string (optional)
+    utm_medium: string (optional)
+    utm_campaign: string (optional)
+    utm_term: string (optional)
+    utm_content: string (optional)
+    utm_creative_format: string (optional)
+    utm_marketing_tactic: string (optional)
+    utm_source_platform: string (optional)
+    wbraid: string (optional)
+    gbraid: string (optional)
+    unixTimestamp: string (optional)
+
+  GlobalCategoryBanner:
+    isActive: boolean
+    desktopImageUrl: string
+    mobileImageUrl: string
+    desktopImageAlt: string
+    mobileImageAlt: string
+    isLink: boolean
+    link: string
+    type: string
+    aspectRatioDesktop: string (optional)
+    aspectRatioMobile: string (optional)
+
+  CategoryQuickLinkSection:
+    displayOn: string[]
+    parentBreadcrumb:
+      display: boolean
+      text: string
+      url: string
+    quickLinks: array
+      - text: string
+        url: string
+    styles:
+      activeBg: string
+      activeText: string
+      nonActiveBg: string
+      nonActiveText: string
+
+dependencies:
+  internal:
+    - ~/config/http (baseAPI, baseNewAPI)
+    - ~/config/settings (settings)
+    - ~/services/server (getSiteSetting)
+    - ~/services/product-category-service (WebPageTypeEnum, PlatinumProductTypeEnum)
+    - ~/services/product-page-service (CampaignInfo, ProductPageContent)
+    - ~/components/customer-review/customer-review (CustomerReview)
+    - ~/utility/http (handleMultipleAPIRequests, HTTP_METHODS)
+    - ~/utility/format (convertCurrencyToNumber)
+
+  external:
+    - "@builder.io/qwik-city" (z - Zod validation)
+
+data_flow:
+  inputs:
+    - CategoryPageRequest with friendly URL and optional tracking parameters
+    - ListProduct array and shape string for filtering
+    - CategoryProductItem and couponCode for flipbook data
+    - ProductSection array, URL, CategoryPage for schema generation
+    - CategoryPage and URL for head data generation
+    - PlatinumProductTypeEnum for design link retrieval
+
+  transformations:
+    - filterRefCodes: Filters by refCode pattern, selects cheapest (Square) or most expensive (Landscape)
+    - getFlipbookData: Fetches data, formats photo arrays (adds blank pages, sorts by shape)
+    - getCategoryPage: Makes API request with UTM parameters, returns structured data
+    - getCategoryItemsSchema: Maps products to schema.org ItemList format
+    - getCategoryHeadData: Generates meta tags, OG tags, Twitter cards, structured data
+    - getDesignLinkByProductType: Finds region-specific design URL
+
+  outputs:
+    - CategoryPage: Complete page data structure
+    - Flipbook data: Array with flipbookData and formatted shapes
+    - Schema.org JSON-LD: ItemList and BreadcrumbList
+    - HTML head data: Meta tags, links, scripts
+    - Design URL: String URL for product customization
+
+business_logic:
+  photobook_filtering:
+    - Filters by refCode patterns: PB_PhotoHardCover, PBLayFlat_PhotoHardCover, PB_LeatherCover
+    - Square shape: Returns cheapest product
+    - Landscape shape: Returns most expensive product
+    - Other shapes: Returns first product
+    - Fallback: Returns first product if no matching refCodes
+
+  flipbook_formatting:
+    - Sorts shapes by order: Landscape, Square, Portrait
+    - Adds blank page at position 1 if blankFrontPage is true
+    - Adds two blank pages before last if blankLastPage is true
+    - Adds blank page at position 1 if page count is even
+
+  region_handling:
+    - GB region: Uses response.data.Data.flipbookData
+    - Other regions: Uses response.data.data.flipbookData
+    - Different design URLs per region (US, GB, FR, DE)
+
+  schema_generation:
+    - Creates ItemList with product offers
+    - Includes shipping details with standardShippingPrice
+    - Adds merchant return policy (30 days, free return)
+    - Creates breadcrumb schema
+    - Counts only displayed product sections
+
+  meta_tags:
+    - Generates OG tags for social sharing
+    - Twitter card meta tags
+    - Google signin metadata
+    - Canonical URL from API or pathname
+    - Robots tag based on isIndex flag
+    - Origin trial for Google FedCM
+
+error_handling:
+  getFlipbookData:
+    - Wrapped in try-catch
+    - Returns false on error
+    - Checks if fetchURL exists before making request
+
+  getCategoryPage:
+    - Uses handleMultipleAPIRequests with "hard" cache strategy
+    - Includes timeout from settings().READ_API_TIMEOUT
+    - Error handling delegated to utility function
+
+performance_considerations:
+  - Uses handleMultipleAPIRequests for potential request batching
+  - Hard cache strategy for category pages
+  - Configurable timeout via settings
+  - Lazy evaluation of flipbook data (only when quickView exists)
+
+security_considerations:
+  - All URLs are validated through API response
+  - Coupon codes are URL-encoded when replaced
+  - UTM parameters are passed through to API for tracking
+  - No direct user input to URLs
+
+behavior:
+  - name: filterRefCodes
+    steps:
+      - Defines filter array with refCode patterns: PB_PhotoHardCover, PBLayFlat_PhotoHardCover, PB_LeatherCover
+      - Iterates through filter patterns, filtering listProducts by refCode.includes(pattern)
+      - Stops at first pattern that yields results
+      - If shape is "Square", returns the product with the lowest discountedPrice (strips non-numeric chars, parses float)
+      - If shape is "Landscape", returns the product with the highest discountedPrice
+      - For any other shape, returns the first product in the list
+      - If no matching products found for any pattern, returns the first product from the original list
+
+  - name: getFlipbookData
+    steps:
+      - Defines shape sort order: Landscape, Square, Portrait
+      - Defines inner formatPhotoArray function that sorts shapes by order, adds blank pages
+      - If blankFrontPage is true, inserts "blank" at position 1 in photoBookImages
+      - If blankLastPage is true, inserts two "blank" pages before the last page
+      - If page count is even, inserts "blank" at position 1
+      - Checks if productData.quickView URL exists
+      - If GB region, calls baseAPI().get with couponCode substituted; accesses response.data.Data.flipbookData
+      - If other region, calls baseNewAPI().get; accesses response.data.data.flipbookData (different casing)
+      - Returns array [flipbookData, formattedShapes]
+      - On error, returns false
+
+  - name: getCategoryPage
+    steps:
+      - POSTs CategoryPageRequest to /CategoryPage/GetByFriendlyUrlV3
+      - Uses "hard" cache strategy
+      - Passes timeout from settings().READ_API_TIMEOUT
+      - Returns raw API response (caller must check isDataReady)
+
+  - name: getCategoryItemsSchema
+    steps:
+      - Flattens all products from all productSections into a single array
+      - Maps each product to a schema.org ListItem with position (1-indexed)
+      - Each item includes Product type with name, url (qwikFriendUrl or url), image array
+      - Adds Brand "Printerpix" to each product
+      - Adds Offer with priceCurrency from getSiteSetting().currencyCode
+      - Price extracted via convertCurrencyToNumber(discountedPrice)
+      - Includes MerchantReturnPolicy (30 days, free return, by mail)
+      - Includes OfferShippingDetails with categoryData.standardShippingPrice
+      - Uses getSiteSetting().countryCode and countryCode2 for region
+
+  - name: getCategoryHeadData
+    steps:
+      - Extracts metaData from categoryData
+      - Gets origin from getSiteSetting().website
+      - Filters productSections to only displayed sections
+      - Constructs title, meta tags array (OG, Twitter, Google signin, robots, etc.)
+      - Sets robots to "index, follow" if isIndex is true, else "noindex, nofollow"
+      - Adds canonical link using canonicalUrl from API or falling back to url.pathname
+      - Generates JSON-LD script with @graph containing ItemList and BreadcrumbList
+      - ItemList counts products across active sections, calls getCategoryItemsSchema
+      - BreadcrumbList uses breadcrumbsNavigation if available, else creates Home + current page
+
+  - name: getDesignLinkByProductType
+    steps:
+      - Finds entry in designCategoryLinksByProductType matching current region (settings().website)
+      - If no region match, returns empty string
+      - Finds design URL matching the given productType in the region data
+      - Returns the URL or empty string if not found
+
+used_by:
+  - frontend/layouts/layout-categoryproduct.yaml - imports getCategoryPage, getCategoryHeadData, category types for category page rendering
+  - frontend/components/category-page/common-category-container.yaml - imports category types (CategoryPage, ProductSection, etc.)
+  - frontend/components/category-page/category-page-factory.yaml - imports category types for page factory
+  - frontend/components/category-page/category-cards.yaml - imports Cards, Card types
+  - frontend/components/category-page/blog-category-section.yaml - imports CategoryBlogSection type
+  - frontend/components/category-page/email-subscription.yaml - imports SubscribeToMail type
+  - frontend/components/web-component/ugc-section.yaml - imports UgcSection, UGC types
+  - frontend/components/web-component/faq-v2.yaml - imports FAQSection, Faq types
+  - frontend/components/web-component/trust-signals.yaml - imports TrustSignals type
+  - frontend/components/web-component/seo-content.yaml - imports SeoContent, Section, Paragraph, SpecialText types
+  - frontend/components/web-component/web-contents-component.yaml - imports ContentSection type
+  - frontend/components/shared/breadcrumbs.yaml - imports BreadCrumb type
+  - frontend/components/product-page/photo-canvas-prints-bundled-template.yaml - imports category types
+  - frontend/components/product-page/photo-canvas-prints-hub-bundled-template.yaml - imports category types
+  - backend/services/product-category-service.yaml - references category-service types
+  - backend/services/product-page-service.yaml - references category-service types
+  - backend/services/web-component-service.yaml - references category-service types

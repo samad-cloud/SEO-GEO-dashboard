@@ -1,0 +1,259 @@
+name: CategoryCard
+source: src/components/category-page/category-cards.tsx
+description: |
+  Internal sub-component of CategoryCards. NOT exported from its file.
+  Renders a single alternating-layout card with a product/category image on one side
+  and heading, text content, and CTA buttons on the other.
+
+  Image side is 8/12 columns on desktop (w-8/12), text side is 4/12 columns (w-4/12).
+  Layout direction alternates based on the reverse prop: reverse=false → image left/text right;
+  reverse=true → image right/text left (flex-row-reverse).
+
+  Supports optional mobile-specific image (mobileImage). If mobileImage is provided,
+  the desktop image is hidden on mobile (hidden md:block) and the mobile image is shown
+  only on mobile (block md:hidden).
+
+  CTA buttons use alternating color logic (even-index buttons use buttonColor, odd-index
+  buttons use buttonTextColor), with theme-based fallback. Hover swaps background/text colors
+  via direct DOM manipulation (onMouseOver$/onMouseOut$).
+
+  This component is ONLY rendered by the CategoryCards parent component in the same file.
+
+exports: []
+
+notes_on_location:
+  - "CategoryCard is NOT exported and does NOT exist in a standalone category-card.tsx file"
+  - "It is defined as a private const component inside category-cards.tsx (line 10)"
+  - "See category-cards.yaml for the full spec of the parent component"
+  - "Used by: CategoryCards (parent component in same file)"
+
+props:
+  - name: image
+    type: string
+    required: true
+    description: Desktop image URL
+  - name: mobileImage
+    type: "string | undefined"
+    required: false
+    description: Mobile-specific image URL. If present, desktop image is hidden on mobile.
+  - name: heading
+    type: "string | null"
+    required: true
+    description: Card heading displayed as h3; also used as image alt text fallback
+  - name: textContent
+    type: string
+    required: true
+    description: Card body text
+  - name: buttons
+    type: "Array<{ ctaText: string; href: string }> | null"
+    required: false
+    description: CTA button definitions. Buttons alternate primary/secondary color scheme by index.
+  - name: reverse
+    type: boolean
+    required: true
+    description: If true, applies flex-row-reverse to swap image/text column order
+  - name: buttonColor
+    type: string
+    required: true
+    description: Primary button background color (hex). If "#FFFFFF", border uses buttonTextColor.
+  - name: buttonTextColor
+    type: string
+    required: true
+    description: Primary button text color (hex). Also used as secondary button background.
+  - name: index
+    type: number
+    required: true
+    description: Card's position in the parent list. Last card (index == cardListLength-1) gets mb-0 instead of mb-8.
+  - name: cardListLength
+    type: number
+    required: true
+    description: Total number of cards in the parent list. Used to suppress bottom margin on last card.
+  - name: theme
+    type: "CategoryTheme | null"
+    required: false
+    description: Fallback theme when buttonColor/buttonTextColor are not provided.
+
+component_structure:
+  - root:
+      element: div
+      class: "flex [flex-row-reverse if reverse] flex-wrap [mb-0 if last, mb-8 otherwise]"
+  - image_column:
+      element: div
+      class: "w-full lg:w-8/12 [lg:pl-4 if reverse else lg:pr-4]"
+      children:
+        - desktop_image:
+            component: Image (@unpic/qwik)
+            class: "w-full h-auto [hidden if mobileImage exists else block] md:block"
+            src: props.image
+            alt: "props.heading || 'Category'"
+        - mobile_image:
+            condition: props.mobileImage is truthy
+            component: Image (@unpic/qwik)
+            class: "w-full h-auto block md:hidden"
+            src: props.mobileImage
+            alt: "props.heading || 'Category'"
+  - text_column:
+      element: div
+      class: "w-full lg:w-4/12 flex flex-col justify-evenly mt-4 px-4 lg:mt-0 [lg:pl-8 if reverse else lg:pr-8]"
+      children:
+        - heading_text:
+            element: "h3"
+            class: "font-bold mb-2"
+            content: props.heading
+        - body_text:
+            element: p
+            content: props.textContent
+        - buttons_row:
+            condition: props.buttons is truthy
+            element: div
+            class: "flex justify-center mt-4 md:mt-0 gap-x-4"
+            children:
+              - cta_button (per button, indexed):
+                  element: a
+                  href: btn.href
+                  class: "py-2 px-4 text-[16px] rounded-3xl flex items-center justify-center transition-colors duration-200 text-center cta_category_cart--{index} [md:mr-4 if even index and multiple buttons]"
+                  onClick$: Matomo CLICK_CATEGORY_CARD_CTA event
+                  onMouseOver$/onMouseOut$: handleMouseEvent (color swap)
+
+behavior:
+  - Layout direction: reverse=false → flex-row (image left, text right); reverse=true → flex-row-reverse
+  - Bottom margin: last card (index === cardListLength-1) → mb-0; all others → mb-8
+  - Images:
+      - If mobileImage: desktop image hidden on mobile (hidden md:block); mobile image shown on mobile only (block md:hidden)
+      - If no mobileImage: desktop image visible always (block md:block)
+  - Button color scheme (per button index within props.buttons):
+      - Even index (primary button):
+          background: buttonColor OR theme?.primary
+          text color: buttonTextColor OR theme?.primaryText
+      - Odd index (secondary button):
+          background: buttonTextColor OR theme?.secondary
+          text color: buttonColor OR theme?.secondaryText
+      - Border: "1px solid {buttonColor}" unless buttonColor === "#FFFFFF", then "1px solid {buttonTextColor}"
+  - Hover: handleMouseEvent swaps element.style.color and element.style.backgroundColor
+      - If the previous text color was white (rgb(255, 255, 255)): adds "1px solid {new text color}" border
+  - Analytics: each button click fires Matomo trackEvent with MatomoCategory.CATEGORY, MatomoEvent.CLICK_CATEGORY_CARD_CTA, btn.href
+
+analytics:
+  - event: CLICK_CATEGORY_CARD_CTA
+    platform: Matomo
+    trigger: Click on any CTA button
+    data:
+      category: MatomoCategory.CATEGORY
+      action: MatomoEvent.CLICK_CATEGORY_CARD_CTA
+      name: btn.href (button target URL)
+
+styling:
+  - "flex flex-row[-reverse] flex-wrap": card layout direction
+  - "w-full lg:w-8/12": image column width
+  - "w-full lg:w-4/12": text column width
+  - "py-2 px-4 text-[16px] rounded-3xl": CTA button shape
+  - "transition-colors duration-200": button color transition
+  - "cta_category_cart--{index}": analytics/GTM tracking class
+
+dependencies:
+  qwik:
+    - component$, $ from "@builder.io/qwik"
+  external:
+    - Image from "@unpic/qwik"
+  types:
+    - Card, CategoryTheme from "~/services/category-service"
+  utilities:
+    - MatomoCategory, MatomoEvent, pushMatomoEvent from "~/utility/matomo"
+
+used_by:
+  - CategoryCards
+
+security:
+  - No dangerouslySetInnerHTML — heading, textContent, and button labels are plain text
+  - btn.href is CMS-supplied, expected to be validated server-side
+
+edge_cases:
+  - props.buttons is null: button row not rendered
+  - props.buttons is empty array: button row rendered empty
+  - buttonColor is not provided (empty string): falls back to theme?.primary / theme?.secondary
+  - buttonColor is "#FFFFFF": border color switches to buttonTextColor
+  - heading is null: alt text falls back to "Category"
+  - Single button in buttons array: even-index branch (primary colors) always applies
+
+types:
+  Card:
+    description: Individual card data from category-service
+    source: "~/services/category-service"
+    fields:
+      - name: image
+        type: string
+      - name: mobileImage
+        type: "string | undefined"
+      - name: heading
+        type: string
+      - name: textContent
+        type: string
+      - name: buttons
+        type: "Array<{ ctaText: string; href: string }> | null"
+
+  CategoryTheme:
+    description: Category theme colors from category-service
+    source: "~/services/category-service"
+    fields:
+      - name: primary
+        type: string
+      - name: secondary
+        type: string
+      - name: primaryText
+        type: string
+      - name: secondaryText
+        type: string
+
+field_consumption:
+  Card:
+    consumed:
+      - image: src for desktop Image
+      - mobileImage: src for mobile Image; presence also controls desktop image visibility
+      - heading: h3 content and image alt text
+      - textContent: paragraph body text
+      - buttons: Iterated for CTA rendering; null check guards rendering
+    ignored: []
+
+  CategoryTheme:
+    consumed:
+      - primary: Fallback background color for even-index buttons
+      - primaryText: Fallback text color for even-index buttons
+      - secondary: Fallback background color for odd-index buttons
+      - secondaryText: Fallback text color for odd-index buttons
+    ignored: []
+
+implementation_logic:
+  button_color_alternation:
+    rule: |
+      Button color scheme alternates by button index (0-based) within props.buttons:
+      - Even index (0, 2, ...): background=buttonColor, text=buttonTextColor
+      - Odd index (1, 3, ...): background=buttonTextColor, text=buttonColor
+      Fallback to theme when buttonColor is falsy (empty string, null, undefined).
+      The border is always 1px solid, using buttonTextColor when buttonColor="#FFFFFF" (white),
+      otherwise using buttonColor.
+    critical: true
+
+  hover_color_swap:
+    rule: |
+      onMouseOver$ and onMouseOut$ both call the same handleMouseEvent function.
+      Each call swaps element.style.color and element.style.backgroundColor.
+      This creates a toggle effect: hover → swap colors; un-hover → swap back.
+      If the pre-swap text color was rgb(255, 255, 255), a border is added in the new text color.
+    critical: false
+
+visibility_map:
+  mobile_image:
+    condition: props.mobileImage is truthy
+    default: hidden (only desktop image shown when mobileImage is absent)
+
+  desktop_image_on_mobile:
+    condition: "props.mobileImage is falsy → shown on mobile; truthy → hidden on mobile (CSS)"
+    default: visible
+
+  buttons_row:
+    condition: props.buttons is truthy (non-null)
+    default: hidden
+
+  last_card_margin:
+    condition: "index === cardListLength - 1 → mb-0; else → mb-8"
+    default: mb-8 (margin present)

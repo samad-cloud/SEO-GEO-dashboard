@@ -1,0 +1,39 @@
+page_id: image-resolution
+description: "Image resolution guidelines page. Uses container component pattern."
+
+url:
+  pattern: "/image-resolution"
+  layout: "default"
+  i18n_rewrites:
+    DE: "/bildauflosung"
+    IT: "/risoluzione-dell-immagine"
+    ES: "/resolucion-de-imagen"
+
+seo_contract:
+  title:
+    source: "Managed by ImageResolutionContainer"
+  meta_description:
+    source: "Managed by ImageResolutionContainer"
+  canonical:
+    pattern: "{domain}/image-resolution"
+  robots:
+    value: "Standard"
+  structured_data: "None"
+  hreflang:
+    count: 8
+    known_issues:
+      - "Hreflang incorrect for DE, IT, ES rewritten URLs"
+
+file_chain:
+  route:
+    file: "src/routes/image-resolution/index.tsx"
+    spec: "../migration-specs/frontend/routes/image-resolution.yaml"
+  layout:
+    file: "src/routes/layout.tsx"
+    spec: "../migration-specs/frontend/layouts/layout-default.yaml"
+  page_component:
+    name: "ImageResolutionContainer"
+    file: "src/components/image-resolution-page/containers/image-resolution-container.tsx"
+    spec: "../migration-specs/frontend/components/info-pages/image-resolution-container.yaml"
+  middleware:
+    ref: "_architecture.yaml → middleware_pipeline"

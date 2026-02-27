@@ -1,0 +1,203 @@
+name: CtaList
+source: components/web-component/cta-list.tsx
+description: >
+  Renders a horizontal list of call-to-action buttons. Each button is a styled
+  anchor link with configurable background and text colors. Colors can come from
+  the CTA data itself or fall back to the category theme colors. Tracks Matomo
+  analytics events on each button click.
+
+exports:
+  default:
+    type: component
+    name: CtaList
+    export_type: default
+
+props:
+  data:
+    type: CTAList
+    required: true
+    description: Contains buttons array and default color configuration
+  theme:
+    type: CategoryTheme | null
+    required: false
+    description: Optional category theme providing fallback colors when CTA-specific colors are not set
+
+component_structure:
+  root:
+    element: div
+    classes: "flex flex-col lg:flex-row justify-center items-center gap-4 cta_list_wrapper"
+    children:
+      - iterator: data.buttons.map
+        key: button.ctaText
+        element: a
+        href: button.ctaUrl
+        classes: "py-4 px-12 flex items-center justify-center cursor-pointer rounded-md cta_cta_list--{index}"
+        inline_style:
+          backgroundColor: data.ctaBackgroundColor || theme?.primary
+          color: data.ctaTextColor || theme?.primaryText
+        on_click: pushMatomoEvent with CLICK_CTA_LIST_CTA and button.ctaUrl
+        content: button.ctaText
+
+child_components: []
+
+data_structure:
+  CTAList:
+    buttons:
+      type: array
+      items:
+        ctaText:
+          type: string
+          description: Button display text, also used as map key
+        ctaUrl:
+          type: string
+          description: Button link destination URL
+    ctaTextColor:
+      type: string
+      description: Default text color for all buttons (CSS color value)
+    ctaBackgroundColor:
+      type: string
+      description: Default background color for all buttons (CSS color value)
+  CategoryTheme:
+    primary:
+      type: string
+      description: Primary theme color, used as fallback for button background
+    secondary:
+      type: string
+      description: Secondary theme color (not used by this component)
+    primaryText:
+      type: string
+      description: Primary text color, used as fallback for button text color
+    secondaryText:
+      type: string
+      description: Secondary text color (not used by this component)
+
+behavior:
+  rendering:
+    - Iterates over data.buttons array to render anchor elements
+    - Uses button.ctaText as React key for the map
+    - Each button is an anchor tag (not a button element) with href
+  color_fallback_logic:
+    - backgroundColor priority: data.ctaBackgroundColor > theme?.primary > undefined
+    - color priority: data.ctaTextColor > theme?.primaryText > undefined
+    - Uses JavaScript ternary: data.ctaBackgroundColor ? data.ctaBackgroundColor : theme?.primary
+    - If both CTA colors and theme are null/undefined, no inline style color is applied
+  layout:
+    - Buttons stack vertically on mobile (flex-col)
+    - Buttons display horizontally on desktop (lg:flex-row)
+    - Buttons are centered in both axes
+    - 4-unit gap between buttons (gap-4 = 16px)
+  analytics:
+    - On button click, fires Matomo trackEvent with category COMMON, action CLICK_CTA_LIST_CTA, label button.ctaUrl
+  css_classes_with_index:
+    - Each button gets class "cta_cta_list--{index}" for targeting
+
+styling:
+  approach: Tailwind CSS utility classes with inline styles for dynamic colors
+  responsive_breakpoints:
+    - lg: switches from vertical column to horizontal row layout
+  inline_styles:
+    - backgroundColor from data.ctaBackgroundColor or theme.primary
+    - color from data.ctaTextColor or theme.primaryText
+  custom_classes:
+    - "cta_list_wrapper": wrapper class for external targeting
+    - "cta_cta_list--{index}": indexed CSS class on each button for analytics/targeting
+  button_styling:
+    - Padding: py-4 px-12 (16px vertical, 48px horizontal)
+    - Rounded corners: rounded-md
+    - Cursor: pointer
+    - Flexbox centering for text within button
+
+dependencies:
+  - name: category-service
+    purpose: CategoryTheme type definition
+    import: "type CategoryTheme"
+  - name: web-component-service
+    purpose: CTAList type definition
+    import: "type CTAList"
+  - name: matomo utility
+    purpose: Analytics event tracking
+    imports:
+      - MatomoCategory
+      - MatomoEvent
+      - pushMatomoEvent
+
+used_by:
+  - components/web-component/web-contents-component.tsx (receives theme prop from parent)
+  - components/web-component/web-contents-component-v3.tsx
+
+security:
+  - button.ctaUrl is used as href; should be validated against allowed domains to prevent open redirect
+  - data.ctaBackgroundColor and data.ctaTextColor are used in inline styles; should be sanitized to prevent CSS injection
+  - button.ctaText is rendered as text content; framework handles XSS protection
+
+notes:
+  - Uses button.ctaText as the key prop which could cause issues with duplicate button text
+  - The component uses anchor tags (not button elements) since each CTA navigates to a URL
+  - The color fallback uses ternary operators, not nullish coalescing, so empty strings are falsy and will trigger theme fallback
+  - The parent (web-contents-component) passes the category theme as a prop, enabling visual consistency with category page styling
+  - The "cta_list_wrapper" class on the container suggests external CSS may target this component
+  - Parent wraps this component in "my-4 lg:my-8 container mx-auto" for spacing and centering
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  CtaListProps:
+    description: Component props (anonymous inline type in source)
+    fields:
+      - name: data
+        type: CTAList
+      - name: theme
+        type: "CategoryTheme | null"
+        optional: true
+
+  CTAList:
+    description: CTA list data from web-component-service
+    source: ~/services/web-component-service
+    fields:
+      - name: buttons
+        type: "Array<{ ctaText: string; ctaUrl: string }>"
+      - name: ctaTextColor
+        type: string
+      - name: ctaBackgroundColor
+        type: string
+
+  CTAButton:
+    description: Individual button item within CTAList.buttons
+    fields:
+      - name: ctaText
+        type: string
+      - name: ctaUrl
+        type: string
+
+  CategoryTheme:
+    description: Optional category theme providing fallback colors
+    source: ~/services/category-service
+    fields:
+      - name: primary
+        type: string
+      - name: secondary
+        type: string
+      - name: primaryText
+        type: string
+      - name: secondaryText
+        type: string
+
+field_consumption:
+  CTAList:
+    consumed:
+      - buttons: Iterated to render one anchor element per button
+      - ctaBackgroundColor: Used as backgroundColor inline style (falls back to theme.primary when falsy)
+      - ctaTextColor: Used as color inline style (falls back to theme.primaryText when falsy)
+
+  CategoryTheme:
+    consumed:
+      - primary: Fallback backgroundColor when ctaBackgroundColor is falsy
+      - primaryText: Fallback text color when ctaTextColor is falsy
+    ignored:
+      - secondary: Not used by this component
+      - secondaryText: Not used by this component
+
+visibility_map:
+  cta_buttons:
+    condition: "data.buttons array is iterated — all buttons always render; no per-button visibility condition"
+    default: visible

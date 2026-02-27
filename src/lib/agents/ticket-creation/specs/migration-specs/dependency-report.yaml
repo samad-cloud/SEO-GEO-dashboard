@@ -1,0 +1,1567 @@
+# Dependency Resolution Report
+# Generated: 2026-02-17T18:39:55.207Z
+# Phase 4.5 Output
+
+# NOTE (2026-02-24): 45 new component specs added in Phase 1 gap fill.
+# Statistics updated. New spec entries appended to each level section.
+
+summary:
+  total_specs: 189
+  leaf_nodes_count: 44
+  max_depth: 3
+  pages_count: 19
+  circular_dependencies: 92
+  unresolved_dependencies: 20
+
+# Specs by dependency level
+levels:
+  level_0: # 44 specs (41 original + 3 new from Phase 1 gap fill with unspecced-only parents)
+    - spec: backend/services/homepage-service.yaml
+      used_by_count: 1
+    - spec: frontend/components/media/video.yaml
+      used_by_count: 3
+    - spec: frontend/components/uploadcare/uploadprogress.yaml
+      used_by_count: 3
+    - spec: frontend/components/web-component/stories.yaml
+      used_by_count: 1
+    - spec: frontend/components/web-component/home-best-sellers.yaml
+      used_by_count: 1
+    - spec: frontend/components/web-component/shopping-guide.yaml
+      used_by_count: 1
+    - spec: frontend/components/web-component/mid-page-banner.yaml
+      used_by_count: 1
+    - spec: backend/services/markdown-service.yaml
+      used_by_count: 1
+    - spec: backend/services/marketing-page-web-content-service.yaml
+      used_by_count: 0
+    - spec: backend/services/static-page-service.yaml
+      used_by_count: 0
+    - spec: frontend/components/bulk-order/bulk-order-page-old.yaml
+      used_by_count: 1
+    - spec: frontend/components/bulk-order/bulk-order-page.yaml
+      used_by_count: 1
+    - spec: frontend/components/info-pages/contact-us-container.yaml
+      used_by_count: 1
+    - spec: frontend/components/info-pages/photo-quality-container.yaml
+      used_by_count: 1
+    - spec: frontend/components/info-pages/terms-and-conditions-container.yaml
+      used_by_count: 1
+    - spec: frontend/components/info-pages/track-my-order-container.yaml
+      used_by_count: 1
+    - spec: frontend/components/product-page/product-page-base-template.yaml
+      used_by_count: 1
+    - spec: frontend/components/shared/accordion-details.yaml
+      used_by_count: 3
+    - spec: frontend/components/shared/accordion-header.yaml
+      used_by_count: 3
+    - spec: frontend/components/shared/accordion.yaml
+      used_by_count: 3
+    - spec: frontend/components/shared/breadcrumbs.yaml
+      used_by_count: 1
+    - spec: frontend/components/shared/cross-domain-notification.yaml
+      used_by_count: 2
+    - spec: frontend/components/shared/customer-review.yaml
+      used_by_count: 14
+    - spec: frontend/components/shared/fresh-desk-widget.yaml
+      used_by_count: 2
+    - spec: frontend/components/shared/guideline-section.yaml
+      used_by_count: 1
+    - spec: frontend/components/shared/how-it-works.yaml
+      used_by_count: 1
+    - spec: frontend/components/shared/large-orders.yaml
+      used_by_count: 1
+    - spec: frontend/components/shared/our-help.yaml
+      used_by_count: 2
+    - spec: frontend/components/shared/product-type-table.yaml
+      used_by_count: 1
+    - spec: frontend/components/shared/svg-icon.yaml
+      used_by_count: 3
+    - spec: frontend/components/shared/trust-indicator.yaml
+      used_by_count: 2
+    - spec: frontend/layouts/layout-bulkorder.yaml
+      used_by_count: 0
+    - spec: frontend/routes/why-choose-printerpix.yaml
+      used_by_count: 0
+    - spec: shared/config/settings.yaml
+      used_by_count: 36
+    - spec: shared/data/marketing-content-data.yaml
+      used_by_count: 1
+    - spec: shared/data/option-data.yaml
+      used_by_count: 10
+    - spec: shared/data/review-data.yaml
+      used_by_count: 1
+    - spec: shared/utilities/country-region.yaml
+      used_by_count: 2
+    - spec: shared/utilities/device.yaml
+      used_by_count: 2
+    - spec: shared/utilities/element.yaml
+      used_by_count: 1
+    - spec: shared/utilities/matomo.yaml
+      used_by_count: 3
+    # New Phase 1 components with all parents unspecced (true entry points)
+    - spec: frontend/components/carousels/static-carousel.yaml
+      used_by_count: 1
+    - spec: frontend/components/info-pages/tracking-history.yaml
+      used_by_count: 1
+    - spec: frontend/components/uploadcare/upload-modal.yaml
+      used_by_count: 1
+  level_1: # 37 specs (27 original + 10 new from Phase 1 gap fill)
+    - spec: backend/services/cart-services/gtm/data-layer-base.yaml
+      depends_on:
+        - backend/services/console-log-service.yaml
+      used_by_count: 3
+    - spec: frontend/components/homepage/trustpilot-rating.yaml
+      depends_on:
+        - shared/utilities/format.yaml
+      used_by_count: 1
+    - spec: frontend/components/web-component/trust-signals.yaml
+      depends_on:
+        - backend/services/markdown-service.yaml
+        - backend/services/web-component-service.yaml
+        - backend/services/category-service.yaml
+      used_by_count: 1
+    - spec: frontend/components/web-component/seo-content.yaml
+      depends_on:
+        - backend/services/markdown-service.yaml
+        - backend/services/web-component-service.yaml
+        - backend/services/category-service.yaml
+      used_by_count: 1
+    - spec: frontend/components/web-component/cta-list.yaml
+      depends_on:
+        - backend/services/category-service.yaml
+        - backend/services/web-component-service.yaml
+        - shared/utilities/matomo.yaml
+      used_by_count: 1
+    - spec: shared/utilities/sentry.yaml
+      depends_on:
+        - shared/config/settings.yaml
+      used_by_count: 3
+    - spec: backend/services/console-log-service.yaml
+      depends_on:
+        - shared/config/settings.yaml
+      used_by_count: 1
+    - spec: backend/services/navigation-v3-service.yaml
+      depends_on:
+        - shared/config/settings.yaml
+      used_by_count: 0
+    - spec: backend/services/product-page-web-content-service.yaml
+      depends_on:
+        - frontend/components/shared/customer-review.yaml
+      used_by_count: 0
+    - spec: backend/services/server.yaml
+      depends_on:
+        - shared/config/settings.yaml
+      used_by_count: 9
+    - spec: frontend/components/info-pages/payment-methods-container.yaml
+      depends_on:
+        - shared/config/settings.yaml
+      used_by_count: 1
+    - spec: frontend/routes/bulk-ordering.yaml
+      depends_on:
+        - frontend/components/bulk-order/bulk-order-page-old.yaml
+        - frontend/components/bulk-order/bulk-order-page.yaml
+      used_by_count: 0
+    - spec: frontend/routes/contact-us.yaml
+      depends_on:
+        - frontend/components/info-pages/contact-us-container.yaml
+      used_by_count: 0
+    - spec: frontend/routes/photo-quality.yaml
+      depends_on:
+        - frontend/components/info-pages/photo-quality-container.yaml
+      used_by_count: 0
+    - spec: frontend/routes/returns-policy.yaml
+      depends_on:
+        - shared/config/settings.yaml
+      used_by_count: 0
+    - spec: frontend/routes/satisfaction-guarantee.yaml
+      depends_on:
+        - shared/config/settings.yaml
+      used_by_count: 0
+    - spec: frontend/routes/sitemap-categories.yaml
+      depends_on:
+        - shared/config/settings.yaml
+      used_by_count: 0
+    - spec: frontend/routes/sitemap-pages.yaml
+      depends_on:
+        - shared/config/settings.yaml
+      used_by_count: 0
+    - spec: frontend/routes/sitemap-products.yaml
+      depends_on:
+        - shared/config/settings.yaml
+      used_by_count: 0
+    - spec: frontend/routes/terms-and-conditions.yaml
+      depends_on:
+        - frontend/components/info-pages/terms-and-conditions-container.yaml
+      used_by_count: 0
+    - spec: frontend/routes/track-my-order.yaml
+      depends_on:
+        - frontend/components/info-pages/track-my-order-container.yaml
+      used_by_count: 0
+    - spec: shared/context/device-detector-context.yaml
+      depends_on:
+        - shared/utilities/device.yaml
+      used_by_count: 10
+    - spec: shared/utilities/about-us-content.yaml
+      depends_on:
+        - shared/config/settings.yaml
+      used_by_count: 1
+    - spec: shared/utilities/backup-json-utilities.yaml
+      depends_on:
+        - shared/config/settings.yaml
+      used_by_count: 2
+    - spec: shared/utilities/google-tag-manager-extension.yaml
+      depends_on:
+        - shared/config/settings.yaml
+      used_by_count: 1
+    - spec: shared/utilities/homepage-contents.yaml
+      depends_on:
+        - shared/config/settings.yaml
+      used_by_count: 4
+    - spec: shared/utilities/share-contents.yaml
+      depends_on:
+        - shared/config/settings.yaml
+      used_by_count: 2
+    # New Phase 1 level_1 components (2026-02-24, corrected)
+    - spec: frontend/components/uploadcare/upload-input.yaml
+      depends_on: []
+      used_by_count: 2
+    - spec: frontend/components/info-pages/multi-order-select.yaml
+      used_by_count: 1
+    - spec: frontend/components/info-pages/shipment-detail.yaml
+      used_by_count: 1
+    - spec: frontend/components/info-pages/photo-quality.yaml
+      used_by_count: 1
+    - spec: frontend/components/info-pages/terms-and-conditions.yaml
+      used_by_count: 1
+    - spec: frontend/components/web-component/faq.yaml
+      used_by_count: 1
+    - spec: frontend/components/web-component/shop-by-budget.yaml
+      used_by_count: 1
+    - spec: frontend/components/web-component/shop-by-category.yaml
+      used_by_count: 1
+    - spec: frontend/components/web-component/shopping-guide-slider.yaml
+      used_by_count: 1
+    - spec: frontend/components/shared/star-rating.yaml
+      used_by_count: 7
+  level_2: # 4 specs
+    - spec: frontend/routes/about-us.yaml
+      depends_on:
+        - shared/config/settings.yaml
+        - shared/utilities/about-us-content.yaml
+      used_by_count: 0
+    - spec: frontend/routes/payment-methods.yaml
+      depends_on:
+        - frontend/components/info-pages/payment-methods-container.yaml
+      used_by_count: 0
+    - spec: frontend/routes/sitemap-index.yaml
+      depends_on:
+        - backend/services/server.yaml
+        - shared/config/settings.yaml
+      used_by_count: 0
+    - spec: shared/utilities/format.yaml
+      depends_on:
+        - backend/services/server.yaml
+        - shared/config/settings.yaml
+      used_by_count: 1
+  level_3: # 104 specs (72 original + 32 new from Phase 1 gap fill, corrected)
+    - spec: backend/services/go-quick-service.yaml
+      depends_on:
+        - backend/services/cart-cookie-service.yaml
+        - shared/config/settings.yaml
+        - shared/utilities/sentry.yaml
+      used_by_count: 2
+    - spec: frontend/components/carousels/static-carousel1.yaml
+      depends_on:
+        - shared/data/review-data.yaml
+        - shared/utilities/homepage-contents.yaml
+        - frontend/components/shared/svg-icon.yaml
+      used_by_count: 1
+    - spec: frontend/components/category-page/blog-category-section.yaml
+      depends_on:
+        - backend/services/category-service.yaml
+        - shared/utilities/matomo.yaml
+      used_by_count: 1
+    - spec: frontend/components/category-page/category-cards.yaml
+      depends_on:
+        - backend/services/category-service.yaml
+        - shared/utilities/matomo.yaml
+      used_by_count: 1
+    - spec: frontend/components/category-page/email-subscription.yaml
+      depends_on:
+        - backend/services/category-service.yaml
+      used_by_count: 1
+    - spec: frontend/components/web-component/faq-v2.yaml
+      depends_on:
+        - backend/services/markdown-service.yaml
+        - backend/services/web-component-service.yaml
+        - backend/services/category-service.yaml
+      used_by_count: 1
+    - spec: frontend/components/web-component/ugc-section.yaml
+      depends_on:
+        - frontend/components/media/video.yaml
+        - backend/services/markdown-service.yaml
+        - backend/services/category-service.yaml
+        - shared/utilities/matomo.yaml
+      used_by_count: 1
+    - spec: frontend/components/web-component/video-banner.yaml
+      depends_on:
+        - frontend/components/shared/svg-icon.yaml
+        - backend/services/web-component-service.yaml
+        - shared/utilities/matomo.yaml
+      used_by_count: 1
+    - spec: frontend/components/uploadcare/uploadcare.yaml
+      depends_on:
+        - shared/utilities/http.yaml
+        - shared/config/http.yaml
+        - backend/services/common-service.yaml
+        - backend/services/product-category-service.yaml
+      used_by_count: 2
+    - spec: frontend/components/footer/footer-containerless.yaml
+      depends_on:
+        - frontend/components/shared/accordion.yaml
+        - frontend/components/shared/accordion-header.yaml
+        - frontend/components/shared/accordion-details.yaml
+        - shared/utilities/homepage-contents.yaml
+        - frontend/components/shared/home-bottom-banner.yaml
+        - frontend/components/shared/our-help.yaml
+        - frontend/components/shared/trust-indicator.yaml
+        - shared/utilities/share-contents.yaml
+        - shared/config/settings.yaml
+        - frontend/components/shared/fresh-desk-widget.yaml
+        - frontend/components/footer/footer-shipping-banner.yaml
+      used_by_count: 1
+    - spec: frontend/components/homepage/home-customer-reviews.yaml
+      depends_on:
+        - frontend/components/homepage/trustpilot-rating.yaml
+        - frontend/components/carousels/static-carousel1.yaml
+        - shared/data/review-data.yaml
+      used_by_count: 1
+    - spec: frontend/components/homepage/homepagecategory.yaml
+      depends_on:
+        - frontend/components/shared/svg-icon.yaml
+        - backend/services/home-service.yaml
+      used_by_count: 1
+    - spec: frontend/components/homepage/homepage-category-container.yaml
+      depends_on:
+        - frontend/components/homepage/homepagecategory.yaml
+        - frontend/components/shared/svg-icon.yaml
+        - shared/utilities/homepage-contents.yaml
+        - backend/services/home-service.yaml
+      used_by_count: 1
+    - spec: frontend/components/homepage/marketing-content-video.yaml
+      depends_on:
+        - frontend/components/media/video.yaml
+        - backend/services/web-component-service.yaml
+      used_by_count: 1
+    - spec: frontend/components/carousels/dynamic-carousel.yaml
+      depends_on:
+        - frontend/components/media/video.yaml
+        - frontend/components/go-quick/go-quick-carousel-widget.yaml
+        - frontend/components/uploadcare/uploadprogress.yaml
+        - backend/services/home-service.yaml
+      used_by_count: 1
+    - spec: frontend/components/go-quick/go-quick-carousel-widget.yaml
+      depends_on:
+        - frontend/components/uploadcare/uploadcare.yaml
+        - backend/services/go-quick-service.yaml
+        - shared/utilities/matomo.yaml
+      used_by_count: 1
+    - spec: frontend/components/go-quick/go-quick-homepage-widget.yaml
+      depends_on:
+        - frontend/components/uploadcare/uploadcare.yaml
+        - frontend/components/uploadcare/uploadprogress.yaml
+        - backend/services/go-quick-service.yaml
+        - shared/utilities/matomo.yaml
+        - shared/utilities/sentry.yaml
+      used_by_count: 1
+    - spec: frontend/layouts/layout-containerless.yaml
+      depends_on:
+        - frontend/components/footer/footer-containerless.yaml
+        - frontend/components/banner/strip-banner.yaml
+        - frontend/components/shared/cross-domain-notification.yaml
+        - frontend/components/header/header-wrapper.yaml
+        - backend/services/middle-ware-service.yaml
+        - backend/services/common-service.yaml
+        - shared/utilities/country-region.yaml
+      used_by_count: 1
+    - spec: frontend/components/web-component/web-contents-component.yaml
+      depends_on:
+        - backend/services/web-component-service.yaml
+        - backend/services/category-service.yaml
+        - frontend/components/web-component/seo-content.yaml
+        - frontend/components/web-component/stories.yaml
+        - frontend/components/web-component/trust-signals.yaml
+        - frontend/components/category-page/category-cards.yaml
+        - frontend/components/web-component/faq-v2.yaml
+        - frontend/components/web-component/ugc-section.yaml
+        - frontend/components/category-page/email-subscription.yaml
+        - frontend/components/web-component/home-best-sellers.yaml
+        - frontend/components/homepage/marketing-content-video.yaml
+        - frontend/components/web-component/shopping-guide.yaml
+        - frontend/components/web-component/mid-page-banner.yaml
+        - frontend/components/web-component/video-banner.yaml
+        - frontend/components/web-component/cta-list.yaml
+        - frontend/components/category-page/blog-category-section.yaml
+        - frontend/components/shared/trust-indicator.yaml
+      used_by_count: 1
+    - spec: frontend/routes/home-page.yaml
+      depends_on:
+        - backend/services/home-service.yaml
+        - backend/services/homepage-service.yaml
+        - backend/services/web-component-service.yaml
+        - backend/services/server.yaml
+        - backend/services/cart-services/gtm/data-layer-base.yaml
+        - backend/services/cart-services/gtm/data-layer-mapper.yaml
+        - shared/utilities/homepage-contents.yaml
+        - shared/config/settings.yaml
+        - frontend/components/carousels/dynamic-carousel.yaml
+        - frontend/components/homepage/homepage-category-container.yaml
+        - frontend/components/homepage/home-customer-reviews.yaml
+        - frontend/components/banner/dynamic-promo-banner-v2.yaml
+        - frontend/components/shared/guideline-section.yaml
+        - frontend/components/shared/customer-review.yaml
+        - frontend/components/go-quick/go-quick-homepage-widget.yaml
+        - frontend/components/web-component/web-contents-component.yaml
+      used_by_count: 0
+    - spec: backend/services/accounts-service.yaml
+      depends_on:
+        - backend/services/common-service.yaml
+        - backend/services/cart-cookie-service.yaml
+        - backend/services/server.yaml
+        - shared/config/http.yaml
+        - shared/utilities/http.yaml
+      used_by_count: 3
+    - spec: backend/services/add-to-cart-service.yaml
+      depends_on:
+        - backend/services/common-service.yaml
+        - shared/config/http.yaml
+        - shared/utilities/http.yaml
+      used_by_count: 1
+    - spec: backend/services/category-service.yaml
+      depends_on:
+        - backend/services/product-category-service.yaml
+        - backend/services/product-page-service.yaml
+        - backend/services/server.yaml
+        - frontend/components/shared/customer-review.yaml
+        - shared/config/http.yaml
+        - shared/config/settings.yaml
+        - shared/utilities/format.yaml
+        - shared/utilities/http.yaml
+      used_by_count: 10
+    - spec: backend/services/common-service.yaml
+      depends_on:
+        - backend/services/console-log-service.yaml
+        - backend/services/cart-cookie-service.yaml
+        - backend/services/json-service.yaml
+        - backend/services/product-category-service.yaml
+        - shared/config/http.yaml
+        - shared/utilities/backup-json-utilities.yaml
+        - shared/utilities/http.yaml
+      used_by_count: 9
+    - spec: backend/services/cart-cookie-service.yaml
+      depends_on:
+        - backend/services/cart-services/gtm/data-layer-mapper.yaml
+      used_by_count: 8
+    - spec: backend/services/delivery-rates-service.yaml
+      depends_on:
+        - backend/services/common-service.yaml
+        - shared/config/http.yaml
+        - shared/utilities/http.yaml
+      used_by_count: 1
+    - spec: backend/services/cart-services/gtm/data-layer-mapper.yaml
+      depends_on:
+        - backend/services/cart-cookie-service.yaml
+      used_by_count: 5
+    - spec: backend/services/holiday-delivery-service.yaml
+      depends_on:
+        - backend/services/json-service.yaml
+      used_by_count: 0
+    - spec: backend/services/home-service.yaml
+      depends_on:
+        - frontend/components/shared/customer-review.yaml
+        - shared/config/http.yaml
+        - shared/config/settings.yaml
+        - shared/utilities/http.yaml
+      used_by_count: 1
+    - spec: backend/services/json-service.yaml
+      depends_on:
+        - backend/services/shop-by-category-service.yaml
+        - shared/config/http.yaml
+        - shared/utilities/backup-json-utilities.yaml
+        - shared/utilities/homepage-contents.yaml
+        - shared/utilities/http.yaml
+      used_by_count: 15
+    - spec: backend/services/klaviyo-service.yaml
+      depends_on:
+        - backend/services/accounts-service.yaml
+        - backend/services/cart-cookie-service.yaml
+        - shared/config/settings.yaml
+        - shared/utilities/http.yaml
+      used_by_count: 4
+    - spec: backend/services/middle-ware-service.yaml
+      depends_on:
+        - backend/services/accounts-service.yaml
+        - backend/services/cart-cookie-service.yaml
+        - backend/services/cart-services/gtm/data-layer-mapper.yaml
+        - backend/services/json-service.yaml
+      used_by_count: 2
+    - spec: backend/services/product-category-service.yaml
+      depends_on:
+        - backend/services/category-service.yaml
+        - backend/services/product-page-service.yaml
+        - backend/services/themes-service.yaml
+        - shared/config/settings.yaml
+        - shared/data/option-data.yaml
+        - shared/utilities/http.yaml
+      used_by_count: 21
+    - spec: backend/services/product-page-service.yaml
+      depends_on:
+        - backend/services/category-service.yaml
+        - backend/services/common-service.yaml
+        - backend/services/cart-cookie-service.yaml
+        - backend/services/cart-services/gtm/data-layer-base.yaml
+        - backend/services/cart-services/gtm/data-layer-mapper.yaml
+        - backend/services/json-service.yaml
+        - backend/services/klaviyo-service.yaml
+        - backend/services/product-category-service.yaml
+        - backend/services/server.yaml
+        - backend/services/themes-service.yaml
+        - backend/services/web-component-service.yaml
+        - frontend/components/shared/customer-review.yaml
+        - shared/config/http.yaml
+        - shared/config/settings.yaml
+        - shared/data/marketing-content-data.yaml
+        - shared/data/option-data.yaml
+        - shared/data/review-data.yaml
+        - shared/utilities/element.yaml
+        - shared/utilities/google-tag-manager-extension.yaml
+        - shared/utilities/http.yaml
+        - shared/utilities/matomo.yaml
+      used_by_count: 12
+    - spec: backend/services/shop-by-budget-service.yaml
+      depends_on:
+        - backend/services/json-service.yaml
+      used_by_count: 1
+    - spec: backend/services/shop-by-category-service.yaml
+      depends_on:
+        - backend/services/json-service.yaml
+      used_by_count: 2
+    - spec: backend/services/shop-page-service.yaml
+      depends_on:
+        - shared/config/http.yaml
+        - shared/utilities/http.yaml
+      used_by_count: 0
+    - spec: backend/services/themes-service.yaml
+      depends_on:
+        - backend/services/category-service.yaml
+        - backend/services/common-service.yaml
+        - backend/services/json-service.yaml
+        - backend/services/product-category-service.yaml
+        - backend/services/product-page-service.yaml
+        - shared/config/http.yaml
+        - shared/utilities/http.yaml
+      used_by_count: 7
+    - spec: backend/services/web-component-service.yaml
+      depends_on:
+        - backend/services/category-service.yaml
+        - backend/services/home-service.yaml
+        - backend/services/product-category-service.yaml
+        - backend/services/shop-by-budget-service.yaml
+        - backend/services/shop-by-category-service.yaml
+        - backend/services/themes-service.yaml
+        - shared/config/http.yaml
+      used_by_count: 5
+    - spec: frontend/components/banner/dynamic-promo-banner-v2.yaml
+      depends_on:
+        - backend/services/json-service.yaml
+        - backend/services/product-category-service.yaml
+        - shared/utilities/matomo.yaml
+      used_by_count: 1
+    - spec: frontend/components/banner/strip-banner.yaml
+      depends_on:
+        - backend/services/json-service.yaml
+        - backend/services/markdown-service.yaml
+      used_by_count: 2
+    - spec: frontend/components/category-page/category-page-factory.yaml
+      depends_on:
+        - backend/services/category-service.yaml
+        - backend/services/klaviyo-service.yaml
+        - backend/services/product-category-service.yaml
+        - backend/services/web-component-service.yaml
+        - frontend/components/category-page/common-category-container.yaml
+        - frontend/components/shared/customer-review.yaml
+        - shared/context/product-category-context.yaml
+        - shared/utilities/http.yaml
+      used_by_count: 1
+    - spec: frontend/components/category-page/common-category-container.yaml
+      depends_on:
+        - backend/services/category-service.yaml
+        - backend/services/klaviyo-service.yaml
+        - backend/services/product-category-service.yaml
+        - backend/services/web-component-service.yaml
+        - frontend/components/shared/customer-review.yaml
+        - shared/utilities/http.yaml
+      used_by_count: 1
+    - spec: frontend/components/footer/footer-product-category.yaml
+      depends_on:
+        - backend/services/json-service.yaml
+        - frontend/components/shared/accordion-details.yaml
+        - frontend/components/shared/accordion-header.yaml
+        - frontend/components/shared/accordion.yaml
+        - frontend/components/shared/fresh-desk-widget.yaml
+        - frontend/components/shared/home-bottom-banner.yaml
+        - frontend/components/shared/our-help.yaml
+        - frontend/components/shared/trust-indicator.yaml
+        - shared/config/settings.yaml
+        - shared/utilities/homepage-contents.yaml
+        - shared/utilities/share-contents.yaml
+      used_by_count: 1
+    - spec: frontend/components/footer/footer-shipping-banner.yaml
+      depends_on:
+        - backend/services/json-service.yaml
+      used_by_count: 0
+    - spec: frontend/components/footer/footer.yaml
+      depends_on:
+        - frontend/components/shared/accordion-details.yaml
+        - frontend/components/shared/accordion-header.yaml
+        - frontend/components/shared/accordion.yaml
+        - frontend/components/shared/fresh-desk-widget.yaml
+        - frontend/components/shared/home-bottom-banner.yaml
+        - frontend/components/shared/our-help.yaml
+        - frontend/components/shared/trust-indicator.yaml
+        - frontend/layouts/layout-default.yaml
+        - shared/config/settings.yaml
+        - shared/utilities/homepage-contents.yaml
+        - shared/utilities/share-contents.yaml
+      used_by_count: 1
+    - spec: frontend/components/header/header-wrapper.yaml
+      depends_on:
+        - frontend/components/header/header.yaml
+      used_by_count: 2
+    - spec: frontend/components/header/header.yaml
+      depends_on:
+        - backend/services/accounts-service.yaml
+        - backend/services/cart-cookie-service.yaml
+        - backend/services/cart-services/gtm/data-layer-mapper.yaml
+        - backend/services/klaviyo-service.yaml
+        - backend/services/server.yaml
+        - frontend/components/shared/svg-icon.yaml
+        - shared/config/settings.yaml
+        - shared/utilities/homepage-contents.yaml
+        - shared/utilities/matomo.yaml
+      used_by_count: 1
+    - spec: frontend/components/info-pages/image-resolution-container.yaml
+      depends_on:
+        - frontend/routes/image-resolution.yaml
+      used_by_count: 1
+    - spec: frontend/components/product-page/instant-product-page-container.yaml
+      depends_on:
+        - backend/services/themes-service.yaml
+        - shared/context/product-category-context.yaml
+        - shared/data/option-data.yaml
+      used_by_count: 1
+    - spec: frontend/components/product-page/photo-canvas-prints-bundled-template.yaml
+      depends_on:
+        - backend/services/category-service.yaml
+        - backend/services/product-category-service.yaml
+        - frontend/components/shared/customer-review.yaml
+        - shared/config/settings.yaml
+        - shared/context/device-detector-context.yaml
+        - shared/context/product-category-context.yaml
+        - shared/data/option-data.yaml
+      used_by_count: 1
+    - spec: frontend/components/product-page/photo-canvas-prints-hub-bundled-template.yaml
+      depends_on:
+        - backend/services/category-service.yaml
+        - backend/services/product-category-service.yaml
+        - frontend/components/shared/customer-review.yaml
+        - frontend/components/shared/svg-icon.yaml
+        - shared/config/settings.yaml
+        - shared/context/device-detector-context.yaml
+        - shared/context/product-category-context.yaml
+        - shared/data/option-data.yaml
+      used_by_count: 1
+    - spec: frontend/components/product-page/photo-canvas-prints-new-template-v3.yaml
+      depends_on:
+        - backend/services/product-category-service.yaml
+        - backend/services/product-page-service.yaml
+        - shared/config/settings.yaml
+        - shared/context/device-detector-context.yaml
+        - shared/context/product-category-context.yaml
+        - shared/data/option-data.yaml
+      used_by_count: 1
+    - spec: frontend/components/product-page/photo-canvas-prints-new-template.yaml
+      depends_on:
+        - backend/services/product-category-service.yaml
+        - backend/services/product-page-service.yaml
+        - frontend/components/shared/customer-review.yaml
+        - shared/config/settings.yaml
+        - shared/context/device-detector-context.yaml
+        - shared/context/product-category-context.yaml
+        - shared/data/option-data.yaml
+      used_by_count: 1
+    - spec: frontend/components/product-page/photo-canvas-prints-template-v2.yaml
+      depends_on:
+        - backend/services/product-category-service.yaml
+        - backend/services/product-page-service.yaml
+        - frontend/components/shared/customer-review.yaml
+        - shared/config/settings.yaml
+        - shared/context/device-detector-context.yaml
+        - shared/context/product-category-context.yaml
+        - shared/data/option-data.yaml
+      used_by_count: 1
+    - spec: frontend/components/product-page/product-page-basic-template.yaml
+      depends_on:
+        - backend/services/themes-service.yaml
+        - frontend/components/shared/customer-review.yaml
+        - shared/context/device-detector-context.yaml
+        - shared/context/product-category-context.yaml
+      used_by_count: 1
+    - spec: frontend/components/product-page/product-page-fixed-template.yaml
+      depends_on:
+        - backend/services/product-category-service.yaml
+        - backend/services/product-page-service.yaml
+        - backend/services/themes-service.yaml
+        - frontend/components/shared/customer-review.yaml
+        - shared/config/settings.yaml
+        - shared/context/device-detector-context.yaml
+        - shared/context/product-category-context.yaml
+        - shared/data/option-data.yaml
+      used_by_count: 1
+    - spec: frontend/components/product-page/product-page-fixed-theme-template.yaml
+      depends_on:
+        - backend/services/product-category-service.yaml
+        - backend/services/product-page-service.yaml
+        - frontend/components/shared/customer-review.yaml
+        - shared/config/settings.yaml
+        - shared/context/device-detector-context.yaml
+        - shared/context/product-category-context.yaml
+      used_by_count: 1
+    - spec: frontend/components/product-page/product-page-hub-child-template.yaml
+      depends_on:
+        - backend/services/product-category-service.yaml
+        - backend/services/product-page-service.yaml
+        - backend/services/web-component-service.yaml
+        - shared/context/product-category-context.yaml
+      used_by_count: 1
+    - spec: frontend/components/product-page/product-page-hub-template.yaml
+      depends_on:
+        - backend/services/product-category-service.yaml
+        - backend/services/themes-service.yaml
+        - backend/services/web-component-service.yaml
+        - frontend/components/shared/customer-review.yaml
+        - shared/context/device-detector-context.yaml
+        - shared/context/product-category-context.yaml
+        - shared/data/option-data.yaml
+      used_by_count: 1
+    - spec: frontend/components/product-page/product-page-selection.yaml
+      depends_on:
+        - backend/services/product-page-service.yaml
+        - frontend/components/product-page/instant-product-page-container.yaml
+        - frontend/components/product-page/photo-canvas-prints-bundled-template.yaml
+        - frontend/components/product-page/photo-canvas-prints-hub-bundled-template.yaml
+        - frontend/components/product-page/photo-canvas-prints-new-template-v3.yaml
+        - frontend/components/product-page/photo-canvas-prints-new-template.yaml
+        - frontend/components/product-page/photo-canvas-prints-template-v2.yaml
+        - frontend/components/product-page/product-page-base-template.yaml
+        - frontend/components/product-page/product-page-basic-template.yaml
+        - frontend/components/product-page/product-page-fixed-template.yaml
+        - frontend/components/product-page/product-page-fixed-theme-template.yaml
+        - frontend/components/product-page/product-page-hub-child-template.yaml
+        - frontend/components/product-page/product-page-hub-template.yaml
+        - shared/context/product-category-context.yaml
+      used_by_count: 1
+    - spec: frontend/components/shared/home-bottom-banner.yaml
+      depends_on:
+        - backend/services/json-service.yaml
+        - shared/config/settings.yaml
+      used_by_count: 2
+    - spec: frontend/layouts/layout-categoryproduct.yaml
+      depends_on:
+        - backend/services/category-service.yaml
+        - backend/services/common-service.yaml
+        - backend/services/cart-services/gtm/data-layer-base.yaml
+        - backend/services/cart-services/gtm/data-layer-mapper.yaml
+        - backend/services/json-service.yaml
+        - backend/services/middle-ware-service.yaml
+        - backend/services/product-category-service.yaml
+        - backend/services/product-page-service.yaml
+        - frontend/components/banner/strip-banner.yaml
+        - frontend/components/footer/footer-product-category.yaml
+        - frontend/components/header/header-wrapper.yaml
+        - frontend/components/shared/breadcrumbs.yaml
+        - frontend/components/shared/cross-domain-notification.yaml
+        - shared/config/http.yaml
+        - shared/context/device-detector-context.yaml
+        - shared/context/product-category-context.yaml
+        - shared/utilities/country-region.yaml
+        - shared/utilities/device.yaml
+        - shared/utilities/http.yaml
+      used_by_count: 0
+    - spec: frontend/layouts/layout-default.yaml
+      depends_on:
+        - backend/services/add-to-cart-service.yaml
+        - backend/services/common-service.yaml
+        - backend/services/middle-ware-service.yaml
+        - frontend/components/banner/dynamic-promo-banner-v2.yaml
+        - frontend/components/banner/strip-banner.yaml
+        - frontend/components/footer/footer.yaml
+        - frontend/components/header/header-wrapper.yaml
+        - frontend/components/shared/cross-domain-notification.yaml
+        - shared/utilities/country-region.yaml
+      used_by_count: 1
+    - spec: frontend/routes/delivery-rates.yaml
+      depends_on:
+        - backend/services/delivery-rates-service.yaml
+        - backend/services/server.yaml
+        - frontend/components/shared/accordion-details.yaml
+        - frontend/components/shared/accordion-header.yaml
+        - frontend/components/shared/accordion.yaml
+        - frontend/components/shared/how-it-works.yaml
+        - frontend/components/shared/large-orders.yaml
+        - frontend/components/shared/product-type-table.yaml
+        - frontend/components/shared/svg-icon.yaml
+      used_by_count: 0
+    - spec: frontend/routes/image-resolution.yaml
+      depends_on:
+        - frontend/components/info-pages/image-resolution-container.yaml
+      used_by_count: 1
+    - spec: frontend/routes/product-category.yaml
+      depends_on:
+        - backend/services/product-category-service.yaml
+        - frontend/components/category-page/category-page-factory.yaml
+        - frontend/components/product-page/product-page-selection.yaml
+        - shared/context/product-category-context.yaml
+      used_by_count: 0
+    - spec: frontend/routes/shipping-policy.yaml
+      depends_on:
+        - backend/services/json-service.yaml
+        - frontend/components/shared/guideline-section.yaml
+        - shared/config/settings.yaml
+      used_by_count: 0
+    - spec: shared/config/http.yaml
+      depends_on:
+        - backend/services/cart-cookie-service.yaml
+        - backend/services/server.yaml
+        - shared/config/settings.yaml
+      used_by_count: 13
+    - spec: shared/context/product-category-context.yaml
+      depends_on:
+        - backend/services/category-service.yaml
+        - backend/services/json-service.yaml
+        - backend/services/product-category-service.yaml
+        - backend/services/product-page-service.yaml
+      used_by_count: 15
+    - spec: shared/context/web-content-context.yaml
+      depends_on:
+        - backend/services/common-service.yaml
+        - backend/services/product-category-service.yaml
+      used_by_count: 0
+    - spec: shared/utilities/http.yaml
+      depends_on:
+        - backend/services/common-service.yaml
+        - backend/services/server.yaml
+        - shared/config/http.yaml
+        - shared/config/settings.yaml
+      used_by_count: 15
+    # New Phase 1 level_3 components (2026-02-24)
+    - spec: frontend/components/product-page/option-panel.yaml
+      depends_on:
+        - frontend/components/shared/svg-icon.yaml
+        - frontend/components/uploadcare/uploadcare.yaml
+        - frontend/components/uploadcare/uploadprogress.yaml
+        - backend/services/product-page-service.yaml
+        - backend/services/product-category-service.yaml
+        - shared/context/product-category-context.yaml
+        - shared/context/device-detector-context.yaml
+      used_by_count: 3
+    - spec: frontend/components/product-page/product-carousel.yaml
+      depends_on:
+        - shared/context/product-category-context.yaml
+        - backend/services/product-page-service.yaml
+        - backend/services/product-category-service.yaml
+      used_by_count: 3
+    - spec: frontend/components/product-page/product-page-content-basic.yaml
+      depends_on:
+        - backend/services/product-page-service.yaml
+        - backend/services/category-service.yaml
+        - frontend/components/banner/dynamic-promo-banner-v2.yaml
+        - frontend/components/web-component/web-contents-component.yaml
+      used_by_count: 1
+    - spec: frontend/components/product-page/product-page-content-component-v2.yaml
+      depends_on:
+        - backend/services/product-page-service.yaml
+        - backend/services/category-service.yaml
+        - frontend/components/banner/dynamic-promo-banner-v2.yaml
+        - frontend/components/web-component/web-contents-component.yaml
+      used_by_count: 1
+    - spec: frontend/components/product-page/product-page-content-v2.yaml
+      depends_on:
+        - backend/services/product-page-service.yaml
+        - backend/services/category-service.yaml
+        - frontend/components/banner/dynamic-promo-banner-v2.yaml
+        - frontend/components/web-component/web-contents-component.yaml
+      used_by_count: 2
+    # Corrected from level_0 — parents are level_3 (product-page templates / category containers / header / homepage)
+    - spec: frontend/components/product-page/product-delivery-date-v2.yaml
+      depends_on:
+        - shared/context/product-category-context.yaml
+      used_by_count: 8
+    - spec: frontend/components/product-page/product-description-v2.yaml
+      depends_on:
+        - frontend/components/shared/accordion.yaml
+        - frontend/components/shared/accordion-header.yaml
+        - frontend/components/shared/accordion-details.yaml
+        - backend/services/markdown-service.yaml
+        - backend/services/product-page-service.yaml
+      used_by_count: 6
+    - spec: frontend/components/product-page/product-flip-clock.yaml
+      depends_on:
+        - shared/context/product-category-context.yaml
+        - backend/services/product-category-service.yaml
+        - shared/config/settings.yaml
+      used_by_count: 8
+    - spec: frontend/components/product-page/product-trust-indicator-v6.yaml
+      depends_on:
+        - backend/services/product-page-service.yaml
+        - shared/config/settings.yaml
+      used_by_count: 10
+    - spec: frontend/components/category-page/category-banner.yaml
+      depends_on:
+        - backend/services/category-service.yaml
+        - backend/services/markdown-service.yaml
+      used_by_count: 1
+    - spec: frontend/components/category-page/category-card.yaml
+      depends_on:
+        - backend/services/category-service.yaml
+        - shared/utilities/matomo.yaml
+      used_by_count: 1
+    - spec: frontend/components/category-page/category-quick-links.yaml
+      depends_on:
+        - frontend/components/shared/svg-icon.yaml
+        - backend/services/category-service.yaml
+      used_by_count: 1
+    - spec: frontend/components/category-page/global-category-banner.yaml
+      depends_on:
+        - backend/services/category-service.yaml
+        - shared/utilities/matomo.yaml
+      used_by_count: 1
+    - spec: frontend/components/category-page/product-sections.yaml
+      depends_on:
+        - backend/services/category-service.yaml
+      used_by_count: 3
+    - spec: frontend/components/header/global-search.yaml
+      depends_on:
+        - frontend/components/shared/svg-icon.yaml
+      used_by_count: 1
+    - spec: frontend/components/header/reminder-provider.yaml
+      depends_on: []
+      used_by_count: 2
+    - spec: frontend/components/homepage/home-page-category-card.yaml
+      depends_on:
+        - backend/services/home-service.yaml
+        - shared/utilities/homepage-contents.yaml
+        - shared/utilities/format.yaml
+      used_by_count: 1
+    - spec: frontend/components/banner/banner-flip-clock.yaml
+      depends_on:
+        - backend/services/flip-clock-service.yaml
+        - shared/config/settings.yaml
+      used_by_count: 4
+    # Corrected from level_1 — parents are level_3 (product-page templates / category containers / header / banner)
+    - spec: frontend/components/product-page/bulk-pricing-v4.yaml
+      depends_on:
+        - backend/services/web-component-service.yaml
+      used_by_count: 2
+    - spec: frontend/components/product-page/product-option-type-4.yaml
+      depends_on:
+        - frontend/components/shared/svg-icon.yaml
+        - frontend/components/uploadcare/uploadcare.yaml
+        - frontend/components/uploadcare/uploadprogress.yaml
+      used_by_count: 1
+    - spec: frontend/components/product-page/product-page-top-banner-v2.yaml
+      depends_on:
+        - frontend/components/banner/dynamic-promo-banner-v2.yaml
+      used_by_count: 2
+    - spec: frontend/components/product-page/product-shop-design.yaml
+      depends_on:
+        - frontend/components/shared/svg-icon.yaml
+      used_by_count: 2
+    - spec: frontend/components/category-page/category-page-top-banner-v2.yaml
+      depends_on:
+        - frontend/components/banner/dynamic-promo-banner-v2.yaml
+      used_by_count: 1
+    - spec: frontend/components/category-page/collection-slider.yaml
+      depends_on:
+        - frontend/components/shared/svg-icon.yaml
+      used_by_count: 1
+    - spec: frontend/components/category-page/shop-page-cards.yaml
+      depends_on:
+        - frontend/components/shared/svg-icon.yaml
+      used_by_count: 1
+    - spec: frontend/components/header/navigation-menu-4.yaml
+      depends_on:
+        - frontend/components/web-component/web-contents-component.yaml
+      used_by_count: 1
+    - spec: frontend/components/header/reminder-creation-modal.yaml
+      depends_on:
+        - frontend/components/shared/svg-icon.yaml
+      used_by_count: 1
+    - spec: frontend/components/banner/floating-banner.yaml
+      depends_on:
+        - frontend/components/banner/banner-flip-clock.yaml
+        - frontend/components/web-component/web-contents-component.yaml
+      used_by_count: 2
+    - spec: frontend/components/banner/main-banner.yaml
+      depends_on:
+        - frontend/components/banner/banner-flip-clock.yaml
+        - frontend/components/web-component/web-contents-component.yaml
+      used_by_count: 3
+    # Corrected from level_0 — used by level_3 specs (ugc-section, image-resolution-container)
+    - spec: frontend/components/info-pages/photo-tips.yaml
+      used_by_count: 1
+    - spec: frontend/components/web-component/flip-ugc.yaml
+      used_by_count: 1
+    - spec: frontend/components/web-component/slider-ugc.yaml
+      used_by_count: 1
+
+# Most depended-on specs
+most_depended_on:
+  - spec: shared/config/settings.yaml
+    dependents_count: 39
+    dependents:
+      - backend/services/category-service.yaml
+      - backend/services/console-log-service.yaml
+      - backend/services/home-service.yaml
+      - backend/services/klaviyo-service.yaml
+      - backend/services/navigation-v3-service.yaml
+      - backend/services/product-category-service.yaml
+      - backend/services/product-page-service.yaml
+      - backend/services/server.yaml
+      - frontend/components/banner/banner-flip-clock.yaml
+      - frontend/components/footer/footer-product-category.yaml
+      - frontend/components/footer/footer.yaml
+      - frontend/components/header/header.yaml
+      - frontend/components/info-pages/payment-methods-container.yaml
+      - frontend/components/product-page/photo-canvas-prints-bundled-template.yaml
+      - frontend/components/product-page/photo-canvas-prints-hub-bundled-template.yaml
+      - frontend/components/product-page/photo-canvas-prints-new-template-v3.yaml
+      - frontend/components/product-page/photo-canvas-prints-new-template.yaml
+      - frontend/components/product-page/photo-canvas-prints-template-v2.yaml
+      - frontend/components/product-page/product-flip-clock.yaml
+      - frontend/components/product-page/product-page-fixed-template.yaml
+      - frontend/components/product-page/product-page-fixed-theme-template.yaml
+      - frontend/components/product-page/product-trust-indicator-v6.yaml
+      - frontend/components/shared/home-bottom-banner.yaml
+      - frontend/routes/about-us.yaml
+      - frontend/routes/returns-policy.yaml
+      - frontend/routes/satisfaction-guarantee.yaml
+      - frontend/routes/shipping-policy.yaml
+      - frontend/routes/sitemap-categories.yaml
+      - frontend/routes/sitemap-index.yaml
+      - frontend/routes/sitemap-pages.yaml
+      - frontend/routes/sitemap-products.yaml
+      - shared/config/http.yaml
+      - shared/utilities/about-us-content.yaml
+      - shared/utilities/backup-json-utilities.yaml
+      - shared/utilities/format.yaml
+      - shared/utilities/google-tag-manager-extension.yaml
+      - shared/utilities/homepage-contents.yaml
+      - shared/utilities/http.yaml
+      - shared/utilities/share-contents.yaml
+  - spec: backend/services/product-category-service.yaml
+    dependents_count: 22
+    dependents:
+      - backend/services/category-service.yaml
+      - backend/services/common-service.yaml
+      - backend/services/product-page-service.yaml
+      - backend/services/themes-service.yaml
+      - backend/services/web-component-service.yaml
+      - frontend/components/banner/dynamic-promo-banner-v2.yaml
+      - frontend/components/category-page/category-page-factory.yaml
+      - frontend/components/category-page/common-category-container.yaml
+      - frontend/components/product-page/photo-canvas-prints-bundled-template.yaml
+      - frontend/components/product-page/photo-canvas-prints-hub-bundled-template.yaml
+      - frontend/components/product-page/photo-canvas-prints-new-template-v3.yaml
+      - frontend/components/product-page/photo-canvas-prints-new-template.yaml
+      - frontend/components/product-page/photo-canvas-prints-template-v2.yaml
+      - frontend/components/product-page/product-flip-clock.yaml
+      - frontend/components/product-page/product-page-fixed-template.yaml
+      - frontend/components/product-page/product-page-fixed-theme-template.yaml
+      - frontend/components/product-page/product-page-hub-child-template.yaml
+      - frontend/components/product-page/product-page-hub-template.yaml
+      - frontend/layouts/layout-categoryproduct.yaml
+      - frontend/routes/product-category.yaml
+      - shared/context/product-category-context.yaml
+      - shared/context/web-content-context.yaml
+  - spec: backend/services/json-service.yaml
+    dependents_count: 15
+    dependents:
+      - backend/services/common-service.yaml
+      - backend/services/holiday-delivery-service.yaml
+      - backend/services/middle-ware-service.yaml
+      - backend/services/product-page-service.yaml
+      - backend/services/shop-by-budget-service.yaml
+      - backend/services/shop-by-category-service.yaml
+      - backend/services/themes-service.yaml
+      - frontend/components/banner/dynamic-promo-banner-v2.yaml
+      - frontend/components/banner/strip-banner.yaml
+      - frontend/components/footer/footer-product-category.yaml
+      - frontend/components/footer/footer-shipping-banner.yaml
+      - frontend/components/shared/home-bottom-banner.yaml
+      - frontend/layouts/layout-categoryproduct.yaml
+      - frontend/routes/shipping-policy.yaml
+      - shared/context/product-category-context.yaml
+  - spec: shared/context/product-category-context.yaml
+    dependents_count: 17
+    dependents:
+      - frontend/components/category-page/category-page-factory.yaml
+      - frontend/components/product-page/instant-product-page-container.yaml
+      - frontend/components/product-page/photo-canvas-prints-bundled-template.yaml
+      - frontend/components/product-page/photo-canvas-prints-hub-bundled-template.yaml
+      - frontend/components/product-page/photo-canvas-prints-new-template-v3.yaml
+      - frontend/components/product-page/photo-canvas-prints-new-template.yaml
+      - frontend/components/product-page/photo-canvas-prints-template-v2.yaml
+      - frontend/components/product-page/product-delivery-date-v2.yaml
+      - frontend/components/product-page/product-flip-clock.yaml
+      - frontend/components/product-page/product-page-basic-template.yaml
+      - frontend/components/product-page/product-page-fixed-template.yaml
+      - frontend/components/product-page/product-page-fixed-theme-template.yaml
+      - frontend/components/product-page/product-page-hub-child-template.yaml
+      - frontend/components/product-page/product-page-hub-template.yaml
+      - frontend/components/product-page/product-page-selection.yaml
+      - frontend/layouts/layout-categoryproduct.yaml
+      - frontend/routes/product-category.yaml
+  - spec: shared/utilities/http.yaml
+    dependents_count: 15
+    dependents:
+      - backend/services/accounts-service.yaml
+      - backend/services/add-to-cart-service.yaml
+      - backend/services/category-service.yaml
+      - backend/services/common-service.yaml
+      - backend/services/delivery-rates-service.yaml
+      - backend/services/home-service.yaml
+      - backend/services/json-service.yaml
+      - backend/services/klaviyo-service.yaml
+      - backend/services/product-category-service.yaml
+      - backend/services/product-page-service.yaml
+      - backend/services/shop-page-service.yaml
+      - backend/services/themes-service.yaml
+      - frontend/components/category-page/category-page-factory.yaml
+      - frontend/components/category-page/common-category-container.yaml
+      - frontend/layouts/layout-categoryproduct.yaml
+  - spec: frontend/components/shared/customer-review.yaml
+    dependents_count: 14
+    dependents:
+      - backend/services/category-service.yaml
+      - backend/services/home-service.yaml
+      - backend/services/product-page-service.yaml
+      - backend/services/product-page-web-content-service.yaml
+      - frontend/components/category-page/category-page-factory.yaml
+      - frontend/components/category-page/common-category-container.yaml
+      - frontend/components/product-page/photo-canvas-prints-bundled-template.yaml
+      - frontend/components/product-page/photo-canvas-prints-hub-bundled-template.yaml
+      - frontend/components/product-page/photo-canvas-prints-new-template.yaml
+      - frontend/components/product-page/photo-canvas-prints-template-v2.yaml
+      - frontend/components/product-page/product-page-basic-template.yaml
+      - frontend/components/product-page/product-page-fixed-template.yaml
+      - frontend/components/product-page/product-page-fixed-theme-template.yaml
+      - frontend/components/product-page/product-page-hub-template.yaml
+  - spec: shared/config/http.yaml
+    dependents_count: 13
+    dependents:
+      - backend/services/accounts-service.yaml
+      - backend/services/add-to-cart-service.yaml
+      - backend/services/category-service.yaml
+      - backend/services/common-service.yaml
+      - backend/services/delivery-rates-service.yaml
+      - backend/services/home-service.yaml
+      - backend/services/json-service.yaml
+      - backend/services/product-page-service.yaml
+      - backend/services/shop-page-service.yaml
+      - backend/services/themes-service.yaml
+      - backend/services/web-component-service.yaml
+      - frontend/layouts/layout-categoryproduct.yaml
+      - shared/utilities/http.yaml
+  - spec: backend/services/product-page-service.yaml
+    dependents_count: 14
+    dependents:
+      - backend/services/category-service.yaml
+      - backend/services/product-category-service.yaml
+      - backend/services/themes-service.yaml
+      - frontend/components/product-page/photo-canvas-prints-new-template-v3.yaml
+      - frontend/components/product-page/photo-canvas-prints-new-template.yaml
+      - frontend/components/product-page/photo-canvas-prints-template-v2.yaml
+      - frontend/components/product-page/product-description-v2.yaml
+      - frontend/components/product-page/product-page-fixed-template.yaml
+      - frontend/components/product-page/product-page-fixed-theme-template.yaml
+      - frontend/components/product-page/product-page-hub-child-template.yaml
+      - frontend/components/product-page/product-page-selection.yaml
+      - frontend/components/product-page/product-trust-indicator-v6.yaml
+      - frontend/layouts/layout-categoryproduct.yaml
+      - shared/context/product-category-context.yaml
+  - spec: backend/services/category-service.yaml
+    dependents_count: 15
+    dependents:
+      - backend/services/product-category-service.yaml
+      - backend/services/product-page-service.yaml
+      - backend/services/themes-service.yaml
+      - backend/services/web-component-service.yaml
+      - frontend/components/category-page/category-banner.yaml
+      - frontend/components/category-page/category-card.yaml
+      - frontend/components/category-page/category-page-factory.yaml
+      - frontend/components/category-page/category-quick-links.yaml
+      - frontend/components/category-page/common-category-container.yaml
+      - frontend/components/category-page/global-category-banner.yaml
+      - frontend/components/category-page/product-sections.yaml
+      - frontend/components/product-page/photo-canvas-prints-bundled-template.yaml
+      - frontend/components/product-page/photo-canvas-prints-hub-bundled-template.yaml
+      - frontend/layouts/layout-categoryproduct.yaml
+      - shared/context/product-category-context.yaml
+  - spec: shared/context/device-detector-context.yaml
+    dependents_count: 10
+    dependents:
+      - frontend/components/product-page/photo-canvas-prints-bundled-template.yaml
+      - frontend/components/product-page/photo-canvas-prints-hub-bundled-template.yaml
+      - frontend/components/product-page/photo-canvas-prints-new-template-v3.yaml
+      - frontend/components/product-page/photo-canvas-prints-new-template.yaml
+      - frontend/components/product-page/photo-canvas-prints-template-v2.yaml
+      - frontend/components/product-page/product-page-basic-template.yaml
+      - frontend/components/product-page/product-page-fixed-template.yaml
+      - frontend/components/product-page/product-page-fixed-theme-template.yaml
+      - frontend/components/product-page/product-page-hub-template.yaml
+      - frontend/layouts/layout-categoryproduct.yaml
+  - spec: shared/data/option-data.yaml
+    dependents_count: 10
+    dependents:
+      - backend/services/product-category-service.yaml
+      - backend/services/product-page-service.yaml
+      - frontend/components/product-page/instant-product-page-container.yaml
+      - frontend/components/product-page/photo-canvas-prints-bundled-template.yaml
+      - frontend/components/product-page/photo-canvas-prints-hub-bundled-template.yaml
+      - frontend/components/product-page/photo-canvas-prints-new-template-v3.yaml
+      - frontend/components/product-page/photo-canvas-prints-new-template.yaml
+      - frontend/components/product-page/photo-canvas-prints-template-v2.yaml
+      - frontend/components/product-page/product-page-fixed-template.yaml
+      - frontend/components/product-page/product-page-hub-template.yaml
+  - spec: backend/services/common-service.yaml
+    dependents_count: 9
+    dependents:
+      - backend/services/accounts-service.yaml
+      - backend/services/add-to-cart-service.yaml
+      - backend/services/delivery-rates-service.yaml
+      - backend/services/product-page-service.yaml
+      - backend/services/themes-service.yaml
+      - frontend/layouts/layout-categoryproduct.yaml
+      - frontend/layouts/layout-default.yaml
+      - shared/context/web-content-context.yaml
+      - shared/utilities/http.yaml
+  - spec: backend/services/server.yaml
+    dependents_count: 9
+    dependents:
+      - backend/services/accounts-service.yaml
+      - backend/services/category-service.yaml
+      - backend/services/product-page-service.yaml
+      - frontend/components/header/header.yaml
+      - frontend/routes/delivery-rates.yaml
+      - frontend/routes/sitemap-index.yaml
+      - shared/config/http.yaml
+      - shared/utilities/format.yaml
+      - shared/utilities/http.yaml
+  - spec: backend/services/cart-cookie-service.yaml
+    dependents_count: 8
+    dependents:
+      - backend/services/accounts-service.yaml
+      - backend/services/common-service.yaml
+      - backend/services/cart-services/gtm/data-layer-mapper.yaml
+      - backend/services/klaviyo-service.yaml
+      - backend/services/middle-ware-service.yaml
+      - backend/services/product-page-service.yaml
+      - frontend/components/header/header.yaml
+      - shared/config/http.yaml
+  - spec: backend/services/themes-service.yaml
+    dependents_count: 7
+    dependents:
+      - backend/services/product-category-service.yaml
+      - backend/services/product-page-service.yaml
+      - backend/services/web-component-service.yaml
+      - frontend/components/product-page/instant-product-page-container.yaml
+      - frontend/components/product-page/product-page-basic-template.yaml
+      - frontend/components/product-page/product-page-fixed-template.yaml
+      - frontend/components/product-page/product-page-hub-template.yaml
+  - spec: backend/services/cart-services/gtm/data-layer-mapper.yaml
+    dependents_count: 5
+    dependents:
+      - backend/services/cart-cookie-service.yaml
+      - backend/services/middle-ware-service.yaml
+      - backend/services/product-page-service.yaml
+      - frontend/components/header/header.yaml
+      - frontend/layouts/layout-categoryproduct.yaml
+  - spec: backend/services/web-component-service.yaml
+    dependents_count: 6
+    dependents:
+      - backend/services/product-page-service.yaml
+      - frontend/components/category-page/category-page-factory.yaml
+      - frontend/components/category-page/common-category-container.yaml
+      - frontend/components/product-page/bulk-pricing-v4.yaml
+      - frontend/components/product-page/product-page-hub-child-template.yaml
+      - frontend/components/product-page/product-page-hub-template.yaml
+  - spec: backend/services/klaviyo-service.yaml
+    dependents_count: 4
+    dependents:
+      - backend/services/product-page-service.yaml
+      - frontend/components/category-page/category-page-factory.yaml
+      - frontend/components/category-page/common-category-container.yaml
+      - frontend/components/header/header.yaml
+  - spec: shared/utilities/homepage-contents.yaml
+    dependents_count: 5
+    dependents:
+      - backend/services/json-service.yaml
+      - frontend/components/footer/footer-product-category.yaml
+      - frontend/components/footer/footer.yaml
+      - frontend/components/header/header.yaml
+      - frontend/components/homepage/home-page-category-card.yaml
+  - spec: backend/services/accounts-service.yaml
+    dependents_count: 3
+    dependents:
+      - backend/services/klaviyo-service.yaml
+      - backend/services/middle-ware-service.yaml
+      - frontend/components/header/header.yaml
+  - spec: frontend/components/shared/accordion-details.yaml
+    dependents_count: 3
+    dependents:
+      - frontend/components/footer/footer-product-category.yaml
+      - frontend/components/footer/footer.yaml
+      - frontend/routes/delivery-rates.yaml
+  - spec: frontend/components/shared/accordion-header.yaml
+    dependents_count: 3
+    dependents:
+      - frontend/components/footer/footer-product-category.yaml
+      - frontend/components/footer/footer.yaml
+      - frontend/routes/delivery-rates.yaml
+  - spec: frontend/components/shared/accordion.yaml
+    dependents_count: 3
+    dependents:
+      - frontend/components/footer/footer-product-category.yaml
+      - frontend/components/footer/footer.yaml
+      - frontend/routes/delivery-rates.yaml
+  - spec: frontend/components/shared/svg-icon.yaml
+    dependents_count: 10
+    dependents:
+      - frontend/components/category-page/category-quick-links.yaml
+      - frontend/components/category-page/collection-slider.yaml
+      - frontend/components/category-page/shop-page-cards.yaml
+      - frontend/components/header/global-search.yaml
+      - frontend/components/header/header.yaml
+      - frontend/components/header/reminder-creation-modal.yaml
+      - frontend/components/product-page/photo-canvas-prints-hub-bundled-template.yaml
+      - frontend/components/product-page/product-option-type-4.yaml
+      - frontend/components/product-page/product-shop-design.yaml
+      - frontend/routes/delivery-rates.yaml
+  - spec: shared/utilities/matomo.yaml
+    dependents_count: 5
+    dependents:
+      - backend/services/product-page-service.yaml
+      - frontend/components/banner/dynamic-promo-banner-v2.yaml
+      - frontend/components/category-page/category-card.yaml
+      - frontend/components/category-page/global-category-banner.yaml
+      - frontend/components/header/header.yaml
+  - spec: backend/services/cart-services/gtm/data-layer-base.yaml
+    dependents_count: 2
+    dependents:
+      - backend/services/product-page-service.yaml
+      - frontend/layouts/layout-categoryproduct.yaml
+  - spec: backend/services/middle-ware-service.yaml
+    dependents_count: 2
+    dependents:
+      - frontend/layouts/layout-categoryproduct.yaml
+      - frontend/layouts/layout-default.yaml
+  - spec: backend/services/shop-by-category-service.yaml
+    dependents_count: 2
+    dependents:
+      - backend/services/json-service.yaml
+      - backend/services/web-component-service.yaml
+  - spec: frontend/components/banner/strip-banner.yaml
+    dependents_count: 2
+    dependents:
+      - frontend/layouts/layout-categoryproduct.yaml
+      - frontend/layouts/layout-default.yaml
+  - spec: frontend/components/header/header-wrapper.yaml
+    dependents_count: 2
+    dependents:
+      - frontend/layouts/layout-categoryproduct.yaml
+      - frontend/layouts/layout-default.yaml
+  - spec: frontend/components/shared/cross-domain-notification.yaml
+    dependents_count: 2
+    dependents:
+      - frontend/layouts/layout-categoryproduct.yaml
+      - frontend/layouts/layout-default.yaml
+  - spec: frontend/components/shared/fresh-desk-widget.yaml
+    dependents_count: 2
+    dependents:
+      - frontend/components/footer/footer-product-category.yaml
+      - frontend/components/footer/footer.yaml
+  - spec: frontend/components/shared/home-bottom-banner.yaml
+    dependents_count: 2
+    dependents:
+      - frontend/components/footer/footer-product-category.yaml
+      - frontend/components/footer/footer.yaml
+  - spec: frontend/components/shared/our-help.yaml
+    dependents_count: 2
+    dependents:
+      - frontend/components/footer/footer-product-category.yaml
+      - frontend/components/footer/footer.yaml
+  - spec: frontend/components/shared/trust-indicator.yaml
+    dependents_count: 2
+    dependents:
+      - frontend/components/footer/footer-product-category.yaml
+      - frontend/components/footer/footer.yaml
+  - spec: shared/utilities/backup-json-utilities.yaml
+    dependents_count: 2
+    dependents:
+      - backend/services/common-service.yaml
+      - backend/services/json-service.yaml
+  - spec: shared/utilities/country-region.yaml
+    dependents_count: 2
+    dependents:
+      - frontend/layouts/layout-categoryproduct.yaml
+      - frontend/layouts/layout-default.yaml
+  - spec: shared/utilities/device.yaml
+    dependents_count: 2
+    dependents:
+      - frontend/layouts/layout-categoryproduct.yaml
+      - shared/context/device-detector-context.yaml
+  - spec: shared/utilities/share-contents.yaml
+    dependents_count: 2
+    dependents:
+      - frontend/components/footer/footer-product-category.yaml
+      - frontend/components/footer/footer.yaml
+
+# Specs with unresolved dependencies
+unresolved:
+  - spec: backend/services/accounts-service.yaml
+    unresolved_paths:
+      - "~/utility/storage"
+  - spec: backend/services/klaviyo-service.yaml
+    unresolved_paths:
+      - "~/config/klaviyo"
+      - "~/services/cart-service"
+  # frontend/components/banner/dynamic-promo-banner-v2.yaml — all previously-unresolved paths now have specs; no remaining unresolved
+  - spec: frontend/components/category-page/category-page-factory.yaml
+    unresolved_paths:
+      - "~/components/web-component/video-banner"
+  - spec: frontend/components/category-page/common-category-container.yaml
+    unresolved_paths:
+      - "~/components/web-component/video-banner"
+  - spec: frontend/components/header/header.yaml
+    unresolved_paths:
+      - "~/components/icons/account"
+      - "~/components/icons/cart"
+      - "~/components/icons/pix"
+      - "~/hooks/useIsTouchDevice"
+      - "~/utility/storage"
+  - spec: frontend/components/info-pages/image-resolution-container.yaml
+    unresolved_paths:
+      - "~/utility/image-resolution/DE.json"
+      - "~/utility/image-resolution/ES.json"
+      - "~/utility/image-resolution/FR.json"
+      - "~/utility/image-resolution/IT.json"
+      - "~/utility/image-resolution/NL.json"
+      - "~/utility/image-resolution/UK.json"
+      - "~/utility/image-resolution/US.json"
+  - spec: frontend/components/product-page/instant-product-page-container.yaml
+    unresolved_paths:
+      - "~/components/product-page/instant-product-option-panel"
+  - spec: frontend/components/product-page/photo-canvas-prints-bundled-template.yaml
+    unresolved_paths:
+      - "~/components/homepage/trustpilot-rating"
+      - "~/components/product-page/canvas-size-table/canvas-size-table2"
+      - "~/components/product-page/option-canvas-prints-panel"
+      - "~/components/product-page/product-countdown-timer/product-flip-clock-v2"
+      - "~/hooks/useDetectScreen"
+  - spec: frontend/components/product-page/photo-canvas-prints-hub-bundled-template.yaml
+    unresolved_paths:
+      - "~/components/homepage/trustpilot-rating"
+      - "~/components/product-page/canvas-size-table/canvas-size-table"
+      - "~/components/product-page/option-canvas-prints-panel"
+      - "~/components/product-page/option-canvas-prints-panel-hub"
+      - "~/components/product-page/product-countdown-timer/product-flip-clock-v2"
+      - "~/hooks/useDetectScreen"
+  - spec: frontend/components/product-page/photo-canvas-prints-new-template-v3.yaml
+    unresolved_paths:
+      - "~/components/customer-review/customer-review-v3"
+      - "~/components/homepage/trustpilot-rating-v2"
+      - "~/components/product-page/canvas-size-table/canvas-size-table"
+      - "~/components/product-page/option-ryzan-panel-v2"
+      - "~/components/product-page/payment-trust-indicator-v3"
+      - "~/components/product-page/product-carousel/product-carousel-modern"
+      - "~/components/product-page/product-countdown-timer/product-flip-clock-v2"
+      - "~/components/product-page/product-description-v3"
+      - "~/components/product-page/product-page-content-v3"
+      - "~/components/share/trust-indication/trust-indicator-2"
+      - "~/hooks/useDetectScreen"
+  - spec: frontend/components/product-page/photo-canvas-prints-new-template.yaml
+    unresolved_paths:
+      - "~/components/homepage/trustpilot-rating"
+      - "~/components/product-page/canvas-size-table/canvas-size-table"
+      - "~/components/product-page/option-canvas-prints-panel"
+      - "~/components/product-page/product-countdown-timer/product-flip-clock-v2"
+      - "~/hooks/useDetectScreen"
+  - spec: frontend/components/product-page/photo-canvas-prints-template-v2.yaml
+    unresolved_paths:
+      - "~/components/homepage/trustpilot-rating"
+      - "~/components/product-page/canvas-size-table/canvas-size-table3"
+      - "~/components/product-page/option-canvas-prints-panel-v2"
+      - "~/components/product-page/product-countdown-timer/product-flip-clock-v2"
+      - "~/components/product-page/product-description"
+      - "~/hooks/useDetectScreen"
+  - spec: frontend/components/product-page/product-page-basic-template.yaml
+    unresolved_paths:
+      - "~/components/homepage/trustpilot-rating"
+      - "~/hooks/useDetectScreen"
+  - spec: frontend/components/product-page/product-page-fixed-template.yaml
+    unresolved_paths:
+      - "~/components/homepage/trustpilot-rating"
+      - "~/components/product-page/option-panel-v3"
+      - "~/components/product-page/option-photo-cards-panel"
+      - "~/components/product-page/product-countdown-timer/product-flip-clock-v2"
+      - "~/hooks/useDetectScreen"
+  - spec: frontend/components/product-page/product-page-fixed-theme-template.yaml
+    unresolved_paths:
+      - "~/components/homepage/trustpilot-rating"
+      - "~/components/product-page/option-fixed-theme-cards-panel"
+      - "~/components/product-page/option-panel-v2"
+      - "~/components/product-page/product-countdown-timer/product-flip-clock-v2"
+      - "~/data/option-card"
+      - "~/hooks/useDetectScreen"
+  - spec: frontend/components/product-page/product-page-hub-child-template.yaml
+    unresolved_paths:
+      - "~/components/product-page/product-hub-child-filter"
+      - "~/components/product-page/theme-products-section"
+  - spec: frontend/components/product-page/product-page-hub-template.yaml
+    unresolved_paths:
+      - "~/components/homepage/trustpilot-rating"
+      - "~/components/product-page/option-photo-cards-panel"
+      - "~/components/product-page/product-countdown-timer/product-flip-clock-v2"
+      - "~/hooks/useDetectScreen"
+  - spec: shared/config/http.yaml
+    unresolved_paths:
+      - "~/utility/sentry"
+  - spec: shared/utilities/about-us-content.yaml
+    unresolved_paths:
+      - "~/utility/about-us/DE.json"
+      - "~/utility/about-us/ES.json"
+      - "~/utility/about-us/FR.json"
+      - "~/utility/about-us/IT.json"
+      - "~/utility/about-us/NL.json"
+      - "~/utility/about-us/UK.json"
+      - "~/utility/about-us/US.json"
+  - spec: shared/utilities/share-contents.yaml
+    unresolved_paths:
+      - "~/utility/share-content/trust-indicator/DE.json"
+      - "~/utility/share-content/trust-indicator/ES.json"
+      - "~/utility/share-content/trust-indicator/FR.json"
+      - "~/utility/share-content/trust-indicator/IT.json"
+      - "~/utility/share-content/trust-indicator/NL.json"
+      - "~/utility/share-content/trust-indicator/UK.json"
+      - "~/utility/share-content/trust-indicator/US.json"

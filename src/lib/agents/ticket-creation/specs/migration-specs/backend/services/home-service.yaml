@@ -1,0 +1,485 @@
+name: HomeService
+source: services/home-service.ts
+description: |
+  Fetches and processes homepage data including banners, product sections, promo banners,
+  web components, customer reviews, and structured FAQ data. Provides schema data for
+  different regions and default item ordering configuration.
+
+exports:
+  functions:
+    - name: getHomepage
+      signature: "async function getHomepage(request: HomepageRequest): Promise<{data, mainPromoBanner, floatingPromoBanner, webComponents, reviewsCollection} | null>"
+      description: Fetches homepage data from /homepage/getv2 API endpoint with tracking parameters
+      params:
+        - name: request
+          type: HomepageRequest
+          description: Contains coupon code, tracking IDs (gclId, pixId), UTM parameters, and optional timestamp
+      returns:
+        type: "Object with {data: HomepageViewModel, mainPromoBanner, floatingPromoBanner, webComponents, reviewsCollection} or null"
+        description: Returns null if data is not ready, otherwise returns structured homepage data
+      side_effects:
+        - Makes POST request to /homepage/getv2
+        - Uses READ_API_TIMEOUT from settings
+        - Uses "hard" caching strategy
+
+    - name: getFaqsForPage
+      signature: "function getFaqsForPage(homePageData: {webComponents: WebComponent[] | null}): Array<{question: string; answer: string}>"
+      description: Extracts FAQ data from web components by finding "FAQ Section" template and processing it
+      params:
+        - name: homePageData
+          type: "Object with webComponents array"
+          description: Homepage data containing web components
+      returns:
+        type: "Array<{question: string; answer: string}>"
+        description: Returns empty array if no FAQ section found, otherwise returns processed FAQ items
+      side_effects:
+        - Calls processFaqContentData from web-component-service
+
+  types:
+    - name: HomepageBanner
+      fields:
+        - mobileBannerUrl: string
+        - bannerUrl: string
+        - bannerAltText: string
+        - bannerNavUrl: string
+
+    - name: ProductPage
+      fields:
+        - caption: string
+        - bannerUrl: string
+        - bannerAltText: string
+        - productPageUrl: string
+        - price: number
+        - discountedPrice: number
+        - priceDisplay: string
+        - discountedPriceDisplay: string
+
+    - name: ProductSection
+      fields:
+        - heading: string
+        - subheading: string
+        - categoryPageUrl: string
+        - productPages: ProductPage[]
+        - buttonCaption: string
+
+    - name: Middle
+      fields:
+        - mobileBannerUrl: any (nullable)
+        - bannerUrl: any (nullable)
+        - bannerAltText: any (nullable)
+        - bannerNavUrl: any (nullable)
+
+    - name: Bottom
+      fields:
+        - mobileBannerUrl: any (nullable)
+        - bannerUrl: any (nullable)
+        - bannerAltText: any (nullable)
+        - bannerNavUrl: any (nullable)
+
+    - name: Strip
+      fields:
+        - mobileBannerUrl: string
+        - bannerUrl: string
+        - bannerAltText: string
+        - bannerNavUrl: string
+
+    - name: FlyingAngel
+      fields:
+        - mobileBannerUrl: any (nullable)
+        - bannerUrl: any (nullable)
+        - bannerAltText: any (nullable)
+        - bannerNavUrl: any (nullable)
+
+    - name: OtherBanners
+      fields:
+        - middle: Middle
+        - bottom: Bottom
+        - strips: Strip[]
+        - flyingAngel: FlyingAngel
+
+    - name: HomepageViewModel
+      fields:
+        - cssBox: string
+        - showFlyingAngel: boolean
+        - showFlyingAngelCountDown: boolean
+        - pageTitle: string
+        - h1: string
+        - metaTitle: string
+        - metaKeywords: string
+        - metaDescription: string
+        - aboutUsTitle: string
+        - aboutUsContent: string
+        - satisfactionTitle: string
+        - satisfactionContent: string
+        - homepageBanners: HomepageBanner[]
+        - homepageAssociations: ProductSection[]
+        - otherBanners: OtherBanners
+        - storeWideMessages: any[]
+        - showCountDown: boolean
+        - timerDateEnd: Date
+
+    - name: Data
+      fields:
+        - homepageViewModel: HomepageViewModel
+        - mainPromoBanner: MainBannerSection
+        - floatingPromoBanner: FloatingBannerSection
+        - cookies: any[]
+        - webComponents: WebComponent[] | null
+        - reviewsCollection: CustomerReview | null
+
+    - name: HomepageRequest
+      fields:
+        - couponCode: string
+        - gclId: string
+        - pixId: string
+        - utm_id: string
+        - utm_source: string
+        - utm_medium: string
+        - utm_campaign: string
+        - utm_term: string
+        - utm_content: string
+        - utm_creative_format: string
+        - utm_marketing_tactic: string
+        - utm_source_platform: string
+        - wbraid: string
+        - gbraid: string
+        - unixTimestamp: string (optional)
+
+  constants:
+    - name: DEFAULT_HOMEPAGE_ITEMS_ORDER
+      type: Object
+      value: "{trustIcons: 2, reviews: 6, categories: 10, guidelineSection: 18, goQuickWidget: 3}"
+      description: Default sort order for homepage sections
+
+    - name: homePageSchemaData
+      type: Array<{region: string, data: object}>
+      description: Region-specific contact and social media data for GB, US, FR, IT, ES, NL
+
+  zod_schemas:
+    - ProductPageSchema: Validates ProductPage interface
+    - ProductSectionSchema: Validates ProductSection interface
+
+api_contracts:
+  - endpoint: /homepage/getv2
+    method: POST
+    description: Fetches homepage data with tracking parameters
+    request:
+      body:
+        params:
+          couponCode: string
+          gclId: string
+          pixId: string
+          utm_id: string
+          utm_source: string
+          utm_medium: string
+          utm_campaign: string
+          utm_term: string
+          utm_content: string
+          utm_creative_format: string
+          utm_marketing_tactic: string
+          utm_source_platform: string
+          wbraid: string
+          gbraid: string
+          unixTimestamp: string (optional)
+      timeout: READ_API_TIMEOUT from settings
+    response:
+      success:
+        data:
+          homepageViewModel: HomepageViewModel
+          mainPromoBanner: MainBannerSection
+          floatingPromoBanner: FloatingBannerSection
+          cookies: any[]
+          webComponents: WebComponent[] | null
+          reviewsCollection: CustomerReview | null
+      error: null (when data not ready)
+
+dependencies:
+  internal:
+    - "@builder.io/qwik-city": z (Zod schema validation)
+    - "~/utility/http": handleMultipleAPIRequests, HTTP_METHODS
+    - "./common-service": isDataReady
+    - "~/config/http": NewAPIResponse type
+    - "./json-service": FloatingBannerSection, MainBannerSection types
+    - "./web-component-service": WebComponent type, processFaqContentData function
+    - "~/components/customer-review/customer-review": CustomerReview type
+    - "~/config/settings": settings function
+  external:
+    - zod: Schema validation library
+
+data_flow:
+  inputs:
+    - HomepageRequest with tracking and UTM parameters
+    - Optional AbortController for request cancellation
+  processing:
+    - Sends POST request to /homepage/getv2
+    - Checks if response data is ready using isDataReady
+    - Extracts specific fields from API response
+    - For FAQs: finds "FAQ Section" in webComponents and processes it
+  outputs:
+    - Homepage data object with all sections
+    - Processed FAQ array with question/answer pairs
+    - null if data not available
+
+business_logic:
+  - Homepage data includes multiple banner types (main, floating, strips, flying angel)
+  - Product sections can have associations with categories
+  - FAQ data is extracted from web components template system
+  - Default ordering defines visual layout of homepage sections
+  - Region-specific schema data for SEO and social media
+  - Countdown timers can be enabled for promotional periods
+
+error_handling:
+  - Returns null when API response data is not ready
+  - Returns empty array for FAQs when webComponents is null/empty or no FAQ section found
+  - Uses isDataReady to check response validity
+
+security:
+  - Tracking parameters (gclId, pixId, UTM) are passed through without validation
+  - API timeout enforced via READ_API_TIMEOUT setting
+  - No sensitive data exposed in interfaces
+
+behavior:
+  - name: getHomepage
+    steps:
+      - POSTs HomepageRequest to /homepage/getv2 with "hard" cache strategy
+      - Passes request object as params, includes timeout from settings().READ_API_TIMEOUT
+      - Checks isDataReady on response
+      - If ready, extracts and returns object with 5 fields from response.data:
+        - data: homepageViewModel (banners, product sections, meta, countdown)
+        - mainPromoBanner: MainBannerSection
+        - floatingPromoBanner: FloatingBannerSection
+        - webComponents: WebComponent[] or null
+        - reviewsCollection: CustomerReview or null
+      - If not ready, returns null
+
+  - name: getFaqsForPage
+    steps:
+      - Extracts webComponents from homePageData, defaults to empty array
+      - If webComponents is not an array or is empty, returns empty array
+      - Searches for component with wcTemplateName === "FAQ Section"
+      - If no FAQ section found, returns empty array
+      - Calls processFaqContentData from web-component-service
+      - Maps processed data.faqs to array of { question, answer } objects
+      - If processed faqs is not an array, returns empty array
+
+used_by:
+  - frontend/routes/home-page.yaml - imports getHomepage, DEFAULT_HOMEPAGE_ITEMS_ORDER for homepage route loader
+  - frontend/components/homepage/homepagecategory.yaml - imports types from home-service for category sections
+  - frontend/components/homepage/homepage-category-container.yaml - imports types for category container
+  - frontend/components/carousels/dynamic-carousel.yaml - imports HomepageBanner type
+  - backend/services/json-service.yaml - imports ProductSectionSchema, ProductSection for schema validation
+  - backend/services/web-component-service.yaml - imports DEFAULT_HOMEPAGE_ITEMS_ORDER for web component ordering
+
+types:
+  HomepageBanner:
+    description: Banner image data for homepage hero carousel
+    fields:
+      - name: mobileBannerUrl
+        type: string
+      - name: bannerUrl
+        type: string
+      - name: bannerAltText
+        type: string
+      - name: bannerNavUrl
+        type: string
+
+  ProductPage:
+    description: Individual product within a homepage association section
+    fields:
+      - name: caption
+        type: string
+      - name: bannerUrl
+        type: string
+      - name: bannerAltText
+        type: string
+      - name: productPageUrl
+        type: string
+      - name: price
+        type: number
+      - name: discountedPrice
+        type: number
+      - name: priceDisplay
+        type: string
+      - name: discountedPriceDisplay
+        type: string
+
+  ProductSection:
+    description: Homepage association section grouping related products
+    fields:
+      - name: heading
+        type: string
+      - name: subheading
+        type: string
+      - name: categoryPageUrl
+        type: string
+      - name: productPages
+        type: "ProductPage[]"
+      - name: buttonCaption
+        type: string
+
+  Middle:
+    description: Middle-position secondary banner (all fields nullable)
+    fields:
+      - name: mobileBannerUrl
+        type: any
+        optional: true
+      - name: bannerUrl
+        type: any
+        optional: true
+      - name: bannerAltText
+        type: any
+        optional: true
+      - name: bannerNavUrl
+        type: any
+        optional: true
+
+  Bottom:
+    description: Bottom-position secondary banner (all fields nullable)
+    fields:
+      - name: mobileBannerUrl
+        type: any
+        optional: true
+      - name: bannerUrl
+        type: any
+        optional: true
+      - name: bannerAltText
+        type: any
+        optional: true
+      - name: bannerNavUrl
+        type: any
+        optional: true
+
+  Strip:
+    description: Horizontal strip banner
+    fields:
+      - name: mobileBannerUrl
+        type: string
+      - name: bannerUrl
+        type: string
+      - name: bannerAltText
+        type: string
+      - name: bannerNavUrl
+        type: string
+
+  FlyingAngel:
+    description: Flying angel promotional overlay (all fields nullable)
+    fields:
+      - name: mobileBannerUrl
+        type: any
+        optional: true
+      - name: bannerUrl
+        type: any
+        optional: true
+      - name: bannerAltText
+        type: any
+        optional: true
+      - name: bannerNavUrl
+        type: any
+        optional: true
+
+  OtherBanners:
+    description: Collection of secondary banner placements
+    fields:
+      - name: middle
+        type: Middle
+      - name: bottom
+        type: Bottom
+      - name: strips
+        type: "Strip[]"
+      - name: flyingAngel
+        type: FlyingAngel
+
+  HomepageViewModel:
+    description: Main homepage view model returned from API
+    fields:
+      - name: cssBox
+        type: string
+      - name: showFlyingAngel
+        type: boolean
+      - name: showFlyingAngelCountDown
+        type: boolean
+      - name: pageTitle
+        type: string
+      - name: h1
+        type: string
+      - name: metaTitle
+        type: string
+      - name: metaKeywords
+        type: string
+      - name: metaDescription
+        type: string
+      - name: aboutUsTitle
+        type: string
+      - name: aboutUsContent
+        type: string
+      - name: satisfactionTitle
+        type: string
+      - name: satisfactionContent
+        type: string
+      - name: homepageBanners
+        type: "HomepageBanner[]"
+      - name: homepageAssociations
+        type: "ProductSection[]"
+      - name: otherBanners
+        type: OtherBanners
+      - name: storeWideMessages
+        type: "any[]"
+      - name: showCountDown
+        type: boolean
+      - name: timerDateEnd
+        type: Date
+
+  Data:
+    description: Full API response data shape from /homepage/getv2
+    fields:
+      - name: homepageViewModel
+        type: HomepageViewModel
+      - name: mainPromoBanner
+        type: MainBannerSection
+        description: From ~/services/json-service
+      - name: floatingPromoBanner
+        type: FloatingBannerSection
+        description: From ~/services/json-service
+      - name: cookies
+        type: "any[]"
+      - name: webComponents
+        type: "WebComponent[] | null"
+        description: From ~/services/web-component-service
+      - name: reviewsCollection
+        type: "CustomerReview | null"
+        description: From ~/components/customer-review/customer-review
+
+  HomepageRequest:
+    description: Request payload for POST /homepage/getv2
+    fields:
+      - name: couponCode
+        type: string
+      - name: gclId
+        type: string
+      - name: pixId
+        type: string
+      - name: utm_id
+        type: string
+      - name: utm_source
+        type: string
+      - name: utm_medium
+        type: string
+      - name: utm_campaign
+        type: string
+      - name: utm_term
+        type: string
+      - name: utm_content
+        type: string
+      - name: utm_creative_format
+        type: string
+      - name: utm_marketing_tactic
+        type: string
+      - name: utm_source_platform
+        type: string
+      - name: wbraid
+        type: string
+      - name: gbraid
+        type: string
+      - name: unixTimestamp
+        type: string
+        optional: true

@@ -1,0 +1,391 @@
+name: ShoppingGuideSlider
+source: src/components/web-component/shopping-guide-slider.tsx
+description: |
+  Responsive image/link slider for the shopping guide section. Renders a heading,
+  optional description, and a grid of items each with a desktop image and a mobile image.
+  On desktop: items display in a horizontal flex row with hover overlays showing heading,
+  optional bullet list, and optional "explore" CTA text. On mobile: two layout variants
+  depending on isStacked — stacked mode splits items into a top scrollable row (all except
+  last 2) and a bottom column (last 2); non-stacked mode renders all items in a single
+  wide scrollable row (350vw wide). Items with href are clickable and fire Matomo analytics.
+  Supports a greyscale image mode where images render in grayscale and un-grey on hover.
+  Uses useStyles$ (global, not scoped) for responsive font-size overrides.
+
+exports:
+  - name: default
+    type: component$<ProductPageOptionType2Props>
+    description: Default Qwik component export
+
+props:
+  - name: data
+    type: TypeOption2
+    required: true
+    description: Slider data with heading, description, types array, showIcon flag, and optional expandDescriptionText
+  - name: isGreyscale
+    type: boolean
+    required: false
+    default: false
+    description: When true, desktop images render in grayscale and un-grey on hover
+  - name: isStacked
+    type: boolean
+    required: false
+    default: false
+    description: When true, mobile layout uses stacked rows when item count > 4; otherwise single wide scroll row
+
+component_structure:
+  root: Fragment (<>)
+  children:
+    - h2 heading (always rendered)
+    - p description (rendered only when data.descr is truthy)
+    - div desktop container (hidden lg:flex — hidden on mobile, shown on lg+)
+    - div mobile container (lg:hidden — shown on mobile, hidden on lg+)
+
+  desktop_container:
+    class: "hidden lg:flex -mx-1 lg:overflow-auto"
+    per_item_wrapper:
+      class: "flex-1 relative group px-1 [+ cursor-pointer if showIcon && href] cta_shopping_guide_slider--{index}"
+      clickable: when data.showIcon && type.href is truthy
+      children:
+        - Image (type.imgDesktop, fullWidth layout, 7/13 aspectRatio, greyscale conditional)
+        - Overlay div (absolute, bottom-24px, white panel)
+          children:
+            - span (bold heading)
+            - ul with bullet items (only if type.bullets exists and length > 0)
+            - explore div (dangerouslySetInnerHTML of expandDescriptionText, only if showIcon && href)
+
+  mobile_container:
+    class: "lg:hidden overflow-auto"
+    stacked_mode:
+      condition: "isStacked && data.types.length > 4"
+      layout:
+        - top_row: overflow-x-scroll, scrollbarWidth:none, flex gap-2, items 0..length-3, min-w-[53%] each
+        - bottom_col: flex-col gap-2, last 2 items
+    non_stacked_mode:
+      condition: "!isStacked or data.types.length <= 4"
+      layout: div id="review_carousel", w-[350vw] md:w-[200vw], flex justify-between, all items min-w-[33%] approx
+
+  mobile_item_template:
+    renders: renderSliderItem(type) helper function
+    content:
+      - Image (type.imgMobile, 119/270 aspectRatio, mobile only)
+      - Overlay div (w-[90%], absolute, bottom-6px, white panel)
+        children:
+          - p heading (font-semibold heading text-lg leading-none)
+          - explore div (dangerouslySetInnerHTML, only if showIcon && href)
+
+child_components:
+  - name: Image
+    source: "@unpic/qwik"
+    purpose: Renders desktop and mobile product images
+    props:
+      desktop:
+        - layout: fullWidth
+        - aspectRatio: "7/13"
+        - src: type.imgDesktop
+        - class includes greyscale conditional
+      mobile:
+        - aspectRatio: "119/270"
+        - src: type.imgMobile
+        - class: "auto transition-all duration-300 lg:hidden max-h-[600px] w-full"
+
+data_structure:
+  TypeOption2:
+    heading:
+      type: string
+      description: Section h2 heading text
+    descr:
+      type: string
+      description: Optional subtitle/description paragraph
+    imgMobile:
+      type: "string | null"
+      description: Not used by this component (defined on TypeOption2 but not read here)
+    imgDesktop:
+      type: "string | null"
+      description: Not used by this component (defined on TypeOption2 but not read here)
+    types:
+      type: "ProductOptionType2[]"
+      description: Array of slider items
+    order:
+      type: "number | undefined"
+      description: Not used by this component
+    expandDescriptionText:
+      type: "string | undefined"
+      description: Markdown HTML string for the "explore" link text, rendered via dangerouslySetInnerHTML
+    expandDescriptionIsUrl:
+      type: "boolean | undefined"
+      description: Not used by this component
+    showIcon:
+      type: "boolean | undefined"
+      description: When true, items with href become clickable and show explore text overlay
+
+  ProductOptionType2:
+    heading:
+      type: string
+      description: Item heading text shown in overlay
+    descr:
+      type: "string | null"
+      description: Not used in this component's item rendering
+    imgMobile:
+      type: string
+      description: Mobile image URL
+    imgDesktop:
+      type: string
+      description: Desktop image URL
+    bullets:
+      type: "string[] | null"
+      description: Optional bullet list items shown in desktop overlay
+    href:
+      type: "string | undefined"
+      description: If present and showIcon=true, clicking item navigates here and fires Matomo
+    ctaUrl:
+      type: "string | undefined"
+      description: Not used by this component
+    ctaText:
+      type: "string | undefined"
+      description: Not used by this component
+    isPopular:
+      type: "boolean | undefined"
+      description: Not used by this component
+    isPremium:
+      type: "boolean | undefined"
+      description: Not used by this component
+
+behavior:
+  - action: "Render heading and description"
+    details: >
+      h2 with class "text-2xl md:text-4xl font-bold text-center mb-4 px-3 lg:px-0" always rendered.
+      p with class "text-center mb-4 md:mb-8 px-2 lg:px-0 text-lg md:text-2xl" rendered only when data.descr is truthy.
+  - action: "Desktop item click navigation"
+    details: >
+      Items with data.showIcon && type.href gain cursor-pointer class.
+      On click: fires Matomo event then does window.location.href = type.href (hard navigation, not Qwik Link).
+      Items without href: no click handling.
+  - action: "Greyscale image toggle"
+    details: >
+      When isGreyscale=true, desktop images get "grayscale group-hover:grayscale-0 transition-all duration-300".
+      When isGreyscale=false, images render normally.
+  - action: "Show explore text overlay"
+    details: >
+      Both desktop and mobile overlays show a div with dangerouslySetInnerHTML={convertMarkdownToHtml(data.expandDescriptionText || '')}
+      only when data.showIcon && type?.href is truthy. This renders the expandDescriptionText as HTML.
+  - action: "Mobile stacked layout (isStacked=true, items > 4)"
+    details: >
+      Top row: items 0 to length-3 (slice(0, -2)) in horizontal scroll, min-w-[53%] per item.
+      Bottom rows: last 2 items (slice(-2)) in flex-col, min-w-[48%] per item.
+      Both rows fire Matomo and navigate on click if showIcon && href.
+  - action: "Mobile non-stacked layout"
+    details: >
+      All items in id="review_carousel" div, w-[350vw] md:w-[200vw], each item flex-1 with onClick$ for navigation.
+  - action: "Desktop item count scaling"
+    details: >
+      If data.types.length > 6, desktop images get min-w-[20vw] class to prevent items shrinking too small.
+  - action: "Fire Matomo analytics"
+    details: >
+      Desktop and mobile click handlers fire:
+      pushMatomoEvent(["trackEvent", MatomoCategory.COMMON, MatomoEvent.CLICK_SHOPPING_GUIDE_ITEM, type.href])
+
+styling:
+  global_injected_css:
+    note: "Uses useStyles$ (global injection, NOT scoped). Injected once per page."
+    rules:
+      ".explore img": "max-width: 60px"
+      "@media (max-width: 450px) .heading": "font-size: 10px"
+      "@media (max-width: 450px) .explore": "font-size: 10px"
+      "@media (min-width: 451px) and (max-width: 580px) .heading": "font-size: 14px"
+      "@media (min-width: 451px) and (max-width: 580px) .explore": "font-size: 12px"
+      "@media (max-width: 1023px) .explore img": "display: none"
+  heading: "text-2xl md:text-4xl font-bold text-center mb-4 px-3 lg:px-0"
+  description: "text-center mb-4 md:mb-8 px-2 lg:px-0 text-lg md:text-2xl"
+  desktop_container: "hidden lg:flex -mx-1 lg:overflow-auto"
+  desktop_item: "flex-1 relative group px-1 cta_shopping_guide_slider--{index}"
+  desktop_image: "[min-w-[20vw] if >6 items] max-h-[600px] [greyscale classes] transition-all duration-300 hidden lg:block lg:max-h-[800px] w-full"
+  desktop_overlay: "absolute left-[50%] -translate-x-[50%] bottom-[24px] w-[80%] border-[#FBF6F7] rounded bg-white p-4 flex-col hidden lg:flex"
+  desktop_explore: "flex justify-between (wrapper), explore inline-block w-full *:flex *:justify-between *:items-center *:w-full"
+  mobile_container: "lg:hidden overflow-auto"
+  mobile_non_stacked_row: "w-[350vw] md:w-[200vw] flex justify-between px-1"
+  mobile_item: "auto transition-all duration-300 lg:hidden max-h-[600px] w-full (image)"
+  mobile_overlay: "w-[90%] z-[5] absolute bg-[#fff] border border-[#FBF6F7] px-3 py-3 rounded left-1/2 transform -translate-x-1/2 bottom-[6px] -translate-y text-[14px] transition duration-300 origin-bottom-left block lg:hidden scale-100 opacity-90"
+
+dependencies:
+  qwik:
+    - component$, useStyles$ from @builder.io/qwik
+  components:
+    - Image from @unpic/qwik
+  services:
+    - convertMarkdownToHtml from ~/services/markdown-service
+  analytics:
+    - MatomoCategory, MatomoEvent, pushMatomoEvent from ~/utility/matomo
+  types:
+    - ProductOptionType2, TypeOption2 from ~/services/product-page-service
+
+used_by:
+  - ShoppingGuide
+
+security:
+  - expandDescriptionText is rendered via dangerouslySetInnerHTML — must be sanitized CMS content
+  - type.href is used for window.location.href navigation — validate to prevent javascript: URI injection
+  - Desktop image src values from CMS — ensure CDN is whitelisted in CSP
+
+edge_cases:
+  - If data.types is empty, both desktop and mobile containers render empty
+  - If data.types.length <= 4 and isStacked=true, falls through to non-stacked layout (stacked condition requires >4)
+  - If data.expandDescriptionText is undefined, convertMarkdownToHtml receives empty string ''
+  - Items with no href: rendered normally, no click handler, no cursor-pointer class
+  - Desktop images with data.types.length <= 6: no min-w override, items share equal flex space
+
+notes:
+  - Uses useStyles$ (NOT useStylesScoped$) — styles are global and injected once into the page head
+  - The internal helper renderSliderItem is not a Qwik component, just a regular function returning JSX
+  - window.location.href is used for click navigation on both desktop and mobile (hard navigation)
+  - The desktop image aspectRatio is hardcoded to "7/13" regardless of content
+  - The mobile image aspectRatio is hardcoded to "119/270" regardless of content
+  - The id="review_carousel" in mobile non-stacked mode is a leftover from copy-paste (misleading name)
+
+types:
+  ProductPageOptionType2Props:
+    description: Component props interface
+    fields:
+      - name: data
+        type: TypeOption2
+      - name: isGreyscale
+        type: boolean
+        optional: true
+        default: false
+      - name: isStacked
+        type: boolean
+        optional: true
+        default: false
+
+  TypeOption2:
+    description: Slider section data container
+    source: ~/services/product-page-service
+    fields:
+      - name: heading
+        type: string
+      - name: descr
+        type: string
+      - name: imgMobile
+        type: "string | null"
+      - name: imgDesktop
+        type: "string | null"
+      - name: types
+        type: "ProductOptionType2[]"
+      - name: order
+        type: "number | undefined"
+        optional: true
+      - name: expandDescriptionText
+        type: "string | undefined"
+        optional: true
+      - name: expandDescriptionIsUrl
+        type: "boolean | undefined"
+        optional: true
+      - name: showIcon
+        type: "boolean | undefined"
+        optional: true
+
+  ProductOptionType2:
+    description: Individual slider item
+    source: ~/services/product-page-service
+    fields:
+      - name: heading
+        type: string
+      - name: descr
+        type: "string | null"
+      - name: imgMobile
+        type: string
+      - name: imgDesktop
+        type: string
+      - name: bullets
+        type: "string[] | null"
+      - name: href
+        type: "string | undefined"
+        optional: true
+      - name: ctaUrl
+        type: "string | undefined"
+        optional: true
+      - name: ctaText
+        type: "string | undefined"
+        optional: true
+      - name: isPopular
+        type: "boolean | undefined"
+        optional: true
+      - name: isPremium
+        type: "boolean | undefined"
+        optional: true
+
+field_consumption:
+  TypeOption2:
+    consumed:
+      - heading: Rendered as section h2
+      - descr: Rendered as p when truthy
+      - types: Iterated to render desktop and mobile items
+      - expandDescriptionText: Passed to convertMarkdownToHtml for explore div (when showIcon && href)
+      - showIcon: Gate for clickability and explore text display
+    ignored:
+      - imgMobile: Defined on TypeOption2 but not read by this component (used on ProductOptionType2 items instead)
+      - imgDesktop: Defined on TypeOption2 but not read by this component
+      - order: Not used by this component
+      - expandDescriptionIsUrl: Not read by this component
+
+  ProductOptionType2:
+    consumed:
+      - heading: Shown in overlay on desktop and mobile
+      - imgMobile: Passed to Image for mobile rendering
+      - imgDesktop: Passed to Image for desktop rendering
+      - bullets: Rendered as ul in desktop overlay (only if array length > 0)
+      - href: Used for click navigation and as Matomo event label; gates explore text display
+    ignored:
+      - descr: Not rendered in slider items
+      - ctaUrl: Not used by this component
+      - ctaText: Not used by this component
+      - isPopular: Not used by this component
+      - isPremium: Not used by this component
+
+implementation_logic:
+  stacked_mobile_threshold:
+    rule: |
+      Stacked mobile layout only activates when BOTH conditions are true:
+      1. isStacked prop is true
+      2. data.types.length > 4
+      If either condition fails, the non-stacked single-row layout is used regardless of isStacked value.
+    critical: true
+
+  greyscale_hover:
+    rule: |
+      isGreyscale only affects desktop images. Mobile images are never greyscale.
+      Desktop greyscale class string: "grayscale group-hover:grayscale-0" appended when isGreyscale=true.
+      The parent div has the "group" class enabling Tailwind's group-hover to work.
+    critical: false
+
+visibility_map:
+  description_paragraph:
+    condition: "data.descr is truthy"
+    default: hidden (not rendered if descr is falsy/empty)
+
+  desktop_container:
+    condition: "viewport >= lg (1024px)"
+    default: hidden on mobile via "hidden lg:flex" classes
+
+  mobile_container:
+    condition: "viewport < lg (1024px)"
+    default: hidden on desktop via "lg:hidden" class
+
+  mobile_stacked_layout:
+    condition: "isStacked === true AND data.types.length > 4"
+    default: non-stacked layout used
+
+  desktop_bullet_list:
+    condition: "type.bullets exists AND type.bullets.length > 0"
+    default: hidden (not rendered if bullets null/empty)
+
+  desktop_explore_div:
+    condition: "data.showIcon === true AND type.href is truthy"
+    default: hidden
+
+  mobile_explore_div:
+    condition: "data.showIcon === true AND type.href is truthy"
+    default: hidden
+
+  item_cursor_pointer:
+    condition: "data.showIcon === true AND type.href is truthy"
+    default: no cursor-pointer (item is not clickable)

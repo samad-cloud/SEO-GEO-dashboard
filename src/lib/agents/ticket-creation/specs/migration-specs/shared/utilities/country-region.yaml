@@ -1,0 +1,128 @@
+name: CountryRegion
+description: Country data, phone number validation, flag utilities, and region detection from Cloudflare headers
+
+source:
+  path: utility/country-region.ts
+  lines: 1-426
+  type: utility
+
+exports:
+  - name: countryData
+    type: constant
+    value_type: Array<CountryDataItem>
+    description: Complete list of 242 countries with dial codes, ISO codes, flags, and preferred status
+    structure:
+      - name: string (e.g., "United States")
+      - dial_code: string (e.g., "+1")
+      - code: string (e.g., "US")
+      - flag: string (emoji, e.g., "🇺🇸")
+      - preferred: boolean (optional, marks key countries)
+    preferred_countries: ["Australia", "India", "United Arab Emirates", "United Kingdom", "United States"]
+
+  - name: checkValidPhoneNumber
+    type: function
+    signature: "(input: string, countryCode: CountryCode) => boolean"
+    description: Validates phone number for given country using libphonenumber-js
+    parameters:
+      - name: input
+        type: string
+        description: Phone number string
+      - name: countryCode
+        type: CountryCode
+        description: ISO country code (e.g., "US", "GB")
+    returns: true if valid phone number
+
+  - name: getFlagFromCountryCode
+    type: function
+    signature: "(countryCode: string) => string"
+    description: Returns SVG flag URL from flagcdn.com
+    parameters:
+      - name: countryCode
+        type: string
+        description: ISO country code (e.g., "US")
+    returns: "https://flagcdn.com/{lowercase-code}.svg"
+
+  - name: numericStringMask
+    type: function
+    signature: "(str: string, mask: string) => string"
+    description: Applies numeric mask pattern to string (replaces # with digits)
+    parameters:
+      - name: str
+        type: string
+        description: Input string
+      - name: mask
+        type: string
+        description: Mask pattern (# = digit placeholder, other chars preserved)
+    returns: Masked string
+    example:
+      input: "07123456789"
+      mask: "#####-###-###"
+      output: "07123-456-789"
+
+  - name: formatUKPhoneNumber
+    type: function
+    signature: "(str: string) => string"
+    description: Formats UK phone number using #####-###-### pattern
+
+  - name: detectCountryFromHeader
+    type: function
+    signature: "(event: RequestEventLoader<QwikCityPlatform>) => string"
+    description: Detects country code from Cloudflare CF-IPCountry header
+    parameters:
+      - name: event
+        type: RequestEventLoader<QwikCityPlatform>
+    returns: Country code string or empty string
+    server_side_only: true
+
+dependencies:
+  external:
+    - "libphonenumber-js": isValidPhoneNumber, CountryCode type
+  internal:
+    - "@builder.io/qwik-city": RequestEventLoader type
+
+behavior:
+  phone_validation:
+    library: libphonenumber-js
+    requires_country_code: true
+
+  flag_images:
+    source: flagcdn.com
+    format: SVG
+    resolution: Standard
+
+  country_detection:
+    method: Cloudflare CF-IPCountry header
+    fallback: Empty string if header missing
+
+  mask_application:
+    digits_only: Strips all non-digit characters first
+    pattern: # character replaced by digits in order
+    stops_at: End of numeric input or mask pattern
+
+edge_cases:
+  - Empty mask returns original string
+  - More digits than mask placeholders → extra digits ignored
+  - Fewer digits than mask → partial mask applied
+
+types:
+  CountryDataItem:
+    description: A single country entry in the countryData array
+    fields:
+      - name: name
+        type: string
+        description: Country display name (e.g., "United States")
+      - name: dial_code
+        type: string
+        description: International dial code (e.g., "+1")
+      - name: code
+        type: string
+        description: ISO 2-letter country code (e.g., "US")
+      - name: flag
+        type: string
+        description: Country flag emoji (e.g., "🇺🇸")
+      - name: preferred
+        type: boolean
+        optional: true
+        description: Marks key countries for top-of-list display (Australia, India, UAE, UK, US)
+
+used_by: []

@@ -1,0 +1,105 @@
+name: LargeOrders
+source:
+  path: components/share/large-orders/large-orders.tsx
+  lines: 1-28
+  type: component
+
+description: |
+  Informational banner component promoting bulk/large order capabilities.
+  Displays a message encouraging users to visit the dedicated Large Orders page
+  for bulk order discounts and information. Used on product or category pages.
+
+  Features:
+  - Centered heading and description
+  - Pink link to Large Orders page
+  - Bordered container with padding
+  - Fully translatable content via qwik-speak
+
+exports:
+  - name: default
+    type: component
+    description: Default export of LargeOrders component (wrapper around LargeOrder)
+
+component_structure: |
+  <div class="container m-auto border-b">
+    <div class="p-4 mt-4">
+      <h2 class="text-center text-[22px] font-bold mb-2">
+        {t('large_orders.large_orders_title')}
+      </h2>
+      <p class="text-center mb-2">
+        {t('large_orders.large_orders_part_1')}
+        <Link href={t('large_orders.link')} class="font-bold text-pink-600">
+          {t('large_orders.large_orders_page')}
+        </Link>
+        {t('large_orders.large_orders_part_2')}
+      </p>
+    </div>
+  </div>
+
+behavior:
+  rendering:
+    - Always renders (no conditional logic)
+    - Displays heading and description with embedded link
+    - Link navigates to Large Orders page URL from translation
+
+  interaction:
+    large_orders_link:
+      - Navigates to dedicated Large Orders page
+      - URL sourced from translation key 'large_orders.link'
+      - No tracking/analytics in this component
+
+internal_components:
+  LargeOrder:
+    description: Internal component that renders the actual content
+    exports: Not exported (used only within file)
+
+dependencies:
+  qwik:
+    - component$ (from @builder.io/qwik)
+    - Link (from @builder.io/qwik-city)
+
+  i18n:
+    - inlineTranslate (from qwik-speak)
+
+data_dependencies:
+  translation_keys:
+    - large_orders.large_orders_title: Main heading text
+    - large_orders.large_orders_part_1: First part of description
+    - large_orders.large_orders_page: Link text ("Large Orders page")
+    - large_orders.large_orders_part_2: Second part of description
+    - large_orders.link: URL for Large Orders page
+
+styling:
+  classes:
+    container:
+      - container m-auto: Centered container
+      - border-b: Bottom border
+      - p-4 mt-4: Padding and top margin
+
+    heading:
+      - text-center: Centered text
+      - text-[22px]: 22px font size
+      - font-bold: Bold weight
+      - mb-2: Bottom margin
+
+    paragraph:
+      - text-center: Centered text
+      - mb-2: Bottom margin
+
+    link:
+      - font-bold: Bold weight
+      - text-pink-600: Pink color (#d946ef or similar)
+
+accessibility:
+  considerations:
+    - Link has descriptive text ("Large Orders page")
+    - Heading uses semantic h2 element
+
+used_by: []
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  LargeOrdersProps:
+    description: No props — component takes no external inputs; all content from i18n
+    fields: []

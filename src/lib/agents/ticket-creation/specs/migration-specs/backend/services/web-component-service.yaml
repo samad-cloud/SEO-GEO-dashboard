@@ -1,0 +1,856 @@
+name: WebComponentService
+source: services/web-component-service.ts
+description: |
+  Comprehensive web component data service that fetches and processes various
+  marketing content types from the backend. Handles 20+ component types including
+  SEO sections, blogs, FAQs, UGC, trust signals, cards, banners, and more.
+  Each component type has a dedicated processor function.
+
+exports:
+  enums:
+    - name: EFieldName
+      exported: true
+      values:
+        - CTA_LIST
+        - PHEADING
+        - PHEADINGSUB
+        - PLONG_LIST
+        - PSHORT
+        - IMGDESK
+        - CTA
+        - PLONG
+        - IMGMOBI
+        - MEDIA
+        - VIDEO
+        - VIDEO_LIST
+
+    - name: ETagKeyCode
+      exported: true
+      values:
+        - STYLE_IMAGE_WIDTH
+        - STYLE_IMAGE_HEIGHT
+        - STYLE_TEXT_COLOR
+        - STYLE_CTA_TEXT_COLOR
+        - STYLE_CTA_BG_COLOR
+        - STYLE_BG_COLOR
+
+    - name: WebComponentType
+      exported: true
+      values:
+        - BULK_PRICING_SECTION
+        - CATEGORY_PAGE_BANNER_OVERRIDE
+        - EMAIL_NEWSLETTER_SECTION
+        - STORIES_SECTION
+        - STORY_ITEM
+        - TRUST_SIGNALS_SECTION
+        - TRUST_SIGNAL_ITEM
+        - CARD_SECTION
+        - CARD_ITEM
+        - UGC_SECTION
+        - UGC_DOUBLE_ITEM_CONTAINER
+        - UGC_ITEM
+        - SEO_SECTION
+        - SEO_ITEM
+        - FAQ_SECTION
+        - FAQ_ITEM
+        - BLOG_SECTION
+        - BLOG_ITEM
+        - CTA_LIST_SECTION
+        - FEATURED_SECTION
+        - HOME_PAGE_MARKETING_VIDEO
+        - SHOPPING_GUIDE
+        - MID_PAGE_BANNER
+        - HOME_PAGE_ITEMS_ORDER
+        - VIDEO_BANNER
+        - ICON_SECTION
+        - ICON_LIST
+        - THEME_FILTER_SUBJECTS
+
+  interfaces:
+    - name: WebComponentField
+      exported: true
+      fields:
+        - name: fieldName
+          type: string
+        - name: fieldValue
+          type: any
+
+    - name: CustomTag
+      exported: true
+      fields:
+        - name: id
+          type: string
+        - name: tagKey
+          type: string
+        - name: tagKeyCode
+          type: string
+        - name: tagValue
+          type: string
+
+    - name: WebComponent
+      exported: true
+      description: Core web component data structure from API
+      fields:
+        - name: guid
+          type: string
+        - name: productType
+          type: PlatinumProductTypeEnum
+        - name: wcTemplateName
+          type: WebComponentType
+        - name: componentType
+          type: string
+        - name: name
+          type: string
+        - name: isActive
+          type: boolean
+        - name: fields
+          type: WebComponentField[]
+        - name: customTag
+          type: CustomTag[]
+        - name: childWebComponents_1
+          type: WebComponent[]
+        - name: childWebComponents_2
+          type: WebComponent[] | null
+        - name: order
+          type: number
+
+    - name: WebContent<L>
+      exported: true
+      description: Processed web content wrapper
+      fields:
+        - name: data
+          type: L (generic)
+        - name: componentType
+          type: string
+        - name: order
+          type: number
+        - name: productType
+          type: PlatinumProductTypeEnum
+        - name: originalData
+          type: WebComponent
+
+    - name: SeoContent
+      exported: true
+      fields:
+        - heading: string
+        - subHeading: string
+        - content: string[]
+        - icons: Array of icon objects (optional)
+
+    - name: CtaItem
+      exported: true
+      fields:
+        - url: string
+        - text: string
+
+    - name: FooterEmailSubscriptionData
+      exported: true
+      fields:
+        - title: string
+        - description: string
+        - placeHolderText: string
+        - ctaText: string
+        - textColor: string
+        - ctaTextColor: string
+        - ctaBackgroundColor: string
+        - backgroundColor: string
+
+    - name: Stories
+      exported: true
+      fields:
+        - heading: string | null
+        - images: Array<{url: string, alt: string}>
+
+    - name: BulkPricing
+      exported: true
+      fields:
+        - heading: string
+        - description: string
+
+    - name: TrustSignals
+      exported: true
+      fields:
+        - heading: string
+        - description: string
+        - signals: Array of signal objects
+
+    - name: FaqContent
+      exported: true
+      fields:
+        - heading: string
+        - subHeading: string
+        - faqs: Array<{question: string, answer: string}>
+        - order: number
+
+    - name: BestSellersSection
+      exported: true
+      fields:
+        - heading: string
+        - subHeading: string
+        - products: Array of product objects
+
+    - name: MarketingContentVideo
+      exported: true
+      fields:
+        - heading: string
+        - description: string
+        - ctaText: string
+        - ctaUrl: string
+        - videoUrl: string
+        - videoPosterUrl: string
+
+    - name: ShoppingGuide
+      exported: true
+      fields:
+        - sliderLargeGrayScale: TypeOption2 | null
+        - shopByCategory: ShopByCategory | null
+        - shopByBudget: ShopByBudget | null
+        - sliderLarge: TypeOption2 | null
+        - stackedSliderGrayScale: TypeOption2 | null
+        - sliderMediumGreyscale: TypeOption2 | null
+
+    - name: HomePageItemsOrder
+      exported: true
+      fields:
+        - trustIcons: number
+        - reviews: number
+        - categories: number
+        - guidelineSection: number
+        - goQuickWidget: number
+
+    - name: VideoBanner
+      exported: true
+      fields:
+        - mobileVideoUrl: string
+        - desktopVideoUrl: string
+        - heading: string
+        - description: string
+        - ctaText: string
+        - ctaTextColor: string
+        - ctaBackgroundColor: string
+        - popup: {videoUrl: string}
+
+    - name: CTAList
+      exported: true
+      fields:
+        - buttons: Array<{ctaText: string, ctaUrl: string}>
+        - ctaTextColor: string
+        - ctaBackgroundColor: string
+
+    - name: IconItem
+      exported: true
+      fields:
+        - imageUrl: string
+        - imageAlt: string
+        - title: string
+        - desc: string
+        - imageWidth: string
+        - imageHeight: string
+
+  functions:
+    - name: processSeoContentData
+      signature: "(data: WebComponent) => WebContent<SeoContent>"
+      exported: true
+      description: Processes SEO section web components
+
+    - name: processBlogSectionData
+      signature: "(data: WebComponent) => WebContent<CategoryBlogSection>"
+      exported: true
+      description: Processes blog section web components
+
+    - name: processEmailSubscriptionData
+      signature: "(data: WebComponent) => WebContent<SubscribeToMail>"
+      exported: true
+      description: Processes email newsletter subscription web components
+
+    - name: processStoriesData
+      signature: "(data: WebComponent) => WebContent<Stories>"
+      exported: true
+      description: Processes stories section web components
+
+    - name: processBulkPricingData
+      signature: "(data: WebComponent) => WebContent<BulkPricing>"
+      exported: true
+      description: Processes bulk pricing section web components
+
+    - name: processTrustSignalsData
+      signature: "(data: WebComponent) => WebContent<TrustSignals>"
+      exported: true
+      description: Processes trust signals section web components
+
+    - name: processCardSectionData
+      signature: "(data: WebComponent) => WebContent<Cards>"
+      exported: true
+      description: Processes card section web components
+
+    - name: processUgcSectionData
+      signature: "(data: WebComponent) => WebContent<UgcSection>"
+      exported: true
+      description: Processes UGC (user-generated content) section web components
+
+    - name: processFaqContentData
+      signature: "(data: WebComponent) => WebContent<FaqContent>"
+      exported: true
+      description: Processes FAQ section web components
+
+    - name: processCategoryPageBannerOverrideData
+      signature: "(data: WebComponent) => WebContent<GlobalCategoryBanner>"
+      exported: true
+      description: Processes category page banner override web components
+
+    - name: processFeaturedSectionData
+      signature: "(data: WebComponent) => WebContent<BestSellersSection>"
+      exported: true
+      description: Processes featured/best sellers section web components
+
+    - name: processMarketingContentVideoData
+      signature: "(data: WebComponent) => WebContent<MarketingContentVideo>"
+      exported: true
+      description: Processes marketing video section web components
+
+    - name: processShoppingGuideData
+      signature: "(data: WebComponent) => WebContent<ShoppingGuide>"
+      exported: true
+      description: Processes shopping guide section web components
+
+    - name: processMidPageBannerData
+      signature: "(data: WebComponent) => WebContent<MidPageBanner>"
+      exported: true
+      description: Processes mid-page banner web components
+
+    - name: processHomePageItemsOrderData
+      signature: "(data: WebComponent) => WebContent<HomePageItemsOrder>"
+      exported: true
+      description: Processes homepage items order configuration
+
+    - name: processVideoBannerData
+      signature: "(data: WebComponent) => WebContent<VideoBanner>"
+      exported: true
+      description: Processes video banner web components
+
+    - name: processCtaListData
+      signature: "(data: WebComponent) => WebContent<CTAList>"
+      exported: true
+      description: Processes CTA list web components
+
+    - name: processIconListData
+      signature: "(data: WebComponent) => WebContent<IconItem[]>"
+      exported: true
+      description: Processes icon list web components
+
+    - name: processThemeFilterSubjectsData
+      signature: "(data: WebComponent) => ThemeSubjectGroups[]"
+      exported: true
+      description: Processes theme filter subjects JSON
+
+    - name: processWebComponentData
+      signature: "(data: WebComponent) => any"
+      exported: true
+      description: Router function that processes web components based on type
+
+    - name: getWebComponentData
+      signature: "() => Promise<WebComponent[] | null>"
+      exported: true
+      async: true
+      description: Fetches all web components from API
+
+behavior:
+  - name: getWebComponentData
+    steps:
+      - Makes GET request to "/WebComponent/Get?productType=0" using baseNewAPI() axios instance
+      - Extracts response.data.data (double .data because axios wraps response)
+      - Returns WebComponent array or null on error
+  - name: processWebComponentData
+    steps:
+      - Router function that dispatches to specific processor based on data.wcTemplateName
+      - Matches against all WebComponentType enum values
+      - Calls the corresponding process*Data function for the matched type
+      - Returns the unprocessed WebComponent data for unrecognized types (default case)
+  - name: processSeoContentData
+    steps:
+      - Extracts heading from PHEADING field, subHeading from PHEADINGSUB field
+      - Extracts content array from PLONG_LIST field
+      - Processes childWebComponents_1 filtered by ICON_SECTION template name
+      - For each icon child, extracts image URL/alt from IMGDESK, heading from PHEADING, description from PHEADINGSUB
+      - Extracts icon width/height from customTag Style_Image_Width and Style_Image_Height
+      - Wraps in WebContent with SEO_SECTION componentType
+  - name: processBlogSectionData
+    steps:
+      - Extracts heading from PHEADING, textContent from PSHORT
+      - Maps childWebComponents_1 to blog posts with image/imageAlt from IMGDESK, heading from PHEADING, urlText/url from CTA
+      - Sets display from data.isActive, order from data.order
+      - Wraps in WebContent with BLOG_SECTION componentType
+  - name: processEmailSubscriptionData
+    steps:
+      - Extracts heading from PHEADING, subHeading from PLONG, placeHolderText from PSHORT, ctaText from CTA.text
+      - Extracts colors from customTag (STYLE_TEXT_COLOR, STYLE_CTA_TEXT_COLOR, STYLE_CTA_BG_COLOR, STYLE_BG_COLOR)
+      - Wraps in WebContent with EMAIL_NEWSLETTER_SECTION componentType
+  - name: processStoriesData
+    steps:
+      - Extracts heading from PHEADING
+      - Maps childWebComponents_1 to image objects with url/alt from IMGDESK
+      - Wraps in WebContent with STORIES_SECTION componentType
+  - name: processBulkPricingData
+    steps:
+      - Extracts heading from PHEADING, description from PLONG
+      - Wraps in WebContent with BULK_PRICING_SECTION componentType
+  - name: processTrustSignalsData
+    steps:
+      - Extracts heading from PHEADING, description from PLONG
+      - Maps childWebComponents_1 to signal objects with image/imageAlt from IMGDESK, heading from PHEADING, textContent from PSHORT
+      - Wraps in WebContent with TRUST_SIGNALS_SECTION componentType
+  - name: processCardSectionData
+    steps:
+      - Extracts heading from PHEADING
+      - Maps childWebComponents_1 to card objects with image from IMGDESK, mobileImage from IMGMOBI, heading from PHEADING, textContent from PSHORT
+      - Extracts buttons from CTA_LIST field, mapping text->ctaText, url->href
+      - Extracts buttonColor from STYLE_CTA_BG_COLOR customTag, buttonTextColor from STYLE_CTA_TEXT_COLOR
+      - Sets display from data.isActive
+      - Wraps in WebContent with CARD_SECTION componentType
+  - name: processUgcSectionData
+    steps:
+      - Extracts heading from PHEADING, subheading from PHEADINGSUB, textContent from PLONG
+      - Extracts CTA text/url from CTA field
+      - Extracts CTA colors from customTag
+      - Delegates UGC item processing to processUGCSectionByType based on data.componentType
+      - Sets display from data.isActive, includes type from data.componentType
+      - Wraps in WebContent with UGC_SECTION componentType
+  - name: processUGCSectionByType (internal)
+    steps:
+      - For "Slider" type, maps childWebComponents_1 directly, extracting image/video from MEDIA field based on type=="IMAGE" or "VIDEO"
+      - For "Flip" type, maps childWebComponents_2, filters to children with exactly 2 sub-children
+      - Flip mode extracts front/back pairs from childWebComponents_1[0] and [1] for image, video, review, reviewer
+      - Returns empty array for unknown component types
+  - name: processFaqContentData
+    steps:
+      - Extracts heading from PHEADING, subHeading from PHEADINGSUB
+      - Maps childWebComponents_1 to FAQ items with question from PHEADING, answer from PLONG
+      - Wraps in WebContent with FAQ_SECTION componentType
+  - name: processCategoryPageBannerOverrideData
+    steps:
+      - Extracts desktop/mobile image URLs and alts from IMGDESK/IMGMOBI fields
+      - Determines isLink by checking if CTA field has a URL
+      - Sets type from data.componentType
+      - Wraps in WebContent with CATEGORY_PAGE_BANNER_OVERRIDE componentType
+  - name: processFeaturedSectionData
+    steps:
+      - Extracts heading from PHEADING, subHeading from PHEADINGSUB
+      - Maps childWebComponents_1 to product objects with image/imageAlt from IMGDESK, heading from PHEADING, description from PSHORT, url from CTA
+      - Wraps in WebContent with FEATURED_SECTION componentType
+  - name: processMarketingContentVideoData
+    steps:
+      - Extracts heading from PHEADING, description from PLONG
+      - Extracts CTA text/url from CTA field
+      - Extracts videoUrl and videoPosterUrl from VIDEO field (url and alt respectively)
+      - Wraps in WebContent with HOME_PAGE_MARKETING_VIDEO componentType
+  - name: processShoppingGuideData
+    steps:
+      - Routes to one of 6 variants based on data.componentType string
+      - "Slider Large w/ Greyscale" and "Slider Large" and "Stacked Slider w/ Greyscale" and "Slider Medium w/ Greyscale" use processWebComponentDataToTypeOption2 helper
+      - "Slider Small" creates ShopByCategory with categories from childWebComponents_1
+      - "Rows" creates ShopByBudget with productOrCategories from childWebComponents_1 and CTA colors from customTag
+      - Only one variant field is non-null per component; all others are null
+      - Wraps in WebContent with SHOPPING_GUIDE componentType
+  - name: processWebComponentDataToTypeOption2 (internal helper)
+    steps:
+      - Extracts heading from PHEADING, description from PHEADINGSUB
+      - Sets imgMobile and imgDesktop to empty strings, display to true, showIcon to true
+      - Extracts expandDescriptionText from CTA.text
+      - Maps childWebComponents_1 to types array with imgMobile from IMGMOBI, imgDesktop from IMGDESK, heading from CTA.text, href from CTA.url
+  - name: processMidPageBannerData
+    steps:
+      - Extracts url from CTA field, desktop/mobile image URLs from IMGDESK/IMGMOBI
+      - Sets textContent, videoCtaText, ctaVideoUrl to empty strings
+      - Wraps in WebContent with MID_PAGE_BANNER componentType
+  - name: processHomePageItemsOrderData
+    steps:
+      - Attempts to JSON.parse the PLONG field value
+      - If parse succeeds, uses the parsed object as HomePageItemsOrder
+      - If parse fails, falls back to DEFAULT_HOMEPAGE_ITEMS_ORDER from home-service
+      - Wraps in WebContent with HOME_PAGE_ITEMS_ORDER componentType
+  - name: processVideoBannerData
+    steps:
+      - Extracts desktopVideoUrl from VIDEO_LIST[0].url, mobileVideoUrl from VIDEO_LIST[1].url
+      - Extracts heading from PHEADING, description from PLONG
+      - Extracts ctaText from CTA_LIST[0].text
+      - Extracts CTA colors from customTag
+      - Extracts popup videoUrl from first child's VIDEO_LIST[0].url
+      - Wraps in WebContent with VIDEO_BANNER componentType
+  - name: processCtaListData
+    steps:
+      - Maps CTA_LIST field values to buttons array with ctaText and ctaUrl
+      - Extracts CTA colors from customTag
+      - Wraps in WebContent with CTA_LIST_SECTION componentType
+  - name: processIconListData
+    steps:
+      - Maps childWebComponents_1 to IconItem objects
+      - Extracts imageUrl/imageAlt from IMGDESK, title from PHEADING, desc from PHEADINGSUB
+      - Extracts imageWidth/imageHeight from customTag Style_Image_Width/Style_Image_Height
+      - Wraps in WebContent with ICON_LIST componentType
+  - name: processThemeFilterSubjectsData
+    steps:
+      - Attempts to JSON.parse the PLONG field value as ThemeSubjectGroups array
+      - Returns parsed array on success
+      - Returns empty array on JSON parse error
+      - Does NOT wrap in WebContent (returns ThemeSubjectGroups[] directly)
+
+api_contracts:
+  - endpoint: /WebComponent/Get
+    method: GET
+    params:
+      - name: productType
+        type: query
+        value: "0"
+    description: Fetches all web components for the current site
+    response_type: NewAPIResponse<WebComponent[]>
+    error_behavior: Returns null on error
+
+dependencies:
+  external:
+    - package: N/A
+  internal:
+    - path: ~/config/http
+      imports: [NewAPIResponse, baseNewAPI]
+      usage: HTTP client and response types
+    - path: ~/services/category-service
+      imports: [Cards, CategoryBlogSection, GlobalCategoryBanner, MidPageBanner, SubscribeToMail, TypeOption2, UGC, UgcSection]
+      usage: Type imports for component data
+    - path: ~/services/home-service
+      imports: [DEFAULT_HOMEPAGE_ITEMS_ORDER]
+      usage: Default homepage order fallback
+    - path: ~/services/product-category-service
+      imports: [PlatinumProductTypeEnum]
+      usage: Product type enum
+    - path: ~/services/shop-by-budget-service
+      imports: [ShopByBudget]
+      usage: Type import
+    - path: ~/services/shop-by-category-service
+      imports: [ShopByCategory]
+      usage: Type import
+    - path: ~/services/themes-service
+      imports: [ThemeSubjectGroups]
+      usage: Type import for theme filters
+
+data_flow:
+  - step: 1
+    action: Call getWebComponentData()
+  - step: 2
+    action: Makes GET request to /WebComponent/Get?productType=0
+  - step: 3
+    action: Returns array of WebComponent objects or null on error
+  - step: 4
+    action: Components can be processed via processWebComponentData() router
+  - step: 5
+    action: Router calls appropriate processor based on wcTemplateName
+  - step: 6
+    action: Each processor extracts fields and customTags into typed data structure
+  - step: 7
+    action: Returns WebContent<T> wrapper with processed data
+
+business_logic:
+  - Each component type has dedicated processor function
+  - Processors extract data from fields array using EFieldName constants
+  - Custom styling extracted from customTag array using ETagKeyCode constants
+  - Child components (childWebComponents_1/2) processed recursively
+  - UGC sections have two modes - Slider and Flip (different processing logic)
+  - Shopping guide has 6 variant types (only one populated per component)
+  - HomePageItemsOrder stored as JSON string in PLONG field
+  - ThemeFilterSubjects stored as JSON string in PLONG field
+  - Order field controls display sequence
+  - isActive controls visibility
+  - Field extraction uses fallback empty strings for missing data
+  - Image fields contain {url, alt} objects
+  - CTA fields contain {url, text} objects
+  - Media fields can be IMAGE or VIDEO type
+
+error_handling:
+  - getWebComponentData returns null on API error (try/catch)
+  - JSON.parse errors in processHomePageItemsOrderData fall back to DEFAULT
+  - JSON.parse errors in processThemeFilterSubjectsData return empty array
+  - Missing fields default to empty string/empty array
+  - Optional arrays check Array.isArray before mapping
+  - Null childWebComponents_2 handled safely
+
+security:
+  - All URLs should be validated/sanitized before render
+  - Color values should be sanitized before inline styles
+  - JSON parsing wrapped in try/catch (user-controlled JSON)
+  - No authentication required (public content)
+
+used_by:
+  - backend/services/product-page-service.yaml (imports WebComponent types and processor functions for product page content)
+  - frontend/components/category-page/category-page-factory.yaml (uses processWebComponentData to render category page sections)
+  - frontend/components/category-page/common-category-container.yaml (uses getWebComponentData and processors for category content)
+  - frontend/components/product-page/product-page-hub-child-template.yaml (uses web component types for hub page rendering)
+  - frontend/components/product-page/product-page-hub-template.yaml (uses web component processing for hub template)
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  EFieldName:
+    description: Enum of field name keys used to extract values from WebComponentField array
+    kind: enum
+    values:
+      - CTA_LIST
+      - PHEADING
+      - PHEADINGSUB
+      - PLONG_LIST
+      - PSHORT
+      - IMGDESK
+      - CTA
+      - PLONG
+      - IMGMOBI
+      - MEDIA
+      - VIDEO
+      - VIDEO_LIST
+
+  ETagKeyCode:
+    description: Enum of customTag.tagKeyCode values used to extract style properties
+    kind: enum
+    values:
+      - STYLE_IMAGE_WIDTH
+      - STYLE_IMAGE_HEIGHT
+      - STYLE_TEXT_COLOR
+      - STYLE_CTA_TEXT_COLOR
+      - STYLE_CTA_BG_COLOR
+      - STYLE_BG_COLOR
+
+  WebComponentType:
+    description: Enum of all supported wcTemplateName values — used as the router key in processWebComponentData
+    kind: enum
+    values:
+      - BULK_PRICING_SECTION
+      - CATEGORY_PAGE_BANNER_OVERRIDE
+      - EMAIL_NEWSLETTER_SECTION
+      - STORIES_SECTION
+      - STORY_ITEM
+      - TRUST_SIGNALS_SECTION
+      - TRUST_SIGNAL_ITEM
+      - CARD_SECTION
+      - CARD_ITEM
+      - UGC_SECTION
+      - UGC_DOUBLE_ITEM_CONTAINER
+      - UGC_ITEM
+      - SEO_SECTION
+      - SEO_ITEM
+      - FAQ_SECTION
+      - FAQ_ITEM
+      - BLOG_SECTION
+      - BLOG_ITEM
+      - CTA_LIST_SECTION
+      - FEATURED_SECTION
+      - HOME_PAGE_MARKETING_VIDEO
+      - SHOPPING_GUIDE
+      - MID_PAGE_BANNER
+      - HOME_PAGE_ITEMS_ORDER
+      - VIDEO_BANNER
+      - ICON_SECTION
+      - ICON_LIST
+      - THEME_FILTER_SUBJECTS
+
+  WebComponentField:
+    description: Single field entry in the WebComponent.fields array
+    fields:
+      - name: fieldName
+        type: string
+        notes: Matches an EFieldName enum value
+      - name: fieldValue
+        type: any
+        notes: Value is a string, object, or array depending on fieldName
+
+  CustomTag:
+    description: Style/metadata tag entry in the WebComponent.customTag array
+    fields:
+      - name: id
+        type: string
+      - name: tagKey
+        type: string
+      - name: tagKeyCode
+        type: string
+        notes: Matches an ETagKeyCode enum value
+      - name: tagValue
+        type: string
+
+  WebComponent:
+    description: Core web component data structure returned by GET /WebComponent/Get
+    fields:
+      - name: guid
+        type: string
+      - name: productType
+        type: PlatinumProductTypeEnum
+      - name: wcTemplateName
+        type: WebComponentType
+        notes: Used as router key in processWebComponentData
+      - name: componentType
+        type: string
+        notes: Sub-type string used by some processors (e.g., UGC "Slider"/"Flip", ShoppingGuide variant names)
+      - name: name
+        type: string
+      - name: isActive
+        type: boolean
+        notes: Controls display flag in processed output
+      - name: fields
+        type: "WebComponentField[]"
+      - name: customTag
+        type: "CustomTag[]"
+      - name: childWebComponents_1
+        type: "WebComponent[]"
+      - name: childWebComponents_2
+        type: "WebComponent[] | null"
+      - name: order
+        type: number
+
+  WebContent:
+    description: Generic wrapper returned by all process* functions
+    fields:
+      - name: data
+        type: "L (generic — the processed typed payload)"
+      - name: componentType
+        type: string
+      - name: order
+        type: number
+      - name: productType
+        type: PlatinumProductTypeEnum
+      - name: originalData
+        type: WebComponent
+
+  SeoContent:
+    description: Processed output of processSeoContentData
+    fields:
+      - name: heading
+        type: string
+      - name: subHeading
+        type: string
+      - name: content
+        type: "string[]"
+      - name: icons
+        type: "Array<{imageUrl: string, imageAlt: string, heading: string, description: string, imageWidth: string, imageHeight: string}>"
+        optional: true
+
+  HomePageItemsOrder:
+    description: Parsed from PLONG field JSON — controls homepage section order
+    fields:
+      - name: trustIcons
+        type: number
+      - name: reviews
+        type: number
+      - name: categories
+        type: number
+      - name: guidelineSection
+        type: number
+      - name: goQuickWidget
+        type: number
+
+  VideoBanner:
+    description: Processed output of processVideoBannerData
+    fields:
+      - name: desktopVideoUrl
+        type: string
+        notes: From VIDEO_LIST[0].url
+      - name: mobileVideoUrl
+        type: string
+        notes: From VIDEO_LIST[1].url
+      - name: heading
+        type: string
+      - name: description
+        type: string
+      - name: ctaText
+        type: string
+        notes: From CTA_LIST[0].text
+      - name: ctaTextColor
+        type: string
+      - name: ctaBackgroundColor
+        type: string
+      - name: popup
+        type: "{videoUrl: string}"
+        notes: videoUrl from first child's VIDEO_LIST[0].url
+
+  IconItem:
+    description: Single icon entry in processIconListData output
+    fields:
+      - name: imageUrl
+        type: string
+        notes: From IMGDESK.url
+      - name: imageAlt
+        type: string
+        notes: From IMGDESK.alt
+      - name: title
+        type: string
+        notes: From PHEADING
+      - name: desc
+        type: string
+        notes: From PHEADINGSUB
+      - name: imageWidth
+        type: string
+        notes: From customTag Style_Image_Width
+      - name: imageHeight
+        type: string
+        notes: From customTag Style_Image_Height
+
+field_consumption:
+  WebComponent:
+    consumed:
+      - guid: Passed through in WebContent.originalData
+      - productType: Stored in WebContent.productType
+      - wcTemplateName: Router key — determines which process* function is called
+      - componentType: Used by UGC processor (Slider vs Flip) and ShoppingGuide processor (6 variant types)
+      - name: Passed through in WebContent.originalData
+      - isActive: Mapped to display flag in several processed types
+      - fields: Primary data source — all processors extract values from this array by fieldName
+      - customTag: Secondary data source — style values extracted by tagKeyCode
+      - childWebComponents_1: Child items for sections with lists (stories, blog posts, trust signals, etc.)
+      - childWebComponents_2: Used only by UGC Flip mode — filtered for children with exactly 2 sub-children
+      - order: Stored in WebContent.order for display sequence control
+    ignored: []
+
+  NewAPIResponse:
+    consumed:
+      - data.data: The WebComponent array (double .data because axios wraps in data, API wraps in data)
+    ignored:
+      - status: Not checked explicitly — null returned on error
+      - message: Not consumed
+
+implementation_logic:
+  field_extraction_by_enum:
+    rule: |
+      All processor functions extract values from WebComponent.fields by finding the
+      entry whose fieldName matches an EFieldName enum value. The extracted fieldValue
+      can be a string, an object with {url, alt}, an object with {url, text}, or an array.
+      Missing fields default to empty string or empty array — processors never throw
+      on absent fields.
+    critical: false
+
+  ugc_slider_vs_flip_mode:
+    rule: |
+      processUGCSectionByType branches on data.componentType string:
+        "Slider" → maps childWebComponents_1 directly, extracts image or video from MEDIA field based on type=="IMAGE" or "VIDEO"
+        "Flip"   → maps childWebComponents_2, filters to children with exactly 2 sub-children,
+                   then extracts front/back pairs from childWebComponents_1[0] and [1]
+      Any other componentType returns an empty array.
+    critical: true
+
+  shopping_guide_single_non_null_variant:
+    rule: |
+      processShoppingGuideData returns a ShoppingGuide object where exactly ONE of the
+      six variant fields (sliderLargeGrayScale, shopByCategory, shopByBudget, sliderLarge,
+      stackedSliderGrayScale, sliderMediumGreyscale) is populated and the rest are null.
+      The populated variant is determined by matching data.componentType against a known
+      set of string values. Unknown componentType results in all fields being null.
+    critical: true
+
+  home_page_items_order_json_parse:
+    rule: |
+      processHomePageItemsOrderData attempts JSON.parse on the PLONG field value.
+      On success, uses the parsed object as HomePageItemsOrder.
+      On JSON.parse failure, falls back to DEFAULT_HOMEPAGE_ITEMS_ORDER imported from home-service.
+      This ensures the homepage never renders without a valid order configuration.
+    critical: false
+
+  theme_filter_subjects_json_parse:
+    rule: |
+      processThemeFilterSubjectsData attempts JSON.parse on the PLONG field value.
+      On success, returns the parsed ThemeSubjectGroups[].
+      On failure, returns an empty array.
+      Unlike other processors, this function does NOT wrap the result in WebContent — it
+      returns ThemeSubjectGroups[] directly.
+    critical: false

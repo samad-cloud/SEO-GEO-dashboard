@@ -1,0 +1,213 @@
+name: ShopByCategoryService
+source: services/shop-by-category-service.ts
+description: |
+  Service for fetching and validating "Shop by Category" web content.
+  Provides structured category data for displaying category browsing sections
+  on the homepage or category pages.
+
+exports:
+  functions:
+    - name: getShopByCategoryContent
+      signature: "() => Promise<ShopByCategoryResponse>"
+      description: Fetches shop-by-category content from the JSON web content service
+      async: true
+      returns: ShopByCategoryResponse object with array of category sections
+
+  interfaces:
+    - name: Categories
+      fields:
+        - name: title
+          type: string
+          description: Category title text
+        - name: imgSrc
+          type: string
+          description: URL to category image
+        - name: link
+          type: string
+          description: URL link for the category
+
+    - name: ShopByCategory
+      exported: true
+      fields:
+        - name: display
+          type: boolean
+          description: Whether to display this section
+        - name: order
+          type: number
+          description: Display order for this section
+        - name: heading
+          type: string
+          description: Section heading text
+        - name: largeStyling
+          type: boolean
+          description: Whether to use large styling variant
+        - name: headingPosition
+          type: string
+          description: Position of the heading (e.g., "left", "center", "right")
+        - name: categories
+          type: Categories[]
+          description: Array of category items to display
+        - name: imageAspectRatio
+          type: string
+          description: Aspect ratio for category images (e.g., "16:9", "1:1")
+
+    - name: ShopByCategoryResponse
+      fields:
+        - name: shopByCategoryData
+          type: ShopByCategory[]
+          description: Array of shop-by-category sections
+
+  schemas:
+    - name: CategorySchema
+      type: zod
+      description: Zod schema for validating category objects
+      fields:
+        - title (string)
+        - imgSrc (string)
+        - link (string)
+
+    - name: ShopByCategorySchema
+      type: zod
+      exported: true
+      description: Zod schema for validating ShopByCategory objects
+      fields:
+        - display (boolean)
+        - order (number, min: 1)
+        - heading (string)
+        - headingPosition (string)
+        - categories (array of CategorySchema)
+        - imageAspectRatio (string)
+
+    - name: ShopByCategoryResponseSchema
+      type: zod
+      exported: true
+      description: Zod schema for validating API response
+      fields:
+        - shopByCategoryData (array of ShopByCategorySchema)
+
+api_contracts:
+  - endpoint: Via loadWebContent (WebContentType.SHOP_BY_CATEGORY)
+    method: N/A (internal service call)
+    description: Fetches shop-by-category content from JSON service
+    response_type: ShopByCategoryResponse
+    response_shape:
+      shopByCategoryData:
+        - display: boolean
+          order: number
+          heading: string
+          headingPosition: string
+          largeStyling: boolean
+          categories:
+            - title: string
+              imgSrc: string
+              link: string
+          imageAspectRatio: string
+
+behavior:
+  - name: getShopByCategoryContent
+    steps:
+      - Calls loadWebContent with WebContentType.SHOP_BY_CATEGORY generic typed as ShopByCategoryResponse
+      - Returns the result directly (awaits the promise)
+      - No error handling in this function (errors propagate from loadWebContent)
+  - name: ShopByCategorySchema (Zod)
+    steps:
+      - Validates display as boolean
+      - Validates order as number with minimum value of 1
+      - Validates heading and headingPosition as strings
+      - Validates categories as array of CategorySchema objects
+      - Validates imageAspectRatio as string
+      - Does NOT include largeStyling in schema (only in interface)
+  - name: ShopByCategoryResponseSchema (Zod)
+    steps:
+      - Wraps ShopByCategorySchema inside shopByCategoryData field as an array
+      - Validates the response is an array of sections (unlike ShopByBudget which is single object)
+  - name: CategorySchema (Zod, internal)
+    steps:
+      - Validates title, imgSrc, and link as required strings
+      - Simpler than ShopByBudget CategorySchema (no imageAspectRatio or ctaText)
+
+dependencies:
+  external:
+    - package: zod
+      usage: Schema validation
+  internal:
+    - path: ~/services/json-service
+      imports: [loadWebContent, WebContentType]
+      usage: Load web content via WebContentType.SHOP_BY_CATEGORY
+
+data_flow:
+  - step: 1
+    action: Call getShopByCategoryContent()
+  - step: 2
+    action: Internally calls loadWebContent with WebContentType.SHOP_BY_CATEGORY
+  - step: 3
+    action: Returns ShopByCategoryResponse with array of category sections
+  - step: 4
+    action: Data validated against ShopByCategoryResponseSchema
+
+business_logic:
+  - Category sections are ordered by the "order" field
+  - Each section can be toggled on/off with "display" boolean
+  - Minimum order value is 1 (enforced by zod schema)
+  - Multiple category sections can exist in the response array
+  - Image aspect ratio is configurable per section
+  - Heading position is configurable (alignment)
+  - Large styling variant available via largeStyling flag
+
+error_handling:
+  - Zod schema validation ensures data integrity
+  - Invalid data shape will throw zod validation errors
+  - Empty categories array is allowed
+  - Missing required fields will fail schema validation
+
+security:
+  - Read-only operation
+  - Public content, no authentication required
+  - All URLs should be validated/sanitized on render
+
+used_by:
+  - backend/services/web-component-service.yaml (imports ShopByCategory type for ShoppingGuide processing)
+  - backend/services/json-service.yaml (imports ShopByCategoryResponseSchema for web content validation)
+
+types:
+  Categories:
+    description: A single category item in the shop-by-category grid
+    fields:
+      - name: title
+        type: string
+        description: Category title text
+      - name: imgSrc
+        type: string
+        description: URL to category image
+      - name: link
+        type: string
+        description: URL link for the category
+
+  ShopByCategory:
+    description: A category browsing section with configurable heading and image aspect ratio
+    fields:
+      - name: display
+        type: boolean
+      - name: order
+        type: number
+        description: Minimum value 1 (enforced by Zod schema)
+      - name: heading
+        type: string
+      - name: largeStyling
+        type: boolean
+        description: Whether to use large styling variant (not in Zod schema, only in interface)
+      - name: headingPosition
+        type: string
+        description: Position of the heading (e.g., "left", "center", "right")
+      - name: categories
+        type: "Categories[]"
+      - name: imageAspectRatio
+        type: string
+        description: Aspect ratio for all category images in this section
+
+  ShopByCategoryResponse:
+    description: API response wrapper for shop-by-category content (array of sections)
+    fields:
+      - name: shopByCategoryData
+        type: "ShopByCategory[]"
+        description: Array of category sections (unlike ShopByBudget which is a single object)

@@ -1,0 +1,216 @@
+name: ReminderProvider
+source: src/components/reminders/reminder-provider.tsx
+description: |
+  Qwik context provider that loads and exposes reminder reference data
+  (occasion types and relationship types) to its children via ReminderContext.
+  Fetches both datasets in parallel on mount when autoLoad=true and the
+  context has not yet been initialized. Renders children via <Slot/> with
+  no wrapper element of its own. Also exposes refreshData and resetState
+  utility functions on window.__reminderProviderActions (client-side only)
+  as a lightweight escape hatch for external callers.
+
+exports:
+  - name: default
+    type: "component$<ReminderProviderProps>"
+    description: Default Qwik component export
+
+props:
+  - name: autoLoad
+    type: boolean
+    required: false
+    default: true
+    description: |
+      When true, automatically fetches occasion types and relationship types
+      on mount if not already initialized. Set to false to defer loading.
+
+component_structure:
+  root: Slot (no wrapper element; children rendered directly)
+
+data_structure:
+  ReminderContextState:
+    - occasionTypes: "OccasionType[]"
+    - relationshipTypes: "RelationshipType[]"
+    - isLoading: boolean
+    - error: "string | null"
+    - initialized: boolean
+
+behavior:
+  - Initialize reminderState store with empty arrays, isLoading=false, error=null, initialized=false
+  - Call useContextProvider(ReminderContext, reminderState) to provide context to all descendants
+  - On mount (useTask$ tracking autoLoad):
+      1. Guard: only run if autoLoad=true AND initialized=false AND isLoading=false
+      2. Set isLoading=true, error=null
+      3. Fetch in parallel: Promise.all([getOccasionTypes(), getRelationshipTypes()])
+      4. On success: populate occasionTypes and relationshipTypes; set isLoading=false, initialized=true
+      5. On error: extract error.message (or fallback "Failed to load reminder data"); set isLoading=false, error=errorMessage, initialized=true
+  - If autoLoad changes (re-tracked), the guard prevents double-fetching (initialized check)
+  - On client-side only (typeof window !== "undefined"):
+      Attach window.__reminderProviderActions = { refreshData, resetState }
+  - refreshData (escape hatch, not QRL):
+      1. Guard: if isLoading, return early
+      2. Set isLoading=true, error=null
+      3. Re-fetch both datasets in parallel
+      4. On success: update occasionTypes, relationshipTypes, isLoading=false
+      5. On error: set isLoading=false, error=errorMessage
+  - resetState (escape hatch, not QRL):
+      1. Clear occasionTypes=[], relationshipTypes=[]
+      2. Set isLoading=false, error=null, initialized=false
+  - Render: <Slot /> (passes children through with no wrapping element)
+
+api_calls:
+  - GET /occasion-types
+    service: getOccasionTypes (from ~/services/reminder-service)
+    base: "${getSiteSetting().baseAPIEndpoint}/user/reminders/v1"
+    full_path: "${baseAPIEndpoint}/user/reminders/v1/occasion-types"
+    response: "OccasionType[]"
+    on_error: returns [] (silent fail in service layer)
+
+  - GET /relationships
+    service: getRelationshipTypes (from ~/services/reminder-service)
+    base: "${getSiteSetting().baseAPIEndpoint}/user/reminders/v1"
+    full_path: "${baseAPIEndpoint}/user/reminders/v1/relationships"
+    response: "RelationshipType[]"
+    on_error: returns [] (silent fail in service layer)
+
+dependencies:
+  qwik:
+    - component$, Slot, useStore, useContextProvider, useTask$ from @builder.io/qwik
+  contexts:
+    - ReminderContext, type ReminderContextState from ~/context/reminder-context
+  services:
+    - getOccasionTypes, getRelationshipTypes from ~/services/reminder-service
+
+used_by:
+  - Header
+  - AccountLayout
+
+security:
+  - No authentication required; occasion types and relationship types are public reference data
+  - window.__reminderProviderActions is a convenience escape hatch; should not expose sensitive data
+  - refreshData and resetState are plain functions (not QRL) and run only on the client
+
+edge_cases:
+  - autoLoad=false: useTask$ runs but guard blocks fetching; children receive empty context state
+  - API returns empty arrays (graceful failure in service layer): context initialized with empty arrays, no error
+  - Network error: error string is set in context state; children should check context.error to render error UI
+  - Double mount prevention: initialized=true after first successful or failed fetch prevents re-fetching
+  - refreshData called while isLoading=true: returns early (guard prevents concurrent fetches)
+  - Server-side rendering: window.__reminderProviderActions assignment is guarded by typeof window !== "undefined"
+
+notes:
+  - The refreshData and resetState functions are exposed on window.__reminderProviderActions as a lightweight
+    escape hatch; they are NOT QRLs and cannot be called from other Qwik components via context
+  - Children (ReminderCreationModal, ReminderFormModular, etc.) consume ReminderContext via useContext(ReminderContext)
+    to access occasionTypes and relationshipTypes for form selects
+  - This provider is used in Header specifically when showReminderPopup=true (non-authenticated user reminder flow)
+  - The useTask$ lifecycle runs on both server and client in Qwik; the window guard prevents the SSR environment
+    from failing on the window assignment
+
+# ── NEW SECTIONS ────────────────────────────────────────────────────────────
+
+types:
+  ReminderProviderProps:
+    description: Component props interface
+    fields:
+      - name: autoLoad
+        type: boolean
+        optional: true
+        default: true
+
+  ReminderContextState:
+    description: Shape of the context provided to descendants via ReminderContext
+    source: ~/context/reminder-context
+    fields:
+      - name: occasionTypes
+        type: "OccasionType[]"
+        description: Reference data for occasion type select (e.g., Birthday, Anniversary)
+      - name: relationshipTypes
+        type: "RelationshipType[]"
+        description: Reference data for relationship select (e.g., Friend, Parent)
+      - name: isLoading
+        type: boolean
+        description: True while either API call is in flight
+      - name: error
+        type: "string | null"
+        description: Error message if fetch failed; null on success
+      - name: initialized
+        type: boolean
+        description: True after first fetch attempt completes (success or error)
+
+  OccasionType:
+    description: A single occasion type entry from the API
+    source: ~/context/reminder-context
+    fields:
+      - name: id
+        type: string
+      - name: name
+        type: string
+      - name: isPersonal
+        type: boolean
+      - name: isInternational
+        type: "boolean | undefined"
+        optional: true
+      - name: fixedDate
+        type: "string | undefined"
+        optional: true
+      - name: printerPixCategoryUrl
+        type: string
+
+  RelationshipType:
+    description: A single relationship type entry from the API
+    source: ~/context/reminder-context
+    fields:
+      - name: value
+        type: string
+      - name: label
+        type: string
+
+field_consumption:
+  OccasionType:
+    consumed:
+      - id: Stored in context; consumed by ReminderFormModular for select value
+      - name: Stored in context; consumed by ReminderFormModular for select label
+      - isPersonal: Stored in context; consumed by form to show/hide date fields
+      - isInternational: Stored in context
+      - fixedDate: Stored in context
+      - printerPixCategoryUrl: Stored in context
+    ignored: []
+
+  RelationshipType:
+    consumed:
+      - value: Stored in context; consumed by ReminderFormModular for select value
+      - label: Stored in context; consumed by ReminderFormModular for select label
+    ignored: []
+
+visibility_map:
+  loading_state:
+    condition: reminderState.isLoading === true
+    notes: Provider itself renders no loading UI; children must check context.isLoading
+
+  error_state:
+    condition: reminderState.error !== null
+    notes: Provider itself renders no error UI; children must check context.error
+
+  children_slot:
+    condition: always rendered
+    default: visible
+
+implementation_logic:
+  initialization_guard:
+    rule: |
+      The useTask$ fetch only runs when ALL three conditions are true:
+        1. autoLoad === true
+        2. reminderState.initialized === false
+        3. reminderState.isLoading === false
+      This prevents duplicate API calls if the component re-renders or
+      if autoLoad changes after initialization.
+    critical: true
+
+  parallel_fetch:
+    rule: |
+      getOccasionTypes() and getRelationshipTypes() are always fetched in
+      parallel via Promise.all. If either fails, the service layer returns []
+      (silent fail), so the context will still be marked initialized=true
+      with potentially partial data. If an exception escapes the service layer,
+      the catch block sets context.error.
+    critical: false

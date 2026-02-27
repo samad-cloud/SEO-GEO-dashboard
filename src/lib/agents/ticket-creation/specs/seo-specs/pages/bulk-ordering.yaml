@@ -1,0 +1,51 @@
+page_id: bulk-ordering
+description: "Bulk ordering inquiry form page. Uses custom bulkorder layout (no banners, simplified)."
+
+url:
+  pattern: "/bulk-ordering"
+  layout: "bulkorder"
+  i18n_rewrites: {}
+
+seo_contract:
+  title:
+    source: "i18n key: order.bulk_ordering.meta.title"
+    generating_mechanism: "inlineTranslate (qwik-speak) in head export"
+  meta_description:
+    source: "i18n key: order.bulk_ordering.meta.description"
+  meta_keywords:
+    source: "i18n key: order.bulk_ordering.meta.keywords"
+  canonical:
+    pattern: "{domain}/bulk-ordering"
+  robots:
+    value: "Standard"
+  open_graph: "Not configured"
+  twitter_card: "Not configured"
+  structured_data: "None"
+  hreflang:
+    count: 8
+    generating_function: "getHreflangLinks(pathname)"
+    notes: "No i18n rewrites, so hreflang URLs are correct for all regions"
+  heading_hierarchy:
+    h1: "Bulk ordering heading from BulkOrderPage component"
+
+file_chain:
+  route:
+    file: "src/routes/bulk-ordering/index@bulkorder.tsx"
+    spec: "../migration-specs/frontend/routes/bulk-ordering.yaml"
+    notes: "Uses @bulkorder layout suffix"
+  layout:
+    file: "src/routes/layout-bulkorder.tsx"
+    spec: "../migration-specs/frontend/layouts/layout-bulkorder.yaml"
+    seo_elements_owned: "None — simplified layout"
+  page_component:
+    name: "BulkOrderPage"
+    file: "src/components/bulk-order/bulk-order-page.tsx"
+    spec: "../migration-specs/frontend/components/bulk-order/bulk-order-page.yaml"
+  form_loader:
+    name: "useFormLoader"
+    description: "Returns InitialValues for BulkOrderingForm (productType, size, pages, quantity, name, etc.)"
+  middleware:
+    ref: "_architecture.yaml → middleware_pipeline"
+
+region_variations:
+  notes: "No region-specific differences documented"

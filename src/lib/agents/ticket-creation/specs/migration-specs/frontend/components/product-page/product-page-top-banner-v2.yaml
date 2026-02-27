@@ -1,0 +1,194 @@
+name: ProductPageTopBannerV2
+source: src/components/product-page/product-page-top-banner-v2.tsx
+description: |
+  Top banner section for the product page. Renders one of three banner options
+  in priority order: (1) a CampaignPromoBanner when campaignInfo is present,
+  (2) a MainBanner from the product's floatingBanner.main data, or (3) a global
+  category page banner override image pair (desktop + mobile) when one is
+  configured and its type matches "Product". The campaign/main banner is shown
+  in both a desktop-only and a mobile-only container to allow independent
+  responsive layout. The global banner override images are shown outside those
+  containers (always visible, responsive via hidden/block classes).
+
+exports:
+  - name: default
+    type: component$<ProductPageTopBannerProps>
+    description: Default Qwik component export
+  - name: ProductPageTopBannerProps
+    type: interface
+    description: Props interface
+
+props:
+  - name: campaignInfo
+    type: "CampaignInfo | null"
+    required: true
+    description: Campaign promotion data; if non-null, CampaignPromoBanner takes priority over floatingBanner
+
+context_consumed:
+  - name: ProductContext
+    source: ~/context/product-category-context
+    fields:
+      - product.productPageContent.floatingBanner.main: Banner data for the MainBanner component
+      - product.productPageContent.webComponents: Array searched for CATEGORY_PAGE_BANNER_OVERRIDE web component
+
+component_structure:
+  - DesktopBannerContainer: hidden lg:block — contains CampaignPromoBanner OR MainBanner
+  - GlobalBannerDesktop: hidden md:block — global category banner override, desktop image
+  - GlobalBannerMobile: block md:hidden — global category banner override, mobile image
+  - MobileBannerContainer: block lg:hidden — contains CampaignPromoBanner OR MainBanner
+
+child_components:
+  - name: CampaignPromoBanner
+    source: ~/components/product-page/campaign-promo-banner
+    purpose: Renders campaign-specific promotional banner
+    props:
+      - campaignInfo: CampaignInfo
+  - name: MainBanner
+    source: ~/components/banner/dynamic-promo-banner-v2
+    purpose: Renders the product's floating main banner
+    props:
+      - data: floatingBanner.main data
+      - type: "product"
+  - name: Image
+    source: "@unpic/qwik"
+    purpose: Renders global banner override images (desktop and mobile)
+    props:
+      - src: desktopImageUrl or mobileImageUrl
+      - alt: desktopImageAlt or mobileImageAlt
+      - aspectRatio: from data or default ("1920 / 251" desktop, "767 / 165" mobile)
+
+data_structure:
+  CategoryPageBannerOverrideData:
+    - isActive: boolean
+    - type: string ("Product" | "Category")
+    - desktopImageUrl: string
+    - desktopImageAlt: string
+    - mobileImageUrl: string
+    - mobileImageAlt: string
+    - aspectRatioDesktop: "string | null"
+    - aspectRatioMobile: "string | null"
+
+behavior:
+  - On render, compute globalCategoryBanner via useComputed$:
+      1. Search product.productPageContent.webComponents for entry whose wcTemplateName starts with WebComponentType.CATEGORY_PAGE_BANNER_OVERRIDE
+      2. If found, call processCategoryPageBannerOverrideData to extract the structured data
+      3. If not found, globalCategoryBanner.value is null
+  - Desktop container (hidden lg:block):
+      1. If campaignInfo is non-null: render CampaignPromoBanner
+      2. Else if floatingBanner.main is truthy: render MainBanner with type="product"
+      3. Else: render nothing
+  - Global banner (always visible, responsive):
+      1. If globalCategoryBanner.value.data.isActive AND type == "Product":
+         - Render desktop Image (hidden md:block) with aspect ratio from data or "1920 / 251"
+         - Render mobile Image (block md:hidden) with aspect ratio from data or "767 / 165"
+  - Mobile container (block lg:hidden):
+      1. Same logic as desktop container (campaignInfo → MainBanner → null)
+
+styling:
+  - Desktop container: hidden lg:block
+  - Mobile container: block lg:hidden
+  - Desktop global banner image: hidden md:block
+  - Mobile global banner image: block md:hidden
+
+dependencies:
+  qwik:
+    - component$, useComputed$, useContext from @builder.io/qwik
+  external:
+    - Image from @unpic/qwik
+  components:
+    - CampaignPromoBanner from ~/components/product-page/campaign-promo-banner
+    - MainBanner from ~/components/banner/dynamic-promo-banner-v2
+  contexts:
+    - ProductContext from ~/context/product-category-context
+  services:
+    - processCategoryPageBannerOverrideData, WebComponentType from ~/services/web-component-service
+
+used_by:
+  - ProductPageBaseTemplate
+  - ProductPageBasicTemplate
+  - ProductPageFixedTemplate
+  - ProductPageFixedThemeTemplate
+  - ProductPageHubTemplate
+  - ProductPageHubChildTemplate
+  - PhotoCanvasPrintsNewTemplate
+  - PhotoCanvasPrintsNewTemplateV3
+  - PhotoCanvasPrintsBundledTemplate
+  - PhotoCanvasPrintsHubBundledTemplate
+  - PhotoCanvasPrintsTemplateV2
+  - PhotoCanvasPrintsBaseTemplate
+  - PhotoCalendarsBaseTemplate
+  - PhotoCalendarsBalooRadioTemplate
+  - PhotoCalendarsDaisyTemplate
+  - PhotoCalendarsJbc2024Template
+
+edge_cases:
+  - If both campaignInfo and floatingBanner.main are absent, both banner containers render nothing
+  - globalCategoryBanner only shows when isActive=true AND type=="Product"; category pages with type!="Product" are silently excluded
+  - aspectRatio defaults ("1920 / 251" and "767 / 165") are used when the override data provides no aspect ratio
+
+notes:
+  - The same CampaignPromoBanner/MainBanner selection logic is duplicated in both the desktop and mobile containers intentionally — each container is independently hidden/shown by responsive CSS
+
+types:
+  ProductPageTopBannerProps:
+    description: Component props
+    fields:
+      - name: campaignInfo
+        type: "CampaignInfo | null"
+
+  CategoryPageBannerOverrideData:
+    description: Processed data from CATEGORY_PAGE_BANNER_OVERRIDE web component
+    fields:
+      - name: isActive
+        type: boolean
+      - name: type
+        type: string
+      - name: desktopImageUrl
+        type: string
+      - name: desktopImageAlt
+        type: string
+      - name: mobileImageUrl
+        type: string
+      - name: mobileImageAlt
+        type: string
+      - name: aspectRatioDesktop
+        type: "string | null"
+      - name: aspectRatioMobile
+        type: "string | null"
+
+field_consumption:
+  ProductContext.product:
+    consumed:
+      - productPageContent.floatingBanner.main: Passed to MainBanner as data prop
+      - productPageContent.webComponents: Searched for CATEGORY_PAGE_BANNER_OVERRIDE entry
+    ignored:
+      - All other product fields
+
+  CategoryPageBannerOverrideData:
+    consumed:
+      - isActive: Guard condition for rendering the global banner images
+      - type: Must equal "Product" to render on product page
+      - desktopImageUrl: src for desktop Image
+      - desktopImageAlt: alt for desktop Image
+      - mobileImageUrl: src for mobile Image
+      - mobileImageAlt: alt for mobile Image
+      - aspectRatioDesktop: passed to desktop Image (falls back to "1920 / 251")
+      - aspectRatioMobile: passed to mobile Image (falls back to "767 / 165")
+    ignored: []
+
+visibility_map:
+  campaign_promo_banner:
+    condition: "campaignInfo !== null"
+    default: hidden
+
+  main_banner:
+    condition: "campaignInfo is null AND product.productPageContent.floatingBanner.main is truthy"
+    default: hidden
+
+  global_banner_desktop_image:
+    condition: "globalCategoryBanner.value.data.isActive AND type == 'Product'"
+    default: hidden
+
+  global_banner_mobile_image:
+    condition: "globalCategoryBanner.value.data.isActive AND type == 'Product'"
+    default: hidden

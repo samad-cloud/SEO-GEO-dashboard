@@ -1,0 +1,984 @@
+name: CategoryProduct Layout
+type: layout
+source:
+  path: src/routes/layout-categoryproduct.tsx
+  lines: 618
+  language: typescript
+  framework: qwik
+
+description: |
+  The most complex layout in the e-commerce application. Handles both product detail pages
+  and category listing pages. Implements a sophisticated consolidated data loader that runs
+  multiple async operations in parallel with conditional secondary loaders based on page type.
+
+  Key features:
+  - Single parallel data loader (useLoadAllData) replaces 7 previous independent loaders
+  - Conditional secondary loaders (category-only: delivery deadlines, quick links)
+  - Comprehensive timing instrumentation for performance monitoring
+  - Device detection, country detection, banner loading
+  - Context provider setup for product, category, device, and page type contexts
+  - GTM tracking integration
+  - Cross-domain notification support
+  - Campaign banner support (product/category-specific)
+  - Breadcrumbs navigation
+  - Conditional footer rendering
+
+request_handler:
+  name: onRequest
+  type: middleware
+  timing_instrumented: true
+  checks:
+    - name: redeemgift_redirect
+      condition: URL pathname includes "redeemgift" (case-insensitive)
+      action: 302 redirect to `/redeemgift/${search_params}`
+
+    - name: excluded_route_check
+      function: isExcludedRoute(event.url)
+      action: Exit request if route is excluded
+
+    - name: cookie_and_redirection
+      function: cookieAndRedirectionMiddleware(event)
+      action: Handles cookie-based redirects and setup
+
+  timing_storage:
+    location: event.sharedMap
+    key: "onRequestTiming"
+    purpose: Pass middleware timing to route loaders
+
+  logs:
+    - "⏱️ onRequest (middleware): {duration}ms"
+
+route_loaders:
+  main_loader:
+    name: useLoadAllData
+    type: routeLoader$
+    pattern: consolidated_parallel
+    timing_instrumented: true
+
+    description: |
+      Single consolidated loader that replaced 7 independent loaders. Runs 4 core loaders
+      in parallel via Promise.all, then conditionally runs 2 additional loaders ONLY for
+      category pages. Product pages get a free shipping data loader instead.
+
+    parallel_phase_1:
+      method: Promise.all
+      loaders:
+        - name: detectCountry
+          timing_key: detectCountry
+          log: "[LOADER_TIMING_V2] useDetectCountry: {duration}ms"
+          function: detectCountryFromHeader(event)
+          return_type: "{ country: string, shouldShowCrossDomainNotification: boolean }"
+          data_sources:
+            - event.cookie.get("showCrossDomainNotification")
+            - event headers (for country detection)
+
+        - name: loadBanner
+          timing_key: loadBanner
+          log: "[LOADER_TIMING_V2] useLoadBanner: {duration}ms"
+          function: getBanner(friendlyUrl)
+          input: "url.pathname.slice(1, -1)"
+          return_type: "{ stripBanner, promoBanner, shippingFooterBanner }"
+          data_sources:
+            - JSON file based on friendly URL
+
+        - name: loadDeviceInfo
+          timing_key: loadDeviceInfo
+          log: "[LOADER_TIMING_V2] useLoadDeviceInfo: {duration}ms"
+          function: detectDeviceFromUserAgent(userAgent)
+          input: 'event.request.headers.get("user-agent") || ""'
+          return_type: DeviceInfo
+          data_sources:
+            - HTTP User-Agent header
+
+        - name: loadProductOrCategory
+          timing_key: loadProductOrCategory
+          log: "[LOADER_TIMING_V2] useLoadProductOrCategory: {duration}ms"
+          function: getProductOrCategoryData(params)
+          complexity: HIGHEST
+
+          input_extraction:
+            friendlyUrl:
+              - "params.friendUrl?.replace(/^trl[0-9]+\//, '')"
+              - "OR params.friendUrl"
+              - "OR url.pathname.slice(1, -1).replace(/^trl[0-9]+\//, '')"
+
+            query_params_extracted:
+              - preselectedrefid
+              - couponcode (fallback to MODI_COUPON cookie)
+              - quantity (number, default 1)
+              - preselectedsvgthemeid
+              - vc
+              - affcoupon
+              - editor
+              - themename
+              - themeid
+              - utm_id
+              - utm_source
+              - utm_medium
+              - utm_campaign
+              - utm_term
+              - utm_content
+              - utm_creative_format
+              - utm_marketing_tactic
+              - utm_source_platform
+              - wbraid
+              - gbraid
+
+            cookies_extracted:
+              - MACHINE_TOKEN
+              - MODI_COUPON (coupon fallback)
+              - GCLAW (for gclId via extractGCLCookieData)
+              - pixId
+              - pixIdUnixTimestamp (as unixTimestamp)
+
+          api_call:
+            function: getProductOrCategoryData
+            params:
+              url: friendlyUrl
+              preselectedRefId: string
+              couponCode: string
+              vc: string
+              affcoupon: string
+              themeName: string
+              themeId: string
+              gclId: string (from GCLAW cookie)
+              pixId: string
+              utm_id: string
+              utm_source: string
+              utm_medium: string
+              utm_campaign: string
+              utm_term: string
+              utm_content: string
+              utm_creative_format: string
+              utm_marketing_tactic: string
+              utm_source_platform: string
+              wbraid: string
+              gbraid: string
+              unixTimestamp: string
+
+          response_handling:
+            check: isDataReady(productCategoryData)
+            branches:
+              category_page:
+                condition: "data.webPageType === WebPageTypeEnum.CategoryPage"
+                action: "result.category = data"
+
+              product_page:
+                condition: "data.webPageType === WebPageTypeEnum.ProductPage"
+                action: "result.product = data"
+
+                sub_branches:
+                  instant_product:
+                    condition: "product.productPageViewName === ProductPageViewNameEnum.NonCustomizableThemes2021Q1"
+                    action: |
+                      - Call extractProductInstantProductData(product)
+                      - Set result.instantProductThemeData
+                      - Set result.sizeOptions
+                      - Return null if extraction fails
+
+                  standard_product:
+                    condition: else
+                    action: |
+                      - Call extractProductData(product, preselectedRefId, quantity, friendlyUrl, machineToken, editor)
+                      - Extract and set: couponCode, friendlyUrl, preselectedRefId, machineToken, refCode, firstSlideUrl, filterIndex, themeUrl, selectedFilter
+                      - Return null if extraction fails
+
+              unknown:
+                condition: "!isDataReady(productCategoryData)"
+                action: "return null"
+
+          return_fields:
+            - product: ProductPageData
+            - category: CategoryPage
+            - quantity: number
+            - machineToken: string
+            - couponCode: string
+            - friendlyUrl: string
+            - refCode: string
+            - preselectedRefId: string
+            - firstSlideUrl: string
+            - filterIndex: array
+            - webPageType: WebPageTypeEnum
+            - svgThemeId: string
+            - instantProductThemeData: object | undefined
+            - sizeOptions: array
+            - editor: string
+            - themeUrl: string
+            - selectedFilter: object | null
+
+    conditional_phase_2:
+      description: "Secondary loaders run ONLY if webPageType === CategoryPage"
+      condition: "productCategoryResult?.webPageType === WebPageTypeEnum.CategoryPage"
+
+      category_loaders:
+        method: Promise.all
+        loaders:
+          - name: loadProductJsonData
+            timing_key: loadProductJsonData
+            log: "[LOADER_TIMING_V2] useLoadProductJsonData: {duration}ms"
+            function: loadWebContent<DeliveryDeadlineJSON>(WebContentType.DELIVERY_DEADLINES)
+            return_type: DeliveryDeadlineJSON
+            purpose: Delivery deadline data for category product listings
+
+          - name: loadCategoryQuickLinks
+            timing_key: useCategoryQuickLinks
+            log: "[LOADER_TIMING_V2] useCategoryQuickLinks: {duration}ms"
+            function: loadWebContent<CategoryQuickLinkSection[]>(WebContentType.CATEGORY_QUICK_LINKS)
+            return_type: CategoryQuickLinkSection[]
+            purpose: Quick links section for category pages
+
+      product_alternative:
+        condition: "else (product page)"
+        action: |
+          - Call getFreeShippingMinimumQuantityData(platinumProductType, platinumProductTypeGroup)
+          - Set freeShippingMinimumQuantityData
+          - Set timing for skipped loaders to 0
+          - Log: "[LOADER_TIMING_V2] useLoadProductJsonData: 0ms (skipped - product page)"
+          - Log: "[LOADER_TIMING_V2] useCategoryQuickLinks: 0ms (skipped - product page)"
+
+    timing_output:
+      overall_log: "✅ [CONSOLIDATED] Total parallel loading time: {overallDuration}ms"
+      detail_log: "📊 [CONSOLIDATED] Individual timings: {timings}"
+      timings_tracked:
+        - onRequest (from sharedMap)
+        - detectCountry
+        - loadBanner
+        - loadDeviceInfo
+        - loadProductOrCategory
+        - loadProductJsonData (0 if product page)
+        - useCategoryQuickLinks (0 if product page)
+
+    return_structure:
+      data:
+        onRequestTiming: number
+        country: "{ country: string, shouldShowCrossDomainNotification: boolean }"
+        banner: "{ stripBanner, promoBanner, shippingFooterBanner }"
+        deviceInfo: DeviceInfo
+        productOrCategory: ProductOrCategoryLoadResponse | null
+        productJsonData: DeliveryDeadlineJSON | null
+        categoryQuickLinks: CategoryQuickLinkSection[]
+        freeShippingMinimumQuantityData: FreeShippingMinimumQuantityData | null
+      _timing: "Record<string, number>"
+      _overallTiming: number
+
+data_accessors:
+  description: "Accessor functions that wrap useLoadAllData to extract specific data + timing"
+  pattern: "Each returns { value: { data: T, _timing: number } }"
+
+  accessors:
+    - name: useRequestHandlerTiming
+      extracts: "allData?.data?.onRequestTiming || 0"
+      timing: "allData?._timing?.onRequest || 0"
+
+    - name: useDetectCountry
+      extracts: "allData?.data?.country"
+      timing: "allData?._timing?.detectCountry || 0"
+
+    - name: useLoadProductOrCategory
+      extracts: "allData?.data?.productOrCategory"
+      timing: "allData?._timing?.loadProductOrCategory || 0"
+
+    - name: useLoadBanner
+      extracts: "allData?.data?.banner"
+      timing: "allData?._timing?.loadBanner || 0"
+
+    - name: useLoadProductJsonData
+      extracts: "allData?.data?.productJsonData"
+      timing: "allData?._timing?.loadProductJsonData || 0"
+
+    - name: useCategoryQuickLinks
+      extracts: "allData?.data?.categoryQuickLinks"
+      timing: "allData?._timing?.useCategoryQuickLinks || 0"
+
+    - name: useLoadDeviceInfo
+      extracts: "allData?.data?.deviceInfo"
+      timing: "allData?._timing?.loadDeviceInfo || 0"
+
+context_providers:
+  description: "Context setup for child components"
+  providers:
+    - name: DeviceDetectorContext
+      type: IDeviceDetectorContext
+      value: deviceDetectorData
+      fields:
+        - os: MobileOS (detected client-side via useVisibleTask$)
+        - isInAppBrowser: boolean (detected client-side)
+        - deviceInfo: DeviceInfo (from server loader)
+
+    - name: WebPageTypeContext
+      type: Signal<WebPageTypeEnum>
+      value: webPageType
+      initial: WebPageTypeEnum.CategoryPage
+      updated_by: useTask$ tracking productOrCategoryData
+
+    - name: ProductContext
+      type: IProductDataContext
+      value: productData
+      fields:
+        - product: ProductPageData
+        - couponCode: string
+        - friendlyUrl: string
+        - machineToken: string
+        - filterIndex: array
+        - refCode: string
+        - firstSlideUrl: string
+        - preselectedRefId: string
+        - editor: string
+        - themeUrl: string
+        - selectedFilter: object | null
+        - freeShippingMinimumQuantityData: FreeShippingMinimumQuantityData | null
+      populated_by: useTask$ when webPageType is ProductPage
+
+    - name: CategoryContext
+      type: ICategoryContext
+      value: categoryData
+      fields:
+        - category: CategoryPage
+        - couponCode: string
+        - productJsonData: DeliveryDeadlineJSON
+        - categoryQuickLinks: CategoryQuickLinkSection[]
+      populated_by: useTask$ when webPageType is CategoryPage
+
+component_lifecycle:
+  use_task:
+    tracks: productOrCategoryData
+    purpose: Populate product or category context based on webPageType
+    logic: |
+      if productOrCategoryData:
+        set webPageType.value = productOrCategoryData.webPageType
+
+        if ProductPage:
+          populate productData with all product fields
+          set freeShippingMinimumQuantityData from allData
+
+        if CategoryPage:
+          populate categoryData with category, couponCode, categoryQuickLinks
+      else:
+        reset product and category to empty objects
+
+  use_visible_task_device:
+    purpose: Client-side device detection
+    logic: |
+      deviceDetectorData.os = detectMobileOS()
+      deviceDetectorData.isInAppBrowser = isInAppBrowser()
+
+  use_visible_task_gtm:
+    strategy: "document-ready"
+    tracks: productData.product.id
+    purpose: GTM tracking and product change handling
+    logic: |
+      if productData.product?.id && productData.selectedFilter:
+        handleSeletedProductChange(friendlyurl, selectedFilter, couponCode, refCode)
+
+      setEmailCommand() (GTM)
+
+component_render:
+  structure:
+    - conditional: CrossDomainNotification
+      condition: "country && shouldShowCrossDomainNotification"
+      props:
+        - country
+
+    - conditional: StripBannerComponent
+      condition: "campaignStripBanner.value || stripBanner"
+      props:
+        - data: campaignStripBanner.value || stripBanner
+      note: "Campaign banners take priority over standard banners"
+
+    - component: HeaderWrapper
+      props: none
+
+    - element: main
+      class: "relative"
+      children:
+        - conditional: Breadcrumbs
+          condition: breadcrumbData.value
+          wrapper: "container mx-auto px-4 my-1 lg:my-2"
+          props:
+            - data: breadcrumbData.value
+
+        - component: Slot
+          purpose: Child route content (product or category page)
+
+    - conditional: FooterProductCategory
+      condition: 'location.url.searchParams?.get("showFooter") !== "0"'
+      props:
+        - isProduct: "webPageType === ProductPage"
+        - promoBanner
+        - shippingFooterBanner
+
+computed_signals:
+  - name: campaignStripBanner
+    type: useComputed$
+    logic: |
+      if ProductPage && product.campaignInfo:
+        return {
+          banners: [product.campaignInfo.stripBannerContent],
+          bgColor: product.campaignInfo.banner.bgColor,
+          textColor: product.campaignInfo.banner.textColor
+        }
+      else if CategoryPage && category.campaignInfo:
+        return {
+          banners: [category.campaignInfo.stripBannerContent],
+          bgColor: category.campaignInfo.banner.bgColor,
+          textColor: category.campaignInfo.banner.textColor
+        }
+      else:
+        return null
+
+  - name: breadcrumbData
+    type: useComputed$
+    logic: |
+      if ProductPage:
+        return product.breadcrumbs
+      else if CategoryPage:
+        return category.breadcrumbsNavigation
+      else:
+        return null
+
+head_export:
+  name: head
+  type: DocumentHead
+  inputs:
+    - resolveValue: function
+    - url: URL
+
+  logic: |
+    const allData = resolveValue(useLoadAllData)
+    const productOrCategoryData = allData?.data?.productOrCategory
+
+    if productOrCategoryData && category?.metaData:
+      return getCategoryHeadData(category, url)
+
+    else if productOrCategoryData && product?.metaData:
+      return getProductHeadData(product, url)
+
+    else:
+      return { title: "Printerpix" }
+
+  services_used:
+    - getCategoryHeadData (from category-service)
+    - getProductHeadData (from product-page-service)
+
+exports:
+  request_handler:
+    - onRequest: RequestHandler
+
+  route_loaders:
+    - useLoadAllData: routeLoader$
+
+  data_accessors:
+    - useRequestHandlerTiming
+    - useDetectCountry
+    - useLoadProductOrCategory
+    - useLoadBanner
+    - useLoadProductJsonData
+    - useCategoryQuickLinks
+    - useLoadDeviceInfo
+
+  component:
+    - default: component$ (layout component)
+
+  head:
+    - head: DocumentHead
+
+behavior:
+  - step: 1
+    action: "onRequest middleware runs: checks if URL contains 'redeemgift' and redirects (302) to /redeemgift/ with search params; checks if route is excluded via isExcludedRoute and exits; runs cookieAndRedirectionMiddleware for cookie-based redirects and region handling; stores timing in event.sharedMap"
+  - step: 2
+    action: "useLoadAllData routeLoader$ runs: retrieves onRequest timing from sharedMap, then launches 4 parallel async loaders via Promise.all: (1) detectCountry from headers + cross-domain notification cookie check, (2) getBanner by friendly URL, (3) detectDeviceFromUserAgent, (4) getProductOrCategoryData with extensive param extraction from URL query params and cookies (MACHINE_TOKEN, MODI_COUPON, GCLAW, pixId, UTM params)"
+  - step: 3
+    action: "Product/Category data handler: calls getProductOrCategoryData API. If CategoryPage, stores category data. If ProductPage, checks if instant product (NonCustomizableThemes2021Q1) and calls extractProductInstantProductData, or calls extractProductData for standard products. Returns null if data not ready or extraction fails."
+  - step: 4
+    action: "Conditional phase 2 loaders: if page is CategoryPage, runs 2 additional parallel loaders for delivery deadlines (loadWebContent DELIVERY_DEADLINES) and category quick links (loadWebContent CATEGORY_QUICK_LINKS). If ProductPage, loads free shipping minimum quantity data instead and marks skipped loaders as 0ms."
+  - step: 5
+    action: "Returns consolidated data object with all loader results, timing data, and overall timing. Exports 7 data accessor functions (useRequestHandlerTiming, useDetectCountry, useLoadProductOrCategory, useLoadBanner, useLoadProductJsonData, useCategoryQuickLinks, useLoadDeviceInfo) that wrap useLoadAllData."
+  - step: 6
+    action: "Component initialization: extracts all data from useLoadAllData, initializes stores for productData (IProductDataContext), categoryData (ICategoryContext), and deviceDetectorData (IDeviceDetectorContext). Sets initial webPageType signal to CategoryPage."
+  - step: 7
+    action: "useTask$ tracks productOrCategoryData: populates productData store if ProductPage (all product fields, free shipping data) or categoryData store if CategoryPage (category, couponCode, quickLinks). Resets to empty objects if no data."
+  - step: 8
+    action: "Client-side useVisibleTask$ detects mobile OS and in-app browser status. Sets up 4 context providers: DeviceDetectorContext, WebPageTypeContext, ProductContext, CategoryContext."
+  - step: 9
+    action: "GTM useVisibleTask$ (document-ready strategy): tracks product ID changes, calls handleSeletedProductChange for product page filter changes, and fires setEmailCommand GTM event."
+  - step: 10
+    action: "Compute campaignStripBanner: checks for campaign info on current product or category, extracts strip banner content, background color, and text color. Campaign banners take priority over standard banners."
+  - step: 11
+    action: "Compute breadcrumbData: returns product.breadcrumbs for ProductPage or category.breadcrumbsNavigation for CategoryPage."
+  - step: 12
+    action: "Render layout: CrossDomainNotification (if country detected and notification enabled) > StripBanner (campaign or standard) > HeaderWrapper > main element with optional Breadcrumbs and Slot for child route content > FooterProductCategory (unless showFooter=0 query param)"
+  - step: 13
+    action: "Head export: resolves useLoadAllData, returns category SEO head data (getCategoryHeadData) or product SEO head data (getProductHeadData) based on page type, or default 'Printerpix' title"
+
+used_by:
+  - "~/routes/[...productCategory]/index@categoryproduct.tsx"
+  - "~/routes/p/[friendUrl]/[...url]/index@categoryproduct.tsx"
+
+dependencies:
+  qwik_core:
+    - component$
+    - Slot
+    - useComputed$
+    - useContextProvider
+    - useSignal
+    - useStore
+    - useTask$
+    - useVisibleTask$
+
+  qwik_city:
+    - DocumentHead
+    - RequestHandler
+    - routeLoader$
+    - useLocation
+
+  services:
+    - path: "~/services/json-service"
+      imports:
+        - loadWebContent
+        - WebContentType
+        - DeliveryDeadlineJSON (type)
+        - StripBanner (type)
+
+    - path: "~/services/category-service"
+      imports:
+        - getCategoryHeadData
+        - CategoryPage (type)
+        - CategoryQuickLinkSection (type)
+
+    - path: "~/services/middle-ware-service"
+      imports:
+        - cookieAndRedirectionMiddleware
+
+    - path: "~/services/product-category-service"
+      imports:
+        - getProductOrCategoryData
+        - WebPageTypeEnum
+        - ProductOrCategoryLoadResponse (type)
+
+    - path: "~/services/product-page-service"
+      imports:
+        - extractProductData
+        - extractProductInstantProductData
+        - getFreeShippingMinimumQuantityData
+        - getProductHeadData
+        - handleSeletedProductChange
+        - ProductPageData (type)
+        - ProductPageViewNameEnum
+        - FreeShippingMinimumQuantityData (type)
+
+    - path: "~/services/cart-services/gtm/data-layer-mapper"
+      imports:
+        - cookieKey
+        - setEmailCommand
+
+    - path: "~/services/cart-services/gtm/data-layer-base"
+      imports:
+        - extractGCLCookieData
+
+    - path: "~/services/common-service"
+      imports:
+        - getBanner
+        - isDataReady
+
+  utility:
+    - path: "~/utility/http"
+      imports:
+        - isExcludedRoute
+
+    - path: "~/utility/device"
+      imports:
+        - detectDeviceFromUserAgent
+        - detectMobileOS
+        - isInAppBrowser
+        - MobileOS
+
+    - path: "~/utility/country-region"
+      imports:
+        - detectCountryFromHeader
+
+  context:
+    - path: "~/context/product-category-context"
+      imports:
+        - ICategoryContext (type)
+        - IProductDataContext (type)
+        - CategoryContext
+        - ProductContext
+        - WebPageTypeContext
+
+    - path: "~/context/device-detector-context"
+      imports:
+        - IDeviceDetectorContext (type)
+        - DeviceDetectorContext
+
+  components:
+    - path: "~/components/banner/strip-banner"
+      imports:
+        - StripBannerComponent (default)
+
+    - path: "~/components/footer/footer-product-category"
+      imports:
+        - FooterProductCategory (default)
+
+    - path: "~/components/cross-domain-notification/cross-domain-notification"
+      imports:
+        - CrossDomainNotification (default)
+
+    - path: "~/components/share/breadcrumbs/breadcrumbs"
+      imports:
+        - Breadcrumbs (default)
+
+    - path: "~/components/header/header-wrapper"
+      imports:
+        - HeaderWrapper (default)
+
+  config:
+    - path: "~/config/http"
+      imports:
+        - NewAPIResponse (type)
+
+data_flow:
+  request_lifecycle:
+    1_middleware:
+      - onRequest runs
+      - Check redeemgift redirect
+      - Check excluded routes
+      - Run cookieAndRedirectionMiddleware
+      - Store timing in sharedMap
+
+    2_parallel_loading:
+      - useLoadAllData routeLoader$ runs
+      - Retrieve onRequest timing from sharedMap
+      - Launch 4 parallel loaders (country, banner, device, product/category)
+      - Wait for all to complete
+
+    3_conditional_loading:
+      - Check productOrCategory.webPageType
+      - If CategoryPage: load delivery deadlines + quick links in parallel
+      - If ProductPage: load free shipping data
+
+    4_return_consolidated:
+      - Return all data in single object
+      - Include timing data for each loader
+      - Include overall timing
+
+    5_component_initialization:
+      - Component extracts data from useLoadAllData
+      - Initialize stores for product/category/device contexts
+      - useTask$ populates contexts based on page type
+      - useVisibleTask$ detects client-side device info
+      - useContextProvider makes all contexts available to children
+
+    6_render:
+      - Compute campaign banner (if any)
+      - Compute breadcrumb data
+      - Render: CrossDomainNotification → StripBanner → Header → Main(Breadcrumbs + Slot) → Footer
+
+    7_gtm_tracking:
+      - useVisibleTask$ with document-ready strategy
+      - Track product changes
+      - Send GTM events
+
+types_consumed:
+  from_services:
+    - DeliveryDeadlineJSON
+    - StripBanner
+    - CategoryPage
+    - CategoryQuickLinkSection
+    - ProductOrCategoryLoadResponse
+    - ProductPageData
+    - FreeShippingMinimumQuantityData
+    - ICategoryContext
+    - IProductDataContext
+    - IDeviceDetectorContext
+    - NewAPIResponse
+    - MobileOS
+
+  from_qwik:
+    - DocumentHead
+    - RequestHandler
+
+  enums:
+    - WebPageTypeEnum (Unknown, CategoryPage, ProductPage)
+    - ProductPageViewNameEnum (NonCustomizableThemes2021Q1, etc.)
+    - WebContentType (DELIVERY_DEADLINES, CATEGORY_QUICK_LINKS)
+
+performance_characteristics:
+  optimization: parallel_loading
+  benefits:
+    - Reduced total loading time (4 independent loaders in parallel)
+    - Conditional secondary loaders (skip unused data)
+    - Shared timing data via sharedMap
+    - Comprehensive performance instrumentation
+
+  timing_logs:
+    prefix: "[LOADER_TIMING_V2]"
+    consolidated_prefix: "[CONSOLIDATED]"
+    tracked_operations:
+      - onRequest middleware
+      - detectCountry
+      - loadBanner
+      - loadDeviceInfo
+      - loadProductOrCategory
+      - loadProductJsonData (conditional)
+      - useCategoryQuickLinks (conditional)
+      - Overall parallel time
+
+security:
+  cookies_read:
+    - MACHINE_TOKEN (user session)
+    - MODI_COUPON (coupon code)
+    - showCrossDomainNotification (UI preference)
+    - GCLAW (Google Click ID for attribution)
+    - pixId (pixel tracking)
+    - pixIdUnixTimestamp (pixel timestamp)
+
+  redirects:
+    - redeemgift URLs (302 redirect with search params)
+    - cookieAndRedirectionMiddleware (region-based redirects)
+
+  exit_conditions:
+    - isExcludedRoute returns true
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  DetectCountryResult:
+    description: Output of the country detection sub-loader inside useLoadAllData
+    fields:
+      - name: country
+        type: string
+        notes: 2-letter code from CF-IPCountry header; empty string if header absent
+      - name: shouldShowCrossDomainNotification
+        type: boolean
+        notes: True unless cookie "showCrossDomainNotification" equals "false"
+
+  DeviceInfo:
+    description: Server-side device detection result from User-Agent header
+    source: ~/utility/device
+    fields:
+      - name: isMobile
+        type: boolean
+      - name: isDesktop
+        type: boolean
+      - name: isTablet
+        type: boolean
+      - name: deviceType
+        type: '"mobile" | "tablet" | "desktop"'
+
+  MobileOS:
+    description: Enum for client-side detected mobile OS
+    source: ~/utility/device
+    fields:
+      - name: ANDROID
+        type: string
+        value: '"Android"'
+      - name: IOS
+        type: string
+        value: '"IOS"'
+      - name: OTHER
+        type: string
+        value: '"Other"'
+
+  IDeviceDetectorContext:
+    description: Shape of DeviceDetectorContext provided to child routes
+    source: ~/context/device-detector-context
+    fields:
+      - name: os
+        type: MobileOS
+        notes: Populated client-side via useVisibleTask$
+      - name: isInAppBrowser
+        type: boolean
+        notes: Populated client-side via useVisibleTask$
+      - name: deviceInfo
+        type: DeviceInfo
+        notes: Populated server-side from User-Agent header
+
+  IProductDataContext:
+    description: Shape of ProductContext provided to child routes for product pages
+    source: ~/context/product-category-context
+    fields:
+      - name: product
+        type: ProductPageData
+      - name: couponCode
+        type: string
+      - name: friendlyUrl
+        type: string
+      - name: machineToken
+        type: string
+      - name: filterIndex
+        type: array
+      - name: refCode
+        type: string
+      - name: firstSlideUrl
+        type: string
+      - name: preselectedRefId
+        type: string
+      - name: sizeOptions
+        type: array
+      - name: instantProductThemeData
+        type: "object | undefined"
+      - name: svgThemeId
+        type: string
+      - name: editor
+        type: string
+      - name: themeUrl
+        type: string
+      - name: selectedFilter
+        type: "object | null"
+      - name: freeShippingMinimumQuantityData
+        type: "FreeShippingMinimumQuantityData | null"
+
+  ICategoryContext:
+    description: Shape of CategoryContext provided to child routes for category pages
+    source: ~/context/product-category-context
+    fields:
+      - name: category
+        type: CategoryPage
+      - name: couponCode
+        type: string
+      - name: productJsonData
+        type: "DeliveryDeadlineJSON | null"
+      - name: categoryQuickLinks
+        type: "CategoryQuickLinkSection[]"
+
+  CampaignStripBannerValue:
+    description: Shape returned by the campaignStripBanner computed signal (null when no campaign)
+    fields:
+      - name: banners
+        type: "string[]"
+        notes: Single-element array containing the campaign's stripBannerContent
+      - name: bgColor
+        type: string
+      - name: textColor
+        type: string
+
+  ConsolidatedLoaderResult:
+    description: Full object returned by useLoadAllData routeLoader$
+    fields:
+      - name: data
+        type: object
+        notes: >
+          Contains: onRequestTiming, country, banner, deviceInfo, productOrCategory,
+          productJsonData, categoryQuickLinks, freeShippingMinimumQuantityData
+      - name: _timing
+        type: "Record<string, number>"
+        notes: Per-loader timing in milliseconds (onRequest, detectCountry, loadBanner, loadDeviceInfo, loadProductOrCategory, loadProductJsonData, useCategoryQuickLinks)
+      - name: _overallTiming
+        type: number
+        notes: Total wall-clock time for the consolidated loader in milliseconds
+
+field_consumption:
+  ConsolidatedLoaderResult:
+    consumed:
+      - "data.country: Destructured to { country, shouldShowCrossDomainNotification } for CrossDomainNotification"
+      - "data.banner: Destructured to { stripBanner, promoBanner, shippingFooterBanner } — all three consumed by component (stripBanner for StripBannerComponent, promoBanner and shippingFooterBanner passed to FooterProductCategory)"
+      - "data.deviceInfo: Used to initialize deviceDetectorData store"
+      - "data.productOrCategory: Drives useTask$ context population and computed signals"
+      - "data.productJsonData: Stored directly in categoryData.productJsonData"
+      - "data.categoryQuickLinks: Stored in categoryData.categoryQuickLinks"
+      - "data.freeShippingMinimumQuantityData: Stored in productData.freeShippingMinimumQuantityData for product pages"
+      - "data.onRequestTiming: Exposed via useRequestHandlerTiming accessor"
+    ignored:
+      - "_timing: Used only by useRequestHandlerTiming / accessor functions; not consumed by the layout component render itself"
+      - "_overallTiming: Logged to console; not consumed by component"
+
+  ProductOrCategoryLoadResponse:
+    consumed:
+      - "webPageType: Drives context population branch (ProductPage vs CategoryPage)"
+      - "product: Spread into productData store when ProductPage"
+      - "category: Spread into categoryData store when CategoryPage"
+      - "couponCode: Stored in both productData and categoryData"
+      - "friendlyUrl: Stored in productData"
+      - "machineToken: Stored in productData"
+      - "filterIndex: Stored in productData"
+      - "refCode: Stored in productData"
+      - "firstSlideUrl: Stored in productData"
+      - "preselectedRefId: Stored in productData"
+      - "instantProductThemeData: Stored in productData"
+      - "sizeOptions: Stored in productData"
+      - "svgThemeId: Stored in productData"
+      - "selectedFilter: Stored in productData; also used in GTM handleSeletedProductChange"
+      - "product.campaignInfo: Used in campaignStripBanner computed signal"
+      - "product.breadcrumbs: Used in breadcrumbData computed signal"
+      - "category.campaignInfo: Used in campaignStripBanner computed signal"
+      - "category.breadcrumbsNavigation: Used in breadcrumbData computed signal"
+      - "product.platinumProductType: Passed to getFreeShippingMinimumQuantityData for product pages"
+      - "product.platinumProductTypeGroup: Passed to getFreeShippingMinimumQuantityData for product pages"
+    ignored:
+      - "quantity: Present on ProductOrCategoryLoadResponse but not stored in either context"
+
+visibility_map:
+  cross_domain_notification:
+    condition: "country is truthy AND shouldShowCrossDomainNotification is true"
+    default: hidden
+
+  strip_banner:
+    condition: "campaignStripBanner.value is truthy OR stripBanner (from loader) is truthy"
+    default: hidden
+    notes: Campaign strip banner takes priority over standard strip banner; same StripBannerComponent renders either
+
+  header_wrapper:
+    condition: always rendered
+    default: visible
+
+  breadcrumbs:
+    condition: "breadcrumbData.value is truthy"
+    default: hidden
+    notes: breadcrumbData is derived from product.breadcrumbs (ProductPage) or category.breadcrumbsNavigation (CategoryPage)
+
+  footer_product_category:
+    condition: 'location.url.searchParams.get("showFooter") !== "0"'
+    default: visible (hidden only when showFooter=0 query param is present)
+
+implementation_logic:
+  consolidated_parallel_loader:
+    rule: |
+      A single routeLoader$ (useLoadAllData) replaces 7 independent loaders to reduce
+      total server-side latency. Phase 1 runs 4 loaders in parallel via Promise.all
+      (country detection, banner, device info, product/category data). Phase 2 runs
+      conditionally: if the page is a CategoryPage, 2 more loaders run in parallel
+      (delivery deadlines, quick links); if ProductPage, a free-shipping-quantity
+      loader runs instead. The two skipped loaders are recorded as 0ms in the timing
+      map to keep the timing structure uniform.
+    critical: true
+
+  page_type_branching:
+    rule: |
+      The API returns a unified response with a `webPageType` discriminator
+      (WebPageTypeEnum.CategoryPage or WebPageTypeEnum.ProductPage). The layout reads
+      this field to decide which context to populate (ProductContext vs CategoryContext)
+      and which secondary loaders to run. If `isDataReady()` returns false (API error
+      or empty response), the loader returns null and both contexts remain as empty
+      objects, preventing child pages from crashing.
+    critical: true
+
+  instant_product_vs_standard_product:
+    rule: |
+      For ProductPage responses, the layout distinguishes between instant products
+      (productPageViewName === NonCustomizableThemes2021Q1) and standard products.
+      Instant products call extractProductInstantProductData() which returns
+      instantProductThemeData and sizeOptions. Standard products call extractProductData()
+      which returns the full product context fields. If either extraction returns null
+      (unexpected data shape), the loader returns null for the entire product/category
+      result, preventing partial state corruption.
+    critical: true
+
+  campaign_banner_priority:
+    rule: |
+      When the current product or category has a campaignInfo field, the campaign
+      strip banner (computed from campaignInfo.stripBannerContent) takes priority over
+      the standard strip banner loaded from the Banner API. The computed signal
+      (campaignStripBanner) evaluates to null when no campaign is active, in which
+      case the standard stripBanner from the loader is used as fallback.
+    critical: false
+
+  gtm_product_change_tracking:
+    rule: |
+      A useVisibleTask$ with strategy "document-ready" tracks changes to
+      productData.product.id. When the product ID changes AND selectedFilter is
+      present, it calls handleSeletedProductChange to push GTM filter/product events.
+      setEmailCommand() is called unconditionally on every product change to keep
+      the email GTM command in sync. This fires on initial page load and on any
+      client-side product switch.
+    critical: false
+

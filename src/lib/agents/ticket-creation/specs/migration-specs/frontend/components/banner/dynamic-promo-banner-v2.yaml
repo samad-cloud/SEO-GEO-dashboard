@@ -1,0 +1,661 @@
+name: DynamicPromoBannerV2
+source:
+  path: src/components/banner/dynamic-promo-banner-v2.tsx
+  lines: 1-661
+  type: component
+
+description: |
+  Complex promotional banner system with multiple variants (main/floating), responsive
+  layouts, countdown timers, CTAs, and dynamic text sections. Supports home, category,
+  and product page layouts with different positioning rules. Integrates with Matomo
+  analytics for CTA tracking.
+
+exports:
+  - type: default
+    name: DynamicPromoBannerV2
+    kind: component
+  - type: named
+    name: MainBanner
+    kind: component
+  - type: named
+    name: FloatingBanner
+    kind: component
+
+props:
+  DynamicPromoBannerV2:
+    - name: data
+      type: PromoBannerData
+      required: true
+      description: Full banner configuration data
+    - name: productType
+      type: PlatinumProductTypeEnum
+      optional: true
+      description: Product category type
+    - name: variant
+      type: "'main' | 'floating'"
+      required: true
+      description: Banner display variant
+    - name: type
+      type: "'product' | 'category' | 'home'"
+      optional: true
+      description: Page type for layout customization
+    - name: mobileBannersOverrideOrder
+      type: number[]
+      optional: true
+      description: Custom ordering for mobile floating banners
+    - name: desktopBannersOverrideOrder
+      type: number[]
+      optional: true
+      description: Custom ordering for desktop floating banners
+    - name: mobileBannersDisplay
+      type: boolean
+      optional: true
+      description: Control mobile floating banner visibility
+    - name: desktopBannersDisplay
+      type: boolean
+      optional: true
+      description: Control desktop floating banner visibility
+    - name: lazyLoadedComponents
+      type: string[]
+      optional: true
+      description: Components to lazy load
+
+  MainBanner:
+    - name: data
+      type: MainBannerSection
+      required: true
+    - name: type
+      type: "'product' | 'category' | 'home'"
+      optional: true
+
+  FloatingBanner:
+    - name: data
+      type: FloatingBannerSection
+      required: true
+    - name: type
+      type: "'product' | 'category' | 'home'"
+      optional: true
+
+component_structure:
+  DynamicPromoBannerV2:
+    root: conditional render
+    logic: |
+      Selects data based on type (home vs default).
+      Routes to MainBanner or FloatingBanner based on variant.
+
+  MainBanner:
+    mobile:
+      product_page_with_countdown:
+        - Left: text sections (filtered CTA)
+        - Right: countdown clock OR CTA button
+      other_with_countdown:
+        - Left: section1 + section2 + section3
+        - Right: countdown clock
+      no_countdown:
+        - Center: section1 + section2 + section3
+    desktop:
+      product_page_with_countdown:
+        - Left: section1
+        - Center: section2
+        - Right: countdown clock
+      other_with_countdown:
+        - Left: countdown clock (home) OR section1
+        - Center: section2
+        - Right: section3 OR countdown (non-home)
+      no_countdown:
+        - Left: section1
+        - Center: section2
+        - Right: section3
+
+  FloatingBanner:
+    multiple_banners:
+      - Renders array based on order property
+      - Each banner: section1 + section2 + countdown + section3
+
+child_components:
+  - name: BannerFlipClock
+    path: "~/components/product-page/banner-flip-clock/banner-flip-clock"
+    props:
+      - deliveryDeadline: string
+      - clockColor: string
+      - textColor: string
+      - bannerType: "product" | "category" | "home"
+
+  internal:
+    - CountdownSectionComponent
+    - BannerSection
+
+context_consumed: []
+
+state_management:
+  signals:
+    - name: displayData (MainBanner)
+      type: MainBannerSection
+      description: Transformed data with CTA positioning applied
+    - name: displayData (FloatingBanner)
+      type: FloatingBannerSection
+      description: Transformed data with CTA positioning applied
+
+  computed:
+    - name: selectedData (DynamicPromoBannerV2)
+      type: PromoBannerData
+      description: Selects home or default data based on type
+
+data_transformation:
+  CTA_injection:
+    description: |
+      CTAs defined at top level are injected into specified section positions.
+      Desktop and mobile can have different CTA positions (1-3).
+    process:
+      - If ctaDisplayDesktop && ctaPosition (1-3):
+        - Replace section[ctaPosition] with CTA object
+      - If ctaDisplayMobile && ctaPosition (1-3):
+        - Replace section[ctaPosition] with CTA object
+    fields:
+      - type: "CTA"
+      - text: ctaText
+      - fontSize: inherited from section
+      - isBold: inherited from section
+      - isItalic: inherited from section
+      - isUnderline: inherited from section
+      - color: ctaColor
+      - backgroundColor: ctaBgColor
+      - href: ctaUrl
+
+section_types:
+  TEXT:
+    rendering: <p> with dangerouslySetInnerHTML
+    styling: color, fontWeight, fontSize, fontStyle, textDecoration, backgroundColor
+
+  CTA:
+    rendering: <a> with onClick$ analytics
+    styling: same as TEXT plus block display
+    analytics: pushMatomoEvent on click
+
+  COUNTDOWN:
+    rendering: BannerFlipClock component
+    props:
+      - deliveryDeadline: expiryDateTime
+      - clockColor: clockBgColor
+      - textColor: clockTextColor
+      - bannerType: type
+
+event_handlers:
+  - event: click (CTA)
+    description: Tracks CTA clicks in Matomo
+    implementation: |
+      pushMatomoEvent([
+        "trackEvent",
+        MatomoCategory.COMMON,
+        MatomoEvent.CLICK_PROMO_BANNER_CTA,
+        section.href || ""
+      ]);
+
+layout_rules:
+  mobile_product_page:
+    with_countdown:
+      - Text left (filtered sections without CTA)
+      - Clock right (45% width, max 200px)
+    with_cta_no_countdown:
+      - Text left (filtered sections without CTA)
+      - CTA button right (45% width, max 200px)
+    neither:
+      - Centered text sections
+
+  mobile_non_product:
+    with_countdown:
+      - Text sections stacked (flex-1)
+      - Clock below (45% width, max 200px)
+    no_countdown:
+      - Centered text sections
+
+  desktop_product:
+    with_countdown:
+      - Section1 left
+      - Section2 center
+      - Clock right (250px width)
+      - NO CTA displayed
+    no_countdown:
+      - Section1 left
+      - Section2 center
+      - Section3 right
+
+  desktop_non_product:
+    with_countdown:
+      home:
+        - Clock left (overflow-hidden)
+        - Section1, Section2, Section3
+      other:
+        - Section1, Section2
+        - Clock right (250px width)
+        - Section3
+    no_countdown:
+      - Section1, Section2, Section3
+
+responsive_behavior:
+  mobile:
+    - MinHeight: 64px (main banner)
+    - Max width: 600px centered
+    - Clock/CTA width: 45%, max 200px
+    - Text sections: flex-1
+    - Floating banners: stacked vertically
+
+  desktop:
+    - MinHeight: 56px (product main), 88px (other main)
+    - Container: mx-auto with lg:px-[10px]
+    - Clock width: 250px
+    - Sections distributed with justify-between
+    - Floating banners: horizontal flex
+
+floating_banner_ordering:
+  desktop:
+    - Uses data.desktop.order array
+    - Each banner rendered in order
+    - Style order property applied
+  mobile:
+    - Uses data.mobile.order array
+    - Each banner rendered in order
+    - Style order property applied
+
+countdown_section:
+  fields:
+    - title: string (optional header text)
+    - expiryDateTime: string (deadline)
+    - clockBgColor: string
+    - clockTextColor: string
+    - textColor: string (for title)
+    - display: boolean
+
+  rendering:
+    - Title paragraph (if exists)
+    - BannerFlipClock component
+    - Width constraints based on layout
+
+promo_banner_sections:
+  structure:
+    - section1: PromoBannerSection[]
+    - section2: PromoBannerSection[]
+    - section3: PromoBannerSection[]
+
+  PromoBannerSection:
+    - display: boolean
+    - text: string
+    - fontSize: string
+    - isBold: boolean
+    - isItalic: boolean
+    - isUnderline: boolean
+    - color: string
+    - backgroundColor: string
+    - type: "TEXT" | "CTA"
+    - href: string (for CTA)
+
+dependencies:
+  qwik:
+    - component$
+    - useComputed$
+    - useSignal
+    - useTask$
+  types:
+    - "~/services/json-service" (CountdownSection, FloatingBannerSection, MainBannerSection, PromoBannerData, PromoBannerSection)
+    - "~/services/product-category-service" (PlatinumProductTypeEnum)
+  utilities:
+    - "~/utility/matomo" (MatomoCategory, MatomoEvent, pushMatomoEvent)
+
+analytics:
+  matomo:
+    - Event: CLICK_PROMO_BANNER_CTA
+    - Category: COMMON
+    - Label: CTA href URL
+
+styling:
+  getStylesFromProperties:
+    - color: section.color
+    - fontWeight: section.isBold ? "bold" : "normal"
+    - fontSize: section.fontSize
+    - fontStyle: section.isItalic ? "italic" : "normal"
+    - textDecoration: section.isUnderline ? "underline" : "none"
+    - backgroundColor: section.backgroundColor
+
+css_classes:
+  main_banner_wrapper:
+    - Mobile: "flex lg:hidden px-2 py-2"
+    - Desktop: "hidden lg:block p-4" (product: py-2 px-4)
+    - MinHeight: responsive (64px mobile, 56px/88px desktop)
+
+  floating_banner_wrapper:
+    - Mobile: "lg:hidden flex p-4 flex-col my-3"
+    - Desktop: "hidden lg:flex p-4 rounded-lg justify-between items-center my-3"
+    - Container: conditional (category/product pages)
+
+  cta_promo_banner:
+    - "py-2 px-4 rounded block text-center"
+    - Plus dynamic styles from section
+
+  main-promo-banner-clock:
+    - Wrapper class for countdown on main banners
+
+edge_cases:
+  - CTA injection replaces entire section array
+  - Product page with countdown: CTA not shown on desktop
+  - Mobile product: clock takes priority over CTA on right side
+  - Home page countdown positioning different (left side)
+  - Single floating banner: no ordering
+  - Empty sections: not rendered
+  - Missing countdown: layout adjusts automatically
+
+performance:
+  - data-lazy attribute on floating banners
+  - Conditional rendering prevents unused layouts
+  - useTask$ tracks data changes for transformation
+
+behavior:
+  - step: 1
+    action: "DynamicPromoBannerV2 receives data (PromoBannerData), variant ('main'|'floating'), type ('product'|'category'|'home'), and optional ordering/display overrides"
+  - step: 2
+    action: "Compute selectedData: if type is 'home' use data.default.home, otherwise use data.default.default"
+  - step: 3
+    action: "Route to MainBanner or FloatingBanner sub-component based on variant prop; default to MainBanner for unknown variants"
+  - step: 4
+    action: "MainBanner: on data change (useTask$), inject CTA into section positions - for desktop, if ctaDisplayDesktop is true and ctaPosition is 1-3, replace that section's content with CTA object (text, colors, href from desktop config)"
+  - step: 5
+    action: "MainBanner: similarly inject mobile CTA if ctaDisplayMobile is true and ctaPosition is 1-3, inheriting font properties from the original section being replaced"
+  - step: 6
+    action: "MainBanner mobile rendering: if type='product' and countdown exists, show text sections on left and countdown clock on right (45% width, max 200px); if product with CTA but no countdown, show CTA button on right instead"
+  - step: 7
+    action: "MainBanner mobile rendering: if type is not 'product' and countdown exists, stack text sections vertically on left with countdown on right; if no countdown, center all text sections"
+  - step: 8
+    action: "MainBanner desktop rendering: if type='product' with countdown, show section1 left, section2 center, countdown right (250px); no CTA on desktop product pages with countdown"
+  - step: 9
+    action: "MainBanner desktop rendering: if type='home' with countdown, show countdown on left (overflow-hidden) then sections; if non-home non-product with countdown, show sections then countdown on right"
+  - step: 10
+    action: "MainBanner desktop rendering: without countdown, show section1, section2, section3 distributed with justify-between"
+  - step: 11
+    action: "Each BannerSection renders filtered items based on display flag; TEXT type renders with dangerouslySetInnerHTML and dynamic inline styles (color, fontWeight, fontSize, fontStyle, textDecoration, backgroundColor)"
+  - step: 12
+    action: "CTA type sections render as <a> tags with onClick$ that pushes Matomo CLICK_PROMO_BANNER_CTA event with the CTA href as label"
+  - step: 13
+    action: "CountdownSectionComponent renders optional title paragraph and BannerFlipClock with deliveryDeadline, clockColor, textColor, and bannerType props"
+  - step: 14
+    action: "FloatingBanner: same CTA injection logic as MainBanner for both desktop and mobile sections"
+  - step: 15
+    action: "FloatingBanner desktop: iterate over desktop.order array, rendering each ordered banner with section1, section2, countdown (if home: left side, otherwise: right side at 250px), and section3"
+  - step: 16
+    action: "FloatingBanner mobile: iterate over mobile.order array, rendering each ordered banner with countdown at top (centered, max 360px), then section1, section2, section3 stacked vertically"
+  - step: 17
+    action: "All floating banners include data-lazy attribute and are styled with rounded corners, dynamic background color, and CSS order property matching their order value"
+
+used_by:
+  - Homepage (main + floating)
+  - Category pages (main + floating)
+  - Product pages (main + floating)
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  DynamicPromoBannerProps:
+    description: Props for the default export (DynamicPromoBannerV2)
+    fields:
+      - name: data
+        type: PromoBannerData
+      - name: productType
+        type: PlatinumProductTypeEnum
+        optional: true
+      - name: variant
+        type: "'main' | 'floating'"
+      - name: type
+        type: "'product' | 'category' | 'home'"
+        optional: true
+      - name: mobileBannersOverrideOrder
+        type: "number[]"
+        optional: true
+      - name: desktopBannersOverrideOrder
+        type: "number[]"
+        optional: true
+      - name: mobileBannersDisplay
+        type: boolean
+        optional: true
+      - name: desktopBannersDisplay
+        type: boolean
+        optional: true
+      - name: lazyLoadedComponents
+        type: "string[]"
+        optional: true
+
+  PromoBannerData:
+    description: Top-level banner data structure containing home and default sub-trees
+    fields:
+      - name: default
+        type: "{ home: { main: MainBannerSection; floating: FloatingBannerSection }; default: { main: MainBannerSection; floating: FloatingBannerSection } }"
+
+  MainBannerSection:
+    description: Data for the main (sticky/top) banner variant, split by screen size
+    fields:
+      - name: desktop
+        type: MainBannerSectionByScreen
+      - name: mobile
+        type: MainBannerSectionByScreen
+
+  MainBannerSectionByScreen:
+    description: Screen-specific banner configuration
+    fields:
+      - name: backgroundColor
+        type: string
+      - name: display
+        type: boolean
+        optional: true
+      - name: ctaUrl
+        type: string
+      - name: ctaText
+        type: string
+      - name: ctaColor
+        type: string
+      - name: ctaPosition
+        type: "1 | 2 | 3"
+      - name: ctaBgColor
+        type: string
+      - name: ctaDisplayMobile
+        type: boolean
+      - name: ctaDisplayDesktop
+        type: boolean
+      - name: sections
+        type: PromoBannerSections
+      - name: countdownSection
+        type: CountdownSection
+
+  FloatingBannerSection:
+    description: Data for floating banner variant; extends MainBannerSection with order arrays
+    fields:
+      - name: desktop
+        type: "MainBannerSectionByScreen & { order: number[] }"
+      - name: mobile
+        type: "MainBannerSectionByScreen & { order: number[] }"
+
+  PromoBannerSections:
+    description: Three named section slots for banner content items
+    fields:
+      - name: section1
+        type: "PromoBannerSection[]"
+      - name: section2
+        type: "PromoBannerSection[]"
+      - name: section3
+        type: "PromoBannerSection[]"
+
+  PromoBannerSection:
+    description: A single content item within a banner section slot
+    fields:
+      - name: display
+        type: boolean
+      - name: text
+        type: string
+      - name: fontSize
+        type: string
+      - name: isBold
+        type: boolean
+      - name: isItalic
+        type: boolean
+      - name: isUnderline
+        type: boolean
+      - name: color
+        type: string
+      - name: type
+        type: "'TEXT' | 'CTA'"
+      - name: href
+        type: string
+        optional: true
+      - name: backgroundColor
+        type: string
+        optional: true
+
+  CountdownSection:
+    description: Countdown timer configuration within a banner
+    fields:
+      - name: display
+        type: boolean
+      - name: title
+        type: string
+      - name: expiryDateTime
+        type: string
+      - name: clockTextColor
+        type: string
+      - name: clockBgColor
+        type: string
+      - name: textColor
+        type: string
+
+  CountdownSectionProps:
+    description: Internal component props for CountdownSectionComponent
+    fields:
+      - name: data
+        type: CountdownSection
+      - name: bannerType
+        type: "'product' | 'category' | 'home'"
+        optional: true
+
+field_consumption:
+  DynamicPromoBannerProps:
+    consumed:
+      - data: Passed to selectedData computed; then forwarded to MainBanner or FloatingBanner
+      - variant: Routes to MainBanner ('main') or FloatingBanner ('floating'); default falls back to MainBanner
+      - type: Forwarded to MainBanner/FloatingBanner to control layout rules and countdown positioning
+    ignored:
+      - productType: Present in props but not referenced in the component body
+      - mobileBannersOverrideOrder: Present in props but not referenced in the component body
+      - desktopBannersOverrideOrder: Present in props but not referenced in the component body
+      - mobileBannersDisplay: Present in props but not referenced in the component body
+      - desktopBannersDisplay: Present in props but not referenced in the component body
+      - lazyLoadedComponents: Present in props but not referenced in the component body
+
+  PromoBannerData:
+    consumed:
+      - "default.home": Used when type === 'home' (selectedData computed)
+      - "default.default": Used for all other types
+
+  MainBannerSectionByScreen:
+    consumed:
+      - display: Controls whether mobile or desktop banner block is rendered
+      - backgroundColor: Applied as inline style on the wrapper div
+      - sections.section1: Rendered as BannerSection (left slot)
+      - sections.section2: Rendered as BannerSection (center slot)
+      - sections.section3: Rendered as BannerSection (right slot)
+      - countdownSection: Passed to CountdownSectionComponent when countdownSection.display is true
+      - ctaDisplayDesktop / ctaDisplayMobile: Gates CTA injection into section slots
+      - ctaPosition: Index (1-3) of the section slot to overwrite with CTA
+      - ctaText: CTA button label text
+      - ctaColor: CTA text color
+      - ctaBgColor: CTA background color
+      - ctaUrl: CTA link href
+    ignored:
+      - displayHome: Present in schema but not consumed in rendering logic
+      - displayProduct: Present in schema but not consumed in rendering logic
+      - displayCategory: Present in schema but not consumed in rendering logic
+
+  PromoBannerSection:
+    consumed:
+      - display: Filters which items are rendered within a section
+      - type: Switches rendering — TEXT uses <p> with dangerouslySetInnerHTML; CTA uses <a> with Matomo event
+      - text: Rendered as innerHTML (TEXT) or button label (CTA)
+      - color: Inline style color
+      - fontSize: Inline style fontSize
+      - isBold: Inline style fontWeight
+      - isItalic: Inline style fontStyle
+      - isUnderline: Inline style textDecoration
+      - backgroundColor: Inline style backgroundColor
+      - href: CTA link target and Matomo event label
+
+  CountdownSection:
+    consumed:
+      - display: Gates rendering of the CountdownSectionComponent in all layout paths
+      - title: Rendered as styled paragraph (if truthy)
+      - expiryDateTime: Passed as deliveryDeadline to BannerFlipClock
+      - clockBgColor: Passed as clockColor to BannerFlipClock
+      - clockTextColor: Passed as textColor to BannerFlipClock
+      - textColor: Applied to the title paragraph color
+
+  FloatingBannerSection:
+    consumed:
+      - desktop.display: Gates desktop floating banners block
+      - desktop.order: Iterated to render one floating banner per order value
+      - mobile.display: Gates mobile floating banners block
+      - mobile.order: Iterated to render one floating banner per order value
+
+visibility_map:
+  mobile_main_banner_block:
+    condition: "displayData.value.mobile.display is true"
+    default: hidden
+    notes: CSS class 'flex lg:hidden' — only shows on screens below lg breakpoint
+
+  desktop_main_banner_block:
+    condition: "displayData.value.desktop.display is true"
+    default: hidden
+    notes: CSS class 'hidden lg:block' — only shows on lg and above
+
+  mobile_product_layout:
+    condition: "type === 'product' AND (hasCountdown OR ctaItem exists)"
+    default: hidden
+    notes: Product-page-specific mobile layout (text left, clock/CTA right); falls through to centered layout if neither countdown nor CTA
+
+  mobile_non_product_countdown_layout:
+    condition: "type !== 'product' AND displayData.value.mobile.countdownSection.display is true"
+    default: hidden
+
+  mobile_no_countdown_layout:
+    condition: "displayData.value.mobile.countdownSection.display is false/absent"
+    default: visible
+    notes: Centered layout rendered when no countdown present
+
+  desktop_product_countdown_layout:
+    condition: "type === 'product' AND displayData.value.desktop.countdownSection.display is true"
+    default: hidden
+
+  desktop_home_countdown_left:
+    condition: "displayData.value.desktop.countdownSection.display is true AND type === 'home'"
+    default: hidden
+    notes: Countdown rendered on left side in home layout only
+
+  desktop_non_home_countdown_right:
+    condition: "displayData.value.desktop.countdownSection.display is true AND type !== 'home'"
+    default: hidden
+    notes: Countdown rendered on right side for non-home layouts
+
+  countdown_title_paragraph:
+    condition: "data.title is truthy (within CountdownSectionComponent)"
+    default: hidden
+
+  banner_section_container:
+    condition: "data.some(section => section.display) is true (within BannerSection)"
+    default: hidden
+    notes: Entire BannerSection div suppressed if no items have display=true
+
+  floating_banner_desktop_items:
+    condition: "displayData.value.desktop.display AND Array.isArray(displayData.value.desktop.order)"
+    default: hidden
+    notes: CSS class 'hidden lg:flex' per item; requires order array to be non-empty
+
+  floating_banner_mobile_items:
+    condition: "displayData.value.mobile.display AND Array.isArray(displayData.value.mobile.order)"
+    default: hidden
+    notes: CSS class 'lg:hidden flex' per item; requires order array to be non-empty
+
+  floating_banner_countdown_mobile:
+    condition: "displayData.value.mobile.countdownSection.display is true (per floating item)"
+    default: hidden

@@ -1,0 +1,40 @@
+page_id: payment-methods
+description: "Payment methods info page. Uses container component pattern."
+
+url:
+  pattern: "/payment-methods"
+  layout: "default"
+  i18n_rewrites:
+    NL: "/betalingsmethoden"
+    DE: "/zahlungsarten"
+    IT: "/modalita-di-pagamento"
+    ES: "/formas-de-pago"
+
+seo_contract:
+  title:
+    source: "Managed by PaymentMethodsContainer"
+  meta_description:
+    source: "Managed by PaymentMethodsContainer"
+  canonical:
+    pattern: "{domain}/payment-methods"
+  robots:
+    value: "Standard"
+  structured_data: "None"
+  hreflang:
+    count: 8
+    known_issues:
+      - "Hreflang incorrect for NL, DE, IT, ES rewritten URLs"
+
+file_chain:
+  route:
+    file: "src/routes/payment-methods/index.tsx"
+    spec: "../migration-specs/frontend/routes/payment-methods.yaml"
+  layout:
+    file: "src/routes/layout.tsx"
+    spec: "../migration-specs/frontend/layouts/layout-default.yaml"
+  page_component:
+    name: "PaymentMethodsContainer"
+    file: "src/components/payment-methods-page/containers/payment-methods-container.tsx"
+    spec: "../migration-specs/frontend/components/info-pages/payment-methods-container.yaml"
+  middleware:
+    ref: "_architecture.yaml → middleware_pipeline"

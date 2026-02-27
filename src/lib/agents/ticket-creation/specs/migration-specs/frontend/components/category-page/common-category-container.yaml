@@ -1,0 +1,671 @@
+name: CommonCategoryContainer
+source: src/components/category-page/containers/common-category-container.tsx
+description: |
+  Main category page layout container component. Orchestrates display of all category page sections
+  including banners, product sections, collections, shop cards, reviews, and bottom page content.
+  Uses CategoryContext for data and renders sections in configurable order based on category configuration.
+
+exports:
+  default:
+    type: component$
+    description: Default export - main category container component
+
+props:
+  none: Component receives all data via CategoryContext
+
+context_consumed:
+  - name: CategoryContext
+    fields:
+      - category: Full category data object
+      - categoryQuickLinks: Quick links navigation sections
+    description: Primary data source for entire category page
+
+component_structure:
+  root:
+    element: div
+    class: "w-full relative flex flex-col"
+    description: Main container with full width, flexbox column layout
+    children:
+      - desktop_top_banner:
+          condition: "hidden lg:block"
+          component: CategoryPageTopBannerV2
+          props:
+            - campaignInfo: category.campaignInfo
+
+      - video_banner:
+          condition: videoBanner.value exists
+          element: div
+          id: "video-banner"
+          class: "mb-0 lg:mb-8"
+          key: videoBanner.value.originalData.name
+          component: VideoBanner
+          props:
+            - data: videoBanner.value.data
+
+      - category_banner:
+          condition: |
+            If globalCategoryBanner.value?.data?.isActive: render GlobalCategoryBanner
+            Else if category.banner exists AND !videoBanner.value: render CategoryBanner
+          components:
+            - GlobalCategoryBanner:
+                props:
+                  - data: globalCategoryBanner.value?.data
+            - CategoryBanner:
+                props:
+                  - banner: category.banner
+                  - topPageContent: category.topPageContent
+
+      - mobile_top_banner:
+          condition: "block lg:hidden"
+          component: CategoryPageTopBannerV2
+          props:
+            - campaignInfo: category.campaignInfo
+
+      - quick_links:
+          condition: selectedQuickLinkSection.value exists
+          element: div
+          class: "w-full my-4 lg:my-8"
+          component: CategoryQuickLinks
+          props:
+            - data: selectedQuickLinkSection.value
+
+      - product_sections:
+          condition: category.productSections exists and length > 0
+          component: ProductSections
+          props:
+            - productSections: category.productSections
+            - theme: category.theme
+
+      - collections_loop:
+          condition: category.collections exists and length > 0
+          iterates_over: category.collections
+          filter: collection.display === true
+          element: div
+          id: "cs-{collection.order}"
+          key: "{collection.event}{index}"
+          style: "order: collection.order"
+          children:
+            - heading:
+                element: p
+                class: "text-center text-2xl font-semibold py-6"
+                content: collection.heading
+            - slider:
+                component: CollectionSlider
+                props:
+                  - collectionData: null
+                  - event: collection.event
+
+      - shops_loop:
+          condition: category.shops exists and length > 0
+          iterates_over: category.shops
+          filter: shop.display === true
+          element: div
+          id: "s-{shop.order}"
+          key: "{shop.friendlyUrl}{index}"
+          class: "container mx-auto pt-12"
+          style: "order: shop.order"
+          children:
+            - heading:
+                element: p
+                class: "text-center text-2xl font-semibold"
+                content: shop.heading
+            - cards:
+                component: ShopPageCards
+                props:
+                  - shopData: null
+                  - friendUrl: shop.friendlyUrl
+
+      - reviews:
+          condition: |
+            category.reviewsCollection exists AND
+            category.reviewsCollection.display === true AND
+            category.reviewsCollection.reviewModels.length > 0
+          element: div
+          id: "fs-{category.reviewsCollection.order}"
+          class: "container mx-auto my-1 lg:my-8 category_page_customer_review_wrapper"
+          style: "order: category.reviewsCollection.order"
+          children:
+            - wrapper:
+                element: div
+                class: "py-4 px-3 md:px-0"
+                component: CustomerReview
+                props: Spread all reviewsCollection properties
+
+      - bottom_cta:
+          condition: category.bottomPageCta exists AND category.bottomPageCta.display === true
+          element: div
+          id: "bpcta-{category.bottomPageCta.order}"
+          class: "flex justify-center my-1 lg:my-8"
+          style: "order: category.bottomPageCta.order"
+          children:
+            - link:
+                element: a
+                class: "py-4 px-12 flex items-center justify-center cursor-pointer rounded-md cta_category_page--bottom"
+                style:
+                  backgroundColor: category.bottomPageCta.ctaColor || category.theme?.primary
+                  color: category.bottomPageCta.ctaTextColor || category.theme?.primaryText
+                href: category.bottomPageCta.href
+                content: category.bottomPageCta.ctaText
+
+      - product_page_content:
+          condition: category.productPageContent exists
+          component: ProductPageContentComponentV2
+          props:
+            - productPageContent: category.productPageContent
+            - productType: category.platinumProductType
+            - designUrl: designUrl.value
+            - theme: category.theme
+            - type: "category"
+
+child_components:
+  - name: CategoryPageTopBannerV2
+    import: "~/components/category-page/category-page-top-banner-v2"
+    purpose: Campaign banner display (desktop and mobile versions)
+    props:
+      - campaignInfo: Campaign data from category
+
+  - name: VideoBanner
+    import: "~/components/web-component/video-banner"
+    purpose: Full-width video banner if configured
+    props:
+      - data: Processed video banner data
+
+  - name: GlobalCategoryBanner
+    import: "~/components/category-page/global-category-banner"
+    purpose: Override banner with custom configuration
+    props:
+      - data: Processed banner override data
+
+  - name: CategoryBanner
+    import: "~/components/category-page/category-banner"
+    purpose: Standard category banner with image and content
+    props:
+      - banner: Banner configuration
+      - topPageContent: Top page content HTML
+
+  - name: CategoryQuickLinks
+    import: "~/components/category-page/category-quick-links"
+    purpose: Quick navigation links for category page sections
+    props:
+      - data: Selected quick link section data
+
+  - name: ProductSections
+    import: "~/components/category-page/product-sections"
+    purpose: Main product grid/sections display
+    props:
+      - productSections: Array of product section configurations
+      - theme: Category theme colors
+
+  - name: CollectionSlider
+    import: "~/components/shop-page/components/collection-slider"
+    purpose: Horizontal product collection slider
+    props:
+      - collectionData: null (fetches internally)
+      - event: Collection event identifier
+
+  - name: ShopPageCards
+    import: "~/components/shop-page/components/shop-page-cards"
+    purpose: Grid of shop page cards
+    props:
+      - shopData: null (fetches internally)
+      - friendUrl: Shop friendly URL
+
+  - name: CustomerReview
+    import: "~/components/customer-review/customer-review"
+    purpose: Customer review carousel
+    props: Spread entire reviewsCollection object
+
+  - name: ProductPageContentComponentV2
+    import: "~/components/product-page/product-page-content-v2"
+    purpose: Bottom page content sections (FAQs, USPs, etc.)
+    props:
+      - productPageContent: Content configuration
+      - productType: Platinum product type ID
+      - designUrl: Design tool URL
+      - theme: Category theme
+      - type: "category"
+
+state_management:
+  computed_signals:
+    - name: designUrl
+      type: useComputed$
+      computes: Design tool link based on category.platinumProductType
+      function: getDesignLinkByProductType(category.platinumProductType)
+
+    - name: selectedQuickLinkSection
+      type: useComputed$
+      computes: Which quick link section to display based on current URL path
+      logic: Find categoryQuickLinks section where displayOn paths match location.url.pathname
+
+    - name: globalCategoryBanner
+      type: useComputed$
+      computes: Processed global banner override data
+      logic: |
+        Find webComponent with wcTemplateName starting with CATEGORY_PAGE_BANNER_OVERRIDE
+        Process with processCategoryPageBannerOverrideData if found
+        Return null if not found
+
+    - name: videoBanner
+      type: useComputed$
+      computes: Processed video banner data
+      logic: |
+        Find webComponent with wcTemplateName starting with VIDEO_BANNER
+        AND componentType === "Main"
+        Process with processVideoBannerData if found
+        Return null if not found
+
+side_effects:
+  - type: useVisibleTask$
+    purpose: Track Klaviyo analytics event when category page is viewed
+    dependencies: []
+    lifecycle: Runs after component is visible in viewport
+    implementation: |
+      trackKlaviyoEvent(KlaviyoEvent.VIEW_PRODUCT, {
+        Categories: [getPlatinumProductTypeKey(category.platinumProductType)],
+        Brand: "Printerpix",
+        URL: toAbsoluteUrl(location.url.pathname)
+      })
+
+event_handlers:
+  none: Component is purely presentational, child components handle their own events
+
+gtm_events:
+  - event_name: VIEW_PRODUCT
+    platform: Klaviyo
+    trigger: Component visible in viewport
+    payload:
+      Categories: Array with single category key
+      Brand: "Printerpix"
+      URL: Absolute URL of current page
+    notes: |
+      Uses getPlatinumProductTypeKey to convert platinumProductType to Klaviyo-compatible key
+
+behavior:
+  - step: 1
+    action: "Consume CategoryContext to get category data and categoryQuickLinks. Get current URL location from useLocation."
+  - step: 2
+    action: "Fire Klaviyo VIEW_PRODUCT analytics event (useVisibleTask$) when component becomes visible, with category type key, brand 'Printerpix', and absolute URL"
+  - step: 3
+    action: "Compute designUrl from category.platinumProductType via getDesignLinkByProductType service function"
+  - step: 4
+    action: "Compute selectedQuickLinkSection by finding the categoryQuickLinks section whose displayOn paths match the current URL pathname"
+  - step: 5
+    action: "Compute globalCategoryBanner by searching category.productPageContent.webComponents for a CATEGORY_PAGE_BANNER_OVERRIDE template, processing it via processCategoryPageBannerOverrideData if found"
+  - step: 6
+    action: "Compute videoBanner by searching category.productPageContent.webComponents for a VIDEO_BANNER template with componentType 'Main', processing it via processVideoBannerData if found"
+  - step: 7
+    action: "Render desktop campaign top banner (hidden on mobile, visible lg+) using CategoryPageTopBannerV2 with category.campaignInfo"
+  - step: 8
+    action: "Render video banner section if videoBanner computed value exists, keyed by original data name"
+  - step: 9
+    action: "Render banner with priority: if globalCategoryBanner is active, show GlobalCategoryBanner; else if category.banner exists and no video banner, show CategoryBanner with banner and topPageContent props"
+  - step: 10
+    action: "Render mobile campaign top banner (visible on mobile, hidden lg+) using CategoryPageTopBannerV2"
+  - step: 11
+    action: "Render CategoryQuickLinks if selectedQuickLinkSection has a match for current URL"
+  - step: 12
+    action: "Render ProductSections with productSections array and theme if productSections exists and has items"
+  - step: 13
+    action: "Iterate over category.collections: for each collection where display=true, render heading and CollectionSlider with event identifier. Sections are ordered via CSS flexbox order property."
+  - step: 14
+    action: "Iterate over category.shops: for each shop where display=true, render heading and ShopPageCards with friendlyUrl. Sections ordered via CSS order."
+  - step: 15
+    action: "Render CustomerReview section if reviewsCollection exists, display=true, and has reviewModels. Spread all reviewsCollection properties as props."
+  - step: 16
+    action: "Render bottom CTA button if bottomPageCta exists and display=true: styled with ctaColor/ctaTextColor (falling back to theme.primary/primaryText), linking to bottomPageCta.href"
+  - step: 17
+    action: "Render ProductPageContentComponentV2 at bottom if category.productPageContent exists, with productType, designUrl, theme, and type='category'"
+
+used_by:
+  - "~/components/category-page/containers/category-page-factory.tsx"
+
+dependencies:
+  qwik_framework:
+    - component$: Define Qwik component
+    - useComputed$: Create computed signals
+    - useContext: Access CategoryContext
+    - useVisibleTask$: Client-side effect when visible
+
+  qwik_city:
+    - useLocation: Access current URL location
+
+  context:
+    - CategoryContext: Main category data source
+
+  services:
+    - getDesignLinkByProductType: "~/services/category-service"
+    - processVideoBannerData: "~/services/web-component-service"
+    - WebComponentType: "~/services/web-component-service"
+    - processCategoryPageBannerOverrideData: "~/services/web-component-service"
+    - trackKlaviyoEvent: "~/services/klaviyo-service"
+    - KlaviyoEvent: "~/services/klaviyo-service"
+    - getPlatinumProductTypeKey: "~/services/product-category-service"
+
+  utilities:
+    - toAbsoluteUrl: "~/utility/http"
+
+  components:
+    - CustomerReview: "~/components/customer-review/customer-review"
+    - CategoryBanner: "~/components/category-page/category-banner"
+    - ShopPageCards: "~/components/shop-page/components/shop-page-cards"
+    - CollectionSlider: "~/components/shop-page/components/collection-slider"
+    - ProductSections: "~/components/category-page/product-sections"
+    - GlobalCategoryBanner: "~/components/category-page/global-category-banner"
+    - CategoryQuickLinks: "~/components/category-page/category-quick-links"
+    - CategoryPageTopBannerV2: "~/components/category-page/category-page-top-banner-v2"
+    - ProductPageContentComponentV2: "~/components/product-page/product-page-content-v2"
+    - VideoBanner: "~/components/web-component/video-banner"
+
+data_flow:
+  input:
+    - CategoryContext provides all category data
+    - useLocation provides current URL pathname
+
+  processing:
+    - designUrl computed from platinumProductType
+    - selectedQuickLinkSection filtered by current URL path
+    - globalCategoryBanner extracted and processed from webComponents
+    - videoBanner extracted and processed from webComponents
+
+  output:
+    - category data passed to child components
+    - theme passed to ProductSections and ProductPageContentComponentV2
+    - designUrl passed to ProductPageContentComponentV2
+    - Quick links, collections, shops, reviews rendered conditionally
+    - Bottom CTA styled with theme colors
+
+responsive_behavior:
+  desktop:
+    - CategoryPageTopBannerV2 shown at top with "hidden lg:block"
+    - Video banner margin: mb-8
+    - Quick links margin: my-8
+    - Reviews margin: my-8
+    - Bottom CTA margin: my-8
+
+  mobile:
+    - CategoryPageTopBannerV2 shown after banner with "block lg:hidden"
+    - Video banner margin: mb-0
+    - Quick links margin: my-4
+    - Reviews margin: my-1, padding: px-3
+    - Bottom CTA margin: my-1
+
+  breakpoint: lg (1024px)
+
+section_ordering:
+  mechanism: CSS flexbox order property
+  configurable_sections:
+    - collections: id="cs-{order}", style="order: {collection.order}"
+    - shops: id="s-{order}", style="order: {shop.order}"
+    - reviews: id="fs-{order}", style="order: {category.reviewsCollection.order}"
+    - bottom_cta: id="bpcta-{order}", style="order: {category.bottomPageCta.order}"
+  notes: |
+    All sections can be reordered via order property in category configuration.
+    Allows CMS-controlled section ordering without code changes.
+
+filtering_logic:
+  not_applicable: |
+    This container does not handle product filtering. ProductSections component
+    handles all filtering logic for the product grid.
+
+pagination:
+  not_applicable: |
+    This container does not handle pagination. ProductSections component
+    handles all pagination logic for the product grid.
+
+conditional_rendering:
+  banner_priority:
+    - First check: videoBanner.value exists → render VideoBanner
+    - Second check: globalCategoryBanner.value?.data?.isActive → render GlobalCategoryBanner
+    - Fallback: category.banner exists AND !videoBanner.value → render CategoryBanner
+
+  collections_display:
+    condition: category.collections exists AND length > 0
+    filter: Only render collections where collection.display === true
+
+  shops_display:
+    condition: category.shops exists AND length > 0
+    filter: Only render shops where shop.display === true
+
+  reviews_display:
+    condition: |
+      category.reviewsCollection exists AND
+      category.reviewsCollection.display === true AND
+      category.reviewsCollection.reviewModels.length > 0
+
+  bottom_cta_display:
+    condition: category.bottomPageCta exists AND category.bottomPageCta.display === true
+
+  quick_links_display:
+    condition: selectedQuickLinkSection.value exists
+    logic: At least one quick link section displayOn path matches current URL
+
+web_components:
+  source: category.productPageContent?.webComponents
+  types_processed:
+    - CATEGORY_PAGE_BANNER_OVERRIDE:
+        processor: processCategoryPageBannerOverrideData
+        component: GlobalCategoryBanner
+        display_condition: data.isActive === true
+
+    - VIDEO_BANNER:
+        processor: processVideoBannerData
+        component: VideoBanner
+        filter: componentType === "Main"
+        display_condition: Always shown if exists
+
+  notes: |
+    WebComponents are CMS-configured dynamic content blocks that can be
+    added to category pages via productPageContent.webComponents array
+
+styling:
+  theme_application:
+    - ProductSections: Receives theme prop for product card styling
+    - ProductPageContentComponentV2: Receives theme prop for content sections
+    - Bottom CTA: Uses theme.primary/primaryText as fallback colors
+
+  custom_classes:
+    - cta_category_page--bottom: Applied to bottom CTA button
+    - category_page_customer_review_wrapper: Applied to reviews section
+
+  spacing:
+    desktop:
+      - my-8: Quick links, video banner, reviews, bottom CTA
+      - pt-12: Shops wrapper
+    mobile:
+      - my-4: Quick links
+      - my-1: Reviews, bottom CTA
+      - py-6: Collection headings
+      - px-3: Reviews padding
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  CategoryContextValue:
+    description: Shape of the category object consumed from CategoryContext
+    source: ~/context/product-category-context
+    fields:
+      - name: platinumProductType
+        type: string
+      - name: campaignInfo
+        type: "CampaignInfo | null"
+      - name: banner
+        type: "CategoryBannerData | null"
+      - name: topPageContent
+        type: "string | null"
+      - name: theme
+        type: "CategoryTheme | null"
+      - name: productSections
+        type: "Array<ProductSection>"
+      - name: collections
+        type: "Array<CollectionSection>"
+      - name: shops
+        type: "Array<ShopSection>"
+      - name: reviewsCollection
+        type: "ReviewsCollection | null"
+      - name: bottomPageCta
+        type: "BottomPageCta | null"
+      - name: productPageContent
+        type: "ProductPageContent | null"
+
+  CollectionSection:
+    description: A single collection entry in category.collections
+    fields:
+      - name: heading
+        type: string
+      - name: event
+        type: string
+      - name: order
+        type: number
+      - name: display
+        type: boolean
+
+  ShopSection:
+    description: A single shop entry in category.shops
+    fields:
+      - name: heading
+        type: string
+      - name: friendlyUrl
+        type: string
+      - name: order
+        type: number
+      - name: display
+        type: boolean
+
+  ReviewsCollection:
+    description: Customer reviews section data
+    fields:
+      - name: display
+        type: boolean
+      - name: order
+        type: number
+      - name: reviewModels
+        type: "Array<ReviewModel>"
+
+  BottomPageCta:
+    description: Bottom page CTA button configuration
+    fields:
+      - name: display
+        type: boolean
+      - name: order
+        type: number
+      - name: ctaText
+        type: string
+      - name: href
+        type: string
+      - name: ctaColor
+        type: "string | null"
+      - name: ctaTextColor
+        type: "string | null"
+
+  CategoryTheme:
+    description: Theme colors for consistent styling across sections
+    fields:
+      - name: primary
+        type: string
+      - name: primaryText
+        type: string
+
+field_consumption:
+  CategoryContext:
+    consumed:
+      - category.platinumProductType: Used for designUrl computation and Klaviyo tracking category key
+      - category.campaignInfo: Passed to CategoryPageTopBannerV2 (desktop and mobile instances)
+      - category.banner: Passed to CategoryBanner when no video/global banner is active
+      - category.topPageContent: Passed to CategoryBanner as topPageContent prop
+      - category.theme: Forwarded to ProductSections, ProductPageContentComponentV2, and as fallback for bottom CTA colors
+      - category.productSections: Passed to ProductSections; also guards whether ProductSections renders at all
+      - category.collections: Iterated; each item's display flag filters which render; event used as CollectionSlider prop
+      - category.shops: Iterated; each item's display flag filters which render; friendlyUrl passed to ShopPageCards
+      - category.reviewsCollection: Spread as props to CustomerReview; display and reviewModels.length guard rendering
+      - category.bottomPageCta: display flag gates rendering; ctaColor/ctaTextColor/ctaText/href/order all used
+      - category.productPageContent: Existence guard for ProductPageContentComponentV2; webComponents array searched for banner/video overrides
+    ignored:
+      - categoryQuickLinks[*].displayOn: Consumed only for path matching to compute selectedQuickLinkSection (not rendered directly)
+
+implementation_logic:
+  banner_priority_resolution:
+    rule: |
+      Three banner sources compete for the main banner slot:
+        1. VideoBanner (highest priority): always shown if a VIDEO_BANNER web component with componentType "Main" exists
+        2. GlobalCategoryBanner (medium priority): shown if a CATEGORY_PAGE_BANNER_OVERRIDE web component exists AND data.isActive is true
+        3. CategoryBanner (lowest priority): shown if category.banner exists AND videoBanner is NOT present
+      GlobalCategoryBanner and CategoryBanner are mutually exclusive; VideoBanner can co-exist with GlobalCategoryBanner
+      in the sense that VideoBanner is rendered separately and never replaces it — but in practice a page either has
+      a video banner OR a standard/global banner due to CMS configuration.
+    critical: true
+
+  campaign_banner_dual_render:
+    rule: |
+      CategoryPageTopBannerV2 is rendered TWICE from the same campaignInfo data:
+        - Once with "hidden lg:block" (desktop-only, appears above video/global banner)
+        - Once with "block lg:hidden" (mobile-only, appears BELOW the main banner section)
+      This achieves different visual positioning on mobile vs desktop without media-query CSS reordering.
+    critical: false
+
+  section_ordering_via_css:
+    rule: |
+      Collections, shops, reviews, and bottom CTA sections are each wrapped in a div with
+      style={{ order: section.order }}. The root container uses "flex flex-col" layout, so
+      the CSS flex order property controls visual ordering independently of DOM order.
+      This allows CMS operators to reorder sections without code changes.
+    critical: true
+
+  bottom_cta_color_fallback:
+    rule: |
+      Bottom CTA button colors resolve as:
+        backgroundColor = category.bottomPageCta.ctaColor || category.theme?.primary
+        color = category.bottomPageCta.ctaTextColor || category.theme?.primaryText
+      If both the explicit CTA colors and theme are absent, the button renders with no
+      background/text color (undefined/empty inline style).
+    critical: false
+
+visibility_map:
+  desktop_campaign_banner:
+    condition: "always present in DOM but visible only at lg+ breakpoint (hidden lg:block)"
+    default: hidden on mobile
+
+  video_banner:
+    condition: "videoBanner.value is not null"
+    default: hidden
+
+  global_category_banner:
+    condition: "globalCategoryBanner.value?.data?.isActive is true"
+    default: hidden
+
+  standard_category_banner:
+    condition: "category.banner exists AND videoBanner.value is null"
+    default: hidden
+
+  mobile_campaign_banner:
+    condition: "always present in DOM but visible only below lg breakpoint (block lg:hidden)"
+    default: hidden on desktop
+
+  quick_links:
+    condition: "selectedQuickLinkSection.value is not undefined (a displayOn path matched current URL)"
+    default: hidden
+
+  product_sections:
+    condition: "category.productSections exists and category.productSections.length > 0"
+    default: hidden
+
+  collection_section:
+    condition: "collection.display === true (per-collection filter)"
+    default: hidden (collections with display=false are skipped by filter logic)
+
+  shop_section:
+    condition: "shop.display === true (per-shop filter)"
+    default: hidden (shops with display=false are skipped by filter logic)
+
+  reviews_section:
+    condition: "category.reviewsCollection?.display === true AND reviewsCollection.reviewModels.length > 0"
+    default: hidden
+
+  bottom_cta:
+    condition: "category.bottomPageCta?.display === true"
+    default: hidden
+
+  product_page_content:
+    condition: "category.productPageContent is not null/undefined"
+    default: hidden
+
+

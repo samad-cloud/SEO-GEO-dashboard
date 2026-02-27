@@ -1,0 +1,46 @@
+name: ShareContents
+description: Region-specific trust indicator content loader
+
+source:
+  path: utility/share-content/share-contents.ts
+  lines: 1-29
+  type: utility
+
+exports:
+  - name: getTrustIndicatorContent
+    type: function
+    signature: "() => any"
+    description: Returns trust indicator JSON content for current region
+    regions: [US, GB, FR, DE, NL, IT, ES]
+    fallback: US
+
+dependencies:
+  internal:
+    - "~/config/settings": settings function
+    - "~/utility/share-content/trust-indicator/US.json": USTrustIndicator
+    - "~/utility/share-content/trust-indicator/UK.json": UKTrustIndicator
+    - "~/utility/share-content/trust-indicator/FR.json": FRTrustIndicator
+    - "~/utility/share-content/trust-indicator/DE.json": DETrustIndicator
+    - "~/utility/share-content/trust-indicator/NL.json": NLTrustIndicator
+    - "~/utility/share-content/trust-indicator/IT.json": ITTrustIndicator
+    - "~/utility/share-content/trust-indicator/ES.json": ESTrustIndicator
+
+behavior:
+  region_detection:
+    method: settings().website
+    supported_regions: [US, GB, FR, DE, NL, IT, ES]
+    fallback: US
+
+  content_source:
+    format: Static JSON files
+    location: utility/share-content/trust-indicator/
+    naming: {REGION}.json
+
+edge_cases:
+  - Unrecognized region returns US content
+  - Switch statement with explicit default case
+
+types:
+  notes: "No locally-defined types. getTrustIndicatorContent returns any (raw JSON from regional static trust indicator files)."
+
+used_by: []

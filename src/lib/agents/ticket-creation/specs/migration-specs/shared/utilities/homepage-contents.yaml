@@ -1,0 +1,151 @@
+name: HomepageContents
+description: Region-specific homepage content loaders for main products, large orders, homepage sections, real stories, footer, banners, trust indicators, and reviews
+
+source:
+  path: utility/homepage-contents.ts
+  lines: 1-130
+  type: utility
+
+exports:
+  - name: getMainProducts
+    type: function
+    signature: "() => any"
+    description: Returns main products JSON for current region
+    regions: [US, GB, FR]
+    fallback: US
+
+  - name: getLargeOrder
+    type: function
+    signature: "() => any"
+    description: Returns large order content JSON for current region
+    regions: [US, GB, FR]
+    fallback: US
+
+  - name: getHome
+    type: function
+    signature: "() => any"
+    description: Returns homepage content JSON for current region
+    regions: [US, GB, FR, DE, NL, IT, ES]
+    fallback: US
+
+  - name: getRealStory
+    type: function
+    signature: "() => any"
+    description: Returns real customer stories JSON for current region
+    regions: [US, GB, FR, NL, DE, IT, ES]
+    fallback: US
+
+  - name: getFooter
+    type: function
+    signature: "() => any"
+    description: Returns footer content JSON for current region
+    regions: [US, GB, FR, DE, NL, IT, ES]
+    fallback: US
+
+  - name: getStripBanner
+    type: function
+    signature: "() => any"
+    description: Returns animated header/strip banner JSON for current region
+    regions: [US, GB, FR]
+    fallback: US
+
+  - name: getSitePromoBanner
+    type: function
+    signature: "() => any"
+    description: Returns site-wide promo banner JSON for current region
+    regions: [US, GB, FR]
+    fallback: US
+
+  - name: getTrusts
+    type: function
+    signature: "() => any"
+    description: Returns trust indicators JSON for current region
+    regions: [US, GB, FR]
+    fallback: US
+
+  - name: getReviews
+    type: function
+    signature: "() => any"
+    description: Returns customer reviews JSON for current region
+    regions: [US, GB, FR, NL, DE, IT, ES]
+    fallback: US
+
+  - name: getHomeBestSellerCategory
+    type: function
+    signature: "() => any"
+    description: Returns best seller categories from homepage content
+    regions: [US, GB, FR]
+    fallback: US
+    returns: bestSellerCategory property from home JSON
+
+dependencies:
+  internal:
+    - "~/config/settings": settings function
+    - "./homepage/mainproduct/US.json": USProduct
+    - "./homepage/mainproduct/UK.json": UKProduct
+    - "./homepage/mainproduct/FR.json": FRProduct
+    - "./homepage/largeorder/US.json": USLargeOrder
+    - "./homepage/largeorder/UK.json": UKLargeOrder
+    - "./homepage/largeorder/FR.json": FRLargeOrder
+    - "./homepage/home/US.json": USHome
+    - "./homepage/home/UK.json": UKHome
+    - "./homepage/home/FR.json": FRHome
+    - "./homepage/home/DE.json": DEHome
+    - "./homepage/home/NL.json": NLHome
+    - "./homepage/home/IT.json": ITHome
+    - "./homepage/home/ES.json": ESHome
+    - "./homepage/realstory/US.json": USRealStory
+    - "./homepage/realstory/UK.json": UKRealStory
+    - "./homepage/realstory/FR.json": FRRealStory
+    - "./homepage/realstory/NL.json": NLRealStory
+    - "./homepage/realstory/DE.json": DERealStory
+    - "./homepage/realstory/IT.json": ITRealStory
+    - "./homepage/realstory/ES.json": ESRealStory
+    - "./homepage/footer/US.json": USFooter
+    - "./homepage/footer/UK.json": UKFooter
+    - "./homepage/footer/FR.json": FRFooter
+    - "./homepage/footer/DE.json": DEFooter
+    - "./homepage/footer/NL.json": NLFooter
+    - "./homepage/footer/IT.json": ITFooter
+    - "./homepage/footer/ES.json": ESFooter
+    - "./homepage/animationheader/US.json": USAnimationHeader
+    - "./homepage/animationheader/UK.json": UKAnimationHeader
+    - "./homepage/animationheader/FR.json": FRAnimationHeader
+    - "./homepage/sitepromobanner/US.json": SitePromoBannerUS
+    - "./homepage/sitepromobanner/UK.json": SitePromoBannerUK
+    - "./homepage/sitepromobanner/FR.json": SitePromoBannerFR
+    - "./homepage/trust/US.json": USTrust
+    - "./homepage/trust/UK.json": UKTrust
+    - "./homepage/trust/FR.json": FRTrust
+    - "./homepage/review/US.json": CustomerReviewUS
+    - "./homepage/review/UK.json": CustomerReviewUK
+    - "./homepage/review/FR.json": CustomerReviewFR
+    - "./homepage/review/NL.json": CustomerReviewNL
+    - "./homepage/review/DE.json": CustomerReviewDE
+    - "./homepage/review/IT.json": CustomerReviewIT
+    - "./homepage/review/ES.json": CustomerReviewES
+
+behavior:
+  region_detection:
+    method: settings().website
+    supported_regions: ["US", "GB", "FR", "DE", "NL", "IT", "ES"]
+    fallback_region: US
+
+  content_structure:
+    format: Static JSON files
+    location: utility/homepage/* subdirectories
+    per_content_type: Separate JSON file per region
+
+  homepage_composition:
+    sections: [mainproduct, largeorder, home, realstory, footer, animationheader, sitepromobanner, trust, review]
+    partial_coverage: Some sections only have 3 regions (US, GB, FR)
+    full_coverage: Others have all 7 regions
+
+edge_cases:
+  - Missing region defaults to US content
+  - bestSellerCategory extracted from home JSON
+
+types:
+  notes: "No locally-defined types. All functions return any (raw JSON from regional static homepage content files)."
+
+used_by: []

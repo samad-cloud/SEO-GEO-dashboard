@@ -1,0 +1,862 @@
+name: ThemesService
+source:
+  path: services/themes-service.ts
+  lines: 1-608
+  type: service
+
+description: |
+  Comprehensive theme selection and management service for product customization.
+  Handles theme retrieval, filtering, subject groups, product themes, instant themes,
+  project creation, and category themes. Supports multiple product types (photobooks, calendars).
+  Integrates with Printbox themes, filters, and JSON-based theme data.
+
+exports:
+  functions:
+    - name: getThemeFilters
+      signature: "async (controller?: AbortController): Promise<ThemeFilters>"
+      description: "Fetches theme filter options from CDN"
+      external_api: "https://dc.printerpix.com/media/2023/04/theme-filters.json?v=59016.0418398"
+      returns: "ThemeFilters (filters array with heading and options)"
+
+    - name: getThemes
+      signature: "async (getThemesPayload: GetThemesPayload): Promise<Response<ThemeResponse>>"
+      description: "Fetches themes for a product with filters"
+      api: "/api/v2.0/vendor02theme/product-selection"
+      method: POST
+      params:
+        - productId, productPage, machineToken, themeUrl
+        - quantity, startMonth, startYear
+        - themeSubjectFilterParam, subject, format, search
+        - pathAndQuery, editor, couponProductId, productPageId
+      returns: "ThemeResponse with themeModels, subjectGroups, metaData, etc."
+      behavior:
+        - Sets default values for optional params
+        - DealCode always empty string
+        - NumberOfRecord: -1 (all records)
+        - UseVendorThemeSelectionPage: false
+        - Returns empty structure on error
+
+    - name: getProductThemes
+      signature: "async (productRef: string, machineToken: string, url: string, editor: string): Promise<ProductTheme[]>"
+      description: "Fetches themes for a specific product"
+      api: "/Vendor02Theme/ThemesForProductForQwik"
+      method: POST
+      params:
+        - productRef, machineToken, url, editor (query params)
+      returns: "ProductTheme[] (imageUrl, url, displayName)"
+      behavior:
+        - Returns empty array if machineToken missing
+        - Strips leading/trailing slashes from url
+        - Returns empty array on error
+
+    - name: getInstantProductThemes
+      signature: "async (productPageId: string): Promise<InstantProductThemesResponse>"
+      description: "Fetches CEPH-based instant themes by product page ID"
+      api: "/SvgTheme/GetCephThemesByProductPageId"
+      method: GET
+      params:
+        - productPageId (query param)
+      returns: "themes[] and products[]"
+
+    - name: startProject
+      signature: "async (input: StartProjectPayload): Promise<StartProjectResponse | null>"
+      description: "Starts a new project with selected theme"
+      api: "/Vendor02Theme/StartProject"
+      method: POST
+      params:
+        - machineToken, pathAndQuery, module, customerPk36, customerName
+        - isAnonymous, productUrl, themeUrl, skuBase, photos
+        - startMonth, startYear, quantity, upSizeId, addOnItems
+        - pmn, couponProductId, prodType, Editor
+      returns: "redirectURL"
+
+    - name: getCategoryThemes
+      signature: "async (requestData: CategoryThemesPayload): Promise<Response<ThemeResponse>>"
+      description: "Fetches themes for a category page"
+      api: "/Vendor02Theme/CategoryThemeV2"
+      method: POST
+      params: Same as getThemes + categoryUrl and couponCode
+      returns: "ThemeResponse"
+
+    - name: getThemeGroup
+      signature: "(theme: Theme, subjectGroups: ThemeSubjectGroups[]): ThemeSubjectGroups | null"
+      description: "Finds subject group for a theme"
+      behavior:
+        - Iterates through subjectGroups
+        - Checks if theme.themeSubjects includes any subject in group
+        - Returns first matching group or null
+
+    - name: getPrintboxThemeGroup
+      signature: "(theme: PrintboxTheme, subjectGroups: ThemeSubjectGroups[]): ThemeSubjectGroups | null"
+      description: "Finds subject group for printbox theme"
+      behavior: Same as getThemeGroup but for PrintboxTheme
+
+    - name: getCardShape
+      signature: "(refCode: string): string"
+      description: "Extracts card shape from reference code"
+      shapes: ["Rounded", "Ticket", "Scalloped", "Bracket", "Folded"]
+      returns: "Shape name or 'Standard'"
+
+    - name: getImageFiltersByProductType
+      signature: "(data: PrintBoxImageFilters, productType: PlatinumProductTypeEnum): PrintBoxImageFilter[]"
+      description: "Gets image filters for product type"
+      behavior:
+        - Returns photobooks.filters for Photobook
+        - Returns calendars.filters for Calendar
+        - Defaults to photobooks.filters for Unknown
+
+    - name: loadPrintBoxThemesDataByProduct
+      signature: "async (productType: PlatinumProductTypeEnum): Promise<PrintBoxThemesContent>"
+      description: "Loads printbox themes from JSON by product type"
+      source: "WebContentType.PRINTBOX_THEMES"
+      returns: "photobooks or calendars data"
+
+    - name: loadCategoryThemeImageFilters
+      signature: "async (productType: PlatinumProductTypeEnum): Promise<CategoryThemeImage[] | undefined>"
+      description: "Loads category theme image filters from JSON"
+      source: "WebContentType.CATEGORY_THEME_IMAGE_FILTERS"
+      returns: "photobooks or calendars array (or undefined)"
+
+    - name: openProject
+      signature: "async (projectguid: string, machineToken: string): Promise<Response<OpenProjectResponse>>"
+      description: "Opens existing project"
+      api: "/Vendor02/OpenProject"
+      method: GET
+      params:
+        - projectguid, machineToken (query params)
+      returns: "destinationUrl, customerId, machineToken"
+
+  interfaces:
+    - name: ThemeResponse
+      fields:
+        - data (ThemeSelection | string)
+        - message (string)
+        - requestModel (productId, categoryUrl, machineToken)
+
+    - name: ThemeSubjects
+      fields:
+        - subject (number)
+        - text (string)
+        - fullText (string, optional)
+        - selected (boolean, optional)
+        - priority (boolean, optional)
+        - position (number, optional)
+
+    - name: ThemeSubjectGroups
+      fields:
+        - heading (string)
+        - subjects (ThemeSubjects[])
+        - themeSubjectGroup (number)
+
+    - name: ThemeSelection
+      fields:
+        - productPageThemeTemplateUrl (string)
+        - discountedPrice (number)
+        - price (number)
+        - subjectGroups (ThemeSubjectGroups[])
+        - themeGroups (any)
+        - themeModels (Theme[])
+        - productCheckboxSets (ProductSets[])
+        - metaData (CategoryMetaData | null)
+        - platinumProductType (PlatinumProductTypeEnum)
+        - editorSource (string)
+        - productPageContent (ProductPageContent | null)
+
+    - name: Theme
+      fields:
+        - launchUrl, previewUrl, caption (strings)
+        - themeSubject (number)
+        - themeSubjects (number[])
+        - themeGuid, referenceCode, themeUrl (strings)
+        - previewUrl2 (string, optional)
+
+    - name: PrintboxTheme
+      fields:
+        - id, attribute_id, position (numbers)
+        - caption, themeUrl, previewUrl, previewUrl2 (strings)
+        - themeSubject (number[])
+        - launchUrl (string)
+
+    - name: PrintBoxThemesContent
+      fields:
+        - themeModels (PrintboxTheme[])
+        - subjectGroups (ThemeSubjectGroups[])
+
+    - name: PrintboxThemesResponse
+      fields:
+        - photobooks (PrintBoxThemesContent)
+        - calendars (PrintBoxThemesContent)
+
+    - name: ProductSets
+      fields:
+        - caption (string)
+        - checkboxes (ProductSetItems[])
+
+    - name: ProductSetItems
+      fields:
+        - disabled, selected (booleans)
+        - group, icon, iconSmall (any)
+        - text, textShort, value (strings)
+
+    - name: ThemeFilters
+      fields:
+        - filters (Filter[])
+
+    - name: Filter
+      fields:
+        - heading (string)
+        - options (string[])
+
+    - name: GetThemesPayload
+      fields:
+        - productId, productPage, machineToken, themeUrl
+        - quantity, startMonth, startYear
+        - themeSubjectFilterParam, subject, format, search
+        - pathAndQuery, editor, couponProductId, productPageId
+
+    - name: ProductTheme
+      fields:
+        - imageUrl, url (strings)
+        - displayName (string, optional)
+
+    - name: InstantTheme
+      fields:
+        - themeId, displayName (strings)
+        - aspectRatio (number)
+        - beautyshotUrlPattern (string)
+
+    - name: InstantProduct
+      fields:
+        - referenceCode (string)
+        - productUrl (string | null)
+        - aspectRatio (number)
+
+    - name: InstantProductThemesResponse
+      fields:
+        - themes (InstantTheme[])
+        - products (InstantProduct[])
+
+    - name: StartProjectPayload
+      fields:
+        - machineToken, pathAndQuery, module, customerPk36, customerName
+        - isAnonymous (boolean)
+        - productUrl, themeUrl, skuBase, photos, pmn, couponProductId, prodType, Editor
+        - startMonth, startYear, quantity (numbers)
+        - upSizeId, addOnItems (strings)
+
+    - name: StartProjectResponse
+      fields:
+        - redirectURL (string)
+
+    - name: CategoryThemesPayload
+      extends: GetThemesPayload
+      fields:
+        - categoryUrl, couponCode
+
+    - name: ThemeOption
+      fields:
+        - imageUrl, url, title (strings)
+
+    - name: ThemeOptionResonse (typo in source)
+      fields:
+        - cards, photobooks, default, calendars (all ThemeOption[])
+
+    - name: PrintBoxImageFilter
+      fields:
+        - name, imageUrl, productRefId, refCode (strings)
+
+    - name: PrintBoxImageFilters
+      fields:
+        - photobooks (filters: PrintBoxImageFilter[])
+        - calendars (filters: PrintBoxImageFilter[])
+
+    - name: CategoryThemeImage
+      fields:
+        - productRefId, activeImage (strings)
+
+    - name: CategoryThemeImageFilters
+      fields:
+        - photobooks (CategoryThemeImage[])
+        - calendars (CategoryThemeImage[], optional)
+
+    - name: OpenProjectResponse
+      fields:
+        - destinationUrl, customerId, machineToken (strings)
+
+  types:
+    - name: Zod Schemas
+      description: "Multiple Zod schemas for runtime validation"
+      schemas:
+        - ThemeSubjectsSchema
+        - ThemeSubjectGroupsSchema
+        - PrintboxThemeSchema
+        - PrintboxThemeDataSchema
+        - PrintboxThemesResponseSchema
+        - ThemeOptionSchema
+        - ThemeOptionsResponseSchema
+        - PrintBoxImageFilterScheme
+        - PrintBixProductFiltersSchema
+        - PrintBoxImageFiltersSchema
+        - CategoryThemeImageSchema
+        - CategoryThemeImageFiltersSchema
+
+  constants: []
+
+api_contracts:
+  - endpoint: /api/v2.0/vendor02theme/product-selection
+    method: POST
+    body: GetThemesPayload (transformed)
+    response: ThemeResponse
+
+  - endpoint: /Vendor02Theme/ThemesForProductForQwik
+    method: POST
+    params:
+      productRef: string
+      machineToken: string
+      url: string
+      editor: string
+    response:
+      themes: ProductTheme[]
+
+  - endpoint: /SvgTheme/GetCephThemesByProductPageId
+    method: GET
+    params:
+      productPageId: string
+    response: InstantProductThemesResponse
+
+  - endpoint: /Vendor02Theme/StartProject
+    method: POST
+    body: StartProjectPayload
+    response: StartProjectResponse
+
+  - endpoint: /Vendor02Theme/CategoryThemeV2
+    method: POST
+    body: CategoryThemesPayload (transformed)
+    response: ThemeResponse
+
+  - endpoint: /Vendor02/OpenProject
+    method: GET
+    params:
+      projectguid: string
+      machineToken: string
+    response: OpenProjectResponse
+
+  external_apis:
+    - url: https://dc.printerpix.com/media/2023/04/theme-filters.json?v=59016.0418398
+      description: "Theme filter options JSON"
+      response: ThemeFilters
+
+behavior:
+  - name: getThemeFilters
+    steps:
+      - Creates a Request to CDN URL "https://dc.printerpix.com/media/2023/04/theme-filters.json?v=59016.0418398"
+      - Fetches with optional AbortController signal for cancellation
+      - Parses and returns JSON as ThemeFilters
+  - name: getThemes
+    steps:
+      - Takes a GetThemesPayload object
+      - Constructs API payload with defaults (DealCode="", NumberOfRecord=-1, UseVendorThemeSelectionPage=false, IsSortByPopularity=false, IsAjax=false)
+      - Sets ProductPageId and CouponProductId to zero GUID if not provided
+      - Converts quantity, startMonth, startYear to numbers
+      - POSTs to "/api/v2.0/vendor02theme/product-selection" with "hard" caching
+      - On error, returns empty structure with PlatinumProductTypeEnum.Unknown, zero prices, empty arrays
+  - name: getProductThemes
+    steps:
+      - Returns empty array immediately if machineToken is falsy
+      - Strips leading and trailing slashes from url parameter
+      - POSTs to "/Vendor02Theme/ThemesForProductForQwik" with productRef, machineToken, url, editor as query params
+      - Uses "soft" caching, checks isDataReady
+      - Returns themes array from response, or empty array on error
+  - name: getInstantProductThemes
+    steps:
+      - Initializes result with empty themes and products arrays
+      - Makes GET request to "/SvgTheme/GetCephThemesByProductPageId" with productPageId as query param
+      - Uses "soft" caching, checks isDataReady
+      - Returns populated or default empty result
+  - name: startProject
+    steps:
+      - Takes a StartProjectPayload object with machineToken, product details, theme details, customer info
+      - POSTs to "/Vendor02Theme/StartProject" with the full payload, using "hard" caching
+      - If isDataReady, returns data containing redirectURL
+      - Returns null on error
+  - name: getCategoryThemes
+    steps:
+      - Takes a CategoryThemesPayload (extends GetThemesPayload with categoryUrl, couponCode)
+      - Constructs payload identical to getThemes but adds categoryUrl and editor fields
+      - POSTs to "/Vendor02Theme/CategoryThemeV2" with "hard" caching
+      - On error, returns empty structure identical to getThemes error fallback
+  - name: getThemeGroup
+    steps:
+      - Takes a Theme and array of ThemeSubjectGroups
+      - Iterates through each subject group and its subjects
+      - Checks if theme.themeSubjects (number array) includes any subject's subject number
+      - Returns the first matching ThemeSubjectGroups or null if no match
+  - name: getPrintboxThemeGroup
+    steps:
+      - Same logic as getThemeGroup but for PrintboxTheme
+      - Uses theme.themeSubject (number array) instead of theme.themeSubjects
+      - Returns first matching group or null
+  - name: getCardShape
+    steps:
+      - Takes a refCode string
+      - Checks against list of shapes ["Rounded", "Ticket", "Scalloped", "Bracket", "Folded"]
+      - Does case-insensitive comparison using toLowerCase()
+      - Returns matching shape name or "Standard" as default
+  - name: getImageFiltersByProductType
+    steps:
+      - Takes PrintBoxImageFilters data and PlatinumProductTypeEnum
+      - Returns photobooks.filters for Photobook type
+      - Returns calendars.filters for Calendar type
+      - Defaults to photobooks.filters for Unknown/other types
+  - name: loadPrintBoxThemesDataByProduct
+    steps:
+      - Loads printbox themes JSON via loadWebContent with WebContentType.PRINTBOX_THEMES
+      - Returns photobooks data for Photobook type
+      - Returns calendars data for Calendar type
+      - Defaults to photobooks for Unknown/other types
+  - name: loadCategoryThemeImageFilters
+    steps:
+      - Loads category theme image filters via loadWebContent with WebContentType.CATEGORY_THEME_IMAGE_FILTERS
+      - Returns photobooks array for Photobook type
+      - Returns calendars array for Calendar type
+      - Returns undefined for Unknown/other types (different from other loaders)
+  - name: openProject
+    steps:
+      - Takes projectguid and machineToken strings
+      - Makes GET request to "/Vendor02/OpenProject" with both as query params, using "hard" caching
+      - Returns the raw response (no isDataReady check, no error handling)
+
+types:
+  - See interfaces section for complete type definitions
+
+dependencies:
+  external:
+    - name: "@builder.io/qwik-city"
+      purpose: "z (Zod) import for schemas"
+  internal:
+    - name: "~/config/http"
+      purpose: "NewAPIResponse type"
+    - name: "./category-service"
+      purpose: "CategoryMetaData type"
+    - name: "./product-category-service"
+      purpose: "PlatinumProductTypeEnum"
+    - name: "./json-service"
+      purpose: "loadWebContent, WebContentType"
+    - name: "~/utility/http"
+      purpose: "handleMultipleAPIRequests, HTTP_METHODS"
+    - name: "./common-service"
+      purpose: "isDataReady validation"
+    - name: "./product-page-service"
+      purpose: "ProductPageContent type"
+
+data_flow:
+  inputs:
+    - Product IDs, machine tokens
+    - Theme filters (subject, format, search)
+    - Start month/year for calendars
+    - Category URLs
+  processing:
+    - API calls to theme endpoints
+    - JSON fetching from CDN
+    - Theme filtering by subject groups
+    - Product type routing (photobooks vs calendars)
+  outputs:
+    - Theme collections with previews
+    - Subject groups for filtering
+    - Launch URLs for editor
+    - Redirect URLs for projects
+
+business_logic:
+  - Themes organized by subject groups (e.g., "Baby", "Travel")
+  - Multiple product types: Photobooks, Calendars, Cards
+  - Printbox themes stored in JSON (not API)
+  - Instant themes use CEPH storage
+  - Project creation returns redirect URL to editor
+  - Card shapes extracted from reference codes
+  - Category themes include category-specific filtering
+  - Theme preview URLs (previewUrl, previewUrl2)
+  - Start month/year for calendar products
+  - Quantity affects theme availability
+  - Coupon/deal codes integrated
+
+error_handling:
+  - getThemes returns empty structure on error (not null)
+  - getProductThemes returns empty array on error
+  - startProject returns null on error
+  - getCategoryThemes returns empty structure on error
+  - openProject propagates response (may error)
+  - No user-friendly error messages
+  - isDataReady checks before accessing data
+
+security:
+  - machineToken required for most operations
+  - No validation of machineToken format
+  - CDN theme filters are public (no auth)
+  - Project creation requires customer info
+
+performance:
+  - Multiple API calls per theme selection
+  - JSON themes loaded from CDN (cached)
+  - NumberOfRecord: -1 fetches all themes (no pagination)
+  - AbortController support for filter fetching
+  - No client-side theme caching mentioned
+
+used_by:
+  - backend/services/product-category-service.yaml (imports PlatinumProductTypeEnum-related theme types)
+  - backend/services/product-page-service.yaml (imports theme types for product page rendering)
+  - backend/services/web-component-service.yaml (imports ThemeSubjectGroups type for theme filter processing)
+  - frontend/components/product-page/instant-product-page-container.yaml (uses getInstantProductThemes)
+  - frontend/components/product-page/product-page-basic-template.yaml (uses getThemes, getThemeGroup, theme types)
+  - frontend/components/product-page/product-page-fixed-template.yaml (uses getThemes, theme types)
+  - frontend/components/product-page/product-page-hub-template.yaml (uses getThemes, getCategoryThemes, theme types)
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  GetThemesPayload:
+    description: Input payload for getThemes (POST /api/v2.0/vendor02theme/product-selection)
+    fields:
+      - name: productId
+        type: string
+      - name: productPage
+        type: string
+      - name: machineToken
+        type: string
+      - name: themeUrl
+        type: string
+      - name: quantity
+        type: "string | number"
+      - name: startMonth
+        type: "string | number"
+      - name: startYear
+        type: "string | number"
+      - name: themeSubjectFilterParam
+        type: string
+        optional: true
+      - name: subject
+        type: string
+        optional: true
+      - name: format
+        type: string
+        optional: true
+      - name: search
+        type: string
+        optional: true
+      - name: pathAndQuery
+        type: string
+      - name: editor
+        type: string
+      - name: couponProductId
+        type: string
+        optional: true
+      - name: productPageId
+        type: string
+        optional: true
+
+  CategoryThemesPayload:
+    description: Extension of GetThemesPayload for category theme requests
+    extends: GetThemesPayload
+    fields:
+      - name: categoryUrl
+        type: string
+      - name: couponCode
+        type: string
+
+  StartProjectPayload:
+    description: Payload for POST /Vendor02Theme/StartProject
+    fields:
+      - name: machineToken
+        type: string
+      - name: pathAndQuery
+        type: string
+      - name: module
+        type: string
+      - name: customerPk36
+        type: string
+      - name: customerName
+        type: string
+      - name: isAnonymous
+        type: boolean
+      - name: productUrl
+        type: string
+      - name: themeUrl
+        type: string
+      - name: skuBase
+        type: string
+      - name: photos
+        type: string
+      - name: startMonth
+        type: number
+      - name: startYear
+        type: number
+      - name: quantity
+        type: number
+      - name: upSizeId
+        type: string
+      - name: addOnItems
+        type: string
+      - name: pmn
+        type: string
+      - name: couponProductId
+        type: string
+      - name: prodType
+        type: string
+      - name: Editor
+        type: string
+
+  StartProjectResponse:
+    description: Response from POST /Vendor02Theme/StartProject
+    fields:
+      - name: redirectURL
+        type: string
+        notes: URL to redirect user to the editor after project creation
+
+  Theme:
+    description: Single theme model from API theme selection response
+    fields:
+      - name: launchUrl
+        type: string
+      - name: previewUrl
+        type: string
+      - name: previewUrl2
+        type: string
+        optional: true
+      - name: caption
+        type: string
+      - name: themeSubject
+        type: number
+      - name: themeSubjects
+        type: "number[]"
+      - name: themeGuid
+        type: string
+      - name: referenceCode
+        type: string
+      - name: themeUrl
+        type: string
+
+  ThemeSubjectGroups:
+    description: A named group of related theme subjects for filter display
+    fields:
+      - name: heading
+        type: string
+      - name: subjects
+        type: "ThemeSubjects[]"
+      - name: themeSubjectGroup
+        type: number
+
+  ThemeSubjects:
+    description: Individual subject entry within a ThemeSubjectGroups
+    fields:
+      - name: subject
+        type: number
+      - name: text
+        type: string
+      - name: fullText
+        type: string
+        optional: true
+      - name: selected
+        type: boolean
+        optional: true
+      - name: priority
+        type: boolean
+        optional: true
+      - name: position
+        type: number
+        optional: true
+
+  ThemeSelection:
+    description: Main data payload inside ThemeResponse when API call succeeds
+    fields:
+      - name: productPageThemeTemplateUrl
+        type: string
+      - name: discountedPrice
+        type: number
+      - name: price
+        type: number
+      - name: subjectGroups
+        type: "ThemeSubjectGroups[]"
+      - name: themeModels
+        type: "Theme[]"
+      - name: productCheckboxSets
+        type: "ProductSets[]"
+      - name: metaData
+        type: "CategoryMetaData | null"
+      - name: platinumProductType
+        type: PlatinumProductTypeEnum
+      - name: editorSource
+        type: string
+      - name: productPageContent
+        type: "ProductPageContent | null"
+
+  InstantProductThemesResponse:
+    description: Response from GET /SvgTheme/GetCephThemesByProductPageId
+    fields:
+      - name: themes
+        type: "InstantTheme[]"
+      - name: products
+        type: "InstantProduct[]"
+
+  InstantTheme:
+    description: A CEPH-hosted instant product theme
+    fields:
+      - name: themeId
+        type: string
+      - name: displayName
+        type: string
+      - name: aspectRatio
+        type: number
+      - name: beautyshotUrlPattern
+        type: string
+
+  OpenProjectResponse:
+    description: Response from GET /Vendor02/OpenProject
+    fields:
+      - name: destinationUrl
+        type: string
+      - name: customerId
+        type: string
+      - name: machineToken
+        type: string
+
+field_consumption:
+  ThemeResponse:
+    consumed:
+      - data: Cast to ThemeSelection — contains themeModels, subjectGroups, metaData, etc.
+      - message: Not directly consumed (error cases fall back to empty structure)
+    ignored:
+      - requestModel: Echoed back by API but not consumed by callers
+
+  ThemeSelection:
+    consumed:
+      - themeModels: Primary output — array of Theme objects for display
+      - subjectGroups: Used by getThemeGroup / getPrintboxThemeGroup for filter assignment
+      - platinumProductType: Passed through to caller for product type routing
+      - metaData: Passed through to caller for page metadata
+      - productPageContent: Passed through to caller for content section ordering
+      - discountedPrice: Displayed as product price
+      - price: Displayed as original price for discount calculation
+    ignored:
+      - themeGroups: Present but typed as "any", not consumed downstream
+      - productPageThemeTemplateUrl: Present but not consumed downstream
+      - editorSource: Passed through only if caller reads it
+
+  InstantProductThemesResponse:
+    consumed:
+      - themes: Full array returned to caller
+      - products: Full array returned to caller
+    ignored: []
+
+  StartProjectResponse:
+    consumed:
+      - redirectURL: Only field — used to redirect user to Printbox/Vendor editor
+    ignored: []
+
+wire_format:
+  POST /api/v2.0/vendor02theme/product-selection:
+    description: Fetches themes for a product page with filters applied
+    function: getThemes
+    mapping:
+      payload.productId: ProductId
+      payload.productPage: ProductPage
+      payload.machineToken: MachineToken
+      payload.themeUrl: ThemeUrl
+      payload.quantity (coerced to number): Quantity
+      payload.startMonth (coerced to number): StartMonth
+      payload.startYear (coerced to number): StartYear
+      payload.themeSubjectFilterParam: ThemeSubjectFilterParam
+      payload.subject: Subject
+      payload.format: Format
+      payload.search: Search
+      payload.pathAndQuery: PathAndQuery
+      payload.editor: Editor
+      payload.couponProductId (or zero GUID): CouponProductId
+      payload.productPageId (or zero GUID): ProductPageId
+      "(hardcoded)": DealCode=""
+      "(hardcoded)": NumberOfRecord=-1
+      "(hardcoded)": UseVendorThemeSelectionPage=false
+    content_type: application/json
+
+  POST /Vendor02Theme/ThemesForProductForQwik:
+    description: Fetches themes for a specific product by reference code
+    function: getProductThemes
+    mapping:
+      productRef (param): productRef (query param)
+      machineToken (param): machineToken (query param)
+      url (param, stripped of slashes): url (query param)
+      editor (param): editor (query param)
+    content_type: application/x-www-form-urlencoded
+    notes:
+      - Returns empty array immediately if machineToken is falsy
+
+  POST /Vendor02Theme/StartProject:
+    description: Creates a new project with selected product and theme, returns editor redirect URL
+    function: startProject
+    mapping:
+      input.machineToken: MachineToken
+      input.pathAndQuery: PathAndQuery
+      input.module: Module
+      input.customerPk36: CustomerPk36
+      input.customerName: CustomerName
+      input.isAnonymous: IsAnonymous
+      input.productUrl: ProductUrl
+      input.themeUrl: ThemeUrl
+      input.skuBase: SkuBase
+      input.photos: Photos
+      input.startMonth: StartMonth
+      input.startYear: StartYear
+      input.quantity: Quantity
+      input.upSizeId: UpSizeId
+      input.addOnItems: AddOnItems
+      input.pmn: Pmn
+      input.couponProductId: CouponProductId
+      input.prodType: ProdType
+      input.Editor: Editor
+    content_type: application/json
+
+  POST /Vendor02Theme/CategoryThemeV2:
+    description: Fetches themes for a category page
+    function: getCategoryThemes
+    mapping:
+      "(same as getThemes +)": ""
+      requestData.categoryUrl: CategoryUrl
+      requestData.editor: Editor
+    content_type: application/json
+
+implementation_logic:
+  get_themes_defaults_injection:
+    rule: |
+      getThemes always injects these hardcoded values regardless of caller input:
+        DealCode: ""  (deal codes never used in theme selection)
+        NumberOfRecord: -1  (fetch all themes, no pagination)
+        UseVendorThemeSelectionPage: false
+        IsSortByPopularity: false
+        IsAjax: false
+      CouponProductId and ProductPageId default to zero GUID ("00000000-0000-0000-0000-000000000000")
+      if not supplied.
+    critical: false
+
+  get_product_themes_url_slash_strip:
+    rule: |
+      getProductThemes strips leading AND trailing slashes from the url parameter before
+      sending it as a query param. This normalizes URLs like "/photo-books/" to "photo-books"
+      to match the API's expected format. If machineToken is falsy, returns empty array
+      immediately without making an API call.
+    critical: false
+
+  theme_group_matching_by_subject_intersection:
+    rule: |
+      getThemeGroup iterates through all ThemeSubjectGroups and their subjects array.
+      For each subject entry, it checks whether theme.themeSubjects (an array of numbers)
+      includes that subject's numeric ID. Returns the FIRST group that has any match.
+      getPrintboxThemeGroup uses the same logic but reads theme.themeSubject instead of
+      theme.themeSubjects (different field name on PrintboxTheme).
+    critical: false
+
+  product_type_routing_for_printbox_themes:
+    rule: |
+      loadPrintBoxThemesDataByProduct and loadCategoryThemeImageFilters both branch on
+      PlatinumProductTypeEnum: Photobook returns photobooks data, Calendar returns calendars
+      data. Unknown/other types default to photobooks for loadPrintBoxThemesDataByProduct
+      but return undefined for loadCategoryThemeImageFilters.
+    critical: false
+

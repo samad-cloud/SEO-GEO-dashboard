@@ -1,0 +1,411 @@
+name: CategoryPageFactory
+source:
+  path: src/components/category-page/containers/category-page-factory.tsx
+  lines: 1-16
+  type: component
+
+description: |
+  Factory component that determines which category page container to render based on a type prop.
+  Currently only supports CategoryType.COMMON, which delegates to CommonCategoryContainer.
+
+  The CommonCategoryContainer is a complex layout component that orchestrates all category page content:
+  - Campaign banners (desktop/mobile positioning)
+  - Video banners (from web components)
+  - Global category banners or standard banners (conditional rendering)
+  - Category quick links (section-based)
+  - Product sections
+  - Collection sliders (ordered, conditional display)
+  - Shop page cards (ordered, conditional display)
+  - Customer reviews (ordered, conditional display)
+  - Bottom page CTA (themed)
+  - Product page content (web components)
+
+  The factory pattern allows for future category page variants (e.g., special layouts for specific product types).
+
+exports:
+  - name: CategoryPageFactory
+    type: default
+    kind: component
+  - name: CategoryType
+    type: named
+    kind: enum
+    values:
+      - COMMON
+
+props:
+  - name: type
+    type: CategoryType
+    required: true
+    description: Determines which category page variant to render (currently only COMMON is supported)
+
+rendering_logic:
+  - condition: type === CategoryType.COMMON
+    renders: CommonCategoryContainer
+    description: Renders the standard category page layout
+  - condition: default case
+    renders: CommonCategoryContainer
+    description: Fallback to CommonCategoryContainer for any unrecognized type
+
+child_components:
+  # Direct child (factory delegates to this)
+  - name: CommonCategoryContainer
+    path: ./common-category-container
+    description: Main category page layout orchestrator
+
+  # Children of CommonCategoryContainer
+  - name: CategoryPageTopBannerV2
+    path: ~/components/category-page/category-page-top-banner-v2
+    description: Campaign banner shown at top of page (responsive positioning)
+  - name: VideoBanner
+    path: ~/components/web-component/video-banner
+    description: Video banner from web components (Main type)
+  - name: GlobalCategoryBanner
+    path: ~/components/category-page/global-category-banner
+    description: Global category banner override from web components
+  - name: CategoryBanner
+    path: ~/components/category-page/category-banner
+    description: Standard category banner with topPageContent
+  - name: CategoryQuickLinks
+    path: ~/components/category-page/category-quick-links
+    description: Quick navigation links for category sections
+  - name: ProductSections
+    path: ~/components/category-page/product-sections
+    description: Product card sections with theme support
+  - name: CollectionSlider
+    path: ~/components/shop-page/components/collection-slider
+    description: Slider for product collections (event-based)
+  - name: ShopPageCards
+    path: ~/components/shop-page/components/shop-page-cards
+    description: Shop page product cards (friendlyUrl-based)
+  - name: CustomerReview
+    path: ~/components/customer-review/customer-review
+    description: Customer reviews display
+  - name: ProductPageContentComponentV2
+    path: ~/components/product-page/product-page-content-v2
+    description: Product page content web components
+
+context_consumed:
+  - name: CategoryContext
+    path: ~/context/product-category-context
+    fields:
+      - category:
+          fields:
+            - platinumProductType: Product type for Klaviyo tracking and design URL
+            - campaignInfo: Campaign banner data
+            - banner: Standard category banner data
+            - topPageContent: Top page content HTML
+            - theme: Category theme (primary, primaryText colors)
+            - productSections: Array of product sections with display order
+            - collections: Array of collections with heading, event, order, display flag
+            - shops: Array of shops with heading, friendlyUrl, order, display flag
+            - reviewsCollection: Customer reviews with reviewModels, order, display flag
+            - bottomPageCta: CTA data (ctaText, href, ctaColor, ctaTextColor, order, display)
+            - productPageContent: Web components data
+      - categoryQuickLinks: Array of quick link sections with displayOn paths
+
+hooks_used:
+  - name: useContext
+    source: "@builder.io/qwik"
+    purpose: Access CategoryContext for all category data
+  - name: useLocation
+    source: "@builder.io/qwik-city"
+    purpose: Get current URL pathname for quick links matching and Klaviyo tracking
+  - name: useComputed$
+    source: "@builder.io/qwik"
+    purpose: |
+      Compute derived values:
+      - designUrl (from platinumProductType)
+      - selectedQuickLinkSection (from categoryQuickLinks + pathname)
+      - globalCategoryBanner (from productPageContent web components)
+      - videoBanner (from productPageContent web components)
+  - name: useVisibleTask$
+    source: "@builder.io/qwik"
+    purpose: Track Klaviyo VIEW_PRODUCT event on client-side
+
+dependencies:
+  internal:
+    - path: ~/services/category-service
+      imports:
+        - getDesignLinkByProductType
+      purpose: Get design editor URL for product type
+    - path: ~/services/web-component-service
+      imports:
+        - processVideoBannerData
+        - processCategoryPageBannerOverrideData
+        - WebComponentType
+      purpose: Parse and process web component data from CMS
+    - path: ~/services/klaviyo-service
+      imports:
+        - trackKlaviyoEvent
+        - KlaviyoEvent
+      purpose: Track product view events for marketing analytics
+    - path: ~/services/product-category-service
+      imports:
+        - getPlatinumProductTypeKey
+      purpose: Get platinum product type key for Klaviyo tracking
+    - path: ~/utility/http
+      imports:
+        - toAbsoluteUrl
+      purpose: Convert relative URL to absolute for Klaviyo tracking
+  external:
+    - package: "@builder.io/qwik"
+      imports:
+        - component$
+        - useComputed$
+        - useContext
+        - useVisibleTask$
+    - package: "@builder.io/qwik-city"
+      imports:
+        - useLocation
+
+data_flow:
+  input:
+    - source: CategoryContext
+      fields:
+        - category (all category data)
+        - categoryQuickLinks (quick links sections)
+    - source: useLocation()
+      fields:
+        - url.pathname (for quick links matching and Klaviyo tracking)
+
+  processing:
+    - step: Klaviyo tracking
+      description: |
+        On client-side mount (useVisibleTask$), track VIEW_PRODUCT event with:
+        - Categories: [getPlatinumProductTypeKey(category.platinumProductType)]
+        - Brand: "Printerpix"
+        - URL: absolute URL from pathname
+
+    - step: Design URL computation
+      description: Compute design editor link using getDesignLinkByProductType(platinumProductType)
+
+    - step: Quick links selection
+      description: |
+        Find quick link section where any displayOn path matches current pathname.
+        Used for contextual navigation.
+
+    - step: Global banner extraction
+      description: |
+        Find web component with wcTemplateName starting with CATEGORY_PAGE_BANNER_OVERRIDE.
+        Process with processCategoryPageBannerOverrideData() if found.
+
+    - step: Video banner extraction
+      description: |
+        Find web component with:
+        - wcTemplateName starting with VIDEO_BANNER
+        - componentType == "Main"
+        Process with processVideoBannerData() if found.
+
+  output:
+    - description: Rendered category page with ordered sections
+    - structure: |
+        1. CategoryPageTopBannerV2 (desktop, hidden on mobile)
+        2. VideoBanner (if videoBanner exists)
+        3. GlobalCategoryBanner (if active) OR CategoryBanner (if no videoBanner and banner exists)
+        4. CategoryPageTopBannerV2 (mobile, hidden on desktop)
+        5. CategoryQuickLinks (if selectedQuickLinkSection exists)
+        6. ProductSections (if productSections array has items)
+        7. Collections (mapped, ordered by collection.order, conditionally displayed)
+        8. Shops (mapped, ordered by shop.order, conditionally displayed)
+        9. CustomerReview (if reviewsCollection.display and has reviewModels)
+        10. Bottom CTA (if bottomPageCta.display)
+        11. ProductPageContentComponentV2 (if productPageContent exists)
+
+rendering_rules:
+  banner_priority:
+    - Video banner takes precedence (always shown if exists)
+    - If no video banner:
+      - Global category banner shown if isActive
+      - Standard category banner shown if no global banner
+    - Campaign banner (CategoryPageTopBannerV2) shown above video/global banner on desktop, below on mobile
+
+  ordered_sections:
+    - Collections, shops, reviews, and bottom CTA respect their order property for CSS flex ordering
+    - Each section wrapped in div with style={{ order: section.order }}
+    - IDs assigned for anchor links: cs-{order}, s-{order}, fs-{order}, bpcta-{order}
+
+  conditional_display:
+    - Collections: collection.display must be true
+    - Shops: shop.display must be true
+    - Reviews: reviewsCollection.display must be true AND reviewModels.length > 0
+    - Bottom CTA: bottomPageCta.display must be true
+    - Product sections: productSections.length > 0
+
+  theming:
+    - Bottom CTA uses bottomPageCta colors if provided, falls back to category.theme
+    - Product sections receive category.theme for consistent styling
+    - ProductPageContentComponentV2 receives theme and type="category"
+
+analytics:
+  - event: VIEW_PRODUCT
+    platform: Klaviyo
+    trigger: Component mount (client-side)
+    data:
+      - Categories: [platinum product type key]
+      - Brand: "Printerpix"
+      - URL: absolute URL
+
+web_components_integration:
+  - type: CATEGORY_PAGE_BANNER_OVERRIDE
+    processing: processCategoryPageBannerOverrideData()
+    rendering: GlobalCategoryBanner component
+    condition: isActive flag must be true
+
+  - type: VIDEO_BANNER
+    processing: processVideoBannerData()
+    rendering: VideoBanner component
+    condition: componentType == "Main"
+
+  - type: Multiple web component types
+    processing: Handled by ProductPageContentComponentV2
+    rendering: Various web component templates
+    location: Bottom of page
+
+css_classes:
+  layout:
+    - "w-full relative flex flex-col": Root container
+    - "hidden lg:block": Desktop-only banner
+    - "block lg:hidden": Mobile-only banner
+    - "container mx-auto": Centered content containers
+
+  spacing:
+    - "mb-0 lg:mb-8": Video banner margin
+    - "my-4 lg:my-8": Quick links margin
+    - "py-6": Collection/shop heading padding
+    - "pt-12": Shop section top padding
+    - "my-1 lg:my-8": Reviews and bottom CTA margin
+    - "py-4 px-3 md:px-0": Reviews wrapper padding
+
+  typography:
+    - "text-center text-2xl font-semibold": Collection/shop headings
+
+  cta:
+    - "py-4 px-12 flex items-center justify-center cursor-pointer rounded-md": Bottom CTA button
+    - "cta_category_page--bottom": GTM tracking class for bottom CTA
+
+gtm_tracking:
+  - class: cta_category_page--bottom
+    element: Bottom page CTA link
+    purpose: Track bottom CTA clicks
+
+edge_cases:
+  - case: No category data
+    handling: Component will render empty or partial layout (no explicit null check)
+
+  - case: No web components
+    handling: globalCategoryBanner and videoBanner will be null, banners conditionally hidden
+
+  - case: Empty collections/shops arrays
+    handling: map() returns empty array, no sections rendered
+
+  - case: All sections have display=false
+    handling: Only basic banner and product sections shown
+
+  - case: No theme provided
+    handling: Bottom CTA will use empty colors (undefined fallback)
+
+  - case: Multiple web components of same type
+    handling: find() returns first match only
+
+  - case: Quick links section not matching current path
+    handling: selectedQuickLinkSection.value is undefined, section hidden
+
+security:
+  - concern: HTML injection in topPageContent
+    mitigation: Content comes from CMS, assumed to be sanitized
+
+  - concern: XSS in collection/shop headings
+    mitigation: Text content only, no dangerouslySetInnerHTML
+
+  - concern: External URLs in bottom CTA href
+    mitigation: No validation, href passed directly (CMS responsibility)
+
+performance:
+  - useComputed$ for derived values (designUrl, selectedQuickLinkSection, banners)
+  - Conditional rendering prevents unnecessary component mounting
+  - useVisibleTask$ ensures Klaviyo tracking only runs client-side
+  - Key props on mapped items prevent unnecessary re-renders
+
+accessibility:
+  - Bottom CTA is semantic <a> tag
+  - Headings use <p> with text-2xl (should be <h2> for semantic HTML)
+  - IDs on sections allow anchor link navigation
+  - No ARIA attributes present
+
+behavior:
+  - step: 1
+    action: "Receive type prop of CategoryType enum (currently only COMMON is defined)"
+  - step: 2
+    action: "Switch on type value: if COMMON, render CommonCategoryContainer; default case also renders CommonCategoryContainer (factory pattern allows future variants)"
+  - step: 3
+    action: "CommonCategoryContainer reads category data and categoryQuickLinks from CategoryContext"
+  - step: 4
+    action: "On client-side mount (useVisibleTask$), track Klaviyo VIEW_PRODUCT event with platinum product type key, brand 'Printerpix', and absolute URL of current page"
+  - step: 5
+    action: "Compute designUrl from platinumProductType using getDesignLinkByProductType service"
+  - step: 6
+    action: "Compute selectedQuickLinkSection by finding the quick links section whose displayOn paths match the current URL pathname"
+  - step: 7
+    action: "Compute globalCategoryBanner by finding web component with CATEGORY_PAGE_BANNER_OVERRIDE template name and processing it with processCategoryPageBannerOverrideData"
+  - step: 8
+    action: "Compute videoBanner by finding web component with VIDEO_BANNER template name and componentType 'Main', processing it with processVideoBannerData"
+  - step: 9
+    action: "Render CategoryPageTopBannerV2 (campaign banner) on desktop at the top (hidden on mobile)"
+  - step: 10
+    action: "If videoBanner exists, render VideoBanner component"
+  - step: 11
+    action: "Determine banner to show: if globalCategoryBanner is active, render GlobalCategoryBanner; otherwise if standard banner exists and no video banner, render CategoryBanner with topPageContent"
+  - step: 12
+    action: "Render CategoryPageTopBannerV2 again for mobile positioning (hidden on desktop), placed below the main banner"
+  - step: 13
+    action: "If selectedQuickLinkSection matches current path, render CategoryQuickLinks navigation"
+  - step: 14
+    action: "If productSections array has items, render ProductSections with category theme"
+  - step: 15
+    action: "Map and render collections with display=true, ordered by collection.order CSS property, each showing heading text and CollectionSlider"
+  - step: 16
+    action: "Map and render shops with display=true, ordered by shop.order CSS property, each showing heading text and ShopPageCards"
+  - step: 17
+    action: "If reviewsCollection has display=true and reviewModels array has items, render CustomerReview ordered by reviewsCollection.order"
+  - step: 18
+    action: "If bottomPageCta has display=true, render CTA button with colors from bottomPageCta (falling back to category.theme colors) and link to bottomPageCta.href; includes GTM tracking class cta_category_page--bottom"
+  - step: 19
+    action: "If productPageContent exists, render ProductPageContentComponentV2 with theme, designUrl, productType, and type='category'"
+
+used_by: []
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  CategoryType:
+    description: Enum controlling which category page variant is rendered
+    fields:
+      - name: COMMON
+        type: string
+        notes: Only defined value; both the matched case and the default case render CommonCategoryContainer
+
+  CategoryPageFactoryProps:
+    description: Props for CategoryPageFactory
+    fields:
+      - name: type
+        type: CategoryType
+
+field_consumption:
+  CategoryPageFactoryProps:
+    consumed:
+      - type: Used in switch statement to select the correct container component to render
+
+implementation_logic:
+  factory_fallthrough:
+    rule: |
+      The switch statement has a case for CategoryType.COMMON and a default case.
+      Both cases render CommonCategoryContainer. This means any unrecognised type
+      value will silently fall through to CommonCategoryContainer rather than
+      rendering nothing or throwing. New category page variants must be added as
+      explicit cases in this switch before they will have any effect.
+    critical: false
+
+visibility_map:
+  common_category_container:
+    condition: "type === CategoryType.COMMON OR any unrecognised type (default case)"
+    default: visible (always rendered — no null/hidden path exists in current implementation)

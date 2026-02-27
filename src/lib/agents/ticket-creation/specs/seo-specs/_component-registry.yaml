@@ -1,0 +1,336 @@
+purpose: |
+  Quick-lookup registry for all frontend components.
+  For each component: name, file path, spec reference, props summary, SEO relevance, pages that use it.
+
+components:
+  # === Category Page Components ===
+  - name: CategoryPageFactory
+    source_file: src/components/category-page/containers/category-page-factory.tsx
+    spec: "../migration-specs/frontend/components/category-page/category-page-factory.yaml"
+    props:
+      - type: CategoryPageFactoryType (COMMON)
+    seo_relevance: LOW
+    description: "Factory component that selects category container variant. Currently only COMMON variant exists."
+    used_on: ["product-category (category view)"]
+
+  - name: CommonCategoryContainer
+    source_file: src/components/category-page/containers/common-category-container.tsx
+    spec: "../migration-specs/frontend/components/category-page/common-category-container.yaml"
+    props:
+      - CategoryContext data (category, couponCode, productJsonData, categoryQuickLinks)
+    seo_relevance: MEDIUM
+    description: "Main category page container. Renders product sections, FAQs, SEO content, trust signals, reviews."
+    html_pattern: "Contains h1 (contentTitle), product grids, SEO text sections"
+    used_on: ["product-category (category view)"]
+
+  # === Product Page Components ===
+  - name: ProductPageSelection
+    source_file: src/components/product-page/containers/product-page-selection.tsx
+    spec: "../migration-specs/frontend/components/product-page/product-page-selection.yaml"
+    seo_relevance: MEDIUM
+    description: "Routes to correct product template based on productPageViewName enum. 13 possible templates."
+    used_on: ["product-category (product view)"]
+
+  - name: InstantProductPageContainer
+    source_file: src/components/product-page/containers/instant-product-page-container.tsx
+    spec: "../migration-specs/frontend/components/product-page/instant-product-page-container.yaml"
+    seo_relevance: LOW
+    description: "Container for non-customizable instant product pages (NonCustomizableThemes2021Q1)"
+    used_on: ["product-category (instant products)"]
+
+  - name: ProductPageBaseTemplate
+    source_file: src/components/product-page/containers/templates/product-page-base-template.tsx
+    spec: "../migration-specs/frontend/components/product-page/product-page-base-template.yaml"
+    seo_relevance: HIGH
+    description: "Main product page template (BaseTemplate=99, BaseTemplateMarketing=25). Renders product images, options, pricing, reviews, SEO content."
+    html_pattern: "Contains h1 (imageCaption), product gallery, filter options, review section, FAQ accordion"
+    used_on: ["product-category (most product pages)"]
+
+  - name: ProductPageBasicTemplate
+    source_file: src/components/product-page/containers/templates/product-page-basic-template.tsx
+    spec: "../migration-specs/frontend/components/product-page/product-page-basic-template.yaml"
+    seo_relevance: MEDIUM
+    description: "Simplified product template (BasicTemplate=4). Fewer sections than base template."
+    used_on: ["product-category (basic products)"]
+
+  - name: ProductPageFixedTemplate
+    source_file: src/components/product-page/containers/templates/product-page-fixed-template.tsx
+    spec: "../migration-specs/frontend/components/product-page/product-page-fixed-template.yaml"
+    seo_relevance: MEDIUM
+    description: "Fixed-option product template (FixedTheme=21, FixedThemeCards=23)"
+    used_on: ["product-category (fixed theme products)"]
+
+  - name: ProductPageHubTemplate
+    source_file: src/components/product-page/containers/templates/product-page-hub-template.tsx
+    spec: "../migration-specs/frontend/components/product-page/product-page-hub-template.yaml"
+    seo_relevance: MEDIUM
+    description: "Hub product template (HubTemplate=28). Parent template linking to child products."
+    used_on: ["product-category (hub products like canvas-prints)"]
+
+  - name: ProductPageHubChildTemplate
+    source_file: src/components/product-page/containers/templates/product-page-hub-chilld-template.tsx
+    spec: "../migration-specs/frontend/components/product-page/product-page-hub-child-template.yaml"
+    seo_relevance: MEDIUM
+    description: "Hub child product template (HubChild=29). Child product within a hub."
+    used_on: ["product-category (hub child products)"]
+
+  - name: PhotoCanvasPrintsNewTemplate
+    source_file: src/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-new-template.tsx
+    spec: "../migration-specs/frontend/components/product-page/photo-canvas-prints-new-template.yaml"
+    seo_relevance: MEDIUM
+    description: "Canvas prints template variant (CopyCanvasDiscountTemplate=20)"
+    used_on: ["product-category (canvas discount products)"]
+
+  - name: PhotoCanvasPrintsBundledTemplate
+    source_file: src/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-bundled-template.tsx
+    spec: "../migration-specs/frontend/components/product-page/photo-canvas-prints-bundled-template.yaml"
+    seo_relevance: MEDIUM
+    description: "Canvas bundle template (CanvasDiscountBundledExperience=26)"
+    used_on: ["product-category (canvas bundles)"]
+
+  - name: PhotoCanvasPrintsHubBundledTemplate
+    source_file: src/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-hub-bundled-template.tsx
+    spec: "../migration-specs/frontend/components/product-page/photo-canvas-prints-hub-bundled-template.yaml"
+    seo_relevance: MEDIUM
+    description: "Canvas hub bundle template (CanvasHub=27)"
+    used_on: ["product-category (canvas hub)"]
+
+  - name: PhotoCanvasPrintsTemplateV2
+    source_file: src/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-template-v2.tsx
+    spec: "../migration-specs/frontend/components/product-page/photo-canvas-prints-template-v2.yaml"
+    seo_relevance: MEDIUM
+    description: "Canvas template V2 (CopyPhotobox=22)"
+    used_on: ["product-category (photobox copy products)"]
+
+  # === Info Page Components ===
+  - name: PaymentMethodsContainer
+    source_file: src/components/payment-methods-page/containers/payment-methods-container.tsx
+    spec: "../migration-specs/frontend/components/info-pages/payment-methods-container.yaml"
+    seo_relevance: LOW
+    description: "Renders payment methods info page content"
+    used_on: ["payment-methods"]
+
+  - name: PhotoQualityContainer
+    source_file: src/components/photo-quality-page/containers/photo-quality-container.tsx
+    spec: "../migration-specs/frontend/components/info-pages/photo-quality-container.yaml"
+    seo_relevance: LOW
+    description: "Renders photo quality info page content"
+    used_on: ["photo-quality"]
+
+  - name: ImageResolutionContainer
+    source_file: src/components/image-resolution-page/containers/image-resolution-container.tsx
+    spec: "../migration-specs/frontend/components/info-pages/image-resolution-container.yaml"
+    seo_relevance: LOW
+    description: "Renders image resolution info page content"
+    used_on: ["image-resolution"]
+
+  - name: TermsAndConditionsContainer
+    source_file: src/components/terms-and-conditions-page/containers/terms-and-conditions-container.tsx
+    spec: "../migration-specs/frontend/components/info-pages/terms-and-conditions-container.yaml"
+    seo_relevance: LOW
+    description: "Renders terms and conditions page content"
+    used_on: ["terms-and-conditions"]
+
+  - name: TrackMyOrderContainer
+    source_file: src/components/track-my-order-page/containers/track-my-order-container.tsx
+    spec: "../migration-specs/frontend/components/info-pages/track-my-order-container.yaml"
+    seo_relevance: LOW
+    description: "Renders track order page with form and results"
+    used_on: ["track-my-order"]
+
+  - name: ContactUsContainer
+    source_file: src/components/contact-us/containers/contact-us-container.tsx
+    spec: "../migration-specs/frontend/components/info-pages/contact-us-container.yaml"
+    seo_relevance: LOW
+    description: "Renders contact us page with FAQ section"
+    used_on: ["contact-us"]
+
+  # === Bulk Order ===
+  - name: BulkOrderPage
+    source_file: src/components/bulk-order/bulk-order-page.tsx
+    spec: "../migration-specs/frontend/components/bulk-order/bulk-order-page.yaml"
+    seo_relevance: LOW
+    description: "Bulk ordering inquiry form page"
+    used_on: ["bulk-ordering"]
+
+  # === Shared Components with SEO Impact ===
+  - name: Breadcrumbs
+    source_file: src/components/share/breadcrumbs/breadcrumbs.tsx
+    spec: "../migration-specs/frontend/components/shared/breadcrumbs.yaml"
+    props:
+      - data: "BreadCrumb[] (title, qwikUrl, order)"
+      - separator: "string | JSXNode (default '/')"
+    seo_relevance: HIGH
+    description: "Renders breadcrumb navigation with schema.org BreadcrumbList structured data markup"
+    html_pattern: |
+      <nav aria-label="Breadcrumb">
+        <ol itemScope itemType="BreadcrumbList">
+          <li itemProp="itemListElement"><a itemProp="item"><span itemProp="name">Home</span></a><meta itemProp="position" content="1"/></li>
+          ...
+        </ol>
+      </nav>
+    used_on: ["product-category (both category and product views)"]
+
+  - name: HeaderWrapper
+    source_file: src/components/header/header-wrapper.tsx
+    spec: "../migration-specs/frontend/components/header/header-wrapper.yaml"
+    seo_relevance: MEDIUM
+    description: "Wraps Header component, provides navigation links for crawlers"
+    used_on: ["All pages (all layouts)"]
+
+  - name: Header
+    source_file: src/components/header/header.tsx
+    spec: "../migration-specs/frontend/components/header/header.yaml"
+    seo_relevance: MEDIUM
+    description: "Main site header with navigation, search, cart. Contains internal links crawlable by bots."
+    used_on: ["All pages"]
+
+  - name: Footer
+    source_file: src/components/footer/footer.tsx
+    spec: "../migration-specs/frontend/components/footer/footer.yaml"
+    seo_relevance: MEDIUM
+    description: "Site footer with links, trust badges. Used by default and bulkorder layouts."
+    used_on: ["Info pages, bulk-ordering"]
+
+  - name: FooterProductCategory
+    source_file: src/components/footer/footer-product-category.tsx
+    spec: "../migration-specs/frontend/components/footer/footer-product-category.yaml"
+    seo_relevance: MEDIUM
+    description: "Footer variant for product/category pages. Includes promo banner and shipping banner."
+    used_on: ["product-category"]
+
+  - name: StripBanner
+    source_file: src/components/banner/strip-banner.tsx
+    spec: "../migration-specs/frontend/components/banner/strip-banner.yaml"
+    seo_relevance: LOW
+    description: "Promotional strip banner at top of page"
+    used_on: ["All pages (conditional)"]
+
+  - name: CustomerReview
+    source_file: src/components/customer-review/customer-review.tsx
+    spec: "../migration-specs/frontend/components/shared/customer-review.yaml"
+    seo_relevance: MEDIUM
+    description: "Displays customer reviews — review data may be used in structured data"
+    used_on: ["product-category"]
+
+  - name: GuidelineSection
+    source_file: src/components/guideline-section/guideline-section.tsx
+    spec: "../migration-specs/frontend/components/shared/guideline-section.yaml"
+    seo_relevance: LOW
+    used_on: ["product-category (product pages)"]
+
+  - name: Accordion
+    source_file: src/components/share/accordion/accordion.tsx
+    spec: "../migration-specs/frontend/components/shared/accordion.yaml"
+    seo_relevance: LOW
+    description: "Reusable accordion component for FAQs and expandable sections"
+    used_on: ["delivery-rates, product-category"]
+
+  - name: LargeOrders
+    source_file: src/components/share/large-orders/large-orders.tsx
+    spec: "../migration-specs/frontend/components/shared/large-orders.yaml"
+    seo_relevance: LOW
+    used_on: ["delivery-rates, product pages"]
+
+  - name: HowItWorks
+    source_file: src/components/share/how-it-works/how-it-works.tsx
+    spec: "../migration-specs/frontend/components/shared/how-it-works.yaml"
+    seo_relevance: LOW
+    used_on: ["delivery-rates"]
+
+  - name: FreshDeskWidget
+    source_file: src/components/customer-service-components/fresh-desk-widget.tsx
+    spec: "../migration-specs/frontend/components/shared/fresh-desk-widget.yaml"
+    seo_relevance: NONE
+    used_on: ["contact-us"]
+
+  - name: CrossDomainNotification
+    source_file: src/components/cross-domain-notification/cross-domain-notification.tsx
+    spec: "../migration-specs/frontend/components/shared/cross-domain-notification.yaml"
+    seo_relevance: NONE
+    description: "Notification when user is detected on wrong regional domain"
+    used_on: ["All pages (conditional)"]
+
+  # === Homepage Components ===
+  - name: FaqSectionV2
+    source_file: src/components/web-component/v2/faq.tsx
+    spec: "../migration-specs/frontend/components/web-component/faq-v2.yaml"
+    seo_relevance: HIGH
+    description: "FAQ section with FAQPage JSON-LD structured data and Schema.org microdata. Two-column inline layout (not accordion). Answers support markdown-to-HTML."
+    html_pattern: |
+      <script type="application/ld+json">FAQPage schema</script>
+      <section aria-labelledby="faq-title-{order}">
+        <h2>{heading}</h2>
+        <div itemScope itemType="FAQPage">
+          <div itemProp="mainEntity" itemScope itemType="Question">
+            <h3 itemProp="name">{question}</h3>
+            <div itemProp="acceptedAnswer" itemScope itemType="Answer">
+              <div itemProp="text">{answer as HTML}</div>
+    used_on: ["home page (via WebContentsComponent)", "product-category (via WebContentsComponent)"]
+
+  - name: WebContentsComponent
+    source_file: src/components/web-component/web-contents-component.tsx
+    spec: "../migration-specs/frontend/components/web-component/web-contents-component.yaml"
+    seo_relevance: HIGH
+    description: "CMS section orchestrator — receives WebComponent[] array, filters by wcTemplateName, renders 15 distinct section types (FAQ, SEO content, trust signals, best sellers, stories, UGC, etc.)"
+    used_on: ["home page", "product-category"]
+
+  - name: SeoContentComponent
+    source_file: src/components/web-component/seo-content.tsx
+    spec: "../migration-specs/frontend/components/web-component/seo-content.yaml"
+    seo_relevance: HIGH
+    description: "Renders CMS-driven SEO text content with h2 heading, h3 subheading, and markdown-converted HTML content columns. Theme-aware link coloring."
+    html_pattern: "<h2>{heading}</h2> <h3>{subHeading}</h3> <div>{markdown content}</div>"
+    used_on: ["home page (via WebContentsComponent)", "product-category (via WebContentsComponent)"]
+
+  - name: TrustSignalsSection
+    source_file: src/components/web-component/trust-signals.tsx
+    spec: "../migration-specs/frontend/components/web-component/trust-signals.yaml"
+    seo_relevance: MEDIUM
+    description: "Trust badges grid with h2 heading, optional markdown description, and signal items (image + heading + text)"
+    html_pattern: "<h2>{heading}</h2> <div>{description markdown}</div> grid of signal badges"
+    used_on: ["home page (via WebContentsComponent)", "product-category (via WebContentsComponent)"]
+
+  - name: HomeBestSellers
+    source_file: src/components/web-component/home-best-sellers.tsx
+    spec: "../migration-specs/frontend/components/web-component/home-best-sellers.yaml"
+    seo_relevance: MEDIUM
+    description: "Featured products grid with heading and subheading. Each product is a clickable card with image, heading, and description."
+    html_pattern: "<h2>{heading}</h2> <h3>{subHeading}</h3> grid of product cards with images"
+    used_on: ["home page (via WebContentsComponent)"]
+
+  - name: HomepageCategoryContainer
+    source_file: src/components/homepage/homepage-category-container.tsx
+    spec: "../migration-specs/frontend/components/homepage/homepage-category-container.yaml"
+    seo_relevance: MEDIUM
+    description: "Category grid with progressive lazy-loading on scroll. Shows product category cards with headings and images. Expandable with Show More/Less toggle."
+    used_on: ["home page"]
+
+  - name: HomeCustomerReviews
+    source_file: src/components/homepage/home-customer-reviews.tsx
+    spec: "../migration-specs/frontend/components/homepage/home-customer-reviews.yaml"
+    seo_relevance: MEDIUM
+    description: "Static customer reviews section with title, TrustpilotRating bar, and carousel of 5-star reviews. Used when API reviewsCollection is null (fallback for non-NL/GB regions)."
+    used_on: ["home page (conditional — static JSON fallback)"]
+
+  - name: FooterContainerLess
+    source_file: src/components/footer/footer-containerless.tsx
+    spec: "../migration-specs/frontend/components/footer/footer-containerless.yaml"
+    seo_relevance: MEDIUM
+    description: "Full-featured footer for containerless layout. Contains promo banner, trust indicators, shipping banner, help section, social links, footer nav (accordion mobile / grid desktop), country flags, payment/security badges, copyright, legal links, FreshDesk widget."
+    used_on: ["home page (via layout-containerless)"]
+
+  - name: DynamicCarousel
+    source_file: src/components/carousels/dynamic-carousel.tsx
+    spec: "../migration-specs/frontend/components/carousels/dynamic-carousel.yaml"
+    seo_relevance: MEDIUM
+    description: "Homepage banner carousel with infinite loop, autoplay, touch swipe, keyboard controls. Renders image alts from bannerAltText. First images preloaded via head export."
+    html_pattern: "img with alt={bannerAltText}, a with href={bannerNavUrl}"
+    used_on: ["home page"]
+
+  - name: TrustpilotRating
+    source_file: src/components/homepage/trustpilot-rating.tsx
+    spec: "../migration-specs/frontend/components/homepage/trustpilot-rating.yaml"
+    seo_relevance: MEDIUM
+    description: "Star rating display with rating text label, numeric value, star icons, and formatted review count. Clickable to scroll to review section."
+    used_on: ["home page (via HomeCustomerReviews)", "product-category", "canvas prints pages"]

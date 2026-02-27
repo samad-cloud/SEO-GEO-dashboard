@@ -1,0 +1,228 @@
+name: MarketingContentVideo
+source: components/homepage/marketing-content-video.tsx
+description: >
+  Marketing content section that displays a side-by-side layout with an
+  autoplay video on one side and a text content area with heading, description,
+  and a CTA button on the other. The CTA button features an elaborate
+  "glowing box" animation effect with rotating conic gradients, glowing
+  borders, and star particles. Used in web-component-based page layouts for
+  marketing and promotional content.
+
+exports:
+  - name: default
+    type: component
+    description: MarketingContentVideo component (default export)
+
+props:
+  - name: data
+    type: MarketingContentVideo
+    required: true
+    description: >
+      Marketing content data object containing video URL, poster image,
+      heading (HTML string), description (HTML string), CTA text, and CTA URL.
+
+component_structure:
+  root_element: div
+  root_classes: "w-full flex flex-wrap justify-center items-center bg-base-complementaryBg text-base-complementaryText"
+  layout: >
+    Two-column layout (50/50 split on desktop, full-width stacked on mobile).
+    Left column contains the autoplay video. Right column contains the
+    heading, description, and CTA button with glowing animation.
+
+  video_column:
+    element: div
+    classes: "w-full md:w-1/2"
+    content: Video component
+
+  content_column:
+    element: div
+    classes: "w-full lg:w-1/2 flex flex-col justify-center items-center text-center box-border px-[25px] lg:px-[50px] py-[25px]"
+    children:
+      - heading:
+          element: h1
+          classes: "font-semibold"
+          content: "data.heading (rendered as innerHTML via dangerouslySetInnerHTML)"
+      - description:
+          element: p
+          classes: "my-[25px] lg:my-[50px]"
+          content: "data.description (rendered as innerHTML via dangerouslySetInnerHTML)"
+      - cta_button:
+          wrapper_classes: "space-btn w-[fit-content] bg-[#444444] rounded-[999px] flex items-center p-[1px] lg:mt-[50px]"
+          element: a
+          classes: "px-20 py-4 bg-black rounded-full text-white text-center font-bold text-lg inline-block cta_marketing_content_video"
+          href: "data.ctaUrl"
+          text: "data.ctaText"
+
+child_components:
+  - name: Video
+    source: components/media/video.tsx
+    description: HTML5 video player component with autoplay, loop, and muted settings.
+    props_passed:
+      - name: poster
+        from: "data.videoPosterUrl"
+      - name: name
+        from: "data.videoUrl"
+      - name: autoplay
+        value: true
+      - name: loop
+        value: true
+      - name: muted
+        value: true
+      - name: playsinline
+        value: true
+      - name: id
+        value: "mcv"
+      - name: aspectRatio
+        value: "1 / 1"
+
+data_structure:
+  MarketingContentVideo:
+    heading: string
+    description: string
+    ctaText: string
+    ctaUrl: string
+    videoUrl: string
+    videoPosterUrl: string
+  source_service: "services/web-component-service.ts (processMarketingContentVideoData)"
+  data_origin: >
+    Data is extracted from WebComponent fields using field name mapping
+    (PHEADING, etc.) in the web-component-service.
+
+behavior:
+  video:
+    autoplay: true
+    loop: true
+    muted: true
+    playsinline: true
+    aspect_ratio: "1:1 (square)"
+    poster: "Static poster image shown before video loads"
+    description: >
+      Video auto-plays in a loop, muted, with playsinline for mobile
+      compatibility. Uses a poster image as a loading placeholder.
+
+  html_content:
+    heading: "Rendered via dangerouslySetInnerHTML (may contain HTML formatting)"
+    description: "Rendered via dangerouslySetInnerHTML (may contain HTML formatting)"
+    security_note: "Content comes from CMS/web-component service; trusted source"
+
+  cta_button:
+    action: "Navigates to data.ctaUrl on click (standard anchor behavior)"
+    tracking_class: "cta_marketing_content_video (GTM/analytics tracking hook)"
+
+  glowing_animation:
+    description: >
+      The component includes scoped CSS for a "glowing box" animation effect
+      on the CTA button. Features include:
+      - Rotating conic gradient border using CSS animation
+      - Glowing blur effect behind the border
+      - Star-shaped particle mask overlay
+      - Hover effect that reduces button opacity
+      - CSS keyframes: borderTurn and borderTurnWithTranslate
+    css_custom_property: "--animation-speed (controls rotation speed)"
+    note: >
+      The scoped CSS defines .glowing-box-* classes but the component
+      template does not apply these classes to any elements. The glowing
+      effect CSS is present in the scoped styles but appears to be inactive
+      or intended for future use. The actual CTA uses simple bg-black
+      rounded-full styling.
+
+styling:
+  wrapper: "w-full flex flex-wrap justify-center items-center bg-base-complementaryBg text-base-complementaryText"
+  video_col: "w-full md:w-1/2"
+  content_col: "w-full lg:w-1/2 flex flex-col justify-center items-center text-center box-border px-[25px] lg:px-[50px] py-[25px]"
+  heading: "font-semibold (h1)"
+  description: "my-[25px] lg:my-[50px]"
+  cta_wrapper: "space-btn w-[fit-content] bg-[#444444] rounded-[999px] flex items-center p-[1px] lg:mt-[50px]"
+  cta_button: "px-20 py-4 bg-black rounded-full text-white text-center font-bold text-lg inline-block cta_marketing_content_video"
+  color_scheme: "Complementary background (bg-base-complementaryBg) with complementary text (text-base-complementaryText) - typically dark theme"
+  responsive:
+    mobile: "Full-width stacked layout, px-[25px] padding, my-[25px] spacing"
+    tablet: "md:w-1/2 for video column"
+    desktop: "lg:w-1/2 for content column, lg:px-[50px] padding, lg:my-[50px] spacing, lg:mt-[50px] extra CTA top margin"
+  scoped_css:
+    description: >
+      Includes extensive scoped CSS for glowing box animation effects.
+      Key classes: .glowing-box, .glowing-box-animations, .glowing-box-borders,
+      .glowing-box-glow, .glowing-box-stars-masker, .glowing-box-button.
+      Uses conic-gradient, CSS masks, blur filters, and keyframe animations.
+    keyframes:
+      - name: borderTurn
+        description: "360-degree continuous rotation"
+      - name: borderTurnWithTranslate
+        description: "360-degree rotation with translate(-50%, -50%) centering"
+
+dependencies:
+  internal:
+    - path: components/media/video.tsx
+      purpose: HTML5 video player component
+    - path: services/web-component-service.ts
+      purpose: MarketingContentVideo type definition and data extraction
+  external: []
+
+used_by:
+  - path: components/web-component/web-contents-component.tsx
+    description: Web component renderer (renders marketing content sections on pages)
+  - path: components/web-component/web-contents-component-v3.tsx
+    description: Web component renderer v3
+
+security:
+  concerns:
+    - name: dangerouslySetInnerHTML
+      description: >
+        Both heading and description use dangerouslySetInnerHTML to render
+        HTML content from the CMS/web-component service. This is a trusted
+        data source (admin-controlled CMS), but care should be taken to
+        sanitize in the new implementation if the data source changes.
+      risk_level: low
+      mitigation: "Content comes from trusted CMS; sanitize if source changes"
+  auth_required: false
+  sensitive_data: false
+
+notes:
+  - The video column uses md:w-1/2 while the content column uses lg:w-1/2, creating an asymmetric breakpoint (on md screens, video is half-width but content is still full-width)
+  - The extensive glowing-box CSS is scoped but not applied to any elements in the template - the classes exist in the stylesheet but are not referenced in the JSX. This may be dead code or intended for JavaScript-driven class toggling.
+  - The CTA button wrapper has a bg-[#444444] background with p-[1px] creating a subtle border effect around the black button
+  - The heading uses h1 tag which may conflict with page-level h1 if this component appears alongside other headings
+  - The id "mcv" on the Video component is hardcoded, which could cause conflicts if multiple instances are rendered
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  Props:
+    description: Component props interface (internal, not exported)
+    fields:
+      - name: data
+        type: MarketingContentVideo
+
+  MarketingContentVideo:
+    description: Marketing content data object; sourced from processMarketingContentVideoData in web-component-service
+    source: ~/services/web-component-service
+    fields:
+      - name: heading
+        type: string
+        notes: May contain HTML markup; rendered via dangerouslySetInnerHTML
+      - name: description
+        type: string
+        notes: May contain HTML markup; rendered via dangerouslySetInnerHTML
+      - name: ctaText
+        type: string
+      - name: ctaUrl
+        type: string
+      - name: videoUrl
+        type: string
+      - name: videoPosterUrl
+        type: string
+
+field_consumption:
+  Props:
+    consumed:
+      - data: All fields of data are read directly (see MarketingContentVideo below)
+
+  MarketingContentVideo:
+    consumed:
+      - heading: Rendered as h1 innerHTML via dangerouslySetInnerHTML
+      - description: Rendered as p innerHTML via dangerouslySetInnerHTML
+      - ctaText: Rendered as anchor text in the CTA button
+      - ctaUrl: Used as href on the CTA anchor element
+      - videoUrl: Passed to Video component as name prop (video source URL)
+      - videoPosterUrl: Passed to Video component as poster prop

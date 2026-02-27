@@ -1,0 +1,84 @@
+name: Element
+description: DOM element visibility and position utilities
+
+source:
+  path: utility/element.ts
+  lines: 1-34
+  type: utility
+
+exports:
+  - name: isElementNearBottom
+    type: function
+    signature: "(element: HTMLElement | null) => boolean"
+    description: Checks if element's bottom is within lower half of viewport
+    parameters:
+      - name: element
+        type: HTMLElement | null
+    returns: true if element bottom is within 50% of viewport height from bottom
+    behavior:
+      - Returns false if element is null
+      - Gets element.getBoundingClientRect()
+      - Checks rect.bottom <= viewportHeight
+      - Checks viewportHeight - rect.bottom <= viewportHeight / 2
+    client_side_only: true
+
+  - name: toTitleCase
+    type: function
+    signature: "(input: string) => string"
+    description: Converts string to title case (capitalizes first letter of each word)
+    parameters:
+      - name: input
+        type: string
+    returns: Title-cased string
+    behavior:
+      - Converts to lowercase
+      - Splits by spaces
+      - Capitalizes first character of each word
+      - Joins with spaces
+    example: "hello world" → "Hello World"
+
+  - name: isElementVisible
+    type: function
+    signature: "(element: HTMLElement) => boolean"
+    description: Checks if element is fully visible within viewport
+    parameters:
+      - name: element
+        type: HTMLElement
+    returns: true if element is completely within viewport bounds
+    behavior:
+      - Gets element.getBoundingClientRect()
+      - Checks rect.top >= 0
+      - Checks rect.left >= 0
+      - Checks rect.bottom <= viewport height
+      - Checks rect.right <= viewport width
+    client_side_only: true
+
+dependencies:
+  external:
+    - window (browser API)
+    - document (browser API)
+    - HTMLElement (browser API)
+
+behavior:
+  near_bottom_detection:
+    threshold: 50% of viewport height
+    direction: From bottom of viewport
+
+  visibility_detection:
+    method: getBoundingClientRect
+    requires_full_visibility: true (any part outside viewport = false)
+
+  title_case_transform:
+    preserves_whitespace: No (normalizes to single space)
+    handles_multiple_spaces: Yes (split/join normalizes)
+
+edge_cases:
+  - Null element in isElementNearBottom returns false
+  - Element partially visible returns false in isElementVisible
+  - Empty string in toTitleCase returns empty string
+  - String with multiple spaces gets normalized
+
+types:
+  notes: "No locally-defined types. Uses standard browser types: HTMLElement (built-in), string, boolean."
+
+used_by: []

@@ -1,0 +1,435 @@
+name: BulkOrderPageOld
+source: components/bulk-order/bulk-order-page-old.tsx
+description: |
+  Legacy bulk ordering page with older design. Features hero banner with WhatsApp
+  button, service showcase section, and quote request form. Similar functionality
+  to bulk-order-page.tsx but with different layout and styling. Includes "How did
+  you hear about us?" survey field.
+exports:
+  - default component (main page)
+  - Banner component
+  - Services component
+  - HighlightFeatures component
+  - Order component (form section)
+
+props: {}
+
+component_structure:
+  - Banner: Hero with WhatsApp CTA and feature badges
+  - Services: Left column showcasing product types
+  - Order: Right column with quote request form
+  - HighlightFeatures: Bottom section with 3 feature cards
+
+child_components:
+  - ModalOverlay: Modal container for submission status
+  - ModalDialog: Success dialog (no failure dialog in this version)
+  - SVGIcon: Spinner icon for loading state
+  - TextInput: Form text inputs
+  - TextArea: Form textarea
+  - Select: Form dropdowns
+  - OptionButton: Radio button grid for fabric/cover/mug types
+  - Image: @unpic/qwik Image component for WhatsApp button
+
+form_fields:
+  productName:
+    type: string
+    required: conditional (only if "Other" product type selected)
+    validation: min 1 character
+    translation_key: order_runtime.bulk_ordering.product_name
+
+  size:
+    type: string (select)
+    required: conditional (not for Mugs or Other)
+    options: blanketSizeData | canvasSizeData | photoBooksSizeData
+    validation: Must match product type
+    translation_key: order_runtime.bulk_ordering.size
+
+  pages:
+    type: number
+    required: conditional (only for Photo Books)
+    validation: min 1, must be positive number
+    translation_key: order_runtime.bulk_ordering.pages
+
+  quantity:
+    type: number
+    required: true
+    validation: min 1, must be positive number
+    translation_key: order_runtime.bulk_ordering.quantity
+
+  name:
+    type: string
+    required: true
+    validation: min 1 character
+    translation_key: order_runtime.bulk_ordering.your_name
+
+  zipcode:
+    type: string
+    required: true
+    validation: min 1 character
+    translation_key: order_runtime.bulk_ordering.delivery_post_code
+
+  email:
+    type: string (email)
+    required: true
+    validation: min 1 character, valid email format
+    translation_key: order_runtime.bulk_ordering.your_email
+
+  phone:
+    type: string (tel)
+    required: true
+    validation: min 1 character
+    translation_key: order_runtime.bulk_ordering.your_phone
+
+  survey:
+    type: string (select)
+    required: true
+    options: socialData (e.g., "Google", "Facebook", "Friend", etc.)
+    validation: min 1 character
+    translation_key: order_runtime.bulk_ordering.hear_about_us_question
+
+  msg:
+    type: string (textarea)
+    required: false
+    validation: none
+    translation_key: order_runtime.bulk_ordering.additional_info
+
+data_structure:
+  BulkOrderingForm: (Zod schema)
+    - Same fields as bulk-order-page.tsx
+    - survey field is required in this version
+
+  bulkOrderingData: (imported JSON)
+    - Same structure as bulk-order-page.tsx
+    - Additional: socialData array for survey options
+    - highlightFeatures: Array<{img, title, description}>
+    - types: Array<{img, title}> for Services section
+
+behavior:
+  product_type_selection:
+    - Same as bulk-order-page.tsx
+    - activeProductType controls conditional sections
+
+  form_submission:
+    - Same EmailJS integration
+    - Shows modal with PENDING/SUCCESS states only
+    - No explicit failure dialog shown
+    - Resets form on success
+
+  layout_differences:
+    - Two-column layout: Services (left 50%) + Order form (right 50%)
+    - Services section shows 6 product type images vertically
+    - Bottom HighlightFeatures section with 3 cards (desktop: 33.33% each)
+
+styling:
+  banner:
+    - Background image: multi-pack-mobile.webp on mobile, multi-pack-desktop.webp on desktop
+    - Height: 150px (mobile) to 265px (desktop)
+    - Text and CTA in left half, image background on right
+
+  services:
+    - Pink heading (#E40080)
+    - Grid of product images (2 per row on mobile, 1 per row on desktop)
+    - Text-center alignment
+
+  form:
+    - White border (border-[#FBF6F7])
+    - Product type buttons: Pink border when active
+    - Half-width submit button (w-1/2)
+
+  features:
+    - 3-column grid on desktop (33.33% each)
+    - Full width on mobile
+    - Large icons (110x110px)
+
+dependencies:
+  qwik:
+    - $, component$, useSignal from @builder.io/qwik
+    - z from @builder.io/qwik-city (Zod)
+  forms:
+    - reset, setValue, useForm, zodForm$ from @modular-forms/qwik
+    - useFormLoader from route loader
+  translation:
+    - inlineTranslate from qwik-speak
+  email:
+    - emailjs from @emailjs/browser
+  components:
+    - Select, TextArea, TextInput, OptionButton, SVGIcon, ModalOverlay, ModalDialog, Image
+  data:
+    - bulkOrderingData from ~/data/bulk-ordering-data.json
+
+environment_variables:
+  PUBLIC_EMAIL_SERVICE_ID: EmailJS service ID
+  PUBLIC_EMAIL_TEMPLATE_ID: EmailJS template ID
+  PUBLIC_EMAIL_PUBLIC_KEY: EmailJS public key
+
+used_by: []
+
+security:
+  - Same as bulk-order-page.tsx
+  - Form validation via Zod schema
+  - EmailJS credentials in environment variables
+
+differences_from_new_version:
+  layout:
+    - Old: Two-column with Services showcase + Form
+    - New: Single-column with hero cards, product gallery, form
+
+  survey_field:
+    - Old: Required dropdown ("How did you hear about us?")
+    - New: Removed
+
+  whatsapp_cta:
+    - Old: Image button in banner
+    - New: Large green card in hero with region-specific greeting
+
+  product_showcase:
+    - Old: 6 product images in Services section (vertical grid)
+    - New: 10 product images in horizontal scrollable gallery
+
+  trust_badges:
+    - Old: Feature badges in banner (4 items)
+    - New: Trust badges in hero (4 items) + bottom section (4 items with descriptions)
+
+  modal:
+    - Old: Shows SUCCESS only (no explicit failure state shown in modal)
+    - New: Shows PENDING, SUCCESS, and FAILED states
+
+  styling:
+    - Old: Background image banner, border on form container
+    - New: Dark hero section, no background image, cleaner form design
+
+notes:
+  - This is the LEGACY version, superseded by bulk-order-page.tsx
+  - Simpler layout focused on form functionality
+  - WhatsApp integration less prominent (small button vs large CTA card)
+  - Survey field suggests marketing/tracking focus in old version
+  - Services section provides product type education
+  - HighlightFeatures section (3 cards) is unique to old version
+  - New version is more conversion-optimized with prominent CTAs
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  BulkOrderingForm:
+    description: Zod-validated form schema (exported type); survey is required in this version
+    fields:
+      - name: productName
+        type: "string | undefined"
+        optional: true
+        description: Only required when "Other" product type is selected
+      - name: size
+        type: "string | undefined"
+        optional: true
+        description: Not applicable for Mugs or Other product types
+      - name: pages
+        type: number
+        description: Coerced from input; only used for Photo Books
+      - name: quantity
+        type: number
+        description: Always required; minimum 1
+      - name: name
+        type: string
+        description: Customer name (label differs from new version — "your_name")
+      - name: zipcode
+        type: string
+        description: Delivery postcode
+      - name: email
+        type: string
+        description: Valid email address (label "your_email")
+      - name: phone
+        type: string
+        description: Phone number (label "your_phone")
+      - name: survey
+        type: string
+        description: Required in this version — how the customer heard about Printerpix
+      - name: msg
+        type: "string | undefined"
+        optional: true
+        description: Optional additional information textarea
+
+  MailServiceStatus:
+    description: Enum for email submission state
+    fields:
+      - name: PENDING
+        type: '"PENDING"'
+      - name: SUCCESS
+        type: '"SUCCESS"'
+      - name: FAILED
+        type: '"FAILED"'
+
+  ProductTypeItem:
+    description: Entry in bulkOrderingData.productTypes and other option arrays
+    fields:
+      - name: value
+        type: string
+      - name: name
+        type: string
+        description: i18n translation key
+
+  FeatureItem:
+    description: Entry in bulkOrderingData.features (rendered in Banner section)
+    fields:
+      - name: icon
+        type: string
+        description: Path to feature icon image
+      - name: title
+        type: string
+        description: i18n key for title
+      - name: description
+        type: string
+        description: i18n key for description
+
+  HighlightFeatureItem:
+    description: Entry in bulkOrderingData.highlightFeatures (rendered in HighlightFeatures section)
+    fields:
+      - name: img
+        type: string
+        description: Path to feature image (110x110)
+      - name: title
+        type: string
+        description: i18n key for heading
+      - name: description
+        type: string
+        description: i18n key for body text
+
+  ServiceTypeItem:
+    description: Entry in bulkOrderingData.types (rendered in Services section)
+    fields:
+      - name: img
+        type: string
+        description: Path to product type image
+      - name: title
+        type: string
+        description: i18n key for label
+
+  SocialDataItem:
+    description: Entry in bulkOrderingData.socialData (survey dropdown options)
+    fields:
+      - name: value
+        type: string
+      - name: name
+        type: string
+        description: i18n key or display text
+
+  EmailJSRequestData:
+    description: Object sent to emailjs.send() on form submission (same logic as new version)
+    fields:
+      - name: product
+        type: "string | undefined"
+      - name: subProduct
+        type: "string | undefined"
+      - name: pages
+        type: "number | undefined"
+      - name: size
+        type: "string | undefined"
+      - name: quantity
+        type: number
+      - name: name
+        type: string
+      - name: zipcode
+        type: string
+      - name: email
+        type: string
+      - name: phone
+        type: string
+      - name: survey
+        type: string
+        description: Always present in this version (required field)
+      - name: msg
+        type: "string | undefined"
+
+field_consumption:
+  BulkOrderingForm:
+    consumed:
+      - productName: Destructured in handleSubmit; used as product when "Other" is active
+      - size: Destructured; conditionally included in requestData
+      - pages: Destructured; included only for Photo Books
+      - quantity: Spread into requestData via ...rest
+      - name: Spread into requestData via ...rest
+      - zipcode: Spread into requestData via ...rest
+      - email: Spread into requestData via ...rest
+      - phone: Spread into requestData via ...rest
+      - survey: Spread into requestData via ...rest (required field in this version)
+      - msg: Spread into requestData via ...rest
+    ignored: []
+
+  ProductTypeItem:
+    consumed:
+      - value: Active state comparison, switch-case for size reset, and conditional section rendering
+      - name: Passed to t() for button label
+    ignored: []
+
+  FeatureItem:
+    consumed:
+      - icon: Used as src for feature icon <img>
+      - title: Used as key and passed to t() for label
+      - description: Passed to t() for sub-label text
+    ignored: []
+
+  HighlightFeatureItem:
+    consumed:
+      - img: Used as src for the 110x110 image
+      - title: Used as key and passed to t() for <h3>
+      - description: Passed to t() for <p>
+    ignored: []
+
+  ServiceTypeItem:
+    consumed:
+      - img: Used as src for the product image
+      - title: Used as key, alt text, and passed to t() for product title label
+    ignored: []
+
+visibility_map:
+  fabric_type_section:
+    condition: activeProductType.value === bulkOrderingData.productTypes[0].value (Blankets)
+    default: hidden
+
+  cover_type_section:
+    condition: activeProductType.value === bulkOrderingData.productTypes[2].value (Photo Books)
+    default: hidden
+
+  mug_type_section:
+    condition: activeProductType.value === bulkOrderingData.productTypes[3].value (Mugs)
+    default: hidden
+
+  product_name_field:
+    condition: activeProductType.value === bulkOrderingData.productTypes[4].value (Other)
+    default: hidden
+
+  size_field_blankets:
+    condition: activeProductType.value === bulkOrderingData.productTypes[0].value
+    default: hidden
+
+  size_field_canvas:
+    condition: activeProductType.value === bulkOrderingData.productTypes[1].value
+    default: hidden
+
+  size_field_photo_books:
+    condition: activeProductType.value === bulkOrderingData.productTypes[2].value
+    default: hidden
+
+  pages_field:
+    condition: activeProductType.value === bulkOrderingData.productTypes[2].value (Photo Books)
+    default: hidden
+    notes: Rendered in DOM always but hidden prop hides it for non-Photo Book types
+
+  status_modal:
+    condition: showModal.value === true
+    default: hidden
+
+  modal_pending_state:
+    condition: mailServiceStatus.value === MailServiceStatus.PENDING
+    default: hidden
+
+  modal_success_dialog:
+    condition: mailServiceStatus.value === MailServiceStatus.SUCCESS
+    default: hidden
+    notes: Old version only shows SUCCESS state in ModalDialog; no explicit FAILED dialog
+
+  service_type_title_desktop:
+    condition: Always rendered but only visible on md and above via hidden md:block CSS
+    default: hidden (mobile), visible (md and above)
+
+  service_type_title_mobile:
+    condition: Always rendered but only visible below md via block md:hidden CSS
+    default: visible (mobile), hidden (md and above)

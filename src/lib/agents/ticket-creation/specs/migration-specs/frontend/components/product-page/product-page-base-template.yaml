@@ -1,0 +1,678 @@
+name: ProductPageBaseTemplate
+source: src/components/product-page/containers/templates/product-page-base-template.tsx
+description: |
+  Main/default product page template component. Orchestrates the entire product page layout
+  with responsive behavior (mobile-first with desktop overrides). Manages option selection,
+  theme loading, carousel state, and renders all child components including carousel, option panel,
+  trust indicators, delivery dates, bulk pricing, shop design themes, and reviews.
+
+exports:
+  - name: default
+    type: component$<ProductPageBaseTemplateProps>
+    description: Default export, Qwik component with props interface
+
+props:
+  - name: productType
+    type: PlatinumProductTypeEnum
+    required: true
+    description: Product type identifier passed to child components
+
+context_consumed:
+  - name: ProductContext
+    source: ~/context/product-category-context
+    fields:
+      - product: Complete product data object
+      - couponCode: Applied coupon code
+      - friendlyUrl: Product friendly URL
+      - machineToken: User session token
+      - filterIndex: Selected filter indices
+      - refCode: Reference code for themes/options
+      - firstSlideUrl: Initial carousel slide URL
+      - editor: Editor identifier
+      - selectedFilter: Currently selected filter object
+
+  - name: DeviceDetectorContext
+    source: ~/context/device-detector-context
+    fields:
+      - deviceInfo.deviceType: "desktop" | "mobile" | other
+
+component_structure:
+  root:
+    - ProductPageTopBannerV2: Campaign banner at top
+    - div.product_page_base_template_wrapper:
+        - div.container.mx-auto:
+            - div.flex.flex-wrap (main layout):
+                # Mobile-only header
+                - h1 (mobile only): product.imageCaption
+                - TrustpilotRating (mobile only): reviews
+
+                # Left column (70% desktop, 100% mobile)
+                - div.product_page_left_container:
+                    - ProductCarousel: image gallery
+                    - OptionPanel (mobile only): options/pricing
+                    - Delivery/Clock section (mobile only):
+                        - ProductFlipClock (conditional)
+                        - ProductDeliveryDateV2
+                        - BulkPricingV4
+                    - Resource(themes): ProductShopDesign with theme variants
+                    - ProductTrustIndicatorV6 (mobile only)
+                    - ProductDescriptionV2 (conditional)
+
+                # Right column (30% desktop, hidden mobile) - sticky
+                - div.product_page_right_container (desktop only):
+                    - h1: product.imageCaption
+                    - TrustpilotRating: reviews
+                    - OptionPanel: options/pricing
+                    - Delivery/Clock section:
+                        - ProductFlipClock (conditional)
+                        - ProductDeliveryDateV2
+                        - BulkPricingV4
+                    - ProductTrustIndicatorV6 (shortVersion)
+
+        # Full-width sections below main layout
+        - div.flex.flex-col:
+            - CustomerReview (conditional): product reviews with dynamic order
+            - ProductPageContentV2 (conditional): product page content blocks
+
+child_components:
+  - name: ProductPageTopBannerV2
+    purpose: Displays campaign banner at page top
+    props:
+      - campaignInfo: product.campaignInfo
+
+  - name: ProductCarousel
+    purpose: Image gallery with video support
+    props:
+      - product: product
+      - carousel: carousel state object (activeIndex)
+      - productImages: computed productImages.value
+      - changeActiveSlide: callback handler
+      - productType: productType
+
+  - name: TrustpilotRating
+    purpose: Displays Trustpilot review stars and count
+    props:
+      - ratingText: string
+      - ratingValue: number
+      - reviewCount: number
+      - reviewString: string
+    notes: Rendered twice - mobile and desktop versions
+
+  - name: OptionPanel
+    purpose: Product options, pricing, add to cart
+    props:
+      - optionStore: reactive option store
+      - optionData: product.optionData
+      - couponCode: couponCode
+      - productData: product
+      - onChangeSelectedOption: callback
+      - onChangeDesignUrl: callback
+      - productType: productType
+      - onChangeSelectedFilter: callback
+    notes: Rendered twice - mobile (inline) and desktop (sticky sidebar)
+
+  - name: ProductFlipClock
+    purpose: Countdown timer with custom colors
+    props:
+      - productType: productType
+      - clockColor: computed from floating banner background
+      - textColor: computed from floating banner text
+    conditional: product.deliveryDeadline?.showClock
+
+  - name: ProductDeliveryDateV2
+    purpose: Displays delivery date information
+    props: none (uses context)
+
+  - name: BulkPricingV4
+    purpose: Displays bulk discount pricing table
+    props: none (uses context)
+
+  - name: ProductShopDesign
+    purpose: Theme/design selector with templates
+    props:
+      - designUrl: designUrl.value (CTA URL)
+      - themes: ProductTheme[] from API resource
+      - apiStatus: PENDING | COMPLETED | FAILED
+      - productType: productType
+    notes: Wrapped in Resource component with onPending/onResolved/onRejected
+
+  - name: ProductTrustIndicatorV6
+    purpose: Trust badges and guarantees
+    props:
+      - shortVersion: boolean (true on desktop, omitted on mobile)
+    notes: Rendered twice with different props
+
+  - name: ProductDescriptionV2
+    purpose: Extended product details and specifications
+    props:
+      - productDetails: product.productExtendedDetails
+    conditional: product.productExtendedDetails exists
+
+  - name: CustomerReview
+    purpose: Customer review carousel/list
+    props: spread of product.reviewsCollection
+    conditional: reviewsCollection.reviewModels.length > 0
+    notes: Uses dynamic order from reviewsCollection.order
+
+  - name: ProductPageContentV2
+    purpose: Dynamic content blocks (features, benefits, etc.)
+    props:
+      - productPageContent: product.productPageContent
+      - productType: productType
+      - designUrl: designUrl.value
+    conditional: product.productPageContent exists
+
+state_management:
+  - name: designUrl
+    type: useSignal<string>("")
+    purpose: Stores CTA button URL extracted from DOM
+
+  - name: initialCarouselImages
+    type: useStore<Array<ProductCarouseImage>>([])
+    purpose: Base carousel images from product data
+    mutation: Populated in useTask$ from product.images + optional video icon
+
+  - name: optionStore
+    type: useStore<OptionStore>
+    deep: true
+    purpose: Central store for all product options and selections
+    fields:
+      - orientationIndex: number | undefined
+      - filterIndex: number[]
+      - tierOptionIndex: number (0)
+      - tierIndex: number (0)
+      - addonIndex: number[]
+      - optionData: product.optionData
+      - productData: product
+      - price: number (0)
+      - discountedPrice: number (0)
+      - noOfLevel: number (0)
+      - Url: string ("")
+      - startDate: string ("1|2023")
+      - refCode: string ("")
+      - themeIndex: number (0)
+      - ctaURL: string ("")
+      - friendlyUrl: from context
+      - firstSlideUrl: string ("")
+      - selectedFilter: from context
+
+  - name: carousel
+    type: useStore({ activeIndex: 1 })
+    purpose: Tracks active carousel slide index
+
+  - name: isMobile
+    type: useDetectScreen hook result
+    purpose: Reactive mobile detection
+
+  - name: isDesktop
+    type: useDetectScreen hook result
+    purpose: Reactive desktop detection
+
+side_effects:
+  - hook: useTask$
+    tracks:
+      - product.id
+    behavior: |
+      On product change:
+      1. Update optionStore with product data
+      2. Update optionStore fields from context (filterIndex, refCode, firstSlideUrl, selectedFilter)
+      3. Build carousel images array:
+         - Map product.images to { url, altText }
+         - If embededVideo exists, append embededVideoIcon to array
+      4. Replace initialCarouselImages with new array
+
+  - hook: useVisibleTask$
+    strategy: document-ready
+    tracks:
+      - product.id
+    behavior: |
+      After DOM ready:
+      1. Find element with id="cta-design-button"
+      2. Extract href attribute
+      3. Call onChangeDesignUrl with extracted URL
+    notes: Used to get design URL from DOM-injected CTA button
+
+  - hook: useResource$
+    tracks:
+      - optionStore.refCode
+    behavior: |
+      Fetch product themes from API:
+      1. Create AbortController for cleanup
+      2. Call getProductThemes(refCode, machineToken, friendlyUrl, editor)
+      3. Return ProductTheme[] array
+      4. Abort on cleanup
+    states: PENDING | RESOLVED | REJECTED
+
+computed_values:
+  - name: clockColors
+    type: useComputed$
+    dependencies:
+      - product.productPageContent.floatingBanner.main.desktop
+      - product.productPageContent.floatingBanner.main.mobile
+    returns:
+      - clockColor: string (default "#2E638A")
+      - textColor: string (default "#FFFFFF")
+    logic: |
+      Extract colors from floating banner:
+      1. Get desktop/mobile banner objects
+      2. Extract backgroundColor for clockColor
+      3. Extract first section color (section1[0] or section2[0]) for textColor
+      4. Fallback to defaults if not found
+
+  - name: productImages
+    type: useComputed$
+    dependencies:
+      - optionStore.selectedFilter
+      - initialCarouselImages
+    returns: ProductCarouseImage[]
+    logic: |
+      If selectedFilter exists:
+        Prepend { url: filter.imageUrl, altText: filter.imageAltText } to initialCarouselImages
+      Else:
+        Return initialCarouselImages as-is
+
+event_handlers:
+  - name: onChangeSelectedOption
+    type: QRL<(imageUrl: string) => void>
+    behavior: |
+      1. Update optionStore.firstSlideUrl with new imageUrl
+      2. Reset carousel.activeIndex to 0
+
+  - name: changeActiveSlide
+    type: QRL<(index: number) => void>
+    behavior: |
+      1. Update carousel.activeIndex with new index
+
+  - name: onChangeDesignUrl
+    type: QRL<(url: string) => void>
+    behavior: |
+      1. Update designUrl.value signal with new URL
+
+  - name: onChangeSelectedFilter
+    type: QRL<(filter: Filter) => void>
+    behavior: |
+      1. Update optionStore.selectedFilter with new filter
+      2. Update optionStore.refCode with filter.refCode (or empty string)
+
+gtm_events: []
+notes: No explicit GTM events in this component - likely handled by child components (OptionPanel, ProductShopDesign)
+
+behavior:
+  - On mount, reads full product data, coupon code, friendly URL, machine token, filter index, ref code, first slide URL, editor, and selected filter from ProductContext; reads device info from DeviceDetectorContext
+  - Initializes a deep reactive optionStore with all product option fields, and a carousel store starting at activeIndex 1
+  - When product.id changes (useTask$), syncs optionStore with latest product data and context values; builds carousel images from product.images, appending embedded video icon if both embededVideo and embededVideoIcon exist on the product
+  - Computes clockColors from floating banner data in product.productPageContent, extracting backgroundColor for clock and section text color, with defaults #2E638A and #FFFFFF
+  - Fetches product themes asynchronously via getProductThemes whenever optionStore.refCode changes; uses AbortController for cleanup
+  - Computes productImages by prepending the selected filter's image to initial carousel images when a filter is active
+  - On document-ready (useVisibleTask$), extracts CTA URL from DOM element #cta-design-button's href attribute and calls onChangeDesignUrl
+  - When user selects a product option, updates optionStore.firstSlideUrl and resets carousel to index 0
+  - When user changes design URL, updates the designUrl signal
+  - When user selects a filter, updates optionStore.selectedFilter and optionStore.refCode (triggering theme re-fetch)
+  - Renders responsive two-column layout: mobile shows single column (title centered, Trustpilot rating centered, carousel, option panel, delivery clock with countdown, bulk pricing below, themes section, trust indicators, description); desktop shows 70/30 split with sticky right sidebar (title, Trustpilot rating, option panel, delivery/clock, bulk pricing, trust indicators short version)
+  - Reviews render at full width below the main layout (in a flex column with dynamic CSS order from reviewsCollection.order) when reviewModels array has items
+  - ProductPageContentV2 renders below reviews when product.productPageContent exists, also with dynamic CSS order
+  - Delivery countdown clock only renders when product.deliveryDeadline.showClock is true
+  - Product description only renders when product.productExtendedDetails exists
+  - Theme section renders via Qwik Resource component with PENDING, COMPLETED, and FAILED states
+  - Uses ProductPageContentV2 (not ProductPageContentBasic) for bottom content, distinguishing it from the BasicTemplate
+
+used_by:
+  - name: ProductPageSelection
+    reason: Rendered when productPageViewName === BaseTemplate, or as default fallback when productPageViewName does not match any known case
+
+dependencies:
+  qwik:
+    - $
+    - component$
+    - Resource
+    - useComputed$
+    - useContext
+    - useResource$
+    - useSignal
+    - useStore
+    - useStylesScoped$
+    - useTask$
+    - useVisibleTask$
+
+  styles:
+    - ../styles/index.css (inline scoped styles)
+
+  types:
+    - ProductCarouseImage: ~/components/product-page/product-carousel/product-carousel
+    - ProductTheme: ~/services/themes-service
+    - PlatinumProductTypeEnum: ~/services/product-category-service
+    - Filter, OptionStore: ~/data/option-data
+
+  components:
+    - ProductCarousel: ~/components/product-page/product-carousel/product-carousel
+    - ProductShopDesign, ThemeAPIResponseStatus: ~/components/product-page/product-shop-design
+    - TrustpilotRating: ~/components/homepage/trustpilot-rating
+    - OptionPanel: ~/components/product-page/option-panel
+    - CustomerReview: ~/components/customer-review/customer-review
+    - ProductPageTopBannerV2: ../../product-page-top-banner-v2
+    - ProductDeliveryDateV2: ../../product-delivery-date-v2
+    - ProductFlipClock: ../../product-countdown-timer/product-flip-clock-v2
+    - ProductPageContentV2: ../../product-page-content-v2
+    - ProductDescriptionV2: ../../product-description-v2
+    - ProductTrustIndicatorV6: ../../product-trust-indicator-v6
+    - BulkPricingV4: ../../bulk-pricing-v4
+
+  services:
+    - getProductThemes: ~/services/themes-service
+
+  contexts:
+    - ProductContext: ~/context/product-category-context
+    - DeviceDetectorContext: ~/context/device-detector-context
+
+  hooks:
+    - useDetectScreen: ~/hooks/useDetectScreen
+
+responsive_behavior:
+  mobile:
+    layout: Single column, 100% width
+    header: h1 title at top, centered
+    trustpilot: Below title, centered
+    carousel: Full width
+    option_panel: Below carousel
+    delivery_clock: Below option panel, with larger margins
+    bulk_pricing: Below delivery section
+    themes: Below bulk pricing
+    trust_indicator: Below themes, full version
+    description: Below trust indicator
+    right_sidebar: Hidden
+
+  desktop:
+    layout: Two-column (70/30 split)
+    header: h1 in right sidebar (sticky)
+    trustpilot: In right sidebar below title
+    carousel: Left column
+    option_panel: Right sidebar only (sticky)
+    delivery_clock: Right sidebar below option panel
+    bulk_pricing: Right sidebar below delivery
+    themes: Left column below carousel
+    trust_indicator: Right sidebar, short version
+    description: Left column below themes
+    right_sidebar: Sticky with class "stickyForDesktop"
+
+  breakpoints:
+    mobile: < lg (< 1024px)
+    desktop: >= lg (>= 1024px)
+
+data_flow:
+  context_to_component:
+    - ProductContext → component state initialization
+    - DeviceDetectorContext → responsive detection
+
+  component_to_optionStore:
+    - product.optionData → optionStore.optionData
+    - product (full object) → optionStore.productData
+    - filterIndex → optionStore.filterIndex
+    - refCode → optionStore.refCode
+    - firstSlideUrl → optionStore.firstSlideUrl
+    - selectedFilter → optionStore.selectedFilter
+
+  optionStore_to_children:
+    - optionStore → OptionPanel (manages selections)
+    - optionStore.refCode → themes resource (triggers fetch)
+
+  carousel_flow:
+    - product.images → initialCarouselImages → productImages (computed)
+    - selectedFilter → prepended to productImages
+    - productImages → ProductCarousel
+    - carousel.activeIndex → ProductCarousel
+
+  theme_flow:
+    - optionStore.refCode → useResource$ trigger
+    - getProductThemes API → themes resource
+    - themes resource → ProductShopDesign (via Resource component states)
+
+  design_url_flow:
+    - DOM (#cta-design-button href) → useVisibleTask$
+    - useVisibleTask$ → onChangeDesignUrl
+    - onChangeDesignUrl → designUrl signal
+    - designUrl.value → ProductShopDesign + ProductPageContentV2
+
+conditional_rendering:
+  - condition: isMobile.value
+    renders: Mobile-only sections (title, trustpilot, option panel, delivery)
+
+  - condition: isDesktop.value
+    renders: Desktop header in right sidebar
+
+  - condition: product.reviewsCollection exists
+    renders: TrustpilotRating components
+
+  - condition: product.deliveryDeadline?.showClock
+    renders: ProductFlipClock in both mobile and desktop
+
+  - condition: product.productExtendedDetails exists
+    renders: ProductDescriptionV2
+
+  - condition: product.reviewsCollection.reviewModels.length > 0
+    renders: CustomerReview section with dynamic order
+
+  - condition: product.productPageContent exists
+    renders: ProductPageContentV2 with dynamic content blocks
+
+  - condition: themes resource state
+    renders: ProductShopDesign with different apiStatus (PENDING/COMPLETED/FAILED)
+
+api_calls:
+  - function: getProductThemes
+    trigger: optionStore.refCode changes
+    params:
+      - refCode: string
+      - machineToken: string
+      - friendlyUrl: string
+      - editor: string
+    returns: Promise<ProductTheme[]>
+    error_handling: Resource onRejected → ProductShopDesign with FAILED status
+
+security:
+  - machineToken used for theme API calls
+  - No user input sanitization needed (all data from product context)
+  - AbortController cleanup prevents memory leaks
+
+performance:
+  - Deep reactive store for optionStore (tracks nested changes)
+  - Computed values for productImages and clockColors (memoized)
+  - Resource with cleanup for theme loading (abortable)
+  - Lazy loading via visibility task for design URL extraction
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  ProductPageBaseTemplateProps:
+    description: Component props interface
+    fields:
+      - name: productType
+        type: PlatinumProductTypeEnum
+
+  ProductCarouseImage:
+    description: Single carousel image entry
+    source: ~/components/product-page/product-carousel/product-carousel
+    fields:
+      - name: url
+        type: string
+      - name: altText
+        type: string
+
+  ProductTheme:
+    description: Theme data returned from getProductThemes API
+    source: ~/services/themes-service
+    fields:
+      - name: themeId
+        type: string
+      - name: displayName
+        type: string
+      - name: previewUrl
+        type: string
+
+  OptionStore:
+    description: Central deep-reactive store for all product option selections
+    source: ~/data/option-data
+    fields:
+      - name: orientationIndex
+        type: "number | undefined"
+      - name: filterIndex
+        type: "number[]"
+      - name: tierOptionIndex
+        type: number
+      - name: tierIndex
+        type: number
+      - name: addonIndex
+        type: "number[]"
+      - name: optionData
+        type: object
+      - name: productData
+        type: object
+      - name: price
+        type: number
+      - name: discountedPrice
+        type: number
+      - name: noOfLevel
+        type: number
+      - name: Url
+        type: string
+      - name: startDate
+        type: string
+      - name: refCode
+        type: string
+      - name: themeIndex
+        type: number
+      - name: ctaURL
+        type: string
+      - name: friendlyUrl
+        type: string
+      - name: firstSlideUrl
+        type: string
+      - name: selectedFilter
+        type: "Filter | null"
+
+  ClockColors:
+    description: Computed clock color pair extracted from floatingBanner CMS data
+    fields:
+      - name: clockColor
+        type: string
+      - name: textColor
+        type: string
+
+  Filter:
+    description: A selectable filter/size option
+    source: ~/data/option-data
+    fields:
+      - name: refCode
+        type: string
+      - name: imageUrl
+        type: string
+      - name: imageAltText
+        type: string
+
+field_consumption:
+  ProductContext:
+    consumed:
+      - product: Full product object — id, imageCaption, images, optionData, campaignInfo, reviewsCollection, deliveryDeadline, productExtendedDetails, productPageContent (floatingBanner), embededVideo, embededVideoIcon
+      - couponCode: Passed to OptionPanel
+      - friendlyUrl: Seeds optionStore.friendlyUrl
+      - machineToken: Passed to getProductThemes API
+      - filterIndex: Seeds optionStore.filterIndex
+      - refCode: Seeds optionStore.refCode
+      - firstSlideUrl: Seeds optionStore.firstSlideUrl
+      - editor: Passed to getProductThemes API
+      - selectedFilter: Seeds optionStore.selectedFilter; prepended to productImages
+    ignored: []
+
+  DeviceDetectorContext:
+    consumed:
+      - deviceInfo: Used via useDetectScreen hook to derive isMobile / isDesktop booleans
+    ignored: []
+
+  ProductTheme_resource:
+    consumed:
+      - Entire array: Passed as themes prop to ProductShopDesign on resolved state
+    ignored: []
+
+implementation_logic:
+  theme_fetch_trigger:
+    rule: |
+      useResource$ tracks optionStore.refCode. Every time refCode changes (e.g., due to
+      filter selection), a new call to getProductThemes(refCode, machineToken, friendlyUrl, editor)
+      is made with a fresh AbortController. The previous request is aborted via the cleanup function.
+    critical: true
+
+  design_url_from_dom:
+    rule: |
+      useVisibleTask$ (document-ready strategy) queries the DOM for an element with
+      id="cta-design-button" and reads its href attribute. This URL is stored in
+      the designUrl signal and passed to ProductShopDesign and ProductPageContentV2.
+      This is a DOM side-effect pattern — the CTA button must already exist in the DOM
+      when the task runs.
+    critical: true
+
+  clock_colors_extraction:
+    rule: |
+      clockColors is computed from product.productPageContent.floatingBanner:
+        clockColor = desktopBanner.backgroundColor || mobileBanner.backgroundColor || "#2E638A"
+        textColor  = sections.section1[0].color || sections.section2[0].color || "#FFFFFF"
+    critical: false
+
+  filter_selection_triggers_refetch:
+    rule: |
+      When onChangeSelectedFilter is called, both optionStore.selectedFilter and
+      optionStore.refCode are updated. Because useResource$ tracks refCode, updating
+      it triggers a new getProductThemes call automatically.
+    critical: true
+
+visibility_map:
+  mobile_title:
+    condition: "isMobile is true"
+    default: hidden
+
+  mobile_trustpilot_rating:
+    condition: "product.reviewsCollection exists AND isMobile is true"
+    default: hidden
+
+  desktop_right_column:
+    condition: "isDesktop is true (stickyForDesktop, hidden on mobile)"
+    default: hidden
+
+  desktop_header_in_sidebar:
+    condition: "isDesktop is true"
+    default: hidden
+
+  mobile_option_panel:
+    condition: "isMobile is true (block lg:hidden)"
+    default: hidden
+
+  mobile_delivery_clock_section:
+    condition: "isMobile is true"
+    default: hidden
+
+  delivery_flip_clock:
+    condition: "product.deliveryDeadline.showClock is true"
+    default: hidden
+
+  mobile_trust_indicator:
+    condition: "isMobile is true"
+    default: hidden
+
+  product_description_section:
+    condition: "product.productExtendedDetails exists"
+    default: hidden
+
+  customer_review_section:
+    condition: "product.reviewsCollection.reviewModels.length > 0"
+    default: hidden
+
+  product_page_content_section:
+    condition: "product.productPageContent exists"
+    default: hidden
+
+  theme_shop_design_pending:
+    condition: "themes resource state is PENDING"
+    default: hidden
+
+  theme_shop_design_resolved:
+    condition: "themes resource state is RESOLVED with data"
+    default: hidden
+

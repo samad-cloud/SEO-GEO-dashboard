@@ -1,0 +1,167 @@
+name: PhotoQuality
+source: src/components/photo-quality-page/containers/photo-quality-container.tsx
+description: |
+  Inner display component of the photo-quality page. Renders a vertical stack of
+  five educational content sections: page title, introduction, cropping guidance
+  (including camera-type comparisons and portrait/landscape options), image
+  resolution explanation, and colour calibration description. All text comes from
+  the image_quality i18n namespace. One paragraph uses dangerouslySetInnerHTML to
+  allow HTML markup in the cropping_recommendation translation key.
+  The component is defined as a module-level const (not exported) inside
+  photo-quality-container.tsx; the file's default export wraps it in a
+  <div class="w-full h-full">.
+
+exports:
+  - name: PhotoQuality
+    type: component$ (module-scoped, not exported from the file)
+    description: Inner component rendered by the PhotoQualityContainer default export
+
+props: []
+
+component_structure:
+  outer_div:
+    classes: "flex flex-col items-start justify-center gap-14 text-left my-14"
+    sections:
+      - element: h3
+        classes: "font-bold text-2xl text-center w-full"
+        text: t("image_quality.image_quality_title")
+
+      - element: div
+        classes: "flex flex-col gap-3"
+        children:
+          - p > strong.text-[#d447a4]: t("image_quality.how_get_best_picture")
+          - p: t("image_quality.description_1")
+          - p: t("image_quality.description_2")
+
+      - element: div (cropping section)
+        classes: "flex flex-col gap-4"
+        children:
+          - p.text-[#d447a4] > strong.text-base: t("image_quality.cropping")
+          - div.flex.flex-col.gap-2 (cropping issue):
+              - p > strong.text-base: t("image_quality.cropping_issue")
+              - p: t("image_quality.cropping_description")
+          - div.flex.flex-col.gap-2 (camera types):
+              - p.text-[#d447a4]: t("image_quality.compact_digital_cameras")
+              - p: t("image_quality.compact_digital_cameras_description")
+              - p.text-[#d447a4]: t("image_quality.digital_slr_cameras")
+              - p: t("image_quality.digital_slr_cameras_description")
+              - p[dangerouslySetInnerHTML]: t("image_quality.cropping_recommendation")
+          - div.flex.flex-col.gap-2 (cropping options):
+              - p > strong: t("image_quality.cropping_options_question")
+              - p: t("image_quality.portrait_landscape")
+              - p: t("image_quality.portrait_landscape_description")
+
+      - element: div (image resolution section)
+        classes: "flex flex-col gap-4"
+        children:
+          - p > strong.text-[#d447a4]: t("image_quality.image_resolution")
+          - p: t("image_quality.image_resolution_description_1")
+          - p: t("image_quality.image_resolution_description_2")
+
+      - element: div (colour calibration section)
+        classes: "flex flex-col gap-4"
+        children:
+          - p > strong.text-[#d447a4]: t("image_quality.colour_calibration")
+          - p: t("image_quality.colour_calibration_description")
+
+types:
+  PhotoQualityProps:
+    description: Component has no props (no interface defined in source)
+    fields: []
+
+field_consumption:
+  i18n (inlineTranslate):
+    consumed:
+      - image_quality.image_quality_title: h3 title
+      - image_quality.how_get_best_picture: introduction strong heading
+      - image_quality.description_1: introduction paragraph 1
+      - image_quality.description_2: introduction paragraph 2
+      - image_quality.cropping: cropping section label (pink strong)
+      - image_quality.cropping_issue: cropping issue sub-heading
+      - image_quality.cropping_description: cropping issue description
+      - image_quality.compact_digital_cameras: camera type label (pink)
+      - image_quality.compact_digital_cameras_description: compact camera description
+      - image_quality.digital_slr_cameras: DSLR type label (pink)
+      - image_quality.digital_slr_cameras_description: DSLR description
+      - image_quality.cropping_recommendation: HTML content via dangerouslySetInnerHTML
+      - image_quality.cropping_options_question: options question heading
+      - image_quality.portrait_landscape: portrait/landscape label
+      - image_quality.portrait_landscape_description: portrait/landscape description
+      - image_quality.image_resolution: resolution section heading
+      - image_quality.image_resolution_description_1: resolution paragraph 1
+      - image_quality.image_resolution_description_2: resolution paragraph 2
+      - image_quality.colour_calibration: colour calibration heading
+      - image_quality.colour_calibration_description: colour calibration description
+    ignored: []
+
+behavior:
+  - Pure display component with no state, no signals, and no API calls
+  - All content is translation strings; component reads them once per render via inlineTranslate()
+  - One paragraph uses dangerouslySetInnerHTML for the cropping_recommendation key (expected to contain HTML links or formatting)
+  - Sections always render in fixed order: title, intro, cropping, resolution, calibration
+  - No conditional rendering; all sections always visible
+
+styling:
+  outer_wrapper: "flex flex-col items-start justify-center gap-14 text-left my-14"
+  section_gap: gap-14 between major sections
+  sub_section_gap: gap-2 to gap-4 within sections
+  accent_color: "#d447a4" (pink — used for section headings and some labels)
+  title: "font-bold text-2xl text-center w-full"
+  intro_group: "flex flex-col gap-3"
+  cropping_section: "flex flex-col gap-4"
+  camera_paragraph_pink: "text-[#d447a4]"
+  resolution_section: "flex flex-col gap-4"
+  calibration_section: "flex flex-col gap-4"
+
+i18n:
+  namespace: image_quality
+  library: qwik-speak
+  method: inlineTranslate()
+  translation_keys:
+    - image_quality.image_quality_title
+    - image_quality.how_get_best_picture
+    - image_quality.description_1
+    - image_quality.description_2
+    - image_quality.cropping
+    - image_quality.cropping_issue
+    - image_quality.cropping_description
+    - image_quality.compact_digital_cameras
+    - image_quality.compact_digital_cameras_description
+    - image_quality.digital_slr_cameras
+    - image_quality.digital_slr_cameras_description
+    - image_quality.cropping_recommendation (HTML content)
+    - image_quality.cropping_options_question
+    - image_quality.portrait_landscape
+    - image_quality.portrait_landscape_description
+    - image_quality.image_resolution
+    - image_quality.image_resolution_description_1
+    - image_quality.image_resolution_description_2
+    - image_quality.colour_calibration
+    - image_quality.colour_calibration_description
+
+dependencies:
+  qwik:
+    - component$ from @builder.io/qwik
+  i18n:
+    - inlineTranslate from qwik-speak
+
+used_by:
+  - PhotoQualityContainer
+
+security:
+  - dangerouslySetInnerHTML used once for image_quality.cropping_recommendation
+  - Content sourced exclusively from internal translation files managed by the Printerpix team — risk is low
+  - No user input, no authentication required
+
+edge_cases:
+  - Missing translation key: qwik-speak returns the key string as fallback (e.g. "image_quality.cropping")
+  - Empty translation value: renders empty paragraph (no visible content for that section)
+  - HTML in cropping_recommendation contains malformed markup: browser renders best-effort
+
+notes:
+  - PhotoQuality is the only meaningful component inside PhotoQualityContainer;
+    the default export wraps it: <div class="w-full h-full"><PhotoQuality /></div>.
+  - The strong tag inside the first introduction paragraph wraps the text in pink (#d447a4)
+    but the surrounding <p> has no additional classes — styling is applied only to <strong>.
+  - The cropping_options strong tag uses no colour class (defaults to text colour), unlike
+    the other section headings which use text-[#d447a4].

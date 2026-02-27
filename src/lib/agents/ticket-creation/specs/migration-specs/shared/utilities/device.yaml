@@ -1,0 +1,128 @@
+name: Device
+description: Device detection utilities for mobile OS, in-app browsers, and device type from user agent
+
+source:
+  path: utility/device.ts
+  lines: 1-85
+  type: utility
+
+exports:
+  - name: MobileOS
+    type: enum
+    values:
+      - ANDROID: "Android"
+      - IOS: "IOS"
+      - OTHER: "Other"
+
+  - name: detectMobileOS
+    type: function
+    signature: "() => MobileOS"
+    description: Detects mobile operating system from navigator.userAgent
+    behavior:
+      - Returns ANDROID if /android/i matches userAgent
+      - Returns IOS if iPad|iPhone|iPod matches OR (Mac platform + maxTouchPoints > 1)
+      - Returns OTHER otherwise
+    client_side_only: true
+
+  - name: isInAppBrowser
+    type: function
+    signature: "() => boolean"
+    description: Detects if browser is an in-app webview (Facebook, Instagram, Line, etc.)
+    pattern: "/FBAN|FBAV|Instagram|Line|ByteLo|WebView/"
+    client_side_only: true
+
+  - name: buildUrlBasedOnDeviceAndOS
+    type: function
+    signature: "(href: string, os: MobileOS, isInAppBrowser: boolean, url: URL) => string"
+    description: Converts URLs for in-app browsers to open in external browser
+    parameters:
+      - name: href
+        type: string
+        description: Relative or absolute URL path
+      - name: os
+        type: MobileOS
+      - name: isInAppBrowser
+        type: boolean
+      - name: url
+        type: URL
+        description: Current page URL
+    returns: Modified URL string
+    behavior:
+      - If isInAppBrowser and iOS → Returns "x-safari-https://{host}{href}"
+      - If isInAppBrowser and Android → Returns "intent://{host}{href}#Intent;scheme=https;end"
+      - Otherwise → Returns href unchanged
+
+  - name: DeviceInfo
+    type: interface
+    fields:
+      - name: isMobile
+        type: boolean
+      - name: isDesktop
+        type: boolean
+      - name: isTablet
+        type: boolean
+      - name: deviceType
+        type: "'mobile' | 'tablet' | 'desktop'"
+
+  - name: detectDeviceFromUserAgent
+    type: function
+    signature: "(userAgent: string) => DeviceInfo"
+    description: Detects device type from user-agent string (server-side safe)
+    parameters:
+      - name: userAgent
+        type: string
+    returns: DeviceInfo object
+    behavior:
+      - Returns mobile-first fallback if userAgent is empty
+      - Tablet detection first (iPad, Android tablet, Kindle, Macintosh, etc.)
+      - Mobile detection excludes tablets
+      - Desktop is neither mobile nor tablet
+
+dependencies:
+  external:
+    - navigator (browser API)
+    - window (browser API)
+
+behavior:
+  ios_detection:
+    traditional: /iPad|iPhone|iPod/ regex
+    modern: Mac platform + touch support (for newer iPads)
+
+  in_app_browser_schemes:
+    ios: x-safari-https protocol to open Safari
+    android: Intent URL with https scheme
+
+  user_agent_patterns:
+    tablet: /ipad|android(?!.*mobile)|tablet|kindle|silk|playbook|bb10.*tablet|rim.*tablet|macintosh/i
+    mobile: /android|webos|iphone|ipod|blackberry|iemobile|opera mini|mobile/i
+
+edge_cases:
+  - Empty userAgent returns mobile-first fallback
+  - Tablets checked before mobile (tablets often contain mobile keywords)
+  - New iPads detected via Mac platform + touch points
+
+types:
+  MobileOS:
+    description: Enum of detected mobile operating systems
+    values:
+      - ANDROID: "Android"
+      - IOS: "IOS"
+      - OTHER: "Other"
+
+  DeviceInfo:
+    description: Device type classification derived from user-agent string parsing
+    fields:
+      - name: isMobile
+        type: boolean
+        description: True if device is a mobile phone
+      - name: isDesktop
+        type: boolean
+        description: True if device is a desktop computer
+      - name: isTablet
+        type: boolean
+        description: True if device is a tablet
+      - name: deviceType
+        type: "'mobile' | 'tablet' | 'desktop'"
+        description: String label for the device category
+
+used_by: []

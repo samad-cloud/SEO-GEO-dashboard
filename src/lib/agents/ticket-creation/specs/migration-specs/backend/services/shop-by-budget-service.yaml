@@ -1,0 +1,228 @@
+name: ShopByBudgetService
+source: services/shop-by-budget-service.ts
+description: |
+  Service for fetching and validating "Shop by Budget" web content.
+  Provides structured budget-based product/category browsing data with
+  customizable CTA colors and layouts.
+
+exports:
+  functions:
+    - name: getShopByBudgetContent
+      signature: "() => Promise<ShopByBudgetResponse>"
+      description: Fetches shop-by-budget content from the JSON web content service
+      async: true
+      returns: ShopByBudgetResponse object with budget section data
+
+  interfaces:
+    - name: ProductOrCategory
+      fields:
+        - name: title
+          type: string
+          description: Product or category title
+        - name: imgSrc
+          type: string
+          description: URL to product/category image
+        - name: link
+          type: string
+          description: URL link for the product/category
+        - name: imageAspectRatio
+          type: string
+          description: Aspect ratio for the image
+        - name: ctaText
+          type: string
+          description: Call-to-action button text
+
+    - name: ShopByBudget
+      exported: true
+      fields:
+        - name: display
+          type: boolean
+          description: Whether to display this section
+        - name: order
+          type: number
+          description: Display order for this section
+        - name: heading
+          type: string
+          description: Section heading text
+        - name: headingPosition
+          type: string
+          description: Position of the heading (e.g., "left", "center", "right")
+        - name: ctaTextColor
+          type: string
+          description: CTA button text color (hex/CSS color)
+        - name: ctaBackgroundColor
+          type: string
+          description: CTA button background color (hex/CSS color)
+        - name: productOrCategories
+          type: ProductOrCategory[]
+          description: Array of products or categories to display
+
+    - name: ShopByBudgetResponse
+      fields:
+        - name: shopByBudgetData
+          type: ShopByBudget
+          description: Shop by budget section data (single object, not array)
+
+  schemas:
+    - name: CategorySchema
+      type: zod
+      description: Zod schema for validating product/category objects
+      fields:
+        - title (string)
+        - imgSrc (string)
+        - link (string)
+        - imageAspectRatio (string)
+        - ctaText (string)
+
+    - name: ShopByBudgetSchema
+      type: zod
+      exported: true
+      description: Zod schema for validating ShopByBudget object
+      fields:
+        - display (boolean)
+        - order (number, min: 1)
+        - heading (string)
+        - headingPosition (string)
+        - productOrCategories (array of CategorySchema)
+
+    - name: ShopByBudgetResponseSchema
+      type: zod
+      exported: true
+      description: Zod schema for validating API response
+      fields:
+        - shopByBudgetData (ShopByBudgetSchema)
+
+api_contracts:
+  - endpoint: Via loadWebContent (WebContentType.SHOP_BY_BUDGET)
+    method: N/A (internal service call)
+    description: Fetches shop-by-budget content from JSON service
+    response_type: ShopByBudgetResponse
+    response_shape:
+      shopByBudgetData:
+        display: boolean
+        order: number
+        heading: string
+        headingPosition: string
+        ctaTextColor: string
+        ctaBackgroundColor: string
+        productOrCategories:
+          - title: string
+            imgSrc: string
+            link: string
+            imageAspectRatio: string
+            ctaText: string
+
+behavior:
+  - name: getShopByBudgetContent
+    steps:
+      - Calls loadWebContent with WebContentType.SHOP_BY_BUDGET generic typed as ShopByBudgetResponse
+      - Returns the result directly (awaits the promise)
+      - No error handling in this function (errors propagate from loadWebContent)
+  - name: ShopByBudgetSchema (Zod)
+    steps:
+      - Validates display as boolean
+      - Validates order as number with minimum value of 1
+      - Validates heading and headingPosition as strings
+      - Validates productOrCategories as array of CategorySchema objects
+      - Does NOT include ctaTextColor or ctaBackgroundColor in schema (only in interface)
+  - name: ShopByBudgetResponseSchema (Zod)
+    steps:
+      - Wraps ShopByBudgetSchema inside shopByBudgetData field
+      - Validates the response is a single object (not array)
+  - name: CategorySchema (Zod, internal)
+    steps:
+      - Validates title, imgSrc, link, imageAspectRatio, and ctaText as required strings
+
+dependencies:
+  external:
+    - package: zod
+      usage: Schema validation
+  internal:
+    - path: ~/services/json-service
+      imports: [loadWebContent, WebContentType]
+      usage: Load web content via WebContentType.SHOP_BY_BUDGET
+
+data_flow:
+  - step: 1
+    action: Call getShopByBudgetContent()
+  - step: 2
+    action: Internally calls loadWebContent with WebContentType.SHOP_BY_BUDGET
+  - step: 3
+    action: Returns ShopByBudgetResponse with single budget section
+  - step: 4
+    action: Data validated against ShopByBudgetResponseSchema
+
+business_logic:
+  - Response contains a SINGLE ShopByBudget object (not array)
+  - Section can be toggled on/off with "display" boolean
+  - Minimum order value is 1 (enforced by zod schema)
+  - CTA colors are customizable per section
+  - Each product/category has its own CTA text
+  - Image aspect ratios configurable per item
+  - Heading position is configurable
+  - Products or categories can be mixed in the same section
+
+error_handling:
+  - Zod schema validation ensures data integrity
+  - Invalid data shape will throw zod validation errors
+  - Empty productOrCategories array is allowed
+  - Missing required fields will fail schema validation
+  - Invalid color values (non-string) will fail validation
+
+security:
+  - Read-only operation
+  - Public content, no authentication required
+  - All URLs should be validated/sanitized on render
+  - Color values should be sanitized before inline style usage
+
+used_by:
+  - backend/services/web-component-service.yaml (imports ShopByBudget type for ShoppingGuide processing)
+  - backend/services/json-service.yaml (imports ShopByBudgetResponseSchema for web content validation)
+
+types:
+  ProductOrCategory:
+    description: A single product or category item in the shop-by-budget grid
+    fields:
+      - name: title
+        type: string
+        description: Product or category title
+      - name: imgSrc
+        type: string
+        description: URL to product/category image
+      - name: link
+        type: string
+        description: URL link for the product/category
+      - name: imageAspectRatio
+        type: string
+        description: Aspect ratio for the image
+      - name: ctaText
+        type: string
+        description: Call-to-action button text
+
+  ShopByBudget:
+    description: A budget-based browsing section with configurable CTA colors
+    fields:
+      - name: display
+        type: boolean
+      - name: order
+        type: number
+        description: Minimum value 1 (enforced by Zod schema)
+      - name: heading
+        type: string
+      - name: headingPosition
+        type: string
+        description: Position of the heading (e.g., "left", "center", "right")
+      - name: ctaTextColor
+        type: string
+        description: CTA button text color (hex/CSS)
+      - name: ctaBackgroundColor
+        type: string
+        description: CTA button background color (hex/CSS)
+      - name: productOrCategories
+        type: "ProductOrCategory[]"
+
+  ShopByBudgetResponse:
+    description: API response wrapper for shop-by-budget content (single object, not array)
+    fields:
+      - name: shopByBudgetData
+        type: ShopByBudget

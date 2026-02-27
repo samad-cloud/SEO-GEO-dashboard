@@ -1,0 +1,198 @@
+name: ProductDescriptionV2
+source: src/components/product-page/product-description-v2.tsx
+description: |
+  Accordion-based product description panel. Renders product detail sections
+  (title + paragraph body) as expandable accordion items. Supports a shortVersion
+  mode that shows only the first accordion item truncated to the first line of its
+  paragraph, with a "Read more" button that smooth-scrolls to a referenced element
+  elsewhere on the page. The first accordion item is expanded by default; all
+  others start collapsed. Expanding any item collapses others and smooth-scrolls
+  the expanded item into view.
+
+exports:
+  - name: default
+    type: component$<ProductDescription>
+    description: Default Qwik component export
+
+props:
+  - name: productDetails
+    type: ProductDetails
+    required: true
+    description: Product details data containing the accordionDetails array
+  - name: shortVersion
+    type: boolean
+    required: false
+    default: false
+    description: If true, shows only the first accordion item with truncated paragraph and a Read More link
+  - name: referenceId
+    type: string
+    required: false
+    description: DOM id to scroll to when the Read More button is clicked (shortVersion only)
+
+component_structure:
+  - EarlyReturn: Renders null if accordionDetails is missing or empty
+  - Accordion: Wrapper accordion container
+  - AccordionItem: Per-section container with ref registered in accordionRefs
+  - AccordionHeader: Clickable header with h2 title, triggers expand/collapse
+  - AccordionDetails: Expandable panel with markdown-converted paragraph HTML
+  - ReadMoreButton: Shown in shortVersion mode; scrolls to referenceId on click
+
+child_components:
+  - name: Accordion
+    source: ~/components/share/accordion/accordion
+    purpose: Wrapper container for accordion items
+    props:
+      - id: "product-information-accordion"
+  - name: AccordionHeader
+    source: ~/components/share/accordion/accordion-header
+    purpose: Clickable header row triggering expand/collapse
+    props:
+      - expanded: boolean
+      - onChange: handler (receives id)
+      - id: section id number
+      - ariaControls: panel id string
+  - name: AccordionDetails
+    source: ~/components/share/accordion/accordion-details
+    purpose: Expandable content panel
+    props:
+      - expanded: boolean
+      - id: panel id string
+      - ariaLabelledBy: header id string
+      - shortVersion: boolean
+
+data_structure:
+  AccordionItem:
+    - title: string
+    - paragraphs: string (markdown text)
+    - expanded: boolean
+    - id: number (index)
+
+  ProductDetails:
+    - accordionDetails: AccordionDetailItem[] (title, paragraphs fields)
+
+behavior:
+  - On mount: build informationData store from productDetails.accordionDetails
+    - shortVersion=true: take first item only, truncate paragraphs to first line (split on \r\n index 0)
+    - shortVersion=false: use all items as-is
+    - First item defaults to expanded=true; all others expanded=false
+  - handleAccordionChange (on header click):
+      1. Toggle the clicked section: if it was expanded → collapse; if collapsed → expand
+      2. Collapse all other sections
+      3. If expanding (wasExpanded was false): after 100ms delay, smooth-scroll to the accordion element
+         - Desktop (viewport >= 1024px): offset 120px from top; Mobile: 80px
+  - Read More button click (shortVersion only):
+      1. Find element by props.referenceId
+      2. Smooth-scroll to it with 120px offset on desktop, 80px on mobile
+  - Accordion panels render paragraph content via convertMarkdownToHtml (markdown → HTML, dangerouslySetInnerHTML)
+
+styling:
+  - Outer wrapper: px-4 lg:px-0 id="product-information"
+  - Section heading: font-medium text-[18px]
+  - Read more button: underline cursor-pointer mt-4
+
+dependencies:
+  qwik:
+    - $, component$, useStore, useSignal from @builder.io/qwik
+  i18n:
+    - inlineTranslate from qwik-speak (for "product.readMore")
+  components:
+    - Accordion from ~/components/share/accordion/accordion
+    - AccordionHeader from ~/components/share/accordion/accordion-header
+    - AccordionDetails from ~/components/share/accordion/accordion-details
+  services:
+    - convertMarkdownToHtml from ~/services/markdown-service
+  types:
+    - ProductDetails from ~/services/product-page-service
+
+used_by:
+  - ProductPageBaseTemplate
+  - ProductPageBasicTemplate
+  - ProductPageFixedThemeTemplate
+  - ProductPageHubTemplate
+  - PhotoCanvasPrintsNewTemplate
+  - PhotoCanvasPrintsNewTemplateV3
+  - PhotoCanvasPrintsBundledTemplate
+  - PhotoCanvasPrintsHubBundledTemplate
+  - PhotoCanvasPrintsTemplateV2
+  - PhotoCanvasPrintsBaseTemplate
+  - PhotoCalendarsBaseTemplate
+  - PhotoCalendarsBalooRadioTemplate
+  - PhotoCalendarsDaisyTemplate
+  - PhotoCalendarsJbc2024Template
+
+edge_cases:
+  - Returns null immediately if accordionDetails is empty or undefined (no DOM rendered)
+  - Scroll offset uses window.innerWidth to differentiate desktop vs mobile (>= 1024 = desktop)
+  - shortVersion truncates to first \r\n line only; if paragraph has no line breaks, the entire paragraph is shown
+  - referenceId element may not exist on page if incorrectly passed; scroll is safely guarded by null check
+
+notes:
+  - The component uses a 100ms setTimeout before scrolling to allow the accordion CSS animation to begin
+  - accordionRefs is a signal map (id → HTMLElement) built via element refs on each section wrapper
+
+types:
+  ProductDescription:
+    description: Component props interface
+    fields:
+      - name: productDetails
+        type: ProductDetails
+      - name: shortVersion
+        type: boolean
+        optional: true
+        default: false
+      - name: referenceId
+        type: string
+        optional: true
+
+  AccordionItemState:
+    description: Internal store shape per accordion item
+    fields:
+      - name: title
+        type: string
+      - name: paragraphs
+        type: string
+      - name: expanded
+        type: boolean
+      - name: id
+        type: number
+
+field_consumption:
+  ProductDetails:
+    consumed:
+      - accordionDetails: Array of title+paragraphs items; guard condition and data source
+    ignored:
+      - All other ProductDetails fields
+
+  AccordionDetailItem:
+    consumed:
+      - title: Displayed in h2 header
+      - paragraphs: Converted via convertMarkdownToHtml and rendered as HTML
+    ignored: []
+
+implementation_logic:
+  accordion_exclusive_expand:
+    rule: |
+      Only one accordion item can be expanded at a time. Clicking an already-expanded
+      header collapses it (toggle). Clicking a collapsed header expands it AND collapses
+      all other items.
+    critical: false
+
+  scroll_on_expand:
+    rule: |
+      Scroll only fires when expanding (wasExpanded was false). It does NOT fire when
+      collapsing an item. The 100ms delay allows the accordion animation to begin so
+      the element's bounding rect is closer to its final position.
+    critical: false
+
+visibility_map:
+  entire_component:
+    condition: "accordionDetails exists AND length > 0"
+    default: hidden (returns null)
+
+  read_more_button:
+    condition: "shortVersion prop is true"
+    default: hidden
+
+  accordion_items:
+    condition: "Always rendered (one per accordionDetails entry)"
+    default: first item expanded, all others collapsed

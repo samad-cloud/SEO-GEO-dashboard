@@ -1,0 +1,115 @@
+name: Device Detector Context
+source:
+  path: src/context/device-detector-context.ts
+  lines: 1-12
+  type: qwik-context
+
+description: |
+  Defines a Qwik context for device detection. Provides information about the user's
+  device, operating system, and whether they are using an in-app browser.
+
+  This context is typically set at the layout level based on user-agent detection
+  and consumed by components that need to adapt behavior for different devices
+  (e.g., showing app download banners, handling touch events differently).
+
+exports:
+  - name: IDeviceDetectorContext
+    type: interface
+    description: Shape of data in DeviceDetectorContext
+
+  - name: DeviceDetectorContext
+    type: ContextId<IDeviceDetectorContext>
+    description: Context for device detection data
+    key: "device-detector"
+
+behavior:
+  description: |
+    Provides device detection data to all components in the tree. Typically populated
+    by parsing the user-agent string on the server side (in routeLoader$ or onRequest).
+
+  usage: |
+    - Provider: Set in layout.tsx via useContextProvider()
+    - Consumers: Components that need device-specific behavior
+      - App download banners (show for iOS/Android in-app browsers)
+      - Touch vs mouse event handlers
+      - Mobile vs desktop UI variations
+
+  data_source: |
+    - Server-side user-agent parsing (via ~/utility/device)
+    - Populated in layout routeLoader$ or onRequest handler
+
+data_flow:
+  - Layout fetches device info from request headers (user-agent)
+  - Layout parses via ~/utility/device functions
+  - Layout provides context via useContextProvider()
+  - Child components consume via useContext()
+
+dependencies:
+  internal:
+    - ~/utility/device (MobileOS, DeviceInfo types)
+
+  external:
+    - "@builder.io/qwik" (createContextId)
+
+types:
+  IDeviceDetectorContext:
+    description: Device detection context data
+    fields:
+      - os: MobileOS (operating system enum/type)
+      - isInAppBrowser: boolean (true if user is in Instagram/Facebook/etc. in-app browser)
+      - deviceInfo: DeviceInfo (detailed device information)
+
+  MobileOS:
+    description: Mobile operating system enum/type (defined in ~/utility/device)
+    possible_values:
+      - "iOS"
+      - "Android"
+      - "Windows"
+      - "MacOS"
+      - "Linux"
+      - "Unknown"
+
+  DeviceInfo:
+    description: Detailed device information (defined in ~/utility/device)
+    fields:
+      - isMobile: boolean
+      - isTablet: boolean
+      - isDesktop: boolean
+      - browser: string (e.g., "Chrome", "Safari", "Firefox")
+      - browserVersion: string
+      - (other fields defined in ~/utility/device)
+
+used_by:
+  - "~/routes/layout-categoryproduct.tsx"
+  - "~/routes/layout-product.tsx"
+  - "~/components/product-page/option-panel.tsx"
+  - "~/components/product-page/option-panel-v2.tsx"
+  - "~/components/product-page/option-panel-v3.tsx"
+  - "~/components/product-page/option-panel-v4.tsx"
+  - "~/components/product-page/option-panel-v5.tsx"
+  - "~/components/product-page/containers/product-page-container.tsx"
+  - "~/components/product-page/containers/templates/product-page-base-template.tsx"
+  - "~/components/product-page/containers/templates/product-page-basic-template.tsx"
+  - "~/components/product-page/containers/templates/product-page-fixed-template.tsx"
+  - "~/components/product-page/containers/templates/product-page-fixed-theme-template.tsx"
+  - "~/components/product-page/containers/templates/product-page-hub-template.tsx"
+  - "~/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-base-template.tsx"
+  - "~/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-bundled-template.tsx"
+  - "~/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-hub-bundled-template.tsx"
+  - "~/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-new-template.tsx"
+  - "~/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-new-template-v3.tsx"
+  - "~/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-template-v2.tsx"
+  - "~/components/product-page/containers/photo-calendars/photo-calendars-base-template.tsx"
+  - "~/components/product-page/containers/photo-calendars/photo-calendars-baloo-radio-template.tsx"
+  - "~/components/product-page/containers/photo-calendars/photo-calendars-daisy-template.tsx"
+  - "~/components/product-page/containers/photo-calendars/photo-calendars-jbc2024-template.tsx"
+
+security:
+  - User-agent parsing is read-only, no security concerns
+  - Device info is public, not sensitive
+
+edge_cases:
+  - User-agent may be spoofed (treat as hint, not guarantee)
+  - Unknown devices should default to safe values (e.g., os: "Unknown", isMobile: false)
+  - In-app browser detection may not catch all cases (Facebook, Instagram, TikTok, etc.)
+

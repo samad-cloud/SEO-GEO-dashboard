@@ -1,0 +1,220 @@
+name: ProductSections
+source: src/components/category-page/product-sections.tsx
+description: |
+  Orchestrator component that iterates over an array of ProductSection objects and
+  renders the appropriate section sub-component based on each section's type.
+  Sections with display=false are filtered out before rendering.
+  Delegates entirely to specialized child components; contains no rendering logic of its own.
+
+  Supports 6 ProductSectionType variants:
+    - StandardWithDescription → StandardProductCategorySection (itemsPerRowOnMobile=1)
+    - StandardWithoutDescription → StandardProductCategorySection (itemsPerRowOnMobile=2)
+    - FlipImage → FlipImageProductCategorySection
+    - Slideshow → SlideShowProductCategorySection (showDescription=false)
+    - SlideshowWithDescription → SlideShowProductCategorySection (showDescription=true)
+    - SlideshowWithPopup → SlideShowWithPopupProductCategorySection
+    - FlipImageSlider → FlipImageSlider
+    - default (unknown type) → StandardProductCategorySection
+
+exports:
+  - name: default
+    type: component$<ProductSectionsProps>
+    description: Default Qwik component export (interface is not exported)
+
+props:
+  - name: productSections
+    type: "ProductSection[]"
+    required: true
+    description: Array of product section configurations; sections with display=false are filtered out
+  - name: theme
+    type: "CategoryTheme | null"
+    required: true
+    description: Category theme colors passed down to each section sub-component for styling
+  - name: displayProductOnly
+    type: boolean
+    required: false
+    default: false
+    description: When true, suppresses non-product content (headings, CTAs) in child sections
+
+component_structure:
+  - root: React Fragment (<>)
+  - section_iterator:
+      input: productSections.filter(s => s.display)
+      mapped_output: one child component per section based on section.type
+
+child_components:
+  - name: StandardProductCategorySection
+    source: "./standard-product-category-section"
+    purpose: Standard grid layout; used for StandardWithDescription (1-per-row mobile) and StandardWithoutDescription (2-per-row mobile)
+    props:
+      - productData: ProductSection
+      - itemsPerRowOnMobile: 1 (StandardWithDescription) or 2 (StandardWithoutDescription)
+      - theme: CategoryTheme | null
+      - displayProductOnly: boolean
+  - name: FlipImageProductCategorySection
+    source: "./flip-image-product-category-section"
+    purpose: Alternating image/text flip card layout
+    props:
+      - productData: ProductSection
+      - theme: CategoryTheme | null
+      - showFreeShipping: false (hardcoded)
+      - displayProductOnly: boolean
+  - name: SlideShowProductCategorySection
+    source: "./slide-show-product-category-section"
+    purpose: Horizontal slideshow of products; description visibility toggled by prop
+    props:
+      - productData: ProductSection
+      - showDescription: boolean (false for Slideshow, true for SlideshowWithDescription)
+      - theme: CategoryTheme | null
+      - key: "{productSection.heading}-{index}"
+      - displayProductOnly: boolean
+  - name: SlideShowWithPopupProductCategorySection
+    source: "./slide-show-with-popup-product-category-section"
+    purpose: Slideshow with popup quick-view overlay
+    props:
+      - productData: ProductSection
+      - showDescription: true (hardcoded)
+      - theme: CategoryTheme | null
+      - key: "{productSection.heading}-{index}"
+      - displayProductOnly: boolean
+  - name: FlipImageSlider
+    source: "~/components/category-page/flip-image-slider"
+    purpose: Flip image slider layout
+    props:
+      - productData: ProductSection
+
+data_structure:
+  ProductSection:
+    source: "~/services/category-service"
+    fields:
+      - actualPageUrl: string
+      - heading: "string | null"
+      - type: ProductSectionType
+      - order: number
+      - lowestPrice: string
+      - ctaText: "string | null"
+      - ctaUrl: "string | null"
+      - description: "string | null"
+      - showPrice: boolean
+      - showOriginalPrice: boolean
+      - backgroundColor: string
+      - sortOrder: number
+      - displayPercentageDiscount: boolean
+      - products: "CategoryProductItem[]"
+      - display: boolean
+
+  CategoryTheme:
+    source: "~/services/category-service"
+    fields:
+      - primary: string
+      - secondary: string
+      - primaryText: string
+      - secondaryText: string
+
+behavior:
+  - Filter: productSections.filter(section => section.display) — removes hidden sections
+  - Map: for each remaining section, switch on section.type:
+      - ProductSectionType.StandardWithDescription → StandardProductCategorySection (itemsPerRowOnMobile=1)
+      - ProductSectionType.StandardWithoutDescription → StandardProductCategorySection (itemsPerRowOnMobile=2)
+      - ProductSectionType.FlipImage → FlipImageProductCategorySection (showFreeShipping=false)
+      - ProductSectionType.Slideshow → SlideShowProductCategorySection (showDescription=false, key=heading-index)
+      - ProductSectionType.SlideshowWithDescription → SlideShowProductCategorySection (showDescription=true, key=heading-index)
+      - ProductSectionType.SlideShowWithPopup → SlideShowWithPopupProductCategorySection (showDescription=true, key=heading-index)
+      - ProductSectionType.FlipImageSlider → FlipImageSlider (no theme or displayProductOnly passed)
+      - default → StandardProductCategorySection (no itemsPerRowOnMobile override)
+  - This component itself has no layout wrapper, pagination, or filtering UI
+
+styling:
+  - No styling applied at this level; all styling is delegated to child components
+
+dependencies:
+  qwik:
+    - component$ from "@builder.io/qwik"
+  types:
+    - CategoryTheme, ProductSection, ProductSectionType from "~/services/category-service"
+  components:
+    - StandardProductCategorySection from "./standard-product-category-section"
+    - FlipImageProductCategorySection from "./flip-image-product-category-section"
+    - SlideShowProductCategorySection from "./slide-show-product-category-section"
+    - FlipImageSlider from "~/components/category-page/flip-image-slider"
+    - SlideShowWithPopupProductCategorySection from "./slide-show-with-popup-product-category-section"
+
+used_by:
+  - CommonCategoryContainer
+  - GenerateMComponents
+  - ReminderProductRecommendation
+
+security:
+  - No direct HTML rendering
+  - All data originates from category API response; no user input processed here
+
+edge_cases:
+  - productSections is empty array: filter/map produces nothing, renders empty fragment
+  - All sections have display=false: filter removes all, renders empty fragment
+  - Unknown ProductSectionType: default case renders StandardProductCategorySection
+  - FlipImageSlider case: does NOT receive theme or displayProductOnly (potential inconsistency)
+  - null theme: passed as-is to child components; each child must handle null
+
+notes:
+  - FlipImageSlider is the only child component that does not receive theme or displayProductOnly — this appears intentional based on the source
+  - The props interface (ProductSectionsProps) is not exported from this file
+  - No key prop is set for StandardWithDescription, StandardWithoutDescription, FlipImage, or default cases
+
+types:
+  ProductSectionsProps:
+    description: Internal props interface (not exported)
+    fields:
+      - name: productSections
+        type: "ProductSection[]"
+      - name: theme
+        type: "CategoryTheme | null"
+      - name: displayProductOnly
+        type: boolean
+        optional: true
+        default: false
+
+  ProductSectionType:
+    description: Enum of supported section rendering types
+    source: "~/services/category-service"
+    values:
+      - StandardWithDescription: "StandardWithDescription"
+      - StandardWithoutDescription: "StandardWithoutDescription"
+      - FlipImage: "FlipImage"
+      - Slideshow: "Slideshow"
+      - SlideshowWithDescription: "SlideshowWithDescription"
+      - FlipImageSlider: "FlipImageSlider"
+      - SlideShowWithPopup: "SlideshowWithPopup"
+
+field_consumption:
+  ProductSection:
+    consumed:
+      - display: Used in filter to determine whether section is rendered
+      - type: Used in switch statement to select child component
+      - heading: Used in key prop for Slideshow/SlideshowWithDescription/SlideShowWithPopup variants
+      - "(entire ProductSection object)": Passed as productData to each child component
+    ignored: []
+
+  CategoryTheme:
+    consumed:
+      - "(entire object passed to children)": This component does not read individual theme fields
+    ignored: []
+
+implementation_logic:
+  type_dispatch:
+    rule: |
+      The switch statement maps ProductSectionType enum values to child components.
+      StandardWithDescription and StandardWithoutDescription both use the same child
+      (StandardProductCategorySection) but differ in itemsPerRowOnMobile (1 vs 2).
+      FlipImage always sets showFreeShipping=false.
+      Slideshow and SlideshowWithDescription both use SlideShowProductCategorySection
+      but differ in showDescription (false vs true).
+      The default case handles unknown types by falling back to StandardProductCategorySection.
+    critical: true
+
+  display_filter:
+    rule: |
+      Only sections where productSection.display === true are rendered.
+      The filter is applied before the map/switch dispatch. This means section ordering
+      (section.order) is determined by the array order from the API — there is no
+      client-side sort by order within this component.
+    critical: false

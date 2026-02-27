@@ -1,0 +1,521 @@
+name: PhotoCanvasPrintsTemplateV2
+source: ecommerce-frontend-qwik/src/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-template-v2.tsx
+description: |
+  Canvas product page template v2 featuring a 70/30 layout with dynamic component
+  ordering via componentPositions from product.marketingContent3 JSON. This template
+  includes hardcoded product description data (overriding product.productExtendedDetails)
+  and uses CanvasSizeTable3 variant. Features carousel with full-width display on mobile
+  and custom dot positioning.
+
+exports:
+  - name: default
+    type: component$
+    props: none
+
+context_consumed:
+  - ProductContext:
+      - product
+      - friendlyUrl
+      - filterIndex
+      - refCode
+      - firstSlideUrl
+      - preselectedRefId
+      - selectedFilter
+  - DeviceDetectorContext:
+      - deviceInfo
+
+component_structure: |
+  <>
+    <ProductPageTopBannerV2 />
+
+    <div.container>
+      <div.flex-wrap>
+        # LEFT COLUMN (70%)
+        <div.max-w-[70%]>
+          <ProductCarousel
+            showPriceTag={false}
+            displayDotOnMoble={true}
+            displayDotOnDesktop={true}
+            displayDotBellow={true}
+            dotSize={10}
+            displayFullWidthOnMobile={true}
+          />
+        </div>
+
+        # MOBILE TITLE & RATING (after carousel)
+        {isMobile && (
+          <h1 />
+          <TrustpilotRating />
+        )}
+
+        # RIGHT COLUMN (30%, hidden on mobile)
+        <div.max-w-[30%].hidden.lg:flex>
+          {isDesktop && <h1 />}
+          <TrustpilotRating />
+
+          <OptionCanvasPrintsPanelV2 />
+
+          <div.border>                          # Delivery deadline
+            <p>{aboveClockText}</p>
+            <ProductFlipClock />
+            <ProductDeliveryDateV2 />
+          </div>
+
+          <BulkPricingV4 />
+        </div>
+      </div>
+
+      # MOBILE OPTIONS & DELIVERY
+      <div.block.lg:hidden>
+        <OptionCanvasPrintsPanelV2 />
+
+        <div.border>
+          <p>{aboveClockText}</p>
+          <ProductFlipClock />
+          <ProductDeliveryDateV2 />
+        </div>
+      </div>
+
+      # MOBILE TRUST INDICATOR (mt-2)
+      <ProductTrustIndicatorV6 />
+    </div>
+
+    # MOBILE SIZE TABLE (lg:hidden)
+    <div.container.lg:hidden>
+      <CanvasSizeTable3
+        highlightColour="#555555"
+        textColour="#CD1D6D"
+        id="2"
+      />
+    </div>
+
+    # HUB CHILDREN (hidden for GB)
+    {product.listHubChilds.length > 0 && settings().website != "GB" && (
+      <div.container.overflow-auto>
+        <ProductOptionType4 />
+      </div>
+    )}
+
+    # MOBILE REVIEWS & HARDCODED DESCRIPTION (lg:hidden)
+    <div.container.lg:hidden>
+      {product.reviewsCollection && (
+        <CustomerReview />
+      )}
+
+      <div.flex.lg:hidden.flex-wrap>
+        <div.basis-[60%].border-b>             # Hardcoded description
+          <ProductDescription
+            productDetails={{
+              title: "Your Photo on Canvas",
+              paragraphs: ["Create your canvas print directly from your phone..."],
+              bullets: [
+                "Vivid, long-lasting colors thanks to UV-resistant ink",
+                "Printed on fine-grained polycotton canvas",
+                "Hand-stretched over a sturdy pine frame",
+                "Optional hanging kit for easy wall display",
+                "Handcrafted in the USA"
+              ],
+              order: 0,
+              accordionDetails: []
+            }}
+            paragraphOnTop={true}
+            noBorderBottom={true}
+          />
+
+          <div.max-w-[450px]>                  # Satisfaction guarantee
+            <Image src="Satisfaction-100-Guarantee.svg" />
+            <p>{satisfactionGuarantee.title}</p>
+            <p>We've got your back! Every Printerpix order comes with a money-back guarantee.</p>
+          </div>
+        </div>
+
+        <BulkPricingV4 />
+      </div>
+    </div>
+
+    # DESKTOP LAYOUT (hidden lg:block)
+    <div.container.hidden.lg:block>
+      <div.max-w-[100%]>
+        <div.flex-wrap>
+          <div.basis-[60%].border-b>           # Desktop hardcoded description
+            <ProductDescription {...same as mobile} />
+            <Image src="Satisfaction-100-Guarantee.svg" />
+            <p>{title}</p>
+            <p>We've got your back!...</p>
+          </div>
+
+          <div.basis-[40%]>
+            <CanvasSizeTable3 />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    # DESKTOP REVIEWS (hidden lg:grid)
+    <div.container.hidden.lg:grid.lg:grid-cols-10>
+      {product.reviewsCollection && (
+        <div.col-span-12>
+          <CustomerReview />
+        </div>
+      )}
+    </div>
+
+    # DYNAMIC ORDER SECTIONS
+    <div.flex-col>
+      <div style={{order: canvasOrder.productDeliveryDateOrder || componentPositions.productDeliveryDateOrder}}>
+        # Mobile-only delivery deadline (duplicate)
+        <div.container.lg:hidden>
+          <div.border>
+            <p>{aboveClockText}</p>
+            <ProductFlipClock />
+            <ProductDeliveryDateV2 />
+          </div>
+        </div>
+      </div>
+
+      <div style={{order: canvasOrder.productDescriptionOrder || componentPositions.productDescriptionOrder}}>
+        # Product description section
+        {product.productExtendedDetails && (
+          <div.container>
+            <ProductDescriptionV2 />
+            <ProductTrustIndicatorV6 />
+          </div>
+        )}
+      </div>
+
+      <ProductPageContentV2 />
+    </div>
+  </>
+
+child_components:
+  - ProductPageTopBannerV2: Campaign banner
+  - ProductCarousel: Image carousel (custom dot config)
+  - TrustpilotRating: Star rating
+  - OptionCanvasPrintsPanelV2: Configuration panel v2
+  - ProductFlipClock: Countdown timer (no dynamic colors)
+  - ProductDeliveryDateV2: Delivery date
+  - BulkPricingV4: Volume discounts
+  - ProductTrustIndicatorV6: Trust badges
+  - CanvasSizeTable3: Size comparison table variant 3
+  - ProductOptionType4: Hub child products
+  - CustomerReview: Review carousel
+  - ProductDescription: Hardcoded canvas description (not ProductDescriptionV2 for this section)
+  - ProductDescriptionV2: CMS-driven description (for product.productExtendedDetails)
+  - ProductPageContentV2: CMS content
+
+state_management:
+  local_signals:
+    - designUrl: string
+
+  local_stores:
+    - initialCarouselImages: ProductCarouseImage[]
+    - optionStore: OptionStore
+    - carousel: { activeIndex: number }
+
+  reactive_computeds:
+    - componentPositions: parses product.marketingContent3 JSON to ProductPageComponentPositions
+      Returns null if JSON parse fails
+    - productImages: adds selectedFilter to carousel
+
+side_effects:
+  useTask$:
+    - Tracks product.id
+    - Updates optionStore
+    - Builds carousel images
+
+  useVisibleTask$:
+    - Extracts #cta-design-button href
+    - Updates designUrl
+
+  qrl_functions:
+    - changeActiveSlide: updates carousel.activeIndex
+    - onChangeDesignUrl: updates designUrl.value
+
+unique_features:
+  - "Uses OptionCanvasPrintsPanelV2 (not standard OptionCanvasPrintsPanel)"
+  - "Uses CanvasSizeTable3 variant with highlightColour #555555, textColour #CD1D6D"
+  - "Hardcoded ProductDescription data instead of product.productExtendedDetails for top section"
+  - "Carousel: showPriceTag={false}, displayDotOnMoble={true}, displayDotOnDesktop={true}, displayDotBellow={true}, dotSize={10}, displayFullWidthOnMobile={true}"
+  - "componentPositions computed from product.marketingContent3 JSON (fallback to canvasOrder const)"
+  - "canvasOrder const defines default order: popularSizeTableOrder=1, listHubChildsOrder=2, productDeliveryDateOrder=3, highlightReviewOrder=4, productTrustIndicatorOrder=5, bulkPricingOrder=6, productDescriptionOrder=8, customerReviewOrder=9"
+  - "Delivery deadline section duplicated: once in main layout, once in dynamic order section (mobile-only)"
+  - "Satisfaction guarantee has hardcoded text: 'We've got your back! Every Printerpix order comes with a money-back guarantee.'"
+  - "Desktop description + satisfaction guarantee in flex basis-[60%], size table in basis-[40%]"
+  - "Reviews in col-span-12 desktop grid"
+
+layout_characteristics:
+  desktop:
+    - 70% left column (carousel)
+    - 30% right column (options + delivery + bulk pricing)
+    - Below: 60% description + guarantee, 40% size table
+    - Reviews in full-width grid
+  mobile:
+    - Carousel full-width
+    - Title + rating after carousel
+    - Options + delivery
+    - Trust indicator
+    - Size table
+    - Reviews
+    - Description + guarantee + bulk pricing
+
+dependencies:
+  qwik_core:
+    - "@builder.io/qwik": [$, component$, useComputed$, useContext, useSignal, useStore, useStylesScoped$, useTask$, useVisibleTask$]
+    - "@builder.io/qwik-city": [useLocation]
+
+  external_packages:
+    - "@unpic/qwik": [Image]
+    - "qwik-speak": [inlineTranslate]
+
+  internal_imports:
+    - "~/components/product-page/product-carousel/product-carousel": [ProductCarousel, ProductCarouseImage (type)]
+    - "~/components/homepage/trustpilot-rating": [TrustpilotRating]
+    - "~/components/product-page/product-description": [ProductDescription]
+    - "~/components/customer-review/customer-review": [CustomerReview]
+    - "~/components/product-page/option-canvas-prints-panel-v2": [OptionCanvasPrintsPanelV2]
+    - "~/components/product-page/canvas-size-table/canvas-size-table3": [CanvasSizeTable3]
+    - "~/components/product-page/product-option-type-4": [ProductOptionType4]
+    - "~/components/product-page/product-page-content-v2": [ProductPageContentV2]
+    - "~/components/product-page/product-page-top-banner-v2": [ProductPageTopBannerV2]
+    - "~/components/product-page/product-countdown-timer/product-flip-clock-v2": [ProductFlipClock]
+    - "~/components/product-page/product-delivery-date-v2": [ProductDeliveryDateV2]
+    - "~/components/product-page/product-description-v2": [ProductDescriptionV2]
+    - "~/components/product-page/product-trust-indicator-v6": [ProductTrustIndicatorV6]
+    - "~/components/product-page/bulk-pricing-v4": [BulkPricingV4]
+    - "~/context/product-category-context": [ProductContext]
+    - "~/context/device-detector-context": [DeviceDetectorContext]
+    - "~/services/product-page-service": [ProductPageComponentPositions (type), TypeOption2 (type)]
+    - "~/services/product-category-service": [PlatinumProductTypeEnum]
+    - "~/data/option-data": [OptionStore (type)]
+    - "~/config/settings": [settings]
+    - "~/hooks/useDetectScreen": [useDetectScreen]
+
+  styles:
+    - "../styles/index.css?inline": [styles]
+
+behavior:
+  - On mount, reads product data and device info from ProductContext and DeviceDetectorContext
+  - Initializes optionStore with product.optionData, filterIndex, refCode, firstSlideUrl, and selectedFilter
+  - Tracks product.id changes via useTask$ and rebuilds carousel images from product.images; appends embededVideoIcon if embededVideo is present
+  - Computes productImages by prepending selectedFilter image (if a filter is selected) to the carousel image array
+  - Computes componentPositions by parsing product.marketingContent3 as JSON into ProductPageComponentPositions type; returns null on parse failure (try/catch)
+  - Uses canvasOrder constant as fallback ordering: popularSizeTableOrder=1, listHubChildsOrder=2, productDeliveryDateOrder=3, highlightReviewOrder=4, productTrustIndicatorOrder=5, bulkPricingOrder=6, productDescriptionOrder=8, customerReviewOrder=9
+  - useVisibleTask$ (document-ready strategy) extracts href from #cta-design-button DOM element and stores in designUrl signal; tracks product.id changes
+  - ProductCarousel configured with showPriceTag=false, displayDotOnMoble=true, displayDotOnDesktop=true, displayDotBellow=true, dotSize=10, displayFullWidthOnMobile=true
+  - Mobile title and TrustpilotRating rendered below carousel on mobile only
+  - Desktop right column (30%): title, TrustpilotRating, OptionCanvasPrintsPanelV2, delivery deadline (ProductFlipClock without dynamic colors), BulkPricingV4
+  - Mobile: OptionCanvasPrintsPanelV2, delivery deadline below options (block lg:hidden)
+  - ProductTrustIndicatorV6 rendered unconditionally (visible on all viewports) below main columns
+  - Mobile CanvasSizeTable3 (lg:hidden) with highlightColour=#555555, textColour=#CD1D6D, id="2"
+  - Hub children (ProductOptionType4 from product.listHubChilds) rendered when array has items AND region is NOT GB
+  - Mobile reviews section: CustomerReview (when reviewsCollection.reviewModels.length > 0), then hardcoded ProductDescription with static data (title "Your Photo on Canvas", 5 bullets about UV-resistant ink/polycotton/pine frame/hanging kit/handcrafted USA), satisfaction guarantee with hardcoded text "We've got your back! Every Printerpix order comes with a money-back guarantee.", then BulkPricingV4
+  - Desktop layout: same hardcoded ProductDescription in basis-[60%] with satisfaction guarantee, CanvasSizeTable3 in basis-[40%], reviews in col-span-12 grid
+  - Dynamic order sections use canvasOrder fallback OR componentPositions from marketingContent3 JSON: mobile-only delivery deadline section, ProductDescriptionV2 (from product.productExtendedDetails) with ProductTrustIndicatorV6, then ProductPageContentV2
+  - Delivery deadline section is duplicated: once in main layout columns, once in dynamic order section (mobile-only)
+  - changeActiveSlide QRL updates carousel.activeIndex; onChangeDesignUrl QRL updates designUrl.value
+
+used_by:
+  - product-page-selection (rendered when productPageViewName === RyzanGoV2)
+
+security_notes:
+  - componentPositions JSON parse has try/catch error handling
+  - Validate product.marketingContent3 format
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  ProductCarouseImage:
+    description: Single image entry for the product carousel
+    source: ~/components/product-page/product-carousel/product-carousel
+    fields:
+      - name: url
+        type: string
+      - name: altText
+        type: string
+
+  ProductPageComponentPositions:
+    description: Parsed component ordering from product.marketingContent3 JSON
+    source: ~/services/product-page-service
+    fields:
+      - name: popularSizeTableOrder
+        type: number
+        optional: true
+      - name: listHubChildsOrder
+        type: number
+        optional: true
+      - name: productDeliveryDateOrder
+        type: number
+        optional: true
+      - name: highlightReviewOrder
+        type: number
+        optional: true
+      - name: productTrustIndicatorOrder
+        type: number
+        optional: true
+      - name: bulkPricingOrder
+        type: number
+        optional: true
+      - name: productDescriptionOrder
+        type: number
+        optional: true
+      - name: customerReviewOrder
+        type: number
+        optional: true
+
+  CanvasOrderDefaults:
+    description: Hardcoded fallback ordering used when marketingContent3 JSON is absent or invalid
+    fields:
+      - name: popularSizeTableOrder
+        type: "1"
+      - name: listHubChildsOrder
+        type: "2"
+      - name: productDeliveryDateOrder
+        type: "3"
+      - name: highlightReviewOrder
+        type: "4"
+      - name: productTrustIndicatorOrder
+        type: "5"
+      - name: bulkPricingOrder
+        type: "6"
+      - name: productDescriptionOrder
+        type: "8"
+      - name: customerReviewOrder
+        type: "9"
+
+  OptionStore:
+    description: Central reactive store for product option selections
+    source: ~/data/option-data
+    fields:
+      - name: optionData
+        type: object
+      - name: productData
+        type: object
+      - name: filterIndex
+        type: "number[]"
+      - name: refCode
+        type: string
+      - name: firstSlideUrl
+        type: string
+      - name: selectedFilter
+        type: "Filter | null"
+
+  ClockColors:
+    description: Computed clock color pair extracted from floatingBanner CMS data
+    fields:
+      - name: clockColor
+        type: string
+      - name: textColor
+        type: string
+
+field_consumption:
+  ProductContext:
+    consumed:
+      - product: Full product — imageCaption, images, optionData, deliveryDeadline, listHubChilds, productExtendedDetails, reviewsCollection, productPageContent (floatingBanner + designUrl), marketingContent3 (for componentPositions), satisfactionGuarantee translations
+      - friendlyUrl: Passed to option panel child
+      - filterIndex: Seeds optionStore.filterIndex
+      - refCode: Seeds optionStore.refCode
+      - firstSlideUrl: Seeds optionStore.firstSlideUrl
+      - preselectedRefId: Used in optionStore
+      - selectedFilter: Seeds optionStore.selectedFilter; prepended to productImages
+    ignored:
+      - machineToken: Not used — no direct API calls in this template
+      - editor: Not used
+      - couponCode: Not read
+
+  DeviceDetectorContext:
+    consumed:
+      - deviceInfo: Used via useDetectScreen to derive isMobile / isDesktop booleans
+    ignored: []
+
+implementation_logic:
+  component_positions_from_json:
+    rule: |
+      componentPositions is computed by JSON.parse(product.marketingContent3).
+      If parse fails (try/catch), returns null.
+      Actual component ordering uses:
+        canvasOrder.Xorder || componentPositions.Xorder
+      This means canvasOrder (hardcoded defaults) takes precedence over CMS JSON
+      when both are defined (logical OR short-circuits on truthy left operand).
+    critical: true
+
+  hardcoded_product_description:
+    rule: |
+      The ProductDescription component in the mobile and desktop "description" sections
+      uses fully hardcoded data (not product.productExtendedDetails):
+        title: "Your Photo on Canvas"
+        paragraphs: ["Create your canvas print directly from your phone..."]
+        bullets: [5 fixed bullet points about UV ink, polycotton, pine frame, hanging kit, made in USA]
+        order: 0
+        accordionDetails: []
+      The satisfaction guarantee text is also hardcoded:
+        "We've got your back! Every Printerpix order comes with a money-back guarantee."
+      This is intentional — this template overrides CMS description data for this section.
+    critical: true
+
+  hub_children_gb_exclusion:
+    rule: |
+      ProductOptionType4 (from product.listHubChilds) renders only when
+      `product.listHubChilds.length > 0 && settings().website != "GB"`.
+    critical: true
+
+  delivery_deadline_duplication:
+    rule: |
+      The delivery deadline section appears TWICE in the rendered output:
+        1. In the main layout columns (desktop right + mobile inline)
+        2. In the dynamic-order section (mobile-only, lg:hidden)
+      This is intentional in the source — the second occurrence is placed at the
+      dynamic CSS order position from componentPositions.productDeliveryDateOrder.
+    critical: false
+
+visibility_map:
+  mobile_title_and_trustpilot:
+    condition: "isMobile is true (rendered after carousel)"
+    default: hidden
+
+  desktop_right_column:
+    condition: "isDesktop is true (hidden lg:flex)"
+    default: hidden
+
+  desktop_title_in_right_column:
+    condition: "isDesktop is true"
+    default: hidden
+
+  mobile_options_and_delivery:
+    condition: "isMobile is true (block lg:hidden)"
+    default: hidden
+
+  mobile_canvas_size_table:
+    condition: "viewport is mobile (lg:hidden)"
+    default: hidden (CanvasSizeTable3 with id='2')
+
+  hub_children_section:
+    condition: "product.listHubChilds.length > 0 AND settings().website != 'GB'"
+    default: hidden
+
+  mobile_reviews_and_description:
+    condition: "viewport is mobile (lg:hidden)"
+    default: hidden
+
+  desktop_description_and_size_table:
+    condition: "viewport is desktop (hidden lg:block)"
+    default: hidden
+
+  desktop_reviews_grid:
+    condition: "product.reviewsCollection exists AND viewport is desktop (hidden lg:grid)"
+    default: hidden
+
+  customer_review_component:
+    condition: "product.reviewsCollection.reviewModels.length > 0"
+    default: hidden
+
+  dynamic_delivery_deadline_mobile:
+    condition: "viewport is mobile (lg:hidden) — dynamic order section"
+    default: hidden
+
+  product_description_v2_dynamic:
+    condition: "product.productExtendedDetails exists"
+    default: hidden
+
+  delivery_flip_clock:
+    condition: "product.deliveryDeadline.showClock is true"
+    default: hidden

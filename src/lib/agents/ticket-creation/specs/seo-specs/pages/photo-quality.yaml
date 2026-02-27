@@ -1,0 +1,40 @@
+page_id: photo-quality
+description: "Photo quality information page. Uses container component pattern."
+
+url:
+  pattern: "/photo-quality"
+  layout: "default"
+  i18n_rewrites:
+    NL: "/fotokwaliteit"
+    DE: "/fotoqualitat"
+    IT: "/qualita-foto"
+    ES: "/calidad-foto"
+
+seo_contract:
+  title:
+    source: "Managed by PhotoQualityContainer"
+  meta_description:
+    source: "Managed by PhotoQualityContainer"
+  canonical:
+    pattern: "{domain}/photo-quality"
+  robots:
+    value: "Standard"
+  structured_data: "None"
+  hreflang:
+    count: 8
+    known_issues:
+      - "Hreflang incorrect for NL, DE, IT, ES rewritten URLs"
+
+file_chain:
+  route:
+    file: "src/routes/photo-quality/index.tsx"
+    spec: "../migration-specs/frontend/routes/photo-quality.yaml"
+  layout:
+    file: "src/routes/layout.tsx"
+    spec: "../migration-specs/frontend/layouts/layout-default.yaml"
+  page_component:
+    name: "PhotoQualityContainer"
+    file: "src/components/photo-quality-page/containers/photo-quality-container.tsx"
+    spec: "../migration-specs/frontend/components/info-pages/photo-quality-container.yaml"
+  middleware:
+    ref: "_architecture.yaml → middleware_pipeline"

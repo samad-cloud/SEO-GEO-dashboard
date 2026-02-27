@@ -1,0 +1,140 @@
+name: DeliveryRatesService
+source: services/delivery-rates.service.ts
+description: |
+  Service for fetching delivery rate information from the API.
+  Provides shipping cost data per product reference code with quantity tiers.
+
+exports:
+  interfaces:
+    - name: DeliveryRateCardType
+      exported: true
+      fields:
+        - name: referenceCode
+          type: string
+          description: Product reference code
+        - name: name
+          type: string
+          description: Product name
+        - name: qty
+          type: number
+          description: Quantity threshold for this rate
+        - name: shippingChargeDisplay
+          type: Record<string, any>
+          description: Shipping charge data by region/method
+
+    - name: IDeliveryRates
+      exported: true
+      fields:
+        - name: header
+          type: string
+          description: Section header text
+        - name: deliveryRateCards
+          type: DeliveryRateCardType[]
+          description: Array of delivery rate cards per product
+
+  functions:
+    - name: getDeliveryRates
+      signature: "() => Promise<IDeliveryRates[] | null>"
+      exported: true
+      async: true
+      description: Fetches delivery rates from the API
+
+api_contracts:
+  - endpoint: /Delivery/Get
+    method: GET
+    description: Fetches delivery rate data for all products
+    response_type: NewAPIResponse<IDeliveryRates[]>
+    response_shape:
+      - header: string
+        deliveryRateCards:
+          - referenceCode: string
+            name: string
+            qty: number
+            shippingChargeDisplay:
+              [key: string]: any
+    error_behavior: Returns null on error (hard failure mode)
+
+dependencies:
+  external:
+    - package: N/A
+  internal:
+    - path: ~/config/http
+      imports: [NewAPIResponse]
+      usage: Type for API responses
+    - path: ~/utility/http
+      imports: [handleMultipleAPIRequests, HTTP_METHODS]
+      usage: API request handler and method constants
+    - path: ~/services/common-service
+      imports: [isDataReady]
+      usage: Check if API response is successful
+
+data_flow:
+  - step: 1
+    action: Call getDeliveryRates()
+  - step: 2
+    action: GET request to /Delivery/Get with "hard" error handling
+  - step: 3
+    action: Check isDataReady(response)
+  - step: 4
+    action: Return response.data (IDeliveryRates[]) or null on error
+
+business_logic:
+  - Returns array of delivery rate sections
+  - Each section has a header and array of rate cards
+  - Rate cards grouped by product reference code
+  - Quantity thresholds determine applicable rate
+  - shippingChargeDisplay is flexible (Record<string, any>)
+  - Uses "hard" error handling mode (vs "soft" in add-to-cart-service)
+  - Null return indicates API failure
+
+error_handling:
+  - Uses "hard" failure mode in handleMultipleAPIRequests
+  - isDataReady checks for successful response
+  - Returns null on API error
+  - No error throwing - silent failure
+  - Caller must handle null response
+
+security:
+  - Public API endpoint (no authentication in this service)
+  - Rate data is read-only
+  - No user input validation needed (GET request, no params)
+
+behavior:
+  - name: getDeliveryRates
+    steps:
+      - GETs /Delivery/Get with empty params object {}
+      - Uses "hard" error handling mode (stricter than "soft")
+      - If isDataReady, returns response.data as IDeliveryRates[]
+      - Otherwise returns null
+      - No try-catch wrapper; error handling delegated to handleMultipleAPIRequests
+
+used_by:
+  - frontend/routes/delivery-rates.yaml - imports getDeliveryRates, IDeliveryRates, DeliveryRateCardType for delivery rates page
+  - frontend/components/shared/product-type-table.yaml - imports DeliveryRateCardType for rate display component
+
+types:
+  DeliveryRateCardType:
+    description: Individual delivery rate card for a product at a given quantity tier
+    fields:
+      - name: referenceCode
+        type: string
+        description: Product reference code
+      - name: name
+        type: string
+        description: Product name
+      - name: qty
+        type: number
+        description: Quantity threshold for this rate
+      - name: shippingChargeDisplay
+        type: "Record<string, any>"
+        description: Shipping charge data keyed by region or method
+
+  IDeliveryRates:
+    description: A section of delivery rate data with a header and rate cards
+    fields:
+      - name: header
+        type: string
+        description: Section header text
+      - name: deliveryRateCards
+        type: "DeliveryRateCardType[]"
+        description: Array of delivery rate cards per product

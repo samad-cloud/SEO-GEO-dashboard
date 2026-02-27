@@ -1,0 +1,216 @@
+name: HomeBestSellers
+source: components/web-component/home-best-sellers.tsx
+description: >
+  Displays a grid of featured/best-seller products on the homepage.
+  Each product is a clickable card with image, heading, and description.
+  The grid layout adapts based on product count (4+ products use percentage widths,
+  3 or fewer use flex-1 equal sizing). Tracks Matomo analytics events on product click.
+
+exports:
+  default:
+    type: component
+    name: HomeBestSellers
+    export_type: default
+
+props:
+  data:
+    type: BestSellersSection
+    required: true
+    description: Contains heading, subHeading, and products array from web component service
+
+component_structure:
+  root:
+    element: div
+    classes: "w-full border-b border-base-mainBorder px-[10px] lg:px-0"
+    children:
+      - element: div
+        classes: "flex justify-between items-center"
+        children:
+          - element: h2
+            classes: "font-semibold w-full"
+            content: data.heading
+            conditional: data.heading is truthy
+          - element: p
+            classes: "mt-4 text-center"
+            content: data.subHeading
+            conditional: data.subHeading is truthy
+      - element: div
+        classes: "flex flex-col lg:flex-row justify-between items-center flex-wrap gap-4 py-2"
+        children:
+          - iterator: data.products.map
+            key: product.description
+            element: div
+            classes_logic: >
+              If data.products.length > 3: "w-[49%] lg:w-[24%]"
+              Else: "flex-1"
+            children:
+              - element: a
+                href: product.url
+                classes: "w-full flex flex-col box-border justify-center py-[10px] md:py-[10px] cta_home_best_sellers--{index}"
+                on_click: pushMatomoEvent with CLICK_BEST_SELLERS_PRODUCT and product.url
+                children:
+                  - element: Image (optimized)
+                    src: product.image
+                    alt: product.imageAlt
+                    classes: "w-full h-auto mb-[15px]"
+                    aspect_ratio: "3/2"
+                    priority: true
+                  - element: h3
+                    classes: "font-bold text-center overflow-hidden"
+                    content: product.heading
+                  - element: p
+                    classes: "text-center overflow-hidden text-sm"
+                    content: product.description
+
+child_components: []
+
+data_structure:
+  BestSellersSection:
+    heading:
+      type: string
+      description: Section heading displayed above the products grid
+    subHeading:
+      type: string
+      description: Section sub-heading displayed alongside heading
+    products:
+      type: array
+      items:
+        heading:
+          type: string
+          description: Product card title
+        image:
+          type: string
+          description: Product image URL
+        imageAlt:
+          type: string
+          description: Alt text for product image
+        description:
+          type: string
+          description: Product description text, also used as map key
+        url:
+          type: string
+          description: Product link URL
+
+behavior:
+  rendering:
+    - Conditionally renders heading (h2) only when data.heading is truthy
+    - Conditionally renders subHeading (p) only when data.subHeading is truthy
+    - Iterates over data.products array to render product cards
+    - Uses product.description as React key for the map
+  layout:
+    - Products displayed in a column on mobile, row on desktop (lg breakpoint)
+    - When more than 3 products, each card is 49% width on mobile, 24% on desktop (4 per row)
+    - When 3 or fewer products, each card uses flex-1 for equal distribution
+    - Section has bottom border and horizontal padding (10px mobile, 0 on lg)
+  images:
+    - Uses optimized Image component (unpic) with 3:2 aspect ratio
+    - All product images are marked as priority (eager loading)
+  analytics:
+    - On product link click, fires Matomo trackEvent with category COMMON, action CLICK_BEST_SELLERS_PRODUCT, label product.url
+  css_classes_with_index:
+    - Each product link gets class "cta_home_best_sellers--{index}" for targeting
+
+styling:
+  approach: Tailwind CSS utility classes
+  responsive_breakpoints:
+    - lg: switches from column to row layout, removes horizontal padding
+    - md: padding adjustments within product cards
+  custom_classes:
+    - "cta_home_best_sellers--{index}": indexed CSS class on each product link for analytics/targeting
+  border: bottom border using base-mainBorder color token
+
+dependencies:
+  - name: "@unpic/qwik"
+    purpose: Optimized image component with aspect ratio support
+    import: "Image"
+  - name: web-component-service
+    purpose: BestSellersSection type definition
+    import: "type BestSellersSection"
+  - name: matomo utility
+    purpose: Analytics event tracking
+    imports:
+      - MatomoCategory
+      - MatomoEvent
+      - pushMatomoEvent
+
+used_by:
+  - components/web-component/web-contents-component.tsx
+  - components/web-component/web-contents-component-v3.tsx
+
+security:
+  - Product URLs come from CMS data; should be validated/sanitized before rendering as href
+  - Image URLs from CMS should be validated against allowed domains
+
+notes:
+  - The component uses product.description as the key prop for the map, which could cause issues if descriptions are duplicated
+  - The CSS class "cta_home_best_sellers--{index}" uses index-based naming for analytics tracking
+  - All product images are loaded eagerly (priority=true), which may impact performance with many products
+  - The heading and subHeading are in a flex row with justify-between, so they appear on opposite sides
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  HomeBestSellersProps:
+    description: Component props interface
+    fields:
+      - name: data
+        type: BestSellersSection
+
+  BestSellersSection:
+    description: Featured products section data from web-component-service
+    source: ~/services/web-component-service
+    fields:
+      - name: heading
+        type: string
+      - name: subHeading
+        type: string
+      - name: products
+        type: "Array<BestSellerProduct>"
+
+  BestSellerProduct:
+    description: Individual product card item within BestSellersSection.products
+    fields:
+      - name: heading
+        type: string
+      - name: image
+        type: string
+      - name: imageAlt
+        type: string
+      - name: description
+        type: string
+      - name: url
+        type: string
+
+field_consumption:
+  BestSellersSection:
+    consumed:
+      - heading: Rendered as h2 when truthy
+      - subHeading: Rendered as p when truthy
+      - products: Iterated to render product cards; length determines grid width classes (>3 uses percentage widths, <=3 uses flex-1)
+
+  BestSellerProduct:
+    consumed:
+      - heading: Rendered as h3 inside product card
+      - image: Passed as src to Image component
+      - imageAlt: Passed as alt to Image component
+      - description: Rendered as p below heading; also used as map key
+      - url: Passed as href on the anchor element; also used in Matomo analytics event
+
+visibility_map:
+  section_heading:
+    condition: "data.heading is truthy"
+    default: hidden
+
+  section_subheading:
+    condition: "data.subHeading is truthy"
+    default: hidden
+
+  product_card_wrapper_wide:
+    condition: "data.products.length > 3"
+    default: "hidden (flex-1 used instead when 3 or fewer products)"
+    notes: "Class 'w-[49%] lg:w-[24%]' applied when products.length > 3"
+
+  product_card_wrapper_flex:
+    condition: "data.products.length <= 3"
+    default: visible
+    notes: "Class 'flex-1' applied when products.length is 3 or fewer"

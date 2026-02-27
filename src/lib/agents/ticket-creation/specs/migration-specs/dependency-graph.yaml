@@ -1,0 +1,429 @@
+# Dependency Graph
+# Generated: 2026-02-17T18:39:55.206Z
+# Phase 4.5 Output - Dependency Analysis
+
+# NOTE (2026-02-24): 45 new component specs added in Phase 1 gap fill.
+# Statistics updated. Level assignments for new specs documented in levels section.
+# Full re-generation of circular_dependencies not performed (backend service cycles unchanged).
+
+dependency_graph:
+  statistics:
+    total_specs: 189
+    leaf_nodes_count: 44
+    max_depth: 3
+    pages_count: 19
+    circular_dependencies: 92
+    unresolved_dependencies: 20
+
+  leaf_nodes:
+    - backend/services/homepage-service.yaml
+    - frontend/components/media/video.yaml
+    - frontend/components/uploadcare/uploadprogress.yaml
+    - frontend/components/web-component/stories.yaml
+    - frontend/components/web-component/home-best-sellers.yaml
+    - frontend/components/web-component/shopping-guide.yaml
+    - frontend/components/web-component/mid-page-banner.yaml
+    - backend/services/markdown-service.yaml
+    - backend/services/marketing-page-web-content-service.yaml
+    - backend/services/static-page-service.yaml
+    - frontend/components/bulk-order/bulk-order-page-old.yaml
+    - frontend/components/bulk-order/bulk-order-page.yaml
+    - frontend/components/info-pages/contact-us-container.yaml
+    - frontend/components/info-pages/photo-quality-container.yaml
+    - frontend/components/info-pages/terms-and-conditions-container.yaml
+    - frontend/components/info-pages/track-my-order-container.yaml
+    - frontend/components/product-page/product-page-base-template.yaml
+    - frontend/components/shared/accordion-details.yaml
+    - frontend/components/shared/accordion-header.yaml
+    - frontend/components/shared/accordion.yaml
+    - frontend/components/shared/breadcrumbs.yaml
+    - frontend/components/shared/cross-domain-notification.yaml
+    - frontend/components/shared/customer-review.yaml
+    - frontend/components/shared/fresh-desk-widget.yaml
+    - frontend/components/shared/guideline-section.yaml
+    - frontend/components/shared/how-it-works.yaml
+    - frontend/components/shared/large-orders.yaml
+    - frontend/components/shared/our-help.yaml
+    - frontend/components/shared/product-type-table.yaml
+    - frontend/components/shared/svg-icon.yaml
+    - frontend/components/shared/trust-indicator.yaml
+    - frontend/layouts/layout-bulkorder.yaml
+    - frontend/routes/why-choose-printerpix.yaml
+    - shared/config/settings.yaml
+    - shared/data/marketing-content-data.yaml
+    - shared/data/option-data.yaml
+    - shared/data/review-data.yaml
+    - shared/utilities/country-region.yaml
+    - shared/utilities/device.yaml
+    - shared/utilities/element.yaml
+    - shared/utilities/matomo.yaml
+    # New Phase 1 level_0 specs (true entry points with unspecced-only parents)
+    - frontend/components/carousels/static-carousel.yaml
+    - frontend/components/info-pages/tracking-history.yaml
+    - frontend/components/uploadcare/upload-modal.yaml
+
+  pages:
+    - frontend/routes/about-us.yaml
+    - frontend/routes/bulk-ordering.yaml
+    - frontend/routes/contact-us.yaml
+    - frontend/routes/delivery-rates.yaml
+    - frontend/routes/home-page.yaml
+    - frontend/routes/image-resolution.yaml
+    - frontend/routes/payment-methods.yaml
+    - frontend/routes/photo-quality.yaml
+    - frontend/routes/product-category.yaml
+    - frontend/routes/returns-policy.yaml
+    - frontend/routes/satisfaction-guarantee.yaml
+    - frontend/routes/shipping-policy.yaml
+    - frontend/routes/sitemap-categories.yaml
+    - frontend/routes/sitemap-index.yaml
+    - frontend/routes/sitemap-pages.yaml
+    - frontend/routes/sitemap-products.yaml
+    - frontend/routes/terms-and-conditions.yaml
+    - frontend/routes/track-my-order.yaml
+    - frontend/routes/why-choose-printerpix.yaml
+
+  most_depended_on:
+    - spec: shared/config/settings.yaml
+      dependents_count: 39
+    - spec: backend/services/product-category-service.yaml
+      dependents_count: 22
+    - spec: shared/context/product-category-context.yaml
+      dependents_count: 17
+    - spec: backend/services/category-service.yaml
+      dependents_count: 15
+    - spec: backend/services/json-service.yaml
+      dependents_count: 15
+    - spec: shared/utilities/http.yaml
+      dependents_count: 15
+    - spec: frontend/components/shared/customer-review.yaml
+      dependents_count: 14
+    - spec: backend/services/product-page-service.yaml
+      dependents_count: 14
+    - spec: shared/config/http.yaml
+      dependents_count: 13
+    - spec: frontend/components/shared/svg-icon.yaml
+      dependents_count: 10
+    - spec: shared/context/device-detector-context.yaml
+      dependents_count: 10
+    - spec: shared/data/option-data.yaml
+      dependents_count: 10
+    - spec: backend/services/common-service.yaml
+      dependents_count: 9
+    - spec: backend/services/server.yaml
+      dependents_count: 9
+    - spec: backend/services/cart-cookie-service.yaml
+      dependents_count: 8
+    - spec: backend/services/themes-service.yaml
+      dependents_count: 7
+    - spec: backend/services/web-component-service.yaml
+      dependents_count: 6
+    - spec: shared/utilities/homepage-contents.yaml
+      dependents_count: 5
+    - spec: shared/utilities/matomo.yaml
+      dependents_count: 5
+    - spec: backend/services/cart-services/gtm/data-layer-mapper.yaml
+      dependents_count: 5
+    - spec: backend/services/klaviyo-service.yaml
+      dependents_count: 4
+    - spec: backend/services/accounts-service.yaml
+      dependents_count: 3
+
+  levels:
+    level_0: # 44 specs (41 original + 3 new from Phase 1 gap fill with unspecced-only parents)
+      - backend/services/homepage-service.yaml
+      - frontend/components/media/video.yaml
+      - frontend/components/uploadcare/uploadprogress.yaml
+      - frontend/components/web-component/stories.yaml
+      - frontend/components/web-component/home-best-sellers.yaml
+      - frontend/components/web-component/shopping-guide.yaml
+      - frontend/components/web-component/mid-page-banner.yaml
+      - backend/services/markdown-service.yaml
+      - backend/services/marketing-page-web-content-service.yaml
+      - backend/services/static-page-service.yaml
+      - frontend/components/bulk-order/bulk-order-page-old.yaml
+      - frontend/components/bulk-order/bulk-order-page.yaml
+      - frontend/components/info-pages/contact-us-container.yaml
+      - frontend/components/info-pages/photo-quality-container.yaml
+      - frontend/components/info-pages/terms-and-conditions-container.yaml
+      - frontend/components/info-pages/track-my-order-container.yaml
+      - frontend/components/product-page/product-page-base-template.yaml
+      - frontend/components/shared/accordion-details.yaml
+      - frontend/components/shared/accordion-header.yaml
+      - frontend/components/shared/accordion.yaml
+      - frontend/components/shared/breadcrumbs.yaml
+      - frontend/components/shared/cross-domain-notification.yaml
+      - frontend/components/shared/customer-review.yaml
+      - frontend/components/shared/fresh-desk-widget.yaml
+      - frontend/components/shared/guideline-section.yaml
+      - frontend/components/shared/how-it-works.yaml
+      - frontend/components/shared/large-orders.yaml
+      - frontend/components/shared/our-help.yaml
+      - frontend/components/shared/product-type-table.yaml
+      - frontend/components/shared/svg-icon.yaml
+      - frontend/components/shared/trust-indicator.yaml
+      - frontend/layouts/layout-bulkorder.yaml
+      - frontend/routes/why-choose-printerpix.yaml
+      - shared/config/settings.yaml
+      - shared/data/marketing-content-data.yaml
+      - shared/data/option-data.yaml
+      - shared/data/review-data.yaml
+      - shared/utilities/country-region.yaml
+      - shared/utilities/device.yaml
+      - shared/utilities/element.yaml
+      - shared/utilities/matomo.yaml
+      # New Phase 1 components with all parents unspecced (true entry points / leaf nodes)
+      - frontend/components/carousels/static-carousel.yaml
+      - frontend/components/info-pages/tracking-history.yaml
+      - frontend/components/uploadcare/upload-modal.yaml
+    level_1: # 37 specs (27 original + 10 new from Phase 1 gap fill)
+      - backend/services/cart-services/gtm/data-layer-base.yaml
+      - frontend/components/homepage/trustpilot-rating.yaml
+      - frontend/components/web-component/trust-signals.yaml
+      - frontend/components/web-component/seo-content.yaml
+      - frontend/components/web-component/cta-list.yaml
+      - shared/utilities/sentry.yaml
+      - backend/services/console-log-service.yaml
+      - backend/services/navigation-v3-service.yaml
+      - backend/services/product-page-web-content-service.yaml
+      - backend/services/server.yaml
+      - frontend/components/info-pages/payment-methods-container.yaml
+      - frontend/routes/bulk-ordering.yaml
+      - frontend/routes/contact-us.yaml
+      - frontend/routes/photo-quality.yaml
+      - frontend/routes/returns-policy.yaml
+      - frontend/routes/satisfaction-guarantee.yaml
+      - frontend/routes/sitemap-categories.yaml
+      - frontend/routes/sitemap-pages.yaml
+      - frontend/routes/sitemap-products.yaml
+      - frontend/routes/terms-and-conditions.yaml
+      - frontend/routes/track-my-order.yaml
+      - shared/context/device-detector-context.yaml
+      - shared/utilities/about-us-content.yaml
+      - shared/utilities/backup-json-utilities.yaml
+      - shared/utilities/google-tag-manager-extension.yaml
+      - shared/utilities/homepage-contents.yaml
+      - shared/utilities/share-contents.yaml
+      # New Phase 1 components (level_1 — used by level_0 specs within graph)
+      - frontend/components/uploadcare/upload-input.yaml
+      - frontend/components/info-pages/multi-order-select.yaml
+      - frontend/components/info-pages/shipment-detail.yaml
+      - frontend/components/info-pages/photo-quality.yaml
+      - frontend/components/info-pages/terms-and-conditions.yaml
+      - frontend/components/web-component/faq.yaml
+      - frontend/components/web-component/shop-by-budget.yaml
+      - frontend/components/web-component/shop-by-category.yaml
+      - frontend/components/web-component/shopping-guide-slider.yaml
+      - frontend/components/shared/star-rating.yaml
+    level_2: # 4 specs
+      - frontend/routes/about-us.yaml
+      - frontend/routes/payment-methods.yaml
+      - frontend/routes/sitemap-index.yaml
+      - shared/utilities/format.yaml
+    level_3: # 104 specs (72 original + 32 new from Phase 1 gap fill)
+      - backend/services/cart-cookie-service.yaml
+      - backend/services/cart-services/gtm/data-layer-mapper.yaml
+      - backend/services/go-quick-service.yaml
+      - frontend/components/carousels/static-carousel1.yaml
+      - frontend/components/category-page/blog-category-section.yaml
+      - frontend/components/category-page/category-cards.yaml
+      - frontend/components/category-page/email-subscription.yaml
+      - frontend/components/web-component/faq-v2.yaml
+      - frontend/components/web-component/ugc-section.yaml
+      - frontend/components/web-component/video-banner.yaml
+      - frontend/components/uploadcare/uploadcare.yaml
+      - frontend/components/footer/footer-containerless.yaml
+      - frontend/components/homepage/home-customer-reviews.yaml
+      - frontend/components/homepage/homepagecategory.yaml
+      - frontend/components/homepage/homepage-category-container.yaml
+      - frontend/components/homepage/marketing-content-video.yaml
+      - frontend/components/carousels/dynamic-carousel.yaml
+      - frontend/components/go-quick/go-quick-carousel-widget.yaml
+      - frontend/components/go-quick/go-quick-homepage-widget.yaml
+      - frontend/layouts/layout-containerless.yaml
+      - frontend/components/web-component/web-contents-component.yaml
+      - frontend/routes/home-page.yaml
+      - backend/services/accounts-service.yaml
+      - backend/services/add-to-cart-service.yaml
+      - backend/services/category-service.yaml
+      - backend/services/common-service.yaml
+      - backend/services/delivery-rates-service.yaml
+      - backend/services/holiday-delivery-service.yaml
+      - backend/services/home-service.yaml
+      - backend/services/json-service.yaml
+      - backend/services/klaviyo-service.yaml
+      - backend/services/middle-ware-service.yaml
+      - backend/services/product-category-service.yaml
+      - backend/services/product-page-service.yaml
+      - backend/services/shop-by-budget-service.yaml
+      - backend/services/shop-by-category-service.yaml
+      - backend/services/shop-page-service.yaml
+      - backend/services/themes-service.yaml
+      - backend/services/web-component-service.yaml
+      - frontend/components/banner/dynamic-promo-banner-v2.yaml
+      - frontend/components/banner/strip-banner.yaml
+      - frontend/components/category-page/category-page-factory.yaml
+      - frontend/components/category-page/common-category-container.yaml
+      - frontend/components/footer/footer-product-category.yaml
+      - frontend/components/footer/footer-shipping-banner.yaml
+      - frontend/components/footer/footer.yaml
+      - frontend/components/header/header-wrapper.yaml
+      - frontend/components/header/header.yaml
+      - frontend/components/info-pages/image-resolution-container.yaml
+      - frontend/components/product-page/instant-product-page-container.yaml
+      - frontend/components/product-page/photo-canvas-prints-bundled-template.yaml
+      - frontend/components/product-page/photo-canvas-prints-hub-bundled-template.yaml
+      - frontend/components/product-page/photo-canvas-prints-new-template-v3.yaml
+      - frontend/components/product-page/photo-canvas-prints-new-template.yaml
+      - frontend/components/product-page/photo-canvas-prints-template-v2.yaml
+      - frontend/components/product-page/product-page-basic-template.yaml
+      - frontend/components/product-page/product-page-fixed-template.yaml
+      - frontend/components/product-page/product-page-fixed-theme-template.yaml
+      - frontend/components/product-page/product-page-hub-child-template.yaml
+      - frontend/components/product-page/product-page-hub-template.yaml
+      - frontend/components/product-page/product-page-selection.yaml
+      - frontend/components/shared/home-bottom-banner.yaml
+      - frontend/layouts/layout-categoryproduct.yaml
+      - frontend/layouts/layout-default.yaml
+      - frontend/routes/delivery-rates.yaml
+      - frontend/routes/image-resolution.yaml
+      - frontend/routes/product-category.yaml
+      - frontend/routes/shipping-policy.yaml
+      - shared/config/http.yaml
+      - shared/context/product-category-context.yaml
+      - shared/context/web-content-context.yaml
+      - shared/utilities/http.yaml
+      # New Phase 1 components (level_3 — used by existing level_3 orchestrators)
+      - frontend/components/product-page/option-panel.yaml
+      - frontend/components/product-page/product-carousel.yaml
+      - frontend/components/product-page/product-page-content-basic.yaml
+      - frontend/components/product-page/product-page-content-component-v2.yaml
+      - frontend/components/product-page/product-page-content-v2.yaml
+      # Corrected from level_0 — used by level_3 product-page templates / CommonCategoryContainer
+      - frontend/components/product-page/product-delivery-date-v2.yaml
+      - frontend/components/product-page/product-description-v2.yaml
+      - frontend/components/product-page/product-flip-clock.yaml
+      - frontend/components/product-page/product-trust-indicator-v6.yaml
+      - frontend/components/category-page/category-banner.yaml
+      - frontend/components/category-page/category-card.yaml
+      - frontend/components/category-page/category-quick-links.yaml
+      - frontend/components/category-page/global-category-banner.yaml
+      - frontend/components/category-page/product-sections.yaml
+      - frontend/components/header/global-search.yaml
+      - frontend/components/header/reminder-provider.yaml
+      - frontend/components/homepage/home-page-category-card.yaml
+      - frontend/components/banner/banner-flip-clock.yaml
+      # Corrected from level_1 — used by level_3 specs
+      - frontend/components/product-page/bulk-pricing-v4.yaml
+      - frontend/components/product-page/product-option-type-4.yaml
+      - frontend/components/product-page/product-page-top-banner-v2.yaml
+      - frontend/components/product-page/product-shop-design.yaml
+      - frontend/components/category-page/category-page-top-banner-v2.yaml
+      - frontend/components/category-page/collection-slider.yaml
+      - frontend/components/category-page/shop-page-cards.yaml
+      - frontend/components/header/navigation-menu-4.yaml
+      - frontend/components/header/reminder-creation-modal.yaml
+      - frontend/components/banner/floating-banner.yaml
+      - frontend/components/banner/main-banner.yaml
+      # Corrected from level_0 — used by level_3 specs (ugc-section, image-resolution-container)
+      - frontend/components/info-pages/photo-tips.yaml
+      - frontend/components/web-component/flip-ugc.yaml
+      - frontend/components/web-component/slider-ugc.yaml
+
+  circular_dependencies:
+    - cycle: "backend/services/cart-cookie-service.yaml -> backend/services/cart-services/gtm/data-layer-mapper.yaml -> backend/services/cart-cookie-service.yaml"
+    - cycle: "backend/services/json-service.yaml -> backend/services/shop-by-category-service.yaml -> backend/services/json-service.yaml"
+    - cycle: "backend/services/common-service.yaml -> backend/services/json-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-category-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/json-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/accounts-service.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/klaviyo-service.yaml -> backend/services/accounts-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/klaviyo-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/product-category-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/themes-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/themes-service.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/themes-service.yaml -> backend/services/json-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/themes-service.yaml -> backend/services/product-category-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/product-page-service.yaml -> backend/services/themes-service.yaml -> backend/services/product-page-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/themes-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/web-component-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/web-component-service.yaml -> backend/services/home-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/web-component-service.yaml -> backend/services/product-category-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/web-component-service.yaml -> backend/services/shop-by-budget-service.yaml -> backend/services/json-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/web-component-service.yaml -> backend/services/shop-by-category-service.yaml -> backend/services/json-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/web-component-service.yaml -> backend/services/themes-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/web-component-service.yaml -> backend/services/themes-service.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/web-component-service.yaml -> backend/services/themes-service.yaml -> backend/services/json-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/web-component-service.yaml -> backend/services/themes-service.yaml -> backend/services/product-category-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/product-page-service.yaml -> backend/services/web-component-service.yaml -> backend/services/themes-service.yaml -> backend/services/product-page-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/web-component-service.yaml -> backend/services/themes-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/common-service.yaml"
+    - cycle: "backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/json-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml"
+    - cycle: "backend/services/accounts-service.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/klaviyo-service.yaml -> backend/services/accounts-service.yaml"
+    - cycle: "backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/klaviyo-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml"
+    - cycle: "backend/services/product-category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/product-category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/themes-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/themes-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/themes-service.yaml -> backend/services/common-service.yaml"
+    - cycle: "backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/themes-service.yaml -> backend/services/json-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml"
+    - cycle: "backend/services/product-category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/themes-service.yaml -> backend/services/product-category-service.yaml"
+    - cycle: "backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/themes-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/web-component-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/web-component-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/web-component-service.yaml -> backend/services/home-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml"
+    - cycle: "backend/services/product-category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/web-component-service.yaml -> backend/services/product-category-service.yaml"
+    - cycle: "backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/web-component-service.yaml -> backend/services/shop-by-budget-service.yaml -> backend/services/json-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml"
+    - cycle: "backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/web-component-service.yaml -> backend/services/shop-by-category-service.yaml -> backend/services/json-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/web-component-service.yaml -> backend/services/themes-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/web-component-service.yaml -> backend/services/themes-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/web-component-service.yaml -> backend/services/themes-service.yaml -> backend/services/common-service.yaml"
+    - cycle: "backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/web-component-service.yaml -> backend/services/themes-service.yaml -> backend/services/json-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml"
+    - cycle: "backend/services/product-category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/web-component-service.yaml -> backend/services/themes-service.yaml -> backend/services/product-category-service.yaml"
+    - cycle: "backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/web-component-service.yaml -> backend/services/themes-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml"
+    - cycle: "backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/product-page-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-category-service.yaml -> backend/services/themes-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/themes-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/json-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/themes-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/accounts-service.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/themes-service.yaml -> backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/klaviyo-service.yaml -> backend/services/accounts-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/klaviyo-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/themes-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/product-category-service.yaml -> backend/services/themes-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/web-component-service.yaml -> backend/services/home-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/themes-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/web-component-service.yaml -> backend/services/product-category-service.yaml -> backend/services/themes-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/web-component-service.yaml -> backend/services/shop-by-budget-service.yaml -> backend/services/json-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/themes-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/web-component-service.yaml -> backend/services/shop-by-category-service.yaml -> backend/services/json-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/themes-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/themes-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/themes-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/themes-service.yaml -> backend/services/common-service.yaml"
+    - cycle: "backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/themes-service.yaml -> backend/services/json-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml"
+    - cycle: "backend/services/product-category-service.yaml -> backend/services/themes-service.yaml -> backend/services/product-category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-category-service.yaml -> backend/services/themes-service.yaml -> backend/services/product-page-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/themes-service.yaml -> backend/services/product-page-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/themes-service.yaml -> backend/services/product-page-service.yaml -> backend/services/common-service.yaml"
+    - cycle: "backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/themes-service.yaml -> backend/services/product-page-service.yaml -> backend/services/json-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml"
+    - cycle: "backend/services/accounts-service.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/themes-service.yaml -> backend/services/product-page-service.yaml -> backend/services/klaviyo-service.yaml -> backend/services/accounts-service.yaml"
+    - cycle: "backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/themes-service.yaml -> backend/services/product-page-service.yaml -> backend/services/klaviyo-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml"
+    - cycle: "backend/services/product-category-service.yaml -> backend/services/themes-service.yaml -> backend/services/product-page-service.yaml -> backend/services/product-category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> backend/services/product-category-service.yaml -> backend/services/themes-service.yaml -> backend/services/product-page-service.yaml -> backend/services/web-component-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/category-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/themes-service.yaml -> backend/services/product-page-service.yaml -> backend/services/web-component-service.yaml -> backend/services/category-service.yaml"
+    - cycle: "backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/themes-service.yaml -> backend/services/product-page-service.yaml -> backend/services/web-component-service.yaml -> backend/services/home-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml"
+    - cycle: "backend/services/product-category-service.yaml -> backend/services/themes-service.yaml -> backend/services/product-page-service.yaml -> backend/services/web-component-service.yaml -> backend/services/product-category-service.yaml"
+    - cycle: "backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/themes-service.yaml -> backend/services/product-page-service.yaml -> backend/services/web-component-service.yaml -> backend/services/shop-by-budget-service.yaml -> backend/services/json-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml"
+    - cycle: "backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/themes-service.yaml -> backend/services/product-page-service.yaml -> backend/services/web-component-service.yaml -> backend/services/shop-by-category-service.yaml -> backend/services/json-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml"
+    - cycle: "backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/themes-service.yaml -> backend/services/product-page-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml"
+    - cycle: "backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/themes-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml"
+    - cycle: "backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml"
+    - cycle: "backend/services/common-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml"
+    - cycle: "backend/services/accounts-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/klaviyo-service.yaml -> backend/services/accounts-service.yaml"
+    - cycle: "backend/services/accounts-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/klaviyo-service.yaml -> backend/services/accounts-service.yaml"
+    - cycle: "backend/services/accounts-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/themes-service.yaml -> backend/services/category-service.yaml -> backend/services/product-page-service.yaml -> backend/services/klaviyo-service.yaml -> backend/services/accounts-service.yaml"
+    - cycle: "backend/services/accounts-service.yaml -> shared/utilities/http.yaml -> backend/services/common-service.yaml -> backend/services/product-category-service.yaml -> backend/services/themes-service.yaml -> backend/services/product-page-service.yaml -> backend/services/klaviyo-service.yaml -> backend/services/accounts-service.yaml"
+    # NOTE (2026-02-24 audit): footer <-> layout-default cycle VERIFIED REAL.
+    # footer.tsx: import { useLoadBanner } from "~/routes/layout" — value import.
+    # layout.tsx: import Footer from "../components/footer/footer" — value import.
+    # Both directions are runtime value imports. This is a genuine circular dependency.
+    - cycle: "frontend/components/footer/footer.yaml -> frontend/layouts/layout-default.yaml -> frontend/components/footer/footer.yaml"

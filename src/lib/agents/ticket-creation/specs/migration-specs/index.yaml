@@ -1,0 +1,1898 @@
+repository: ecommerce-frontend-qwik
+source_branch: releases/2025.12.22.1
+analyzed_at: 2026-02-17T18:19:00.277Z
+total_units: 189
+scope: "Scoped analysis - productCategory routes, info pages, sitemaps, bulk-ordering, home page and all dependencies"
+
+summary:
+  services: 29
+  components: 117
+  layouts: 4
+  routes: 19
+  config: 2
+  contexts: 3
+  data: 3
+  utilities: 12
+
+complexity_distribution:
+  simple: 113
+  moderate: 61
+  complex: 15
+
+units:
+  backend.services.accounts-service:
+    name: "accounts-service"
+    spec: backend/services/accounts-service.yaml
+    type: service
+    complexity: moderate
+    source_file: services/accounts-service.ts
+    dependencies:
+      - "~/config/http"
+      - "./cart-services/cookie"
+      - "~/utility/http"
+      - "./common-service"
+      - "~/utility/storage"
+      - "./server"
+  backend.services.add-to-cart-service:
+    name: "add-to-cart-service"
+    spec: backend/services/add-to-cart-service.yaml
+    type: service
+    complexity: simple
+    source_file: services/add-to-cart-service.ts
+    dependencies:
+      - ~/config/http
+      - ~/utility/http
+      - ~/services/common-service
+  backend.services.category-service:
+    name: "Category Service"
+    spec: backend/services/category-service.yaml
+    type: service
+    complexity: simple
+    source_file: src/services/category-service.ts
+    dependencies: []
+  backend.services.common-service:
+    name: "common-service"
+    spec: backend/services/common-service.yaml
+    type: service
+    complexity: simple
+    source_file: src/services/common-service.ts
+    dependencies: []
+  backend.services.console-log-service:
+    name: "console-log-service"
+    spec: backend/services/console-log-service.yaml
+    type: service
+    complexity: simple
+    source_file: services/cart-services/console-log.ts
+    dependencies:
+      - "~/config/settings"
+  backend.services.delivery-rates-service:
+    name: "delivery-rates-service"
+    spec: backend/services/delivery-rates-service.yaml
+    type: service
+    complexity: simple
+    source_file: services/delivery-rates.service.ts
+    dependencies:
+      - ~/config/http
+      - ~/utility/http
+      - ~/services/common-service
+  backend.services.holiday-delivery-service:
+    name: "holiday-delivery-service"
+    spec: backend/services/holiday-delivery-service.yaml
+    type: service
+    complexity: simple
+    source_file: services/holiday-delivery-service.ts
+    dependencies:
+      - ~/services/json-service
+  backend.services.home-service:
+    name: "home-service"
+    spec: backend/services/home-service.yaml
+    type: service
+    complexity: simple
+    source_file: services/home-service.ts
+    dependencies: []
+  backend.services.json-service:
+    name: "JSON Service (Web Content Loader)"
+    spec: backend/services/json-service.yaml
+    type: service
+    complexity: simple
+    source_file: src/services/json-service.ts
+    dependencies: []
+  backend.services.klaviyo-service:
+    name: "klaviyo-service"
+    spec: backend/services/klaviyo-service.yaml
+    type: service
+    complexity: moderate
+    source_file: services/klaviyo-service.ts
+    dependencies:
+      - ~/config/settings
+      - ~/config/klaviyo
+      - ~/services/cart-service
+      - ~/services/accounts-service
+      - ~/services/cart-services/cookie
+      - ~/utility/http
+  backend.services.markdown-service:
+    name: "markdown-service"
+    spec: backend/services/markdown-service.yaml
+    type: service
+    complexity: simple
+    source_file: services/markdown-service.ts
+    dependencies: []
+  backend.services.marketing-page-web-content-service:
+    name: "marketing-page-web-content-service"
+    spec: backend/services/marketing-page-web-content-service.yaml
+    type: service
+    complexity: simple
+    source_file: services/marketing-page-web-content-service.ts
+    dependencies: []
+  backend.services.middle-ware-service:
+    name: "middle-ware-service"
+    spec: backend/services/middle-ware-service.yaml
+    type: service
+    complexity: simple
+    source_file: src/services/middle-ware-service.ts
+    dependencies: []
+  backend.services.navigation-v3-service:
+    name: "navigation-v3-service"
+    spec: backend/services/navigation-v3-service.yaml
+    type: service
+    complexity: simple
+    source_file: services/navigation-v3-service.ts
+    dependencies: []
+  backend.services.product-category-service:
+    name: "Product Category Service"
+    spec: backend/services/product-category-service.yaml
+    type: service
+    complexity: simple
+    source_file: 
+    dependencies:
+      - "~/services/product-page-service"
+      - "~/services/category-service"
+      - "~/data/option-data"
+      - "~/services/themes-service"
+      - "~/utility/http"
+      - "~/config/settings"
+  backend.services.product-page-service:
+    name: "Product Page Service"
+    spec: backend/services/product-page-service.yaml
+    type: service
+    complexity: complex
+    source_file: src/services/product-page-service.ts
+    dependencies:
+      - ~/data/option-data
+      - ~/data/review-data
+      - ~/data/marketing-content-data
+      - ~/services/server
+      - ~/utility/google-tag-manager-extension
+      - ~/components/customer-review/customer-review
+      - ~/utility/http
+      - ~/config/http
+      - ~/services/category-service
+      - ~/services/themes-service
+      - ~/services/product-category-service
+      - ~/services/json-service
+      - ~/utility/element
+      - ~/services/common-service
+      - ~/services/cart-services/cookie
+      - ~/services/web-component-service
+      - ~/utility/matomo
+      - ~/services/klaviyo-service
+      - ~/config/settings
+      - ~/services/cart-services/gtm/data-layer-base
+      - ~/services/cart-services/gtm/data-layer-mapper
+  backend.services.product-page-web-content-service:
+    name: "product-page-web-content-service"
+    spec: backend/services/product-page-web-content-service.yaml
+    type: service
+    complexity: simple
+    source_file: services/product-page-web-content-service.ts
+    dependencies: []
+  backend.services.server:
+    name: "Server/Site Configuration Service"
+    spec: backend/services/server.yaml
+    type: service
+    complexity: simple
+    source_file: src/services/server.ts
+    dependencies:
+      - ~/config/settings
+  backend.services.shop-by-budget-service:
+    name: "shop-by-budget-service"
+    spec: backend/services/shop-by-budget-service.yaml
+    type: service
+    complexity: simple
+    source_file: services/shop-by-budget-service.ts
+    dependencies:
+      - ~/services/json-service
+  backend.services.shop-by-category-service:
+    name: "shop-by-category-service"
+    spec: backend/services/shop-by-category-service.yaml
+    type: service
+    complexity: simple
+    source_file: services/shop-by-category-service.ts
+    dependencies:
+      - ~/services/json-service
+  backend.services.shop-page-service:
+    name: "shop-page-service"
+    spec: backend/services/shop-page-service.yaml
+    type: service
+    complexity: simple
+    source_file: services/shop-page-service.ts
+    dependencies: []
+  backend.services.static-page-service:
+    name: "static-page-service"
+    spec: backend/services/static-page-service.yaml
+    type: service
+    complexity: simple
+    source_file: services/static-page-service.ts
+    dependencies: []
+  backend.services.themes-service:
+    name: "themes-service"
+    spec: backend/services/themes-service.yaml
+    type: service
+    complexity: moderate
+    source_file: services/themes-service.ts
+    dependencies:
+      - "~/config/http"
+      - "./category-service"
+      - "./product-category-service"
+      - "./json-service"
+      - "~/utility/http"
+      - "./common-service"
+      - "./product-page-service"
+  backend.services.web-component-service:
+    name: "web-component-service"
+    spec: backend/services/web-component-service.yaml
+    type: service
+    complexity: moderate
+    source_file: services/web-component-service.ts
+    dependencies:
+      - ~/config/http
+      - ~/services/category-service
+      - ~/services/home-service
+      - ~/services/product-category-service
+      - ~/services/shop-by-budget-service
+      - ~/services/shop-by-category-service
+      - ~/services/themes-service
+  backend.services.cart-cookie-service:
+    name: "CartCookieService"
+    spec: backend/services/cart-cookie-service.yaml
+    type: service
+    complexity: moderate
+    source_file: services/cart-services/cookie.ts
+    dependencies:
+      - "./gtm/data-layer-mapper"
+      - "@builder.io/qwik-city"
+  backend.services.cart-services.gtm.data-layer-base:
+    name: "gtm-data-layer-base"
+    spec: backend/services/cart-services/gtm/data-layer-base.yaml
+    type: service
+    complexity: moderate
+    source_file: services/cart-services/gtm/data-layer-base.ts
+    dependencies:
+      - "./console-log"
+  backend.services.cart-services.gtm.data-layer-mapper:
+    name: "gtm-data-layer-mapper"
+    spec: backend/services/cart-services/gtm/data-layer-mapper.yaml
+    type: service
+    complexity: simple
+    source_file: services/cart-services/gtm/data-layer-mapper.ts
+    dependencies:
+      - "../cookie"
+  backend.services.go-quick-service:
+    name: "GoQuickService"
+    spec: backend/services/go-quick-service.yaml
+    type: service
+    complexity: moderate
+    source_file: services/go-quick-service.ts
+    dependencies:
+      - "services/cart-services/cookie"
+      - "~/config/settings"
+      - "~/utility/sentry"
+  backend.services.homepage-service:
+    name: "homepage-service (legacy)"
+    spec: backend/services/homepage-service.yaml
+    type: service
+    complexity: simple
+    source_file: services/homepage-service.ts
+    dependencies: []
+  frontend.components.banner.dynamic-promo-banner-v2:
+    name: "DynamicPromoBannerV2"
+    spec: frontend/components/banner/dynamic-promo-banner-v2.yaml
+    type: component
+    complexity: simple
+    source_file: src/components/banner/dynamic-promo-banner-v2.tsx
+    dependencies: []
+  frontend.components.banner.strip-banner:
+    name: "StripBanner"
+    spec: frontend/components/banner/strip-banner.yaml
+    type: component
+    complexity: simple
+    source_file: src/components/banner/strip-banner.tsx
+    dependencies: []
+  frontend.components.bulk-order.bulk-order-page-old:
+    name: "bulk-order-page-old"
+    spec: frontend/components/bulk-order/bulk-order-page-old.yaml
+    type: component
+    complexity: simple
+    source_file: components/bulk-order/bulk-order-page-old.tsx
+    dependencies: []
+  frontend.components.bulk-order.bulk-order-page:
+    name: "bulk-order-page"
+    spec: frontend/components/bulk-order/bulk-order-page.yaml
+    type: component
+    complexity: simple
+    source_file: components/bulk-order/bulk-order-page.tsx
+    dependencies: []
+  frontend.components.carousels.dynamic-carousel:
+    name: "DynamicCarousel"
+    spec: frontend/components/carousels/dynamic-carousel.yaml
+    type: component
+    complexity: moderate
+    source_file: components/carousels/dynamic-carousel.tsx
+    dependencies:
+      - "~/components/media/video"
+      - "~/components/go-quick/go-quick-carousel-widget"
+      - "~/components/uploadcare/uploadprogress"
+      - "~/services/home-service"
+  frontend.components.carousels.static-carousel1:
+    name: "StaticCarousel1"
+    spec: frontend/components/carousels/static-carousel1.yaml
+    type: component
+    complexity: simple
+    source_file: components/carousels/static-carousel1.tsx
+    dependencies:
+      - "~/data/review-data"
+      - "~/utility/homepage-contents"
+      - "~/components/svg-icon/svg-icon"
+  frontend.components.category-page.blog-category-section:
+    name: "BlogCategorySection"
+    spec: frontend/components/category-page/blog-category-section.yaml
+    type: component
+    complexity: simple
+    source_file: components/category-page/blog-category-section.tsx
+    dependencies:
+      - "~/services/category-service"
+      - "~/utility/matomo"
+  frontend.components.category-page.category-cards:
+    name: "CategoryCards"
+    spec: frontend/components/category-page/category-cards.yaml
+    type: component
+    complexity: moderate
+    source_file: components/category-page/category-cards.tsx
+    dependencies:
+      - "~/services/category-service"
+      - "~/utility/matomo"
+  frontend.components.category-page.email-subscription:
+    name: "EmailSubscription"
+    spec: frontend/components/category-page/email-subscription.yaml
+    type: component
+    complexity: moderate
+    source_file: components/category-page/email-subscription.tsx
+    dependencies:
+      - "~/services/category-service"
+  frontend.components.category-page.category-page-factory:
+    name: "CategoryPageFactory"
+    spec: frontend/components/category-page/category-page-factory.yaml
+    type: component
+    complexity: moderate
+    source_file: src/components/category-page/containers/category-page-factory.tsx
+    dependencies:
+      - ~/services/category-service
+      - ~/services/web-component-service
+      - ~/services/klaviyo-service
+      - ~/services/product-category-service
+      - ~/utility/http
+  frontend.components.category-page.common-category-container:
+    name: "CommonCategoryContainer"
+    spec: frontend/components/category-page/common-category-container.yaml
+    type: component
+    complexity: moderate
+    source_file: src/components/category-page/containers/common-category-container.tsx
+    dependencies: []
+  frontend.components.footer.footer-product-category:
+    name: "FooterProductCategory"
+    spec: frontend/components/footer/footer-product-category.yaml
+    type: component
+    complexity: simple
+    source_file: src/components/footer/footer-product-category.tsx
+    dependencies: []
+  frontend.components.footer.footer-shipping-banner:
+    name: "FooterShippingBanner"
+    spec: frontend/components/footer/footer-shipping-banner.yaml
+    type: component
+    complexity: simple
+    source_file: src/components/footer/footer-shipping-banner.tsx
+    dependencies: []
+  frontend.components.footer.footer-containerless:
+    name: "FooterContainerless"
+    spec: frontend/components/footer/footer-containerless.yaml
+    type: component
+    complexity: moderate
+    source_file: components/footer/footer-containerless.tsx
+    dependencies:
+      - "~/components/share/accordion/accordion"
+      - "~/components/share/accordion/accordion-header"
+      - "~/components/share/accordion/accordion-details"
+      - "~/utility/homepage-contents"
+      - "~/components/homepage/home-bottom-banner"
+      - "~/routes/layout-containerless"
+      - "~/components/share/our-help/our-help"
+      - "~/components/share/trust-indication/trust-indicator"
+      - "~/utility/share-content/share-contents"
+      - "~/config/settings"
+      - "~/components/customer-service-components/fresh-desk-widget"
+      - "./footer-shipping-banner"
+  frontend.components.footer.footer:
+    name: "Footer"
+    spec: frontend/components/footer/footer.yaml
+    type: component
+    complexity: simple
+    source_file: src/components/footer/footer.tsx
+    dependencies: []
+  frontend.components.header.header-wrapper:
+    name: "HeaderWrapper"
+    spec: frontend/components/header/header-wrapper.yaml
+    type: component
+    complexity: simple
+    source_file: src/components/header/header-wrapper.tsx
+    dependencies: []
+  frontend.components.header.header:
+    name: "Header"
+    spec: frontend/components/header/header.yaml
+    type: component
+    complexity: simple
+    source_file: src/components/header/header.tsx
+    dependencies: []
+  frontend.components.go-quick.go-quick-carousel-widget:
+    name: "GoQuickCarouselWidget"
+    spec: frontend/components/go-quick/go-quick-carousel-widget.yaml
+    type: component
+    complexity: moderate
+    source_file: components/go-quick/go-quick-carousel-widget.tsx
+    dependencies:
+      - "~/components/uploadcare/uploadcare"
+      - "~/services/go-quick-service"
+      - "~/utility/matomo"
+  frontend.components.go-quick.go-quick-homepage-widget:
+    name: "GoQuickHomepageWidget"
+    spec: frontend/components/go-quick/go-quick-homepage-widget.yaml
+    type: component
+    complexity: moderate
+    source_file: components/go-quick/go-quick-homepage-widget.tsx
+    dependencies:
+      - "~/components/uploadcare/uploadcare"
+      - "~/components/uploadcare/uploadprogress"
+      - "~/services/go-quick-service"
+      - "~/utility/matomo"
+      - "~/utility/sentry"
+  frontend.components.homepage.home-customer-reviews:
+    name: "HomeCustomerReviews"
+    spec: frontend/components/homepage/home-customer-reviews.yaml
+    type: component
+    complexity: simple
+    source_file: components/homepage/home-customer-reviews.tsx
+    dependencies:
+      - "~/components/homepage/trustpilot-rating"
+      - "~/components/carousels/static-carousel1"
+      - "~/data/review-data"
+  frontend.components.homepage.homepagecategory:
+    name: "HomePageCategory"
+    spec: frontend/components/homepage/homepagecategory.yaml
+    type: component
+    complexity: simple
+    source_file: components/homepage/homepagecategory.tsx
+    dependencies:
+      - "~/components/svg-icon/svg-icon"
+      - "~/services/home-service"
+  frontend.components.homepage.homepage-category-container:
+    name: "HomepageCategoryContainer"
+    spec: frontend/components/homepage/homepage-category-container.yaml
+    type: component
+    complexity: moderate
+    source_file: components/homepage/homepage-category-container.tsx
+    dependencies:
+      - "~/components/homepage/homepagecategory"
+      - "~/components/svg-icon/svg-icon"
+      - "~/utility/homepage-contents"
+      - "~/services/home-service"
+  frontend.components.homepage.marketing-content-video:
+    name: "MarketingContentVideo"
+    spec: frontend/components/homepage/marketing-content-video.yaml
+    type: component
+    complexity: simple
+    source_file: components/homepage/marketing-content-video.tsx
+    dependencies:
+      - "~/components/media/video"
+      - "~/services/web-component-service"
+  frontend.components.homepage.trustpilot-rating:
+    name: "TrustpilotRating"
+    spec: frontend/components/homepage/trustpilot-rating.yaml
+    type: component
+    complexity: simple
+    source_file: components/homepage/trustpilot-rating.tsx
+    dependencies:
+      - "~/utility/format"
+  frontend.components.media.video:
+    name: "Video"
+    spec: frontend/components/media/video.yaml
+    type: component
+    complexity: simple
+    source_file: components/media/video.tsx
+    dependencies: []
+  frontend.components.info-pages.contact-us-container:
+    name: "ContactUsContainer"
+    spec: frontend/components/info-pages/contact-us-container.yaml
+    type: component
+    complexity: moderate
+    source_file: src/components/contact-us/containers/contact-us-container.tsx
+    dependencies: []
+  frontend.components.info-pages.image-resolution-container:
+    name: "image-resolution-container"
+    spec: frontend/components/info-pages/image-resolution-container.yaml
+    type: component
+    complexity: moderate
+    source_file: src/components/image-resolution-page/containers/image-resolution-container.tsx
+    dependencies: []
+  frontend.components.info-pages.payment-methods-container:
+    name: "payment-methods-container"
+    spec: frontend/components/info-pages/payment-methods-container.yaml
+    type: component
+    complexity: moderate
+    source_file: src/components/payment-methods-page/containers/payment-methods-container.tsx
+    dependencies: []
+  frontend.components.info-pages.photo-quality-container:
+    name: "photo-quality-container"
+    spec: frontend/components/info-pages/photo-quality-container.yaml
+    type: component
+    complexity: moderate
+    source_file: src/components/photo-quality-page/containers/photo-quality-container.tsx
+    dependencies: []
+  frontend.components.info-pages.terms-and-conditions-container:
+    name: "TermsAndConditionsContainer"
+    spec: frontend/components/info-pages/terms-and-conditions-container.yaml
+    type: component
+    complexity: moderate
+    source_file: src/components/terms-and-conditions-page/containers/terms-and-conditions-container.tsx
+    dependencies: []
+  frontend.components.info-pages.track-my-order-container:
+    name: "TrackMyOrderContainer"
+    spec: frontend/components/info-pages/track-my-order-container.yaml
+    type: component
+    complexity: moderate
+    source_file: src/components/track-my-order-page/containers/track-my-order-container.tsx
+    dependencies: []
+  frontend.components.product-page.instant-product-page-container:
+    name: "InstantProductPageContainer"
+    spec: frontend/components/product-page/instant-product-page-container.yaml
+    type: component
+    complexity: moderate
+    source_file: src/components/product-page/containers/instant-product-page-container.tsx
+    dependencies: []
+  frontend.components.product-page.photo-canvas-prints-bundled-template:
+    name: "photo-canvas-prints-bundled-template"
+    spec: frontend/components/product-page/photo-canvas-prints-bundled-template.yaml
+    type: component
+    complexity: complex
+    source_file: ecommerce-frontend-qwik/src/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-bundled-template.tsx
+    dependencies: []
+  frontend.components.product-page.photo-canvas-prints-hub-bundled-template:
+    name: "photo-canvas-prints-hub-bundled-template"
+    spec: frontend/components/product-page/photo-canvas-prints-hub-bundled-template.yaml
+    type: component
+    complexity: complex
+    source_file: ecommerce-frontend-qwik/src/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-hub-bundled-template.tsx
+    dependencies: []
+  frontend.components.product-page.photo-canvas-prints-new-template-v3:
+    name: "photo-canvas-prints-new-template-v3"
+    spec: frontend/components/product-page/photo-canvas-prints-new-template-v3.yaml
+    type: component
+    complexity: complex
+    source_file: ecommerce-frontend-qwik/src/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-new-template-v3.tsx
+    dependencies: []
+  frontend.components.product-page.photo-canvas-prints-new-template:
+    name: "photo-canvas-prints-new-template"
+    spec: frontend/components/product-page/photo-canvas-prints-new-template.yaml
+    type: component
+    complexity: complex
+    source_file: ecommerce-frontend-qwik/src/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-new-template.tsx
+    dependencies: []
+  frontend.components.product-page.photo-canvas-prints-template-v2:
+    name: "photo-canvas-prints-template-v2"
+    spec: frontend/components/product-page/photo-canvas-prints-template-v2.yaml
+    type: component
+    complexity: complex
+    source_file: ecommerce-frontend-qwik/src/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-template-v2.tsx
+    dependencies: []
+  frontend.components.product-page.product-page-base-template:
+    name: "ProductPageBaseTemplate"
+    spec: frontend/components/product-page/product-page-base-template.yaml
+    type: component
+    complexity: moderate
+    source_file: src/components/product-page/containers/templates/product-page-base-template.tsx
+    dependencies: []
+  frontend.components.product-page.product-page-basic-template:
+    name: "ProductPageBasicTemplate"
+    spec: frontend/components/product-page/product-page-basic-template.yaml
+    type: component
+    complexity: moderate
+    source_file: src/components/product-page/containers/templates/product-page-basic-template.tsx
+    dependencies: []
+  frontend.components.product-page.product-page-fixed-template:
+    name: "ProductPageFixedTemplate"
+    spec: frontend/components/product-page/product-page-fixed-template.yaml
+    type: component
+    complexity: moderate
+    source_file: components/product-page/containers/templates/product-page-fixed-template.tsx
+    dependencies: []
+  frontend.components.product-page.product-page-fixed-theme-template:
+    name: "ProductPageFixedThemeTemplate"
+    spec: frontend/components/product-page/product-page-fixed-theme-template.yaml
+    type: component
+    complexity: moderate
+    source_file: components/product-page/containers/templates/product-page-fixed-theme-template.tsx
+    dependencies: []
+  frontend.components.product-page.product-page-hub-child-template:
+    name: "ProductPageHubChildTemplate"
+    spec: frontend/components/product-page/product-page-hub-child-template.yaml
+    type: component
+    complexity: moderate
+    source_file: components/product-page/containers/templates/product-page-hub-chilld-template.tsx
+    dependencies: []
+  frontend.components.product-page.product-page-hub-template:
+    name: "ProductPageHubTemplate"
+    spec: frontend/components/product-page/product-page-hub-template.yaml
+    type: component
+    complexity: moderate
+    source_file: components/product-page/containers/templates/product-page-hub-template.tsx
+    dependencies: []
+  frontend.components.product-page.product-page-selection:
+    name: "ProductPageSelection"
+    spec: frontend/components/product-page/product-page-selection.yaml
+    type: component
+    complexity: complex
+    source_file: src/components/product-page/containers/product-page-selection.tsx
+    dependencies:
+      - "~/context/product-category-context"
+      - "~/services/product-page-service"
+      - ./templates/product-page-hub-chilld-template
+      - ./templates/product-page-fixed-template
+      - ./templates/product-page-base-template
+      - ./templates/product-page-hub-template
+      - ./instant-product-page-container
+      - ./photo-canvas-prints/photo-canvas-prints-new-template
+      - ./photo-canvas-prints/photo-canvas-prints-bundled-template
+      - ./photo-canvas-prints/photo-canvas-prints-hub-bundled-template
+      - ./templates/product-page-fixed-theme-template
+      - ./photo-canvas-prints/photo-canvas-prints-template-v2
+      - ./templates/product-page-basic-template
+      - ./photo-canvas-prints/photo-canvas-prints-new-template-v3
+  frontend.components.uploadcare.uploadcare:
+    name: "Uploadcare"
+    spec: frontend/components/uploadcare/uploadcare.yaml
+    type: component
+    complexity: complex
+    source_file: components/uploadcare/uploadcare.tsx
+    dependencies:
+      - "~/utility/http"
+      - "~/config/http"
+      - "~/services/common-service"
+      - "~/services/product-category-service"
+      - "~/services/cart-services/machine-token"
+  frontend.components.uploadcare.uploadprogress:
+    name: "UploadProgress"
+    spec: frontend/components/uploadcare/uploadprogress.yaml
+    type: component
+    complexity: simple
+    source_file: components/uploadcare/uploadprogress.tsx
+    dependencies: []
+  frontend.components.web-component.cta-list:
+    name: "CtaList"
+    spec: frontend/components/web-component/cta-list.yaml
+    type: component
+    complexity: simple
+    source_file: components/web-component/cta-list.tsx
+    dependencies:
+      - "~/services/category-service"
+      - "~/services/web-component-service"
+      - "~/utility/matomo"
+  frontend.components.web-component.faq-v2:
+    name: "FaqSectionV2"
+    spec: frontend/components/web-component/faq-v2.yaml
+    type: component
+    complexity: moderate
+    source_file: components/web-component/v2/faq.tsx
+    dependencies:
+      - "~/services/markdown-service"
+      - "~/services/web-component-service"
+      - "~/services/category-service"
+  frontend.components.web-component.home-best-sellers:
+    name: "HomeBestSellers"
+    spec: frontend/components/web-component/home-best-sellers.yaml
+    type: component
+    complexity: simple
+    source_file: components/web-component/home-best-sellers.tsx
+    dependencies:
+      - "~/services/web-component-service"
+      - "~/utility/matomo"
+  frontend.components.web-component.mid-page-banner:
+    name: "MidPageBanner"
+    spec: frontend/components/web-component/mid-page-banner.yaml
+    type: component
+    complexity: simple
+    source_file: components/web-component/mid-page-banner.tsx
+    dependencies:
+      - "~/services/category-service"
+      - "~/utility/matomo"
+  frontend.components.web-component.seo-content:
+    name: "SeoContentComponent"
+    spec: frontend/components/web-component/seo-content.yaml
+    type: component
+    complexity: moderate
+    source_file: components/web-component/seo-content.tsx
+    dependencies:
+      - "~/services/markdown-service"
+      - "~/services/web-component-service"
+      - "~/services/category-service"
+  frontend.components.web-component.shopping-guide:
+    name: "ShoppingGuide"
+    spec: frontend/components/web-component/shopping-guide.yaml
+    type: component
+    complexity: simple
+    source_file: components/web-component/shopping-guide.tsx
+    dependencies:
+      - "~/config/settings"
+      - "~/services/web-component-service"
+  frontend.components.web-component.stories:
+    name: "StoriesSection"
+    spec: frontend/components/web-component/stories.yaml
+    type: component
+    complexity: simple
+    source_file: components/web-component/stories.tsx
+    dependencies:
+      - "~/services/web-component-service"
+  frontend.components.web-component.trust-signals:
+    name: "TrustSignalsSection"
+    spec: frontend/components/web-component/trust-signals.yaml
+    type: component
+    complexity: simple
+    source_file: components/web-component/trust-signals.tsx
+    dependencies:
+      - "~/services/markdown-service"
+      - "~/services/web-component-service"
+      - "~/services/category-service"
+  frontend.components.web-component.ugc-section:
+    name: "UgcSectionComponent"
+    spec: frontend/components/web-component/ugc-section.yaml
+    type: component
+    complexity: moderate
+    source_file: components/web-component/ugc-section.tsx
+    dependencies:
+      - "~/components/media/video"
+      - "~/services/markdown-service"
+      - "~/services/category-service"
+      - "~/utility/matomo"
+  frontend.components.web-component.video-banner:
+    name: "VideoBanner"
+    spec: frontend/components/web-component/video-banner.yaml
+    type: component
+    complexity: moderate
+    source_file: components/web-component/video-banner.tsx
+    dependencies:
+      - "~/components/svg-icon/svg-icon"
+      - "~/services/web-component-service"
+      - "~/utility/matomo"
+  frontend.components.web-component.web-contents-component:
+    name: "WebContentsComponent"
+    spec: frontend/components/web-component/web-contents-component.yaml
+    type: component
+    complexity: complex
+    source_file: components/web-component/web-contents-component.tsx
+    dependencies:
+      - "~/services/web-component-service"
+      - "~/services/category-service"
+      - "~/components/web-component/seo-content"
+      - "~/components/web-component/stories"
+      - "~/components/web-component/trust-signals"
+      - "~/components/category-page/category-cards"
+      - "~/components/web-component/v2/faq"
+      - "~/components/web-component/ugc-section"
+      - "~/components/category-page/email-subscription"
+      - "~/components/web-component/home-best-sellers"
+      - "~/components/homepage/marketing-content-video"
+      - "~/components/web-component/shopping-guide"
+      - "~/components/web-component/mid-page-banner"
+      - "~/components/web-component/video-banner"
+      - "~/components/web-component/cta-list"
+      - "~/components/category-page/blog-category-section"
+      - "~/components/share/trust-indication/trust-indicator"
+  frontend.components.shared.accordion-details:
+    name: "AccordionDetails"
+    spec: frontend/components/shared/accordion-details.yaml
+    type: component
+    complexity: simple
+    source_file: components/share/accordion/accordion-details.tsx
+    dependencies: []
+  frontend.components.shared.accordion-header:
+    name: "AccordionHeader"
+    spec: frontend/components/shared/accordion-header.yaml
+    type: component
+    complexity: simple
+    source_file: components/share/accordion/accordion-header.tsx
+    dependencies: []
+  frontend.components.shared.accordion:
+    name: "Accordion"
+    spec: frontend/components/shared/accordion.yaml
+    type: component
+    complexity: simple
+    source_file: components/share/accordion/accordion.tsx
+    dependencies: []
+  frontend.components.shared.breadcrumbs:
+    name: "Breadcrumbs"
+    spec: frontend/components/shared/breadcrumbs.yaml
+    type: component
+    complexity: simple
+    source_file: components/share/breadcrumbs/breadcrumbs.tsx
+    dependencies: []
+  frontend.components.shared.cross-domain-notification:
+    name: "CrossDomainNotification"
+    spec: frontend/components/shared/cross-domain-notification.yaml
+    type: component
+    complexity: moderate
+    source_file: components/cross-domain-notification/cross-domain-notification.tsx
+    dependencies: []
+  frontend.components.shared.customer-review:
+    name: "customer-review"
+    spec: frontend/components/shared/customer-review.yaml
+    type: component
+    complexity: simple
+    source_file: components/customer-review/customer-review.tsx
+    dependencies: []
+  frontend.components.shared.fresh-desk-widget:
+    name: "fresh-desk-widget"
+    spec: frontend/components/shared/fresh-desk-widget.yaml
+    type: component
+    complexity: moderate
+    source_file: components/customer-service-components/fresh-desk-widget.tsx
+    dependencies: []
+  frontend.components.shared.guideline-section:
+    name: "guideline-section"
+    spec: frontend/components/shared/guideline-section.yaml
+    type: component
+    complexity: simple
+    source_file: components/guideline-section/guideline-section.tsx
+    dependencies: []
+  frontend.components.shared.home-bottom-banner:
+    name: "home-bottom-banner"
+    spec: frontend/components/shared/home-bottom-banner.yaml
+    type: component
+    complexity: simple
+    source_file: components/homepage/home-bottom-banner.tsx
+    dependencies: []
+  frontend.components.shared.how-it-works:
+    name: "HowItWorks"
+    spec: frontend/components/shared/how-it-works.yaml
+    type: component
+    complexity: simple
+    source_file: components/share/how-it-works/how-it-works.tsx
+    dependencies: []
+  frontend.components.shared.large-orders:
+    name: "LargeOrders"
+    spec: frontend/components/shared/large-orders.yaml
+    type: component
+    complexity: simple
+    source_file: components/share/large-orders/large-orders.tsx
+    dependencies: []
+  frontend.components.shared.our-help:
+    name: "OurHelp"
+    spec: frontend/components/shared/our-help.yaml
+    type: component
+    complexity: simple
+    source_file: components/share/our-help/our-help.tsx
+    dependencies: []
+  frontend.components.shared.product-type-table:
+    name: "product-type-table"
+    spec: frontend/components/shared/product-type-table.yaml
+    type: component
+    complexity: moderate
+    source_file: components/product-type-table/product-type-table.tsx
+    dependencies: []
+  frontend.components.shared.svg-icon:
+    name: "SVGIcon"
+    spec: frontend/components/shared/svg-icon.yaml
+    type: component
+    complexity: simple
+    source_file: components/svg-icon/svg-icon.tsx
+    dependencies: []
+  frontend.components.shared.trust-indicator:
+    name: "TrustIndicator"
+    spec: frontend/components/shared/trust-indicator.yaml
+    type: component
+    complexity: moderate
+    source_file: components/share/trust-indication/trust-indicator.tsx
+    dependencies: []
+  frontend.layouts.layout-bulkorder:
+    name: "Bulk Order Layout"
+    spec: frontend/layouts/layout-bulkorder.yaml
+    type: layout
+    complexity: simple
+    source_file: src/routes/layout-bulkorder.tsx
+    dependencies: []
+  frontend.layouts.layout-categoryproduct:
+    name: "CategoryProduct Layout"
+    spec: frontend/layouts/layout-categoryproduct.yaml
+    type: layout
+    complexity: simple
+    source_file: src/routes/layout-categoryproduct.tsx
+    dependencies: []
+  frontend.layouts.layout-default:
+    name: "Default Layout (Root Layout)"
+    spec: frontend/layouts/layout-default.yaml
+    type: layout
+    complexity: simple
+    source_file: src/routes/layout.tsx
+    dependencies: []
+  frontend.layouts.layout-containerless:
+    name: "Layout Containerless"
+    spec: frontend/layouts/layout-containerless.yaml
+    type: layout
+    complexity: moderate
+    source_file: routes/layout-containerless.tsx
+    dependencies:
+      - "~/components/footer/footer-containerless"
+      - "~/components/banner/strip-banner"
+      - "~/components/cross-domain-notification/cross-domain-notification"
+      - "~/components/header/header-wrapper"
+      - "~/services/middle-ware-service"
+      - "~/services/common-service"
+      - "~/utility/country-region"
+  frontend.routes.about-us:
+    name: "AboutUsRoute"
+    spec: frontend/routes/about-us.yaml
+    type: route
+    complexity: simple
+    source_file: routes/about-us/index.tsx
+    dependencies: []
+  frontend.routes.bulk-ordering:
+    name: "BulkOrderingRoute"
+    spec: frontend/routes/bulk-ordering.yaml
+    type: route
+    complexity: simple
+    source_file: routes/bulk-ordering/index@bulkorder.tsx
+    dependencies: []
+  frontend.routes.contact-us:
+    name: "ContactUsRoute"
+    spec: frontend/routes/contact-us.yaml
+    type: route
+    complexity: simple
+    source_file: routes/contact-us/index.tsx
+    dependencies: []
+  frontend.routes.delivery-rates:
+    name: "DeliveryRatesRoute"
+    spec: frontend/routes/delivery-rates.yaml
+    type: route
+    complexity: simple
+    source_file: routes/delivery-rates/index.tsx
+    dependencies: []
+  frontend.routes.image-resolution:
+    name: "ImageResolutionRoute"
+    spec: frontend/routes/image-resolution.yaml
+    type: route
+    complexity: simple
+    source_file: routes/image-resolution/index.tsx
+    dependencies: []
+  frontend.routes.payment-methods:
+    name: "PaymentMethodsRoute"
+    spec: frontend/routes/payment-methods.yaml
+    type: route
+    complexity: simple
+    source_file: routes/payment-methods/index.tsx
+    dependencies: []
+  frontend.routes.photo-quality:
+    name: "PhotoQualityRoute"
+    spec: frontend/routes/photo-quality.yaml
+    type: route
+    complexity: simple
+    source_file: routes/photo-quality/index.tsx
+    dependencies: []
+  frontend.routes.product-category:
+    name: "ProductCategoryRoute"
+    spec: frontend/routes/product-category.yaml
+    type: route
+    complexity: moderate
+    source_file: routes/[...productCategory]/index@categoryproduct.tsx
+    dependencies: []
+  frontend.routes.returns-policy:
+    name: "ReturnsPolicyRoute"
+    spec: frontend/routes/returns-policy.yaml
+    type: route
+    complexity: simple
+    source_file: routes/returns-policy/index.tsx
+    dependencies: []
+  frontend.routes.satisfaction-guarantee:
+    name: "SatisfactionGuaranteeRoute"
+    spec: frontend/routes/satisfaction-guarantee.yaml
+    type: route
+    complexity: simple
+    source_file: routes/satisfaction-guarantee/index.tsx
+    dependencies: []
+  frontend.routes.shipping-policy:
+    name: "ShippingPolicyRoute"
+    spec: frontend/routes/shipping-policy.yaml
+    type: route
+    complexity: simple
+    source_file: routes/shipping-policy/index.tsx
+    dependencies: []
+  frontend.routes.sitemap-categories:
+    name: "SitemapCategoriesRoute"
+    spec: frontend/routes/sitemap-categories.yaml
+    type: route
+    complexity: simple
+    source_file: routes/sitemap-categories.xml/index.tsx
+    dependencies: []
+  frontend.routes.sitemap-index:
+    name: "SitemapIndexRoute"
+    spec: frontend/routes/sitemap-index.yaml
+    type: route
+    complexity: simple
+    source_file: routes/sitemap-index.xml/index.tsx
+    dependencies: []
+  frontend.routes.sitemap-pages:
+    name: "SitemapPagesRoute"
+    spec: frontend/routes/sitemap-pages.yaml
+    type: route
+    complexity: simple
+    source_file: routes/sitemap-pages.xml/index.tsx
+    dependencies: []
+  frontend.routes.sitemap-products:
+    name: "SitemapProductsRoute"
+    spec: frontend/routes/sitemap-products.yaml
+    type: route
+    complexity: simple
+    source_file: routes/sitemap-products.xml/index.tsx
+    dependencies: []
+  frontend.routes.terms-and-conditions:
+    name: "TermsAndConditionsRoute"
+    spec: frontend/routes/terms-and-conditions.yaml
+    type: route
+    complexity: simple
+    source_file: routes/terms-and-conditions/index.tsx
+    dependencies: []
+  frontend.routes.track-my-order:
+    name: "TrackMyOrderRoute"
+    spec: frontend/routes/track-my-order.yaml
+    type: route
+    complexity: simple
+    source_file: routes/track-my-order/index.tsx
+    dependencies: []
+  frontend.routes.why-choose-printerpix:
+    name: "WhyChoosePrinterpixRoute"
+    spec: frontend/routes/why-choose-printerpix.yaml
+    type: route
+    complexity: simple
+    source_file: routes/why-choose-printerpix/index.tsx
+    dependencies: []
+  frontend.routes.home-page:
+    name: "HomePage"
+    spec: frontend/routes/home-page.yaml
+    type: route
+    complexity: complex
+    source_file: routes/index@containerless.tsx
+    dependencies:
+      - "~/services/home-service"
+      - "~/services/homepage-service"
+      - "~/services/web-component-service"
+      - "~/services/server"
+      - "~/services/cart-services/gtm/data-layer-base"
+      - "~/services/cart-services/gtm/data-layer-mapper"
+      - "~/utility/homepage-contents"
+      - "~/config/settings"
+      - "~/components/carousels/dynamic-carousel"
+      - "~/components/homepage/homepage-category-container"
+      - "~/components/homepage/home-customer-reviews"
+      - "~/components/banner/dynamic-promo-banner-v2"
+      - "~/components/guideline-section/guideline-section"
+      - "~/components/customer-review/customer-review"
+      - "~/components/go-quick/go-quick-homepage-widget"
+      - "~/components/web-component/web-contents-component"
+  shared.config.http:
+    name: "http"
+    spec: shared/config/http.yaml
+    type: config
+    complexity: simple
+    source_file: src/config/http.ts
+    dependencies:
+      - ~/services/cart-services/cookie
+      - ~/services/server
+      - ~/utility/sentry
+      - ./settings
+      - ./http-agents.server
+  shared.config.settings:
+    name: "settings"
+    spec: shared/config/settings.yaml
+    type: config
+    complexity: simple
+    source_file: src/config/settings.ts
+    dependencies:
+      - ./constants
+  shared.context.device-detector-context:
+    name: "Device Detector Context"
+    spec: shared/context/device-detector-context.yaml
+    type: context
+    complexity: simple
+    source_file: src/context/device-detector-context.ts
+    dependencies: []
+  shared.context.product-category-context:
+    name: "Product and Category Context"
+    spec: shared/context/product-category-context.yaml
+    type: context
+    complexity: simple
+    source_file: src/context/product-category-context.ts
+    dependencies: []
+  shared.context.web-content-context:
+    name: "Web Content Context (Dynamic Promo Banner)"
+    spec: shared/context/web-content-context.yaml
+    type: context
+    complexity: simple
+    source_file: src/context/web-content-context.ts
+    dependencies: []
+  shared.data.marketing-content-data:
+    name: "marketing-content-data"
+    spec: shared/data/marketing-content-data.yaml
+    type: data
+    complexity: simple
+    source_file: src/data/marketing-content-data.ts
+    dependencies: []
+  shared.data.option-data:
+    name: "option-data"
+    spec: shared/data/option-data.yaml
+    type: data
+    complexity: simple
+    source_file: src/data/option-data.ts
+    dependencies: []
+  shared.data.review-data:
+    name: "review-data"
+    spec: shared/data/review-data.yaml
+    type: data
+    complexity: simple
+    source_file: src/data/review-data.ts
+    dependencies: []
+  shared.utilities.about-us-content:
+    name: "about-us-content"
+    spec: shared/utilities/about-us-content.yaml
+    type: utility
+    complexity: simple
+    source_file: utility/about-us/about-us-content.ts
+    dependencies: []
+  shared.utilities.backup-json-utilities:
+    name: "backup-json-utilities"
+    spec: shared/utilities/backup-json-utilities.yaml
+    type: utility
+    complexity: simple
+    source_file: utility/backup-json/backup-json-utilities.ts
+    dependencies: []
+  shared.utilities.country-region:
+    name: "country-region"
+    spec: shared/utilities/country-region.yaml
+    type: utility
+    complexity: simple
+    source_file: utility/country-region.ts
+    dependencies: []
+  shared.utilities.device:
+    name: "device"
+    spec: shared/utilities/device.yaml
+    type: utility
+    complexity: simple
+    source_file: utility/device.ts
+    dependencies: []
+  shared.utilities.element:
+    name: "element"
+    spec: shared/utilities/element.yaml
+    type: utility
+    complexity: simple
+    source_file: utility/element.ts
+    dependencies: []
+  shared.utilities.format:
+    name: "format"
+    spec: shared/utilities/format.yaml
+    type: utility
+    complexity: simple
+    source_file: utility/format.ts
+    dependencies: []
+  shared.utilities.google-tag-manager-extension:
+    name: "google-tag-manager-extension"
+    spec: shared/utilities/google-tag-manager-extension.yaml
+    type: utility
+    complexity: simple
+    source_file: utility/google-tag-manager-extension.ts
+    dependencies: []
+  shared.utilities.homepage-contents:
+    name: "homepage-contents"
+    spec: shared/utilities/homepage-contents.yaml
+    type: utility
+    complexity: simple
+    source_file: utility/homepage-contents.ts
+    dependencies: []
+  shared.utilities.http:
+    name: "http"
+    spec: shared/utilities/http.yaml
+    type: utility
+    complexity: simple
+    source_file: utility/http.ts
+    dependencies: []
+  shared.utilities.matomo:
+    name: "matomo"
+    spec: shared/utilities/matomo.yaml
+    type: utility
+    complexity: simple
+    source_file: utility/matomo.ts
+    dependencies: []
+  shared.utilities.sentry:
+    name: "SentryUtility"
+    spec: shared/utilities/sentry.yaml
+    type: utility
+    complexity: moderate
+    source_file: utility/sentry.ts
+    dependencies:
+      - "~/config/settings"
+      - "@sentry/browser"
+      - "@builder.io/qwik-city"
+  shared.utilities.share-contents:
+    name: "share-contents"
+    spec: shared/utilities/share-contents.yaml
+    type: utility
+    complexity: simple
+    source_file: utility/share-content/share-contents.ts
+    dependencies: []
+
+  # ── NEW SPECS: Phase 1 Gap Fill (2026-02-24) ──────────────────────────────
+
+  # Banner sub-components
+  frontend.components.banner.banner-flip-clock:
+    name: "BannerFlipClock"
+    spec: frontend/components/banner/banner-flip-clock.yaml
+    type: component
+    complexity: moderate
+    source_file: src/components/product-page/banner-flip-clock/banner-flip-clock.tsx
+    dependencies:
+      - ~/config/settings
+      - ~/services/flip-clock-service
+  frontend.components.banner.floating-banner:
+    name: "FloatingBanner"
+    spec: frontend/components/banner/floating-banner.yaml
+    type: component
+    complexity: moderate
+    source_file: src/components/banner/dynamic-promo-banner-v2.tsx
+    dependencies:
+      - ~/services/json-service
+      - ~/utility/matomo
+      - ~/components/product-page/banner-flip-clock/banner-flip-clock
+  frontend.components.banner.main-banner:
+    name: "MainBanner"
+    spec: frontend/components/banner/main-banner.yaml
+    type: component
+    complexity: moderate
+    source_file: src/components/banner/dynamic-promo-banner-v2.tsx
+    dependencies:
+      - ~/services/json-service
+      - ~/utility/matomo
+      - ~/components/product-page/banner-flip-clock/banner-flip-clock
+
+  # Carousel sub-components
+  frontend.components.carousels.static-carousel:
+    name: "StaticCarousel"
+    spec: frontend/components/carousels/static-carousel.yaml
+    type: component
+    complexity: simple
+    source_file: src/components/carousels/static-carousel.tsx
+    dependencies:
+      - ~/data/review-data
+
+  # Category page components
+  frontend.components.category-page.category-banner:
+    name: "CategoryBanner"
+    spec: frontend/components/category-page/category-banner.yaml
+    type: component
+    complexity: simple
+    source_file: src/components/category-page/category-banner.tsx
+    dependencies:
+      - ~/services/category-service
+      - ~/services/markdown-service
+  frontend.components.category-page.category-card:
+    name: "CategoryCard"
+    spec: frontend/components/category-page/category-card.yaml
+    type: component
+    complexity: simple
+    source_file: src/components/category-page/category-cards.tsx
+    dependencies:
+      - ~/services/category-service
+      - ~/utility/matomo
+  frontend.components.category-page.category-page-top-banner-v2:
+    name: "CategoryPageTopBannerV2"
+    spec: frontend/components/category-page/category-page-top-banner-v2.yaml
+    type: component
+    complexity: moderate
+    source_file: src/components/category-page/category-page-top-banner-v2.tsx
+    dependencies:
+      - ~/context/product-category-context
+      - ~/components/product-page/campaign-promo-banner
+      - ~/components/banner/dynamic-promo-banner-v2
+      - ~/services/product-page-service
+  frontend.components.category-page.category-quick-links:
+    name: "CategoryQuickLinks"
+    spec: frontend/components/category-page/category-quick-links.yaml
+    type: component
+    complexity: simple
+    source_file: src/components/category-page/category-quick-links.tsx
+    dependencies:
+      - ~/services/category-service
+      - ~/components/svg-icon/svg-icon
+  frontend.components.category-page.collection-slider:
+    name: "CollectionSlider"
+    spec: frontend/components/category-page/collection-slider.yaml
+    type: component
+    complexity: moderate
+    source_file: src/components/shop-page/components/collection-slider.tsx
+    dependencies:
+      - ~/services/shop-page-service
+      - ~/utility/format
+      - ~/services/cart-services/cookie
+      - ~/utility/matomo
+      - ~/components/svg-icon/svg-icon
+  frontend.components.category-page.global-category-banner:
+    name: "GlobalCategoryBanner"
+    spec: frontend/components/category-page/global-category-banner.yaml
+    type: component
+    complexity: simple
+    source_file: src/components/category-page/global-category-banner.tsx
+    dependencies:
+      - ~/services/category-service
+      - ~/utility/matomo
+  frontend.components.category-page.product-sections:
+    name: "ProductSections"
+    spec: frontend/components/category-page/product-sections.yaml
+    type: component
+    complexity: simple
+    source_file: src/components/category-page/product-sections.tsx
+    dependencies:
+      - ~/services/category-service
+      - ~/components/category-page/flip-image-slider
+  frontend.components.category-page.shop-page-cards:
+    name: "ShopPageCards"
+    spec: frontend/components/category-page/shop-page-cards.yaml
+    type: component
+    complexity: moderate
+    source_file: src/components/shop-page/components/shop-page-cards.tsx
+    dependencies:
+      - ~/services/shop-page-service
+      - ~/utility/format
+      - ~/components/svg-icon/svg-icon
+      - ~/config/settings
+
+  # Header components
+  frontend.components.header.global-search:
+    name: "GlobalSearch"
+    spec: frontend/components/header/global-search.yaml
+    type: component
+    complexity: moderate
+    source_file: src/components/global-search/global-search.tsx
+    dependencies:
+      - ~/services/orama-service
+      - ~/components/svg-icon/svg-icon
+  frontend.components.header.navigation-menu-4:
+    name: "NavigationMenu4"
+    spec: frontend/components/header/navigation-menu-4.yaml
+    type: component
+    complexity: moderate
+    source_file: src/components/navigation-v4/navigation-menu.tsx
+    dependencies:
+      - ~/services/json-service
+      - ~/components/navigation-v4/navigation-menu-bar
+      - ~/components/navigation-v4/navigation-menu-drawer
+  frontend.components.header.reminder-creation-modal:
+    name: "ReminderCreationModal"
+    spec: frontend/components/header/reminder-creation-modal.yaml
+    type: component
+    complexity: complex
+    source_file: src/components/reminders/reminder-creation-modal.tsx
+    dependencies:
+      - ~/services/reminder-service
+      - ~/utility/matomo
+      - ~/context/reminder-context
+      - ~/context/toast-context
+      - ~/components/reminders/reminder-form-modular
+      - ~/components/svg-icon/svg-icon
+      - ~/utility/storage
+  frontend.components.header.reminder-provider:
+    name: "ReminderProvider"
+    spec: frontend/components/header/reminder-provider.yaml
+    type: component
+    complexity: moderate
+    source_file: src/components/reminders/reminder-provider.tsx
+    dependencies:
+      - ~/services/reminder-service
+      - ~/context/reminder-context
+
+  # Homepage components
+  frontend.components.homepage.home-page-category-card:
+    name: "HomePageCategoryCard"
+    spec: frontend/components/homepage/home-page-category-card.yaml
+    type: component
+    complexity: moderate
+    source_file: src/components/homepage/homepagecategorycard.tsx
+    dependencies:
+      - ~/services/home-service
+      - ~/utility/format
+      - ~/utility/homepage-contents
+
+  # Info pages sub-components
+  frontend.components.info-pages.multi-order-select:
+    name: "MultiOrderSelect"
+    spec: frontend/components/info-pages/multi-order-select.yaml
+    type: component
+    complexity: simple
+    source_file: src/components/track-my-order-page/containers/track-my-order-container.tsx
+    dependencies:
+      - ~/services/tracking-service
+  frontend.components.info-pages.photo-quality:
+    name: "PhotoQuality"
+    spec: frontend/components/info-pages/photo-quality.yaml
+    type: component
+    complexity: simple
+    source_file: src/components/photo-quality-page/containers/photo-quality-container.tsx
+    dependencies: []
+  frontend.components.info-pages.photo-tips:
+    name: "PhotoTips"
+    spec: frontend/components/info-pages/photo-tips.yaml
+    type: component
+    complexity: simple
+    source_file: src/components/image-resolution-page/containers/image-resolution-container.tsx
+    dependencies:
+      - ~/utility/image-resolution/image-resolution
+  frontend.components.info-pages.shipment-detail:
+    name: "ShipmentDetail"
+    spec: frontend/components/info-pages/shipment-detail.yaml
+    type: component
+    complexity: simple
+    source_file: src/components/track-my-order-page/containers/track-my-order-container.tsx
+    dependencies: []
+  frontend.components.info-pages.terms-and-conditions:
+    name: "TermsAndConditions"
+    spec: frontend/components/info-pages/terms-and-conditions.yaml
+    type: component
+    complexity: simple
+    source_file: src/components/terms-and-conditions-page/containers/terms-and-conditions-container.tsx
+    dependencies:
+      - ~/utility/terms-and-conditions/terms-and-conditions
+  frontend.components.info-pages.tracking-history:
+    name: "TrackingHistory"
+    spec: frontend/components/info-pages/tracking-history.yaml
+    type: component
+    complexity: simple
+    source_file: src/components/account-detail/tracking-history.tsx
+    dependencies:
+      - ~/components/svg-icon/svg-icon
+
+  # Product page sub-components
+  frontend.components.product-page.bulk-pricing-v4:
+    name: "BulkPricingV4"
+    spec: frontend/components/product-page/bulk-pricing-v4.yaml
+    type: component
+    complexity: moderate
+    source_file: src/components/product-page/bulk-pricing-v4.tsx
+    dependencies:
+      - ~/context/product-category-context
+      - ~/services/markdown-service
+      - ~/services/web-component-service
+  frontend.components.product-page.option-panel:
+    name: "OptionPanel"
+    spec: frontend/components/product-page/option-panel.yaml
+    type: component
+    complexity: complex
+    source_file: src/components/product-page/option-panel.tsx
+    dependencies:
+      - ~/context/product-category-context
+      - ~/context/device-detector-context
+      - ~/services/product-page-service
+      - ~/services/product-category-service
+      - ~/data/option-data
+      - ~/utility/format
+      - ~/utility/matomo
+      - ~/utility/element
+      - ~/utility/device
+      - ~/config/settings
+      - ~/components/svg-icon/svg-icon
+      - ~/components/uploadcare/uploadcare
+      - ~/components/uploadcare/uploadprogress
+      - ~/components/product-page/klarna-placement
+  frontend.components.product-page.product-carousel:
+    name: "ProductCarousel"
+    spec: frontend/components/product-page/product-carousel.yaml
+    type: component
+    complexity: moderate
+    source_file: src/components/product-page/product-carousel/product-carousel.tsx
+    dependencies:
+      - ~/context/product-category-context
+      - ~/services/product-page-service
+      - ~/services/product-category-service
+      - ~/data/option-data
+      - ~/utility/format
+      - ~/utility/matomo
+  frontend.components.product-page.product-delivery-date-v2:
+    name: "ProductDeliveryDateV2"
+    spec: frontend/components/product-page/product-delivery-date-v2.yaml
+    type: component
+    complexity: simple
+    source_file: src/components/product-page/product-delivery-date-v2.tsx
+    dependencies:
+      - ~/context/product-category-context
+      - ~/utility/date
+  frontend.components.product-page.product-description-v2:
+    name: "ProductDescriptionV2"
+    spec: frontend/components/product-page/product-description-v2.yaml
+    type: component
+    complexity: moderate
+    source_file: src/components/product-page/product-description-v2.tsx
+    dependencies:
+      - ~/services/product-page-service
+      - ~/services/markdown-service
+      - ~/components/share/accordion/accordion
+      - ~/components/share/accordion/accordion-details
+      - ~/components/share/accordion/accordion-header
+  frontend.components.product-page.product-flip-clock:
+    name: "ProductFlipClock"
+    spec: frontend/components/product-page/product-flip-clock.yaml
+    type: component
+    complexity: moderate
+    source_file: src/components/product-page/product-countdown-timer/product-flip-clock-v2.tsx
+    dependencies:
+      - ~/context/product-category-context
+      - ~/services/product-category-service
+      - ~/services/flip-clock-service
+      - ~/config/settings
+  frontend.components.product-page.product-option-type-4:
+    name: "ProductOptionType4"
+    spec: frontend/components/product-page/product-option-type-4.yaml
+    type: component
+    complexity: moderate
+    source_file: src/components/product-page/product-option-type-4.tsx
+    dependencies:
+      - ~/services/product-page-service
+      - ~/utility/matomo
+      - ~/components/svg-icon/svg-icon
+      - ~/components/uploadcare/uploadcare
+      - ~/components/uploadcare/uploadprogress
+  frontend.components.product-page.product-page-content-basic:
+    name: "ProductPageContentBasic"
+    spec: frontend/components/product-page/product-page-content-basic.yaml
+    type: component
+    complexity: complex
+    source_file: src/components/product-page/product-page-content-basic.tsx
+    dependencies:
+      - ~/services/product-page-service
+      - ~/services/category-service
+      - ~/services/product-category-service
+      - ~/components/banner/dynamic-promo-banner-v2
+      - ~/components/guideline-section/guideline-section
+      - ~/components/category-page/category-features-slide
+      - ~/components/product-page/product-final-sale-pitch
+      - ~/components/product-page/product-option-type-1
+      - ~/components/product-page/product-option-type-2
+      - ~/components/product-page/product-option-type-2-basic
+      - ~/components/product-page/product-option-type-3
+      - ~/components/product-page/product-upsell-options
+      - ~/components/web-component/web-contents-component
+  frontend.components.product-page.product-page-content-component-v2:
+    name: "ProductPageContentComponentV2"
+    spec: frontend/components/product-page/product-page-content-component-v2.yaml
+    type: component
+    complexity: complex
+    source_file: src/components/product-page/product-page-content-v2.tsx
+    dependencies:
+      - ~/services/product-page-service
+      - ~/services/category-service
+      - ~/services/product-category-service
+      - ~/components/banner/dynamic-promo-banner-v2
+      - ~/components/guideline-section/guideline-section
+      - ~/components/category-page/category-features-slide
+      - ~/components/product-page/product-final-sale-pitch
+      - ~/components/product-page/product-option-type-1
+      - ~/components/product-page/product-option-type-2-v2
+      - ~/components/product-page/product-option-type-3-v2
+      - ~/components/product-page/product-upsell-options
+      - ~/components/web-component/web-contents-component
+  frontend.components.product-page.product-page-content-v2:
+    name: "ProductPageContentV2"
+    spec: frontend/components/product-page/product-page-content-v2.yaml
+    type: component
+    complexity: complex
+    source_file: src/components/product-page/product-page-content-v2.tsx
+    dependencies:
+      - ~/services/product-page-service
+      - ~/services/category-service
+      - ~/services/product-category-service
+      - ~/components/banner/dynamic-promo-banner-v2
+      - ~/components/guideline-section/guideline-section
+      - ~/components/category-page/category-features-slide
+      - ~/components/product-page/product-final-sale-pitch
+      - ~/components/product-page/product-option-type-1
+      - ~/components/product-page/product-option-type-2-v2
+      - ~/components/product-page/product-option-type-3-v2
+      - ~/components/product-page/product-upsell-options
+      - ~/components/web-component/web-contents-component
+  frontend.components.product-page.product-page-top-banner-v2:
+    name: "ProductPageTopBannerV2"
+    spec: frontend/components/product-page/product-page-top-banner-v2.yaml
+    type: component
+    complexity: moderate
+    source_file: src/components/product-page/product-page-top-banner-v2.tsx
+    dependencies:
+      - ~/context/product-category-context
+      - ~/services/web-component-service
+      - ~/components/banner/dynamic-promo-banner-v2
+      - ~/components/product-page/campaign-promo-banner
+  frontend.components.product-page.product-shop-design:
+    name: "ProductShopDesign"
+    spec: frontend/components/product-page/product-shop-design.yaml
+    type: component
+    complexity: moderate
+    source_file: src/components/product-page/product-shop-design.tsx
+    dependencies:
+      - ~/context/product-category-context
+      - ~/services/product-category-service
+      - ~/services/themes-service
+      - ~/utility/format
+      - ~/utility/matomo
+      - ~/config/settings
+      - ~/components/svg-icon/svg-icon
+      - ~/components/cart-page/loading-status
+  frontend.components.product-page.product-trust-indicator-v6:
+    name: "ProductTrustIndicatorV6"
+    spec: frontend/components/product-page/product-trust-indicator-v6.yaml
+    type: component
+    complexity: simple
+    source_file: src/components/product-page/product-trust-indicator-v6.tsx
+    dependencies:
+      - ~/services/product-page-service
+      - ~/config/settings
+
+  # Shared components
+  frontend.components.shared.star-rating:
+    name: "StarRating"
+    spec: frontend/components/shared/star-rating.yaml
+    type: component
+    complexity: simple
+    source_file: src/components/customer-review/star-rating.tsx
+    dependencies: []
+
+  # Uploadcare sub-components
+  frontend.components.uploadcare.upload-input:
+    name: "UploadInput"
+    spec: frontend/components/uploadcare/upload-input.yaml
+    type: component
+    complexity: simple
+    source_file: src/components/uploadcare/uploadcare.tsx
+    dependencies: []
+  frontend.components.uploadcare.upload-modal:
+    name: "UploadModal"
+    spec: frontend/components/uploadcare/upload-modal.yaml
+    type: component
+    complexity: simple
+    source_file: src/components/uploadcare/uploadcare.tsx
+    dependencies: []
+
+  # Web component sub-components
+  frontend.components.web-component.faq:
+    name: "Faq"
+    spec: frontend/components/web-component/faq.yaml
+    type: component
+    complexity: moderate
+    source_file: src/components/web-component/faq.tsx
+    dependencies:
+      - ~/services/web-component-service
+      - ~/services/category-service
+      - ~/services/markdown-service
+      - ~/utility/matomo
+      - ~/components/svg-icon/svg-icon
+  frontend.components.web-component.flip-ugc:
+    name: "FlipUGC"
+    spec: frontend/components/web-component/flip-ugc.yaml
+    type: component
+    complexity: moderate
+    source_file: src/components/web-component/ugc-section.tsx
+    dependencies:
+      - ~/services/category-service
+      - ~/services/markdown-service
+      - ~/components/media/video
+  frontend.components.web-component.shop-by-budget:
+    name: "ShopByBudget"
+    spec: frontend/components/web-component/shop-by-budget.yaml
+    type: component
+    complexity: simple
+    source_file: src/components/web-component/shop-by-budget.tsx
+    dependencies:
+      - ~/services/shop-by-budget-service
+      - ~/utility/matomo
+  frontend.components.web-component.shop-by-category:
+    name: "ShopByCategory"
+    spec: frontend/components/web-component/shop-by-category.yaml
+    type: component
+    complexity: simple
+    source_file: src/components/web-component/shop-by-category.tsx
+    dependencies:
+      - ~/services/shop-by-category-service
+      - ~/utility/matomo
+  frontend.components.web-component.shopping-guide-slider:
+    name: "ShoppingGuideSlider"
+    spec: frontend/components/web-component/shopping-guide-slider.yaml
+    type: component
+    complexity: moderate
+    source_file: src/components/web-component/shopping-guide-slider.tsx
+    dependencies:
+      - ~/services/product-page-service
+      - ~/services/markdown-service
+      - ~/utility/matomo
+  frontend.components.web-component.slider-ugc:
+    name: "SliderUGC"
+    spec: frontend/components/web-component/slider-ugc.yaml
+    type: component
+    complexity: moderate
+    source_file: src/components/web-component/ugc-section.tsx
+    dependencies:
+      - ~/services/category-service
+      - ~/utility/matomo
+      - ~/components/media/video
+
+dependency_graph:
+  leaf_nodes:
+    - backend/services/cart-services/gtm/data-layer-mapper.yaml
+    - backend/services/homepage-service.yaml
+    - frontend/components/media/video.yaml
+    - frontend/components/uploadcare/uploadprogress.yaml
+    - frontend/components/web-component/stories.yaml
+    - frontend/components/web-component/home-best-sellers.yaml
+    - frontend/components/web-component/shopping-guide.yaml
+    - frontend/components/web-component/mid-page-banner.yaml
+    - shared/config/settings.yaml
+    - shared/utilities/http.yaml
+    - backend/services/common-service.yaml
+    - backend/services/category-service.yaml
+    - backend/services/json-service.yaml
+    - backend/services/home-service.yaml
+    - backend/services/markdown-service.yaml
+    - backend/services/marketing-page-web-content-service.yaml
+    - backend/services/middle-ware-service.yaml
+    - backend/services/navigation-v3-service.yaml
+    - backend/services/product-category-service.yaml
+    - shared/data/option-data.yaml
+    - shared/data/review-data.yaml
+    - shared/data/marketing-content-data.yaml
+    - shared/utilities/google-tag-manager-extension.yaml
+    - frontend/components/shared/customer-review.yaml
+    - shared/utilities/element.yaml
+    - shared/utilities/matomo.yaml
+    - backend/services/product-page-web-content-service.yaml
+    - backend/services/shop-page-service.yaml
+    - backend/services/static-page-service.yaml
+    - frontend/components/banner/dynamic-promo-banner-v2.yaml
+    - frontend/components/banner/strip-banner.yaml
+    - frontend/components/bulk-order/bulk-order-page-old.yaml
+    - frontend/components/bulk-order/bulk-order-page.yaml
+    - frontend/components/category-page/common-category-container.yaml
+    - frontend/components/footer/footer-product-category.yaml
+    - frontend/components/footer/footer-shipping-banner.yaml
+    - frontend/components/footer/footer.yaml
+    - frontend/components/header/header-wrapper.yaml
+    - frontend/components/header/header.yaml
+    - frontend/components/info-pages/contact-us-container.yaml
+    - frontend/components/info-pages/image-resolution-container.yaml
+    - frontend/components/info-pages/payment-methods-container.yaml
+    - frontend/components/info-pages/photo-quality-container.yaml
+    - frontend/components/info-pages/terms-and-conditions-container.yaml
+    - frontend/components/info-pages/track-my-order-container.yaml
+    - frontend/components/product-page/instant-product-page-container.yaml
+    - frontend/components/product-page/photo-canvas-prints-bundled-template.yaml
+    - frontend/components/product-page/photo-canvas-prints-hub-bundled-template.yaml
+    - frontend/components/product-page/photo-canvas-prints-new-template-v3.yaml
+    - frontend/components/product-page/photo-canvas-prints-new-template.yaml
+    - frontend/components/product-page/photo-canvas-prints-template-v2.yaml
+    - frontend/components/product-page/product-page-base-template.yaml
+    - frontend/components/product-page/product-page-basic-template.yaml
+    - frontend/components/product-page/product-page-fixed-template.yaml
+    - frontend/components/product-page/product-page-fixed-theme-template.yaml
+    - frontend/components/product-page/product-page-hub-child-template.yaml
+    - frontend/components/product-page/product-page-hub-template.yaml
+    - shared/context/product-category-context.yaml
+    - frontend/components/shared/accordion-details.yaml
+    - frontend/components/shared/accordion-header.yaml
+    - frontend/components/shared/accordion.yaml
+    - frontend/components/shared/breadcrumbs.yaml
+    - frontend/components/shared/cross-domain-notification.yaml
+    - frontend/components/shared/fresh-desk-widget.yaml
+    - frontend/components/shared/guideline-section.yaml
+    - frontend/components/shared/home-bottom-banner.yaml
+    - frontend/components/shared/how-it-works.yaml
+    - frontend/components/shared/large-orders.yaml
+    - frontend/components/shared/our-help.yaml
+    - frontend/components/shared/product-type-table.yaml
+    - frontend/components/shared/svg-icon.yaml
+    - frontend/components/shared/trust-indicator.yaml
+    - frontend/layouts/layout-bulkorder.yaml
+    - frontend/layouts/layout-categoryproduct.yaml
+    - frontend/layouts/layout-default.yaml
+    - frontend/routes/about-us.yaml
+    - frontend/routes/bulk-ordering.yaml
+    - frontend/routes/contact-us.yaml
+    - frontend/routes/delivery-rates.yaml
+    - frontend/routes/image-resolution.yaml
+    - frontend/routes/payment-methods.yaml
+    - frontend/routes/photo-quality.yaml
+    - frontend/routes/product-category.yaml
+    - frontend/routes/returns-policy.yaml
+    - frontend/routes/satisfaction-guarantee.yaml
+    - frontend/routes/shipping-policy.yaml
+    - frontend/routes/sitemap-categories.yaml
+    - frontend/routes/sitemap-index.yaml
+    - frontend/routes/sitemap-pages.yaml
+    - frontend/routes/sitemap-products.yaml
+    - frontend/routes/terms-and-conditions.yaml
+    - frontend/routes/track-my-order.yaml
+    - frontend/routes/why-choose-printerpix.yaml
+    - shared/context/device-detector-context.yaml
+    - shared/context/web-content-context.yaml
+    - shared/utilities/about-us-content.yaml
+    - shared/utilities/backup-json-utilities.yaml
+    - shared/utilities/country-region.yaml
+    - shared/utilities/device.yaml
+    - shared/utilities/format.yaml
+    - shared/utilities/homepage-contents.yaml
+    - shared/utilities/share-contents.yaml
+
+  levels:
+    level_1:
+      - backend/services/cart-cookie-service.yaml
+      - backend/services/server.yaml
+      - backend/services/console-log-service.yaml
+      - backend/services/holiday-delivery-service.yaml
+      - backend/services/shop-by-budget-service.yaml
+      - backend/services/shop-by-category-service.yaml
+    level_2:
+      - shared/config/http.yaml
+    level_3:
+      - backend/services/accounts-service.yaml
+      - backend/services/add-to-cart-service.yaml
+      - backend/services/delivery-rates-service.yaml
+      - backend/services/themes-service.yaml
+    level_4:
+      - backend/services/klaviyo-service.yaml
+      - backend/services/web-component-service.yaml
+    level_5:
+      - backend/services/product-page-service.yaml
+      - frontend/components/category-page/category-page-factory.yaml
+    level_6:
+      - frontend/components/product-page/product-page-selection.yaml
+
+  pages:
+    - frontend/routes/about-us.yaml
+    - frontend/routes/bulk-ordering.yaml
+    - frontend/routes/contact-us.yaml
+    - frontend/routes/delivery-rates.yaml
+    - frontend/routes/home-page.yaml
+    - frontend/routes/image-resolution.yaml
+    - frontend/routes/payment-methods.yaml
+    - frontend/routes/photo-quality.yaml
+    - frontend/routes/product-category.yaml
+    - frontend/routes/returns-policy.yaml
+    - frontend/routes/satisfaction-guarantee.yaml
+    - frontend/routes/shipping-policy.yaml
+    - frontend/routes/sitemap-categories.yaml
+    - frontend/routes/sitemap-index.yaml
+    - frontend/routes/sitemap-pages.yaml
+    - frontend/routes/sitemap-products.yaml
+    - frontend/routes/terms-and-conditions.yaml
+    - frontend/routes/track-my-order.yaml
+    - frontend/routes/why-choose-printerpix.yaml
+
+  statistics:
+    total_specs: 189
+    leaf_nodes_count: 102
+    max_depth: 6
+    unresolved_dependencies: 15

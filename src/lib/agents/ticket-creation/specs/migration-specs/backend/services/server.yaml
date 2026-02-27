@@ -1,0 +1,536 @@
+name: Server/Site Configuration Service
+source:
+  file: src/services/server.ts
+  lines: 188
+  type: Configuration Service
+  language: TypeScript
+
+description: |
+  Core multi-region site configuration service. Provides region-specific settings for all Printerpix domains:
+  - Website URLs and domains
+  - Currency codes and symbols
+  - API endpoints (legacy and new qt-api)
+  - Locale and language settings
+  - Number formatting (thousands/fraction separators)
+  - Site codes for backend integration
+  - Country GUIDs for API calls
+
+  Supports 7 regions: UK (GB), US, DE (Germany), IT (Italy), ES (Spain), FR (France), NL (Netherlands).
+  Default fallback is UK (GB) when region cannot be determined.
+
+  Used by entire frontend for region detection, API routing, currency formatting, and localization.
+
+exports:
+  - name: websiteVariables
+    type: array
+    description: Static array of all region configurations (7 regions)
+    structure: Array<WebsiteVariable>
+
+  - name: getSiteSetting
+    type: function
+    signature: "() => WebsiteVariable"
+    description: |
+      Gets current site configuration based on settings().website (from env).
+      Falls back to UK (GB) if not found.
+      Overrides API endpoints for QA environment when settings().API_ENV === 'QA'.
+    inputs: []
+    outputs:
+      type: WebsiteVariable
+      description: Current region configuration with API endpoints adjusted for environment
+    logic: |
+      1. Find config by matching settings().website to countryCode2
+      2. Fallback to websiteVariables[0] (UK) if no match
+      3. If API_ENV is "QA":
+         - Override baseAPIEndpoint to qa-api.{mainDomain}
+         - Override newAPIEndpoint to qa-api.{mainDomain}
+      4. If API_ENV is not "QA":
+         - Use baseAPIEndpoint: api.{mainDomain}
+         - Use newAPIEndpoint: qt-api.{mainDomain}
+
+  - name: getSiteSettingByCountryCode
+    type: function
+    signature: "(countryCode: string) => WebsiteVariable"
+    description: Lookup site configuration by country code (e.g., 'GB', 'US')
+    inputs:
+      - name: countryCode
+        type: string
+        description: Two-letter country code (GB, US, DE, etc.)
+    outputs:
+      type: WebsiteVariable
+      description: Matching region configuration, or UK (GB) fallback
+    logic: |
+      Find websiteVariables entry where countryCode2 matches input.
+      Fallback to websiteVariables[0] (UK) if no match.
+
+  - name: getSiteCode
+    type: function
+    signature: "(hostName: string) => number"
+    description: Extract site code from hostname (used for backend API calls)
+    inputs:
+      - name: hostName
+        type: string
+        description: Request hostname (e.g., 'printerpix.com', 'www.printerpix.de')
+    outputs:
+      type: number
+      description: Site code (4 for UK, 6 for US, etc.), defaults to 4 if not found
+    logic: |
+      Find websiteVariables entry where hostName contains mainDomain.
+      Return siteCode or fallback to 4 (UK).
+
+  - name: getCurrencyCode
+    type: function
+    signature: "(hostName: string) => string"
+    description: Extract currency code from hostname
+    inputs:
+      - name: hostName
+        type: string
+        description: Request hostname
+    outputs:
+      type: string
+      description: Currency code (GBP, USD, EUR), defaults to 'USD' if not found
+    logic: |
+      Find websiteVariables entry where hostName contains mainDomain.
+      Return currencyCode or fallback to "USD".
+
+  - name: getCallbackUrl
+    type: function
+    signature: "(hostName: string) => string"
+    description: Get OAuth/payment callback URL for hostname
+    inputs:
+      - name: hostName
+        type: string
+        description: Request hostname
+    outputs:
+      type: string
+      description: Callback URL, defaults to 'http://localhost:5173' if not found
+    logic: |
+      Find websiteVariables entry where hostName contains mainDomain.
+      Return callbackUrl or fallback to "http://localhost:5173" (dev).
+
+  - name: getHreflangLinks
+    type: function
+    signature: "(pathname?: string) => Array<HreflangLink>"
+    description: Generate hreflang meta tags for SEO (all regions + x-default)
+    inputs:
+      - name: pathname
+        type: string
+        optional: true
+        default: "/"
+        description: Current page path
+    outputs:
+      type: Array<HreflangLink>
+      description: Array of hreflang link objects (8 total - 7 regions + x-default)
+    structure:
+      - rel: "alternate"
+        hreflang: string # e.g., "en-gb", "en-us", "de-de"
+        href: string # e.g., "https://www.printerpix.co.uk/cart"
+    logic: |
+      1. Map each websiteVariables entry to:
+         { rel: "alternate", hreflang: site.locale.toLowerCase(), href: site.website + pathname }
+      2. Append x-default:
+         { rel: "alternate", hreflang: "x-default", href: "https://www.printerpix.co.uk" + pathname }
+      3. Return array of 8 hreflang objects
+
+types:
+  - name: WebsiteVariable
+    description: Complete configuration for a single region/site
+    fields:
+      - name: countryCode
+        type: string
+        description: Two-letter country code (UK, US, DE, IT, ES, FR, NL)
+        examples: ["UK", "US", "DE"]
+
+      - name: countryCode2
+        type: string
+        description: ISO 3166-1 alpha-2 country code (GB for UK, same as countryCode for others)
+        examples: ["GB", "US", "DE"]
+
+      - name: mainDomain
+        type: string
+        description: Primary domain without protocol or www
+        examples: ["printerpix.co.uk", "printerpix.com", "printerpix.de"]
+
+      - name: currencyCode
+        type: string
+        description: ISO 4217 currency code
+        examples: ["GBP", "USD", "EUR"]
+
+      - name: currencySymbol
+        type: string
+        description: Currency symbol for display
+        examples: ["£", "$", "€"]
+
+      - name: countryCodeGuid
+        type: string
+        description: Backend UUID identifier for this region
+        examples: ["278d5504-7815-4b20-9f2d-99d2e213c2aa"]
+
+      - name: locale
+        type: string
+        description: IETF BCP 47 language tag
+        examples: ["en-GB", "en-US", "de-DE", "it-IT", "es-ES", "fr-FR", "nl-NL"]
+
+      - name: countryName
+        type: string
+        description: Human-readable country name
+        examples: ["United Kingdom", "United States", "Germany"]
+
+      - name: thousandsSeparator
+        type: string
+        description: Character used for thousands separator in number formatting
+        values: ["," for UK/US, "." for EU countries]
+
+      - name: fractionSeparator
+        type: string
+        description: Character used for decimal separator in number formatting
+        values: ["." for UK/US, "," for EU countries]
+
+      - name: siteCode
+        type: number
+        description: Numeric site identifier for backend API calls
+        examples: [4, 6, 16, 13, 12, 10, 14]
+        mapping:
+          UK: 4
+          US: 6
+          DE: 16
+          IT: 13
+          ES: 12
+          FR: 10
+          NL: 14
+
+      - name: callbackUrl
+        type: string
+        description: OAuth/payment callback URL (no www prefix)
+        examples: ["https://printerpix.co.uk", "https://printerpix.com"]
+
+      - name: website
+        type: string
+        description: Full website URL with www prefix
+        examples: ["https://www.printerpix.co.uk", "https://www.printerpix.com"]
+
+      - name: baseAPIEndpoint
+        type: string
+        description: Legacy API endpoint URL
+        examples: ["https://api.printerpix.co.uk", "https://qa-api.printerpix.co.uk"]
+
+      - name: newAPIEndpoint
+        type: string
+        description: New qt-api endpoint URL (cart operations use this)
+        examples: ["https://qt-api.printerpix.co.uk", "https://qa-api.printerpix.co.uk"]
+
+      - name: languageCode
+        type: string
+        description: Two-letter language code (note: US uses 'us', not 'en')
+        examples: ["en", "us", "de", "it", "es", "fr", "nl"]
+
+  - name: HreflangLink
+    description: SEO hreflang link object for alternate language/region versions
+    fields:
+      - name: rel
+        type: string
+        value: "alternate"
+      - name: hreflang
+        type: string
+        description: Language/region code or 'x-default'
+        examples: ["en-gb", "en-us", "de-de", "x-default"]
+      - name: href
+        type: string
+        description: Full URL to alternate version
+        examples: ["https://www.printerpix.co.uk/cart"]
+
+site_configurations:
+  - region: UK (GB)
+    countryCode: "UK"
+    countryCode2: "GB"
+    mainDomain: "printerpix.co.uk"
+    currencyCode: "GBP"
+    currencySymbol: "£"
+    countryCodeGuid: "278d5504-7815-4b20-9f2d-99d2e213c2aa"
+    locale: "en-GB"
+    countryName: "United Kingdom"
+    thousandsSeparator: ","
+    fractionSeparator: "."
+    siteCode: 4
+    callbackUrl: "https://printerpix.co.uk"
+    website: "https://www.printerpix.co.uk"
+    baseAPIEndpoint: "https://api.printerpix.co.uk"
+    newAPIEndpoint: "https://qt-api.printerpix.co.uk"
+    languageCode: "en"
+    notes: Default fallback region for all lookup functions
+
+  - region: US
+    countryCode: "US"
+    countryCode2: "US"
+    mainDomain: "printerpix.com"
+    currencyCode: "USD"
+    currencySymbol: "$"
+    countryCodeGuid: "80533730-cab7-4c17-b509-5e6ce6b5ad00"
+    locale: "en-US"
+    countryName: "United States"
+    thousandsSeparator: ","
+    fractionSeparator: "."
+    siteCode: 6
+    callbackUrl: "https://printerpix.com"
+    website: "https://www.printerpix.com"
+    baseAPIEndpoint: "https://api.printerpix.com"
+    newAPIEndpoint: "https://qt-api.printerpix.com"
+    languageCode: "us"
+    notes: Uses 'us' language code (not 'en')
+
+  - region: Germany (DE)
+    countryCode: "DE"
+    countryCode2: "DE"
+    mainDomain: "printerpix.de"
+    currencyCode: "EUR"
+    currencySymbol: "€"
+    countryCodeGuid: "5d4e3ffd-0298-40a3-99c3-9174b5f77ea1"
+    locale: "de-DE"
+    countryName: "Germany"
+    thousandsSeparator: "."
+    fractionSeparator: ","
+    siteCode: 16
+    callbackUrl: "https://printerpix.de"
+    website: "https://www.printerpix.de"
+    baseAPIEndpoint: "https://api.printerpix.de"
+    newAPIEndpoint: "https://qt-api.printerpix.de"
+    languageCode: "de"
+    notes: EU number formatting (reversed separators)
+
+  - region: Italy (IT)
+    countryCode: "IT"
+    countryCode2: "IT"
+    mainDomain: "printerpix.it"
+    currencyCode: "EUR"
+    currencySymbol: "€"
+    countryCodeGuid: "262f2dd3-5a16-4cf0-ac14-3c7ce7e617e6"
+    locale: "it-IT"
+    countryName: "Italy"
+    thousandsSeparator: "."
+    fractionSeparator: ","
+    siteCode: 13
+    callbackUrl: "https://printerpix.it"
+    website: "https://www.printerpix.it"
+    baseAPIEndpoint: "https://api.printerpix.it"
+    newAPIEndpoint: "https://qt-api.printerpix.it"
+    languageCode: "it"
+    notes: EU number formatting (reversed separators)
+
+  - region: Spain (ES)
+    countryCode: "ES"
+    countryCode2: "ES"
+    mainDomain: "printerpix.es"
+    currencyCode: "EUR"
+    currencySymbol: "€"
+    countryCodeGuid: "4f041906-d729-43db-aa56-0e196d1a2840"
+    locale: "es-ES"
+    countryName: "Spain"
+    thousandsSeparator: "."
+    fractionSeparator: ","
+    siteCode: 12
+    callbackUrl: "https://printerpix.es"
+    website: "https://www.printerpix.es"
+    baseAPIEndpoint: "https://api.printerpix.es"
+    newAPIEndpoint: "https://qt-api.printerpix.es"
+    languageCode: "es"
+    notes: EU number formatting (reversed separators)
+
+  - region: France (FR)
+    countryCode: "FR"
+    countryCode2: "FR"
+    mainDomain: "printerpix.fr"
+    currencyCode: "EUR"
+    currencySymbol: "€"
+    countryCodeGuid: "a273cb1e-3e09-43b4-b556-b4d32ce235a4"
+    locale: "fr-FR"
+    countryName: "France"
+    thousandsSeparator: "."
+    fractionSeparator: ","
+    siteCode: 10
+    callbackUrl: "https://printerpix.fr"
+    website: "https://www.printerpix.fr"
+    baseAPIEndpoint: "https://api.printerpix.fr"
+    newAPIEndpoint: "https://qt-api.printerpix.fr"
+    languageCode: "fr"
+    notes: EU number formatting (reversed separators)
+
+  - region: Netherlands (NL)
+    countryCode: "NL"
+    countryCode2: "NL"
+    mainDomain: "printerpix.nl"
+    currencyCode: "EUR"
+    currencySymbol: "€"
+    countryCodeGuid: "1076c5f2-730e-4314-88a5-dd82f78e1b77"
+    locale: "nl-NL"
+    countryName: "Netherlands"
+    thousandsSeparator: "."
+    fractionSeparator: ","
+    siteCode: 14
+    callbackUrl: "https://printerpix.nl"
+    website: "https://www.printerpix.nl"
+    baseAPIEndpoint: "https://api.printerpix.nl"
+    newAPIEndpoint: "https://qt-api.printerpix.nl"
+    languageCode: "nl"
+    notes: EU number formatting (reversed separators)
+
+behavior:
+  - name: websiteVariables
+    steps:
+      - Static constant array of 7 region configuration objects
+      - Each entry contains countryCode, countryCode2, mainDomain, currencyCode, currencySymbol, countryCodeGuid, locale, countryName, thousandsSeparator, fractionSeparator, siteCode, callbackUrl, website, baseAPIEndpoint, newAPIEndpoint, languageCode
+      - UK (GB) is index 0 and serves as fallback for all lookup functions
+  - name: getSiteSetting
+    steps:
+      - Reads settings().website to get current region code (e.g., "GB", "US")
+      - Finds matching entry in websiteVariables by countryCode2
+      - If no match found, falls back to websiteVariables[0] (UK/GB)
+      - Checks settings().API_ENV for environment override
+      - If API_ENV is "QA", overrides both baseAPIEndpoint and newAPIEndpoint to "https://qa-api.{mainDomain}"
+      - If API_ENV is not "QA", sets baseAPIEndpoint to "https://api.{mainDomain}" and newAPIEndpoint to "https://qt-api.{mainDomain}"
+      - Returns the full WebsiteVariable object with API endpoints adjusted
+  - name: getSiteSettingByCountryCode
+    steps:
+      - Takes a countryCode string parameter (e.g., "GB", "US")
+      - Finds matching entry in websiteVariables by countryCode2
+      - Falls back to websiteVariables[0] (UK/GB) if no match
+      - Returns the WebsiteVariable object as-is (no API endpoint override)
+  - name: getSiteCode
+    steps:
+      - Takes a hostName string (e.g., "www.printerpix.com")
+      - Finds matching entry in websiteVariables where hostName includes mainDomain
+      - Returns the siteCode number, or defaults to 4 (UK) if not found
+  - name: getCurrencyCode
+    steps:
+      - Takes a hostName string
+      - Finds matching entry in websiteVariables where hostName includes mainDomain
+      - Returns the currencyCode string, or defaults to "USD" if not found
+  - name: getCallbackUrl
+    steps:
+      - Takes a hostName string
+      - Finds matching entry in websiteVariables where hostName includes mainDomain
+      - Returns the callbackUrl string, or defaults to "http://localhost:5173" if not found
+  - name: getHreflangLinks
+    steps:
+      - Takes an optional pathname string (defaults to "/")
+      - Maps all 7 websiteVariables entries to hreflang link objects with rel="alternate", hreflang=locale.toLowerCase(), href=website+pathname
+      - Appends one additional x-default entry pointing to UK site ("https://www.printerpix.co.uk" + pathname)
+      - Returns array of 8 hreflang link objects total
+
+dependencies:
+  internal:
+    - path: ~/config/settings
+      imports: [settings]
+      description: Environment configuration (website region, API_ENV, debug flags)
+  external: []
+
+data_flow:
+  region_determination:
+    - source: Environment variable WEBSITE (GB, US, DE, etc.)
+    - read_by: settings().website
+    - matched_against: websiteVariables[].countryCode2
+    - fallback: websiteVariables[0] (UK/GB)
+
+  hostname_detection:
+    - source: Request hostname (e.g., 'www.printerpix.com')
+    - matched_against: websiteVariables[].mainDomain (using includes())
+    - used_by: getSiteCode, getCurrencyCode, getCallbackUrl
+    - fallback_values:
+        siteCode: 4 (UK)
+        currencyCode: "USD" (US)
+        callbackUrl: "http://localhost:5173" (dev)
+
+  api_endpoint_selection:
+    - condition: settings().API_ENV === "QA"
+      true: "https://qa-api.{mainDomain}"
+      false:
+        baseAPIEndpoint: "https://api.{mainDomain}"
+        newAPIEndpoint: "https://qt-api.{mainDomain}"
+    - cart_operations_use: newAPIEndpoint (qt-api)
+    - legacy_operations_use: baseAPIEndpoint (api)
+
+business_logic:
+  region_detection:
+    - Primary: Environment variable WEBSITE (set at build/deploy time)
+    - Secondary: Hostname parsing (for dynamic detection)
+    - Fallback: UK (GB) as default region
+
+  api_environment:
+    - QA environment: Forces qa-api subdomain for both endpoints
+    - LIVE environment: Uses api/qt-api as appropriate
+    - No staging environment defined
+
+  url_mapping:
+    - All domains follow pattern: {www.}?printerpix.{tld}
+    - API endpoints: api.printerpix.{tld} or qt-api.printerpix.{tld}
+    - QA endpoints: qa-api.printerpix.{tld} (both legacy and new)
+
+  number_formatting:
+    - UK/US regions: Comma for thousands (1,234.56)
+    - EU regions: Period for thousands (1.234,56)
+    - Critical for currency display and user input parsing
+
+  seo_strategy:
+    - All regions exposed via hreflang tags
+    - x-default points to UK site
+    - Paths preserved across regions (/cart -> /cart on all sites)
+
+  country_guid_usage:
+    - Backend API requires countryCodeGuid in some requests
+    - Unique UUID per region
+    - Immutable (never changes for a region)
+
+security:
+  environment_exposure:
+    - settings() function exposes NODE_ENV, API_ENV, WEBSITE
+    - No secrets or credentials in this file
+    - API endpoints are public (no auth tokens here)
+
+  xss_prevention:
+    - All config values are hardcoded (no user input)
+    - No HTML injection risk
+
+  region_spoofing:
+    - Region determined by env var (set at deploy time)
+    - Hostname detection uses includes() - could match subdomains
+    - No validation of countryCode input in getSiteSettingByCountryCode
+
+performance:
+  lookup_efficiency:
+    - Array.find() used for all lookups (O(n) but n=7, negligible)
+    - No caching needed (pure functions, static data)
+    - websiteVariables is const (never modified)
+
+  api_endpoint_construction:
+    - String interpolation for QA endpoint overrides
+    - No network calls (all local config)
+
+edge_cases:
+  - Unknown countryCode: Falls back to UK (GB)
+  - Unknown hostname: Falls back to UK siteCode (4), USD currency, localhost callback
+  - API_ENV not "QA": Uses LIVE endpoints (api/qt-api)
+  - Pathname not provided to getHreflangLinks: Defaults to "/"
+  - countryCode vs countryCode2: UK uses "UK" for countryCode, "GB" for countryCode2 (all others match)
+
+used_by:
+  - backend/services/accounts-service.yaml (getSiteSetting for region-specific API calls)
+  - backend/services/category-service.yaml (getSiteSetting for category API endpoints)
+  - backend/services/product-page-service.yaml (getSiteSetting for product API endpoints)
+  - backend/services/shop-page-service.yaml (getSiteSetting for shop page head metadata)
+  - shared/config/http.yaml (getSiteSetting for base API URL configuration)
+  - shared/utilities/http.yaml (getSiteSetting for HTTP request routing)
+  - shared/utilities/format.yaml (getSiteSetting for locale and currency formatting)
+  - frontend/components/header/header.yaml (getSiteSetting for header region display)
+  - frontend/routes/home-page.yaml (getHreflangLinks and getSiteSetting for SEO)
+  - frontend/routes/delivery-rates.yaml (getSiteSetting for delivery rate lookups)
+  - frontend/routes/sitemap-index.yaml (getSiteSetting for sitemap generation)
+  - frontend/components/info-pages/track-my-order-container.yaml (getSiteCode and getSiteSetting for order tracking)
+  - frontend/components/shared/cross-domain-notification.yaml (getSiteSetting for cross-domain redirects)
+
+critical_importance:
+  - This is the SINGLE SOURCE OF TRUTH for all region configuration
+  - Used by cart, checkout, payment, product pages, SEO
+  - Incorrect config = wrong currency, wrong API calls, broken payments
+  - Changes here affect ALL pages and ALL regions
+  - countryCodeGuid and siteCode must match backend database values
+
+version: 1.0.0
+analyzed: 2026-02-17

@@ -1,0 +1,255 @@
+name: ProductFlipClock
+source: src/components/product-page/product-countdown-timer/product-flip-clock-v2.tsx
+description: |
+  An animated flip-clock countdown timer for the product page. Counts down to the
+  delivery deadline timestamp sourced from ProductContext. Renders pairs of digits
+  (each a Digit sub-component with CSS flip card animation) for days, hours,
+  minutes, and seconds. Days are hidden when both day digits are zero. Unit labels
+  (DAYS, HRS, MINS, SECS) are shown only for US and GB regions. Clock dimensions
+  are computed dynamically based on container width, recalculated on load and resize.
+  Timer interval is synchronised to start on the next full second boundary.
+
+exports:
+  - name: ProductFlipClock
+    type: "component$<ProductFlipClockProps>"
+    description: Named export — the main countdown clock component
+  - name: Digit
+    type: "component$<DigitProps>"
+    description: Named export — single flip-card digit (used internally)
+
+props:
+  - name: productType
+    type: PlatinumProductTypeEnum
+    required: true
+    description: Product type (used by parent; not directly consumed in render logic)
+  - name: useNewStyle
+    type: boolean
+    required: false
+    description: Reserved prop (not yet wired to logic)
+  - name: clockColor
+    type: string
+    required: false
+    default: '"#2E638A"'
+    description: Background colour of clock cards and separator dots
+  - name: textColor
+    type: string
+    required: false
+    default: '"#FFFFFF"'
+    description: Text colour of clock digits
+  - name: align
+    type: '"left" | "center" | "right"'
+    required: false
+    default: '"center"'
+    description: Horizontal alignment of the clock row
+
+context_consumed:
+  - name: ProductContext
+    source: ~/context/product-category-context
+    fields:
+      - product.deliveryDeadline.deliveryDeadline: ISO timestamp string for the countdown target
+
+component_structure:
+  - ClockContainer: Flex row, full width, aligned per align prop
+  - UnitGroup: Per time unit (days/hours/minutes/seconds) — two Digit cards + colon separator
+  - UnitLabel: Text label below digit pair (US/GB only)
+  - Digit: Individual flip card component (two per unit)
+
+child_components:
+  - name: Digit
+    purpose: Single animated flip-card digit
+    props:
+      - digit: number (current value 0-9)
+      - isSeconds: boolean (last unit — animation timing differs)
+      - clockStyle: string (CSS string from getFlipClockStyle)
+      - containerRef: HTMLDivElement | undefined
+      - cardHeight: number (dynamically calculated px height)
+      - clockColor: string
+      - textColor: string
+
+data_structure:
+  TimeData:
+    - days: { firstDigit: number | null, lastDigit: number | null }
+    - hours: { firstDigit: number | null, lastDigit: number | null }
+    - minutes: { firstDigit: number | null, lastDigit: number | null }
+    - seconds: { firstDigit: number | null, lastDigit: number | null }
+
+  TimeRemainingStore:
+    - data: TimeData
+
+behavior:
+  - On visible (useVisibleTask$, document-ready strategy):
+      1. Calculate msToNextSecond = 1000 - (Date.now() % 1000)
+      2. setTimeout to align to next second boundary, then setInterval every 1000ms
+      3. Each tick: call generateTimeInfo(deliveryDeadline) to get TimeData, update all digit signals in timeRemaining store
+      4. Cleanup: clearTimeout + clearInterval on component destruction
+  - On load and resize:
+      1. Compute containerWidth from containerRef.value.offsetWidth
+      2. numDigits = deliveryDeadline ? 8 : 6 (include days column when deadline present)
+      3. dynamicHeight = containerWidth / (numDigits * 0.9)
+      4. clockStyle = getFlipClockStyle() CSS string
+  - Render:
+      1. Iterate timeRemaining.data entries (days, hours, minutes, seconds)
+      2. Skip days unit if firstDigit and lastDigit are both 0 or null
+      3. For each unit render two Digit cards + colon separator (except last unit)
+      4. Show unit label only when settings().website is "US" or "GB" AND seconds digit is ready (not null)
+      5. Digits only render when clockStyle is set AND seconds.lastDigit is initialised (null check)
+
+  Digit behavior (useVisibleTask$, tracks digit prop):
+    1. On digit change: setAfterValue(digit), add "play" CSS class to flip element, set displayShadow=true
+    2. isSeconds=false: after 300ms setPreviousValue(digit), clear shadow
+    3. isSeconds=true: wait for animationend event (handleAnimationEnd), then after 800ms setPreviousValue(digit), clear shadow
+    4. "play" class triggers CSS flip animation (0.4s linear)
+
+styling:
+  - Clock container: flex items-center gap-1 w-full + justify-start/end/center based on align
+  - Unit group: flex flex-col items-center
+  - Digit card CSS vars: --flip-height, --flip-width, --line-height, --flip-container-color, --flip-color, --flip-text-color, --flip-border-radius, --animation-time (0.4s), --animation-ease (linear), --perspective (100px)
+  - Colon separator: two w-[2px] h-[2px] md:w-[3px] md:h-[3px] rounded-full dots with clockColor background
+  - Unit label: text-xs mt-1 font-medium, color: clockColor
+
+dependencies:
+  qwik:
+    - $, component$, useComputed$, useContext, useOnDocument, useOnWindow, useSignal, useStore, useVisibleTask$ from @builder.io/qwik
+  contexts:
+    - ProductContext from ~/context/product-category-context
+  services:
+    - generateTimeInfo, getFlipClockStyle, TimeData from ~/services/flip-clock-service
+  config:
+    - settings from ~/config/settings
+  types:
+    - PlatinumProductTypeEnum from ~/services/product-category-service
+
+used_by:
+  - ProductPageBaseTemplate
+  - ProductPageBasicTemplate
+  - ProductPageFixedTemplate
+  - ProductPageFixedThemeTemplate
+  - ProductPageHubTemplate
+  - PhotoCanvasPrintsNewTemplate
+  - PhotoCanvasPrintsNewTemplateV3
+  - PhotoCanvasPrintsBundledTemplate
+  - PhotoCanvasPrintsHubBundledTemplate
+  - PhotoCanvasPrintsTemplateV2
+  - PhotoCanvasPrintsBaseTemplate
+  - PhotoCalendarsBaseTemplate
+  - PhotoCalendarsBalooRadioTemplate
+  - PhotoCalendarsDaisyTemplate
+  - PhotoCalendarsJbc2024Template
+  - MarketingPageHero
+
+security:
+  - Timer cleanup is critical — clearTimeout and clearInterval must run on component destroy to prevent memory leaks
+
+edge_cases:
+  - If deliveryDeadline is an empty string, generateTimeInfo returns null/zero digits — clock shows 00:00:00 (no days)
+  - If containerRef is not yet mounted on first load, resize calculation is skipped (guarded by containerRef.value check)
+  - Digits do not render until clockStyle is set AND seconds.lastDigit is initialised — prevents flash of empty cards on load
+  - Days column is hidden when both day digits are 0 (countdown under 24 hours)
+
+notes:
+  - This component uses useVisibleTask$ (browser-only) intentionally — flip animation and interval require DOM access
+  - The timer syncs to wall-clock second boundaries (not arbitrary 1s intervals) to stay accurate
+  - getFlipClockStyle is called on resize to regenerate the CSS keyframe string
+
+types:
+  ProductFlipClockProps:
+    description: Props for the main ProductFlipClock component
+    fields:
+      - name: productType
+        type: PlatinumProductTypeEnum
+      - name: useNewStyle
+        type: boolean
+        optional: true
+      - name: clockColor
+        type: string
+        optional: true
+        default: '"#2E638A"'
+      - name: textColor
+        type: string
+        optional: true
+        default: '"#FFFFFF"'
+      - name: align
+        type: '"left" | "center" | "right"'
+        optional: true
+        default: '"center"'
+
+  DigitProps:
+    description: Props for the internal Digit sub-component
+    fields:
+      - name: digit
+        type: number
+      - name: isSeconds
+        type: boolean
+      - name: clockStyle
+        type: string
+      - name: containerRef
+        type: "HTMLDivElement | undefined"
+      - name: cardHeight
+        type: number
+      - name: clockColor
+        type: string
+      - name: textColor
+        type: string
+
+  TimeData:
+    description: Time breakdown returned by generateTimeInfo
+    source: ~/services/flip-clock-service
+    fields:
+      - name: days
+        type: "{ firstDigit: number | null, lastDigit: number | null }"
+      - name: hours
+        type: "{ firstDigit: number | null, lastDigit: number | null }"
+      - name: minutes
+        type: "{ firstDigit: number | null, lastDigit: number | null }"
+      - name: seconds
+        type: "{ firstDigit: number | null, lastDigit: number | null }"
+
+  TimeRemainingStore:
+    description: Qwik deep store holding current countdown digits
+    fields:
+      - name: data
+        type: TimeData
+
+field_consumption:
+  ProductContext.product.deliveryDeadline:
+    consumed:
+      - deliveryDeadline: ISO timestamp string passed to generateTimeInfo each tick
+    ignored:
+      - scriptDeadlines, showDeliveryDeadlines, and other fields — not used by this component
+
+implementation_logic:
+  second_boundary_sync:
+    rule: |
+      The interval is not started immediately on mount. Instead:
+      msToNextSecond = 1000 - (Date.now() % 1000)
+      A setTimeout fires after msToNextSecond ms, then setInterval runs every 1000ms.
+      This ensures the clock ticks exactly on second boundaries.
+    critical: true
+
+  dynamic_card_sizing:
+    rule: |
+      cardHeight = containerWidth / (numDigits * 0.9)
+      numDigits = 8 when deliveryDeadline is set (days + hours + minutes + seconds = 4 units × 2 digits = 8)
+      numDigits = 6 when no deadline (hours + minutes + seconds = 3 × 2 = 6)
+      All digit CSS vars (height, width, line-height, border-radius) are proportional to cardHeight.
+    critical: false
+
+  digit_animation_timing:
+    rule: |
+      Non-seconds digits: setPreviousValue fires 300ms after digit change (while animation plays).
+      Seconds digit: setPreviousValue fires 800ms after animationEnd event fires.
+      This difference prevents a visual flash where the "top half" reverts before the 0.4s animation finishes.
+    critical: false
+
+visibility_map:
+  days_unit:
+    condition: "firstDigit > 0 OR lastDigit > 0 (at least one day remaining)"
+    default: hidden (hidden when countdown is under 24 hours)
+
+  unit_labels:
+    condition: "settings().website is 'US' or 'GB' AND seconds.lastDigit is not null AND clockStyle is set"
+    default: hidden (other regions)
+
+  digit_cards:
+    condition: "clockStyle.value is non-empty AND timeRemaining.data.seconds.lastDigit is not null"
+    default: hidden (until first interval tick after mount)

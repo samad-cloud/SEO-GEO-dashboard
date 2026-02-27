@@ -1,0 +1,251 @@
+name: ProductShopDesign
+source: src/components/product-page/product-shop-design.tsx
+description: |
+  Displays a "Shop Designs" section showing a grid (desktop) or horizontal scroll
+  strip (mobile) of product theme thumbnails. Each thumbnail links to the designer
+  with all necessary URL parameters (quantity, start year/month, prodType, pmn,
+  addonItems) merged from both the theme URL and the current design URL.
+  Supports show-more/collapse on desktop (plus/minus toggle) and a scroll-right
+  button on mobile. Renders a loading skeleton when API call is pending. Renders
+  nothing when apiStatus is not PENDING and themes array is empty. Fires Matomo
+  analytics events on theme click and "Browse All" link click.
+
+exports:
+  - name: default
+    type: component$<IProductShopDesignsProps>
+    description: Default Qwik component export
+  - name: ThemeAPIResponseStatus
+    type: enum
+    description: "PENDING=0, COMPLETED=1, FAILED=2"
+
+props:
+  - name: designUrl
+    type: string
+    required: true
+    description: Current product design URL (used as base for parameter merging)
+  - name: themes
+    type: "ProductTheme[]"
+    required: true
+    description: Array of theme items to display
+  - name: apiStatus
+    type: ThemeAPIResponseStatus
+    required: true
+    description: Current API loading state for themes
+  - name: productType
+    type: PlatinumProductTypeEnum
+    required: true
+    description: Controls image aspect ratio and vw widths on mobile
+  - name: itemsPerRowOnDesktop
+    type: number
+    required: false
+    default: "6 (US region) or 4 (all other regions)"
+    description: Number of theme items per row on desktop
+  - name: itemsPerRowOnMobile
+    type: number
+    required: false
+    default: 2
+    description: Number of theme items per row on mobile
+  - name: initialRow
+    type: number
+    required: false
+    default: 1
+    description: Number of initial rows to show on desktop before show-more
+  - name: quantityShowOnMobile
+    type: number
+    required: false
+    description: If provided, limits the number of themes shown on mobile
+
+context_consumed:
+  - name: ProductContext
+    source: ~/context/product-category-context
+    fields:
+      - product.themeSubjectFilter: Used to set themeSubjectFilter param on "Browse All" URL
+
+component_structure:
+  - LoadingState: bg overlay with LoadingStatus spinner (visible when PENDING)
+  - ThemesGrid: Hidden on mobile, flex-wrap grid of theme thumbnails on desktop
+  - MobileScrollStrip: Horizontal overflow-x-scroll strip on mobile with fixed total width
+  - Header: "Shop Designs" label + "Browse All" link + plus/minus toggle (desktop) or scroll arrow (mobile)
+
+child_components:
+  - name: SVGIcon
+    source: ~/components/svg-icon/svg-icon
+    purpose: Plus/minus toggle icon (desktop) and thick-arrow scroll icon (mobile)
+    props:
+      - name: "plus" | "minus" | "thick-arrow"
+      - width, height, fill
+  - name: Image
+    source: "@unpic/qwik"
+    purpose: Theme thumbnail images
+    props:
+      - src: theme.imageUrl
+      - class: transition + scale on hover
+  - name: LoadingStatus
+    source: ~/components/cart-page/loading-status
+    purpose: Loading spinner overlay during PENDING state
+
+data_structure:
+  ProductTheme:
+    - url: string (designer URL for this theme)
+    - imageUrl: string (thumbnail image URL)
+
+behavior:
+  - initialQuantity = itemsPerRowOnDesktop * initialRow
+  - themeList computation (useComputed$):
+      - desktop: if showFullThemes → all themes; else themes.slice(0, initialQuantity)
+      - mobile: if quantityShowOnMobile provided → themes.slice(0, quantityShowOnMobile); else all themes
+  - getCtaThemeLink: constructs "Browse All" URL using designUrl params, sets themeSubjectFilter (empty if "all"), clears themeUrl param
+  - generateThemeUrl: merges quantity, data-addonitems, startYear, startMonth, prodType, productPage, pmn from designUrl into theme.url
+  - handleThemeScroll: scrolls .product-themes-wrapper left by 300px
+  - Desktop show-more toggle: showFullThemes signal toggled by plus/minus icon click
+  - Theme click: fires Matomo CLICK_SHOP_DESIGN_THEME event
+  - Browse All click: fires Matomo CLICK_SHOP_DESIGN_BROWSE_ALL event
+  - isLayflatPhotoBooks: checks if designUrl contains "PBLayFlat_PhotoSoftCover_4x4_20pp" (case-insensitive); affects mobile vw width
+
+styling:
+  - Section wrapper: bg-[#FBF6F7] rounded px-3
+  - Browse All link: px-6 py-1 rounded border border-[#808080] bg-[#fff] link_shop_design--browse-all
+  - Desktop grid: flex-wrap -mx-2 mt-4 hidden lg:flex
+  - Theme item (desktop): themeItemClassWrapper (from getFlexItemClass) px-2 mb-4; image container: bg-[#fff] max-h-[200px] overflow-hidden
+  - Mobile strip: overflow-x-scroll product-themes-wrapper; scrollbar styled with pink (#f02480) thumb
+  - Mobile item width: 60vw (layflat), 80vw (photobook/mug), 45vw (all others) per theme
+  - Image hover: group-hover:scale-110 with 300ms transition
+  - objectFit: cover for Photobook/Mug on mobile; contain for all others
+
+dependencies:
+  qwik:
+    - component$, useComputed$, useSignal, useStylesScoped$, $, useContext from @builder.io/qwik
+  routing:
+    - useLocation from @builder.io/qwik-city
+  i18n:
+    - inlineTranslate from qwik-speak
+  contexts:
+    - ProductContext from ~/context/product-category-context
+  utilities:
+    - getFlexItemClass from ~/utility/format
+    - pushMatomoEvent, MatomoCategory, MatomoEvent from ~/utility/matomo
+  config:
+    - settings from ~/config/settings
+  components:
+    - SVGIcon from ~/components/svg-icon/svg-icon
+    - Image from @unpic/qwik
+    - LoadingStatus from ~/components/cart-page/loading-status
+  types:
+    - ProductTheme from ~/services/themes-service
+    - PlatinumProductTypeEnum from ~/services/product-category-service
+
+used_by:
+  - ProductPageBaseTemplate
+  - ProductPageBasicTemplate
+  - ProductPageFixedTemplate
+  - ProductPageHubTemplate
+  - PhotoCanvasPrintsBaseTemplate
+  - PhotoCalendarsBaseTemplate
+  - PhotoCalendarsBalooRadioTemplate
+  - PhotoCalendarsDaisyTemplate
+  - PhotoCalendarsJbc2024Template
+  - ProductPageContainer
+
+edge_cases:
+  - If themes is empty and apiStatus is not PENDING, nothing is rendered (null)
+  - show-more toggle only appears when themes.length > initialQuantity
+  - themeSubjectFilter set to empty string when its value is "all" (case-insensitive)
+  - generateThemeUrl preserves all existing theme URL params and only overrides quantity/startYear/startMonth/prodType/productPage/pmn/addonitems
+
+notes:
+  - itemsPerRowOnDesktop defaults to 6 for US region, 4 for all other regions (settings().website check)
+  - The mobile strip uses inline style width calculation based on vw per item × theme count
+
+types:
+  IProductShopDesignsProps:
+    description: Component props
+    fields:
+      - name: designUrl
+        type: string
+      - name: themes
+        type: "ProductTheme[]"
+      - name: apiStatus
+        type: ThemeAPIResponseStatus
+      - name: productType
+        type: PlatinumProductTypeEnum
+      - name: itemsPerRowOnDesktop
+        type: number
+        optional: true
+      - name: itemsPerRowOnMobile
+        type: number
+        optional: true
+      - name: initialRow
+        type: number
+        optional: true
+      - name: quantityShowOnMobile
+        type: number
+        optional: true
+
+  ThemeAPIResponseStatus:
+    description: API loading state enum
+    fields:
+      - name: PENDING
+        type: "0"
+      - name: COMPLETED
+        type: "1"
+      - name: FAILED
+        type: "2"
+
+  ProductTheme:
+    description: Single theme item from themes API
+    source: ~/services/themes-service
+    fields:
+      - name: url
+        type: string
+      - name: imageUrl
+        type: string
+
+field_consumption:
+  ProductContext.product:
+    consumed:
+      - themeSubjectFilter: Set as themeSubjectFilter query param on Browse All URL (empty when "all")
+    ignored:
+      - All other product fields
+
+  ProductTheme:
+    consumed:
+      - url: Used as base for generateThemeUrl; also as React key
+      - imageUrl: Passed to Image src
+    ignored: []
+
+implementation_logic:
+  url_param_merging:
+    rule: |
+      generateThemeUrl takes theme.url and merges parameters from designUrl:
+      - quantity: overrides/appends from designUrl (required)
+      - data-addonitems: appended if present in designUrl
+      - startYear: overrides/appends if designUrl has startYear > 0
+      - startMonth: overrides/appends when startYear is set
+      - prodType: always overrides/appends from designUrl
+      - productPage: always overrides/appends from designUrl
+      - pmn: always overrides/appends from designUrl
+      Returns pathname + merged params as /path?decoded-params string.
+    critical: true
+
+  layflat_detection:
+    rule: |
+      isLayflatPhotoBooks = designUrl.toLowerCase().includes("PBLayFlat_PhotoSoftCover_4x4_20pp".toLowerCase())
+      Used to set mobile item width to 60vw instead of 80vw (photobook default) or 45vw (other).
+    critical: false
+
+visibility_map:
+  entire_section:
+    condition: "apiStatus === PENDING OR (themes exists AND length > 0)"
+    default: hidden (null rendered when not PENDING and themes empty)
+
+  loading_overlay:
+    condition: "apiStatus === ThemeAPIResponseStatus.PENDING"
+    default: hidden
+
+  show_more_toggle:
+    condition: "themes.length > initialQuantity"
+    default: hidden (only on desktop via lg:block)
+
+  expanded_desktop_grid:
+    condition: "showFullThemes.value is true"
+    default: shows initialQuantity themes only

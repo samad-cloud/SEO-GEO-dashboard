@@ -1,0 +1,145 @@
+name: MultiOrderSelect
+source: src/components/track-my-order-page/containers/track-my-order-container.tsx
+description: |
+  Package tab selector rendered when an order consists of multiple packages
+  (shipments). Displays a row of pill/tab buttons — one per package — styled in
+  Printerpix pink (#E40080). The selected tab has a pink background with white
+  text; unselected tabs show pink text on white. On mobile the outer wrapper is
+  a pill-shaped border; on desktop (md+) tabs are square with a bottom-open
+  border to visually attach to the tracking panel below. A "multiple shipments"
+  informational message is shown on mobile below the tabs. Clicking a tab
+  updates the selected order index and triggers a fresh tracking data fetch for
+  that package's CONumber. The entire component renders nothing when multiOrders
+  is empty.
+  This component is defined as a module-level const inside
+  track-my-order-container.tsx and is not exported separately.
+
+exports:
+  - name: MultiOrderSelect
+    type: component$ (module-scoped, not exported from the file)
+    description: Internal component used only within TrackMyOrderContainer
+
+props:
+  - name: multiOrders
+    type: "Array<Pick<TrackingItem, 'CONumber' | 'InvoiceNumber'>>"
+    required: true
+    description: List of packages for the order. Each entry has a CONumber (used as button key and fetch param) and InvoiceNumber.
+  - name: selectedOrder
+    type: "Signal<number | null>"
+    required: true
+    description: Reactive signal tracking the currently selected package index. Written to on click.
+  - name: fetchData
+    type: "QRL<(orderNumber: string) => Promise<void>>"
+    required: true
+    description: QRL callback invoked with the CONumber of the clicked package to trigger tracking data reload.
+
+types:
+  MultiOrderSelectPropType:
+    description: Props interface defined inline in the container file
+    fields:
+      - name: multiOrders
+        type: "Array<Pick<TrackingItem, 'CONumber' | 'InvoiceNumber'>>"
+      - name: selectedOrder
+        type: "Signal<number | null>"
+      - name: fetchData
+        type: "QRL<(orderNumber: string) => Promise<void>>"
+
+  TrackingItemPickedFields:
+    description: Subset of TrackingItem used in multiOrders array
+    source: ~/services/tracking-service (TrackingItem type)
+    fields:
+      - name: CONumber
+        type: string
+        description: Carrier/package order number; used as the fetch key
+      - name: InvoiceNumber
+        type: number
+        description: Invoice number (rendered in URL param, not displayed in this component)
+
+field_consumption:
+  multiOrders:
+    consumed:
+      - CONumber: Used as React key prop and passed to fetchData on click
+      - length: Checked for > 0 to determine whether to render anything; used for tab count label
+    ignored:
+      - InvoiceNumber: Present in the array type but not rendered or used by this component
+
+  selectedOrder:
+    consumed:
+      - value: Read to compute active/inactive tab styling; written on click
+
+behavior:
+  - If multiOrders.length === 0: component renders an empty fragment (nothing visible)
+  - If multiOrders.length > 0:
+      1. Renders a flex row of tab buttons, one per package in multiOrders
+      2. Each button label: "{track_your_order.package} {index + 1} / {multiOrders.length}"
+         (e.g. "Package 2 / 3")
+      3. On button click:
+         a. Sets selectedOrder.value = index (the clicked tab index)
+         b. Calls fetchData(order.CONumber) to load that package's tracking data
+      4. Active tab (selectedOrder.value === index): pink background (#E40080), white text
+      5. Inactive tabs: pink text (#E40080), white/transparent background
+      6. Divider border-e on each button except: last button, active button, button just before active
+      7. Informational message (multi_shipments_inform) shown below tabs on mobile (md:hidden)
+
+styling:
+  outer_wrapper: "bg-white mt-[30px] pt-2 flex flex-col items-center md:items-start"
+  tab_row: "flex w-fit border-[#E40080] border-2 md:border-0 rounded-full md:rounded-none md:rounded-tl-md md:rounded-tr-md"
+  tab_item_base: "relative flex py-3 cursor-pointer md:border-2 rounded-full border-[#E40080] md:rounded-none md:border-b-0"
+  tab_item_active: "bg-[#E40080] text-white"
+  tab_item_inactive: "text-[#E40080]"
+  tab_item_first: "md:rounded-tl-md"
+  tab_item_last: "md:rounded-tr-md"
+  tab_button: "text-xs sm:text-sm font-bold px-7 py-1"
+  tab_button_divider: "border-e (applied unless last, active, or just before active)"
+  mobile_info_message: "text-center text-base pt-6 md:hidden"
+
+visibility_map:
+  entire_component:
+    condition: "multiOrders.length > 0"
+    default: hidden (renders empty fragment when no multi-orders)
+  mobile_info_message:
+    condition: always shown when component is visible
+    default: visible on mobile (md:hidden hides at md+)
+  desktop_info_message:
+    condition: |
+      A second instance of multi_shipments_inform is rendered outside this component
+      by the parent (TrackMyOrderContainer) — "hidden md:block" — not part of MultiOrderSelect
+    default: not applicable (that message is in the parent)
+  tab_divider_border:
+    condition: "NOT (last tab OR active tab OR tab immediately before active)"
+    default: shown
+
+i18n:
+  translation_keys:
+    - track_your_order.package
+      note: Used with interpolation — "{t('track_your_order.package')} {index + 1} / {multiOrders.length}"
+    - track_your_order.multi_shipments_inform
+      note: Shown in the mobile info paragraph below the tabs
+
+dependencies:
+  qwik:
+    - component$ from @builder.io/qwik
+    - Signal, QRL (types) from @builder.io/qwik
+  i18n:
+    - inlineTranslate from qwik-speak
+  types:
+    - TrackingItem from ~/services/tracking-service (used in Pick<> generic)
+
+used_by:
+  - TrackMyOrderContainer
+
+security:
+  - No user input fields; all interaction is button clicks on pre-fetched package data
+  - CONumber passed to fetchData comes from the API response, not from user text input
+
+edge_cases:
+  - multiOrders.length === 0: renders nothing (empty fragment guard)
+  - multiOrders.length === 1: single tab rendered; no divider borders; selected by default (index 0 = selectedOrder 0)
+  - selectedOrder.value is null: no tab shows as active (no match against null)
+  - fetchData QRL rejected (API error): handled by the parent container's try/catch; MultiOrderSelect itself has no error handling
+  - CONumber is empty string: fetchData called with empty string; parent will likely set status="failed"
+
+notes:
+  - The "Package N / Total" label uses the track_your_order.package i18n key with manual string interpolation, not a parameterized i18n call.
+  - This component is co-located in the same file as ShipmentDetail, TrackingHistory (inline variant), and Faq — all defined as module-level consts within track-my-order-container.tsx.
+  - On desktop, the tab row border-2 is removed (md:border-0) and individual tab borders are added, creating a connected-tab appearance that visually merges with the tracking panel below via md:border-b-0.

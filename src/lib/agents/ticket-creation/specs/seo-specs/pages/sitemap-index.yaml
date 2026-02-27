@@ -1,0 +1,34 @@
+page_id: sitemap-index
+description: |
+  Server-side XML route that returns the sitemap index listing all child sitemaps.
+  No layout, no components — pure server response.
+
+url:
+  pattern: "/sitemap-index.xml"
+  layout: null
+  i18n_rewrites: {}
+
+seo_contract:
+  content_type: "application/xml"
+  description: |
+    Returns XML sitemapindex with references to child sitemaps:
+    - sitemap-pages.xml
+    - sitemap-products.xml
+    - sitemap-categories.xml
+    - blog/sitemap_index.xml (excluded for IN and AE regions)
+  no_html_head: true
+  notes: "This is an XML response, not an HTML page — no title, meta, or structured data"
+
+file_chain:
+  route:
+    file: "src/routes/sitemap-index.xml/index.tsx"
+    spec: "../migration-specs/frontend/routes/sitemap-index.yaml"
+    export_type: "onGet (RequestHandler)"
+  data_source:
+    function: "getSiteSetting()"
+    file: "src/services/server.ts"
+    description: "Gets current domain for constructing sitemap URLs"
+
+region_variations:
+  IN: "blog/sitemap_index.xml excluded"
+  AE: "blog/sitemap_index.xml excluded"

@@ -1,0 +1,1415 @@
+name: OptionData
+source:
+  path: src/data/option-data.ts
+  lines: 1-224
+  type: data
+  language: typescript
+
+description: |
+  Product option configuration data structures for Qwik e-commerce frontend.
+  Defines comprehensive types for product options including filters, tiered pricing,
+  add-ons, themes, orientations, and starting months. Central data model for product
+  customization and configuration throughout the application.
+
+exports:
+  - name: OptionData
+    type: interface
+    description: Main product option configuration structure
+  - name: StartingMonth
+    type: interface
+    description: Calendar starting month selection
+  - name: Option4
+    type: interface
+    description: Month name/value pair
+  - name: Caption
+    type: interface
+    description: Filter caption with ordering metadata
+  - name: Orientation
+    type: interface
+    description: Product orientation options (portrait/landscape)
+  - name: Option
+    type: interface
+    description: Basic option with name and default flag
+  - name: ThemeImage
+    type: interface
+    description: Theme preview image mapping
+  - name: Filters
+    type: interface
+    description: Container for filter array
+  - name: Filter
+    type: interface
+    description: Product filter/attribute with pricing and metadata
+  - name: Filter2
+    type: interface
+    description: Second-level nested filter
+  - name: Filter3
+    type: interface
+    description: Third-level nested filter
+  - name: Filter4
+    type: interface
+    description: Fourth-level (leaf) filter with required fields
+  - name: TieredPricing
+    type: interface
+    description: Quantity-based pricing tiers
+  - name: Caption2
+    type: interface
+    description: Caption for non-filter options
+  - name: Option2
+    type: interface
+    description: Option with pricing tiers
+  - name: Tier
+    type: interface
+    description: Pricing tier with quantity breakpoint
+  - name: AddOn
+    type: interface
+    description: Product add-on/extra
+  - name: Caption3
+    type: interface
+    description: Add-on caption
+  - name: Option3
+    type: interface
+    description: Add-on option with availability rules
+  - name: AvailableFor
+    type: interface
+    description: Add-on availability per product refCode
+  - name: OptionStore
+    type: interface
+    description: Runtime state for selected options
+
+data_structures:
+  OptionData:
+    fields:
+      dummy:
+        type: number
+        required: true
+        description: Placeholder/version field
+      captions:
+        type: Caption[]
+        required: true
+        description: Array of filter captions with metadata
+      orientation:
+        type: Orientation
+        required: false
+        description: Orientation options (portrait/landscape) if applicable
+      mcProductCat:
+        type: string
+        required: true
+        description: Merchant Center product category
+      themeImages:
+        type: ThemeImage[]
+        required: false
+        description: Preview images for each theme variant
+      filters:
+        type: Filter[]
+        required: true
+        description: Product attribute filters (nested up to 4 levels)
+      cardFilterOptions:
+        type: CardFilterOptions
+        required: true
+        description: Card-specific filter configuration (imported type)
+      tieredPricing:
+        type: TieredPricing[]
+        required: false
+        description: Quantity-based pricing tiers
+      startingMonth:
+        type: StartingMonth
+        required: false
+        description: Calendar starting month selector
+      addOns:
+        type: AddOn[]
+        required: false
+        description: Available product add-ons
+      defaultTierPricingQuantity:
+        type: number
+        required: true
+        description: Default selected quantity for tiered pricing
+
+  StartingMonth:
+    fields:
+      caption:
+        type: Caption2
+        required: true
+        description: Display caption for starting month selector
+      options:
+        type: Option4[]
+        required: true
+        description: Available months
+
+  Option4:
+    fields:
+      name:
+        type: string
+        required: true
+        description: Display name (e.g., "January")
+      value:
+        type: string
+        required: true
+        description: Value identifier
+
+  Caption:
+    fields:
+      name:
+        type: string
+        required: true
+        description: Filter name/label
+      comparison:
+        type: string
+        required: true
+        description: Comparison identifier for filtering logic
+      sortOrder:
+        type: number
+        required: true
+        description: Display order among captions
+      filterType:
+        type: string
+        required: true
+        description: Type of filter (e.g., "size", "finish")
+      filterOrder:
+        type: number
+        required: true
+        description: Order among filters of same type
+
+  Orientation:
+    fields:
+      options:
+        type: Option[]
+        required: true
+        description: Available orientations (portrait/landscape)
+      filterOrder:
+        type: number
+        required: false
+        description: Order in filter display
+      filterType:
+        type: string
+        required: true
+        description: Type identifier for orientation filter
+
+  Option:
+    fields:
+      name:
+        type: string
+        required: true
+        description: Option name
+      default:
+        type: boolean
+        required: true
+        description: Whether this is the default selected option
+
+  ThemeImage:
+    fields:
+      themeID:
+        type: string
+        required: true
+        description: Theme identifier
+      url:
+        type: string
+        required: true
+        description: Preview image URL
+
+  Filters:
+    fields:
+      filter:
+        type: Filter[]
+        required: true
+        description: Array of filter objects
+
+  Filter:
+    fields:
+      name:
+        type: string
+        required: true
+        description: Filter value name
+      value:
+        type: string
+        required: false
+        description: Filter value identifier
+      title:
+        type: string
+        required: false
+        description: Display title
+      title1:
+        type: string
+        required: false
+        description: Secondary title
+      bgImg:
+        type: string
+        required: false
+        description: Background image URL (default state)
+      bgImgActive:
+        type: string
+        required: false
+        description: Background image URL (active state)
+      bgColour:
+        type: string
+        required: false
+        description: Background color
+      textColor:
+        type: string
+        required: false
+        description: Text color
+      tag:
+        type: string
+        required: false
+        description: Tag/label (e.g., "POPULAR")
+      _default:
+        type: boolean | null
+        required: true
+        description: Whether this is the default selection
+      price:
+        type: number
+        required: false
+        description: Base price
+      discountedPrice:
+        type: number
+        required: false
+        description: Discounted price if applicable
+      refCode:
+        type: string
+        required: false
+        description: Product reference code
+      imageUrl:
+        type: string
+        required: false
+        description: Option preview image
+      filter:
+        type: Filter[]
+        required: false
+        description: Nested child filters (up to 4 levels deep)
+      ctaURL:
+        type: string
+        required: false
+        description: Call-to-action URL
+      attributeLevel:
+        type: string
+        required: false
+        description: Attribute hierarchy level
+      themeUrl:
+        type: string
+        required: false
+        description: Theme-specific URL
+      imageAltText:
+        type: string
+        required: false
+        description: Alt text for images
+      productFeedTitle:
+        type: string
+        required: false
+        description: Google Merchant Center title
+      productFeedMainProductPageUrl:
+        type: string
+        required: false
+        description: Main product page URL for feeds
+      productFeedMainProductPageId:
+        type: string
+        required: false
+        description: Main product page ID for feeds
+      productFeedSkuBase:
+        type: string
+        required: false
+        description: SKU base for product feeds
+      productFeedProductType:
+        type: string
+        required: false
+        description: Product type for feeds
+      productFeedImageUrl:
+        type: string
+        required: false
+        description: Image URL for product feeds
+
+  Filter2:
+    fields:
+      name:
+        type: string
+        required: true
+        description: Filter name
+      title:
+        type: string
+        required: false
+        description: Display title
+      title1:
+        type: string
+        required: false
+        description: Secondary title
+      bgImg:
+        type: string
+        required: false
+        description: Background image URL (default)
+      bgImgActive:
+        type: string
+        required: false
+        description: Background image URL (active)
+      bgColour:
+        type: string
+        required: false
+        description: Background color
+      textColor:
+        type: string
+        required: false
+        description: Text color
+      tag:
+        type: string
+        required: false
+        description: Tag/label
+      default:
+        type: boolean | null
+        required: true
+        description: Default selection flag
+      price:
+        type: number
+        required: false
+        description: Base price
+      discountedPrice:
+        type: number
+        required: false
+        description: Discounted price
+      refCode:
+        type: string
+        required: false
+        description: Reference code
+      imageUrl:
+        type: string
+        required: false
+        description: Preview image URL
+      filter:
+        type: Filter3[]
+        required: false
+        description: Nested third-level filters
+      ctaURL:
+        type: string
+        required: false
+        description: Call-to-action URL
+      themeUrl:
+        type: string
+        required: false
+        description: Theme URL
+      imageAltText:
+        type: string
+        required: false
+        description: Image alt text
+
+  Filter3:
+    fields:
+      name:
+        type: string
+        required: true
+        description: Filter name
+      title:
+        type: string
+        required: false
+        description: Display title
+      bgImg:
+        type: string
+        required: false
+        description: Background image URL (default)
+      bgImgActive:
+        type: string
+        required: false
+        description: Background image URL (active)
+      bgColour:
+        type: string
+        required: false
+        description: Background color
+      textColor:
+        type: string
+        required: false
+        description: Text color
+      tag:
+        type: string
+        required: false
+        description: Tag/label
+      default:
+        type: boolean | null
+        required: true
+        description: Default selection flag
+      price:
+        type: number
+        required: false
+        description: Base price
+      discountedPrice:
+        type: number
+        required: false
+        description: Discounted price
+      refCode:
+        type: string
+        required: false
+        description: Reference code
+      imageUrl:
+        type: string
+        required: false
+        description: Preview image URL
+      filter:
+        type: Filter4[]
+        required: true
+        description: Nested fourth-level (leaf) filters
+      ctaURL:
+        type: string
+        required: false
+        description: Call-to-action URL
+      themeUrl:
+        type: string
+        required: false
+        description: Theme URL
+      imageAltText:
+        type: string
+        required: false
+        description: Image alt text
+
+  Filter4:
+    fields:
+      name:
+        type: string
+        required: true
+        description: Filter name (leaf node)
+      title:
+        type: string
+        required: false
+        description: Display title
+      bgImg:
+        type: string
+        required: false
+        description: Background image URL (default)
+      bgImgActive:
+        type: string
+        required: false
+        description: Background image URL (active)
+      bgColour:
+        type: string
+        required: false
+        description: Background color
+      textColor:
+        type: string
+        required: false
+        description: Text color
+      tag:
+        type: string
+        required: false
+        description: Tag/label
+      default:
+        type: boolean
+        required: true
+        description: Default selection flag (not nullable at leaf level)
+      refCode:
+        type: string
+        required: true
+        description: Product reference code (required at leaf)
+      price:
+        type: number
+        required: true
+        description: Base price (required at leaf)
+      discountedPrice:
+        type: number
+        required: true
+        description: Discounted price (required at leaf)
+      imageUrl:
+        type: string
+        required: false
+        description: Preview image URL
+      ctaURL:
+        type: string
+        required: false
+        description: Call-to-action URL
+      filter:
+        type: undefined
+        required: false
+        description: No further nesting allowed (undefined)
+
+  TieredPricing:
+    fields:
+      platinumProductReferenceId:
+        type: string
+        required: true
+        description: Reference to the Platinum product configuration
+      prices:
+        type: Array<PriceTier>
+        required: true
+        description: Array of quantity-based price tiers
+        element_fields:
+          quantity:
+            type: number
+            required: true
+            description: Quantity breakpoint for this tier
+          price:
+            type: number
+            required: true
+            description: Unit price at this tier
+          discountedPrice:
+            type: number
+            required: true
+            description: Discounted unit price
+          total:
+            type: number
+            required: true
+            description: Total price (quantity * price)
+          discountedTotal:
+            type: number
+            required: true
+            description: Total discounted price
+          isDiscounted:
+            type: number
+            required: true
+            description: Whether discount is active (0 or 1)
+          totalDiscountAmount:
+            type: number
+            required: true
+            description: Total discount amount
+          bestPrice:
+            type: boolean
+            required: true
+            description: Whether this is the best price tier
+
+  Caption2:
+    fields:
+      name:
+        type: string
+        required: true
+        description: Caption name
+      sortOrder:
+        type: number
+        required: true
+        description: Display sort order
+      filterType:
+        type: string
+        required: true
+        description: Type of filter
+      filterOrder:
+        type: any
+        required: true
+        description: Filter ordering (flexible type)
+
+  Option2:
+    fields:
+      name:
+        type: string
+        required: true
+        description: Option name
+      tiers:
+        type: Tier[]
+        required: true
+        description: Pricing tiers for this option
+
+  Tier:
+    fields:
+      quantity:
+        type: number
+        required: true
+        description: Quantity for this tier
+      name:
+        type: string
+        required: true
+        description: Tier display name
+      unitPrice:
+        type: number
+        required: true
+        description: Price per unit
+      discountedUnitPrice:
+        type: number
+        required: true
+        description: Discounted price per unit
+      price:
+        type: number
+        required: true
+        description: Total price for this tier
+      discountedPrice:
+        type: number
+        required: true
+        description: Total discounted price
+      default:
+        type: boolean
+        required: true
+        description: Whether this is the default tier
+
+  AddOn:
+    fields:
+      caption:
+        type: Caption3
+        required: true
+        description: Add-on category caption
+      options:
+        type: Option3[]
+        required: true
+        description: Available add-on options
+
+  Caption3:
+    fields:
+      name:
+        type: string
+        required: true
+        description: Add-on caption name
+      sortOrder:
+        type: number
+        required: true
+        description: Display sort order
+      filterType:
+        type: string
+        required: true
+        description: Filter type identifier
+      filterOrder:
+        type: any
+        required: true
+        description: Filter ordering
+
+  Option3:
+    fields:
+      name:
+        type: string
+        required: true
+        description: Add-on option name
+      sortOrder:
+        type: number
+        required: true
+        description: Display order
+      unitPrice:
+        type: number
+        required: true
+        description: Price per unit
+      description:
+        type: string
+        required: true
+        description: Add-on description text
+      addOnItemId:
+        type: string
+        required: true
+        description: Unique add-on item identifier
+      availableFor:
+        type: AvailableFor[]
+        required: true
+        description: Products this add-on is available for
+
+  AvailableFor:
+    fields:
+      refCode:
+        type: string
+        required: true
+        description: Product reference code
+      default:
+        type: boolean
+        required: true
+        description: Whether this add-on is default for this product
+
+  OptionStore:
+    fields:
+      orientationIndex:
+        type: number | undefined
+        required: true
+        description: Selected orientation index
+      filterIndex:
+        type: number[]
+        required: true
+        description: Selected filter indices for each level
+      tierOptionIndex:
+        type: number
+        required: true
+        description: Selected tier option index
+      tierIndex:
+        type: number
+        required: true
+        description: Selected tier index
+      addonIndex:
+        type: number[]
+        required: true
+        description: Selected add-on indices
+      optionData:
+        type: OptionData | undefined
+        required: true
+        description: Current option configuration data
+      productData:
+        type: ProductPageData | undefined
+        required: true
+        description: Current product page data
+      price:
+        type: number | undefined
+        required: true
+        description: Current calculated price
+      discountedPrice:
+        type: number | undefined
+        required: true
+        description: Current calculated discounted price
+      noOfLevel:
+        type: number
+        required: true
+        description: Number of filter levels
+      Url:
+        type: string
+        required: true
+        description: Current URL
+      startDate:
+        type: string
+        required: true
+        description: Selected start date
+      refCode:
+        type: string
+        required: true
+        description: Selected product reference code
+      themeIndex:
+        type: number
+        required: true
+        description: Selected theme index
+      ctaURL:
+        type: string
+        required: true
+        description: Call-to-action URL
+      friendlyUrl:
+        type: string
+        required: true
+        description: SEO-friendly URL
+      firstSlideUrl:
+        type: string
+        required: true
+        description: First slide preview URL
+      selected:
+        type: string[]
+        required: false
+        description: Array of selected option names
+      orientation:
+        type: string
+        required: false
+        description: Selected orientation name
+      themeUrl:
+        type: string
+        required: false
+        description: Selected theme URL
+      selectedFilter:
+        type: Filter | null
+        required: false
+        description: Currently selected filter object
+
+types:
+  OptionData:
+    description: Root product option configuration structure containing all configurable attributes
+    fields:
+      - name: dummy
+        type: number
+        description: Placeholder or version field
+      - name: captions
+        type: "Caption[]"
+        description: Array of filter captions with ordering metadata
+      - name: orientation
+        type: Orientation
+        optional: true
+        description: Orientation options (portrait/landscape) if applicable
+      - name: mcProductCat
+        type: string
+        description: Merchant Center product category
+      - name: themeImages
+        type: "ThemeImage[]"
+        optional: true
+        description: Preview images for each theme variant
+      - name: filters
+        type: "Filter[]"
+        description: Product attribute filters (nested up to 4 levels)
+      - name: cardFilterOptions
+        type: CardFilterOptions
+        description: Card-specific filter configuration (from ~/data/option-card)
+      - name: tieredPricing
+        type: "TieredPricing[]"
+        optional: true
+        description: Quantity-based pricing tiers
+      - name: startingMonth
+        type: StartingMonth
+        optional: true
+        description: Calendar starting month selector
+      - name: addOns
+        type: "AddOn[]"
+        optional: true
+        description: Available product add-ons
+      - name: defaultTierPricingQuantity
+        type: number
+        description: Default selected quantity for tiered pricing
+
+  Caption:
+    description: Filter caption with ordering and type metadata
+    fields:
+      - name: name
+        type: string
+        description: Filter name or label
+      - name: comparison
+        type: string
+        description: Comparison identifier for filtering logic
+      - name: sortOrder
+        type: number
+        description: Display order among captions
+      - name: filterType
+        type: string
+        description: Type of filter (e.g., "size", "finish")
+      - name: filterOrder
+        type: number
+        description: Order among filters of same type
+
+  Orientation:
+    description: Product orientation options (portrait/landscape)
+    fields:
+      - name: options
+        type: "Option[]"
+        description: Available orientations
+      - name: filterOrder
+        type: number
+        optional: true
+        description: Order in filter display
+      - name: filterType
+        type: string
+        description: Type identifier for orientation filter
+
+  Option:
+    description: Basic option with a name and default selection flag
+    fields:
+      - name: name
+        type: string
+        description: Option name
+      - name: default
+        type: boolean
+        description: Whether this is the default selected option
+
+  ThemeImage:
+    description: Theme preview image mapping from theme ID to image URL
+    fields:
+      - name: themeID
+        type: string
+        description: Theme identifier
+      - name: url
+        type: string
+        description: Preview image URL
+
+  Filters:
+    description: Container wrapping an array of Filter objects
+    fields:
+      - name: filter
+        type: "Filter[]"
+        description: Array of filter objects
+
+  Filter:
+    description: Level-1 product attribute filter; nestable up to 4 levels via filter array
+    fields:
+      - name: name
+        type: string
+        description: Filter value name
+      - name: value
+        type: string
+        optional: true
+        description: Filter value identifier
+      - name: title
+        type: string
+        optional: true
+        description: Display title
+      - name: title1
+        type: string
+        optional: true
+        description: Secondary title
+      - name: bgImg
+        type: string
+        optional: true
+        description: Background image URL (default state)
+      - name: bgImgActive
+        type: string
+        optional: true
+        description: Background image URL (active state)
+      - name: bgColour
+        type: string
+        optional: true
+        description: Background color
+      - name: textColor
+        type: string
+        optional: true
+        description: Text color
+      - name: tag
+        type: string
+        optional: true
+        description: Tag or label (e.g., "POPULAR")
+      - name: _default
+        type: "boolean | null"
+        description: Whether this is the default selection
+      - name: price
+        type: number
+        optional: true
+        description: Base price
+      - name: discountedPrice
+        type: number
+        optional: true
+        description: Discounted price if applicable
+      - name: refCode
+        type: string
+        optional: true
+        description: Product reference code
+      - name: imageUrl
+        type: string
+        optional: true
+        description: Option preview image
+      - name: filter
+        type: "Filter[]"
+        optional: true
+        description: Nested child filters (up to 4 levels deep)
+      - name: ctaURL
+        type: string
+        optional: true
+        description: Call-to-action URL
+      - name: attributeLevel
+        type: string
+        optional: true
+        description: Attribute hierarchy level
+      - name: themeUrl
+        type: string
+        optional: true
+        description: Theme-specific URL
+      - name: imageAltText
+        type: string
+        optional: true
+        description: Alt text for images
+      - name: productFeedTitle
+        type: string
+        optional: true
+        description: Google Merchant Center title
+      - name: productFeedMainProductPageUrl
+        type: string
+        optional: true
+        description: Main product page URL for feeds
+      - name: productFeedMainProductPageId
+        type: string
+        optional: true
+        description: Main product page ID for feeds
+      - name: productFeedSkuBase
+        type: string
+        optional: true
+        description: SKU base for product feeds
+      - name: productFeedProductType
+        type: string
+        optional: true
+        description: Product type for feeds
+      - name: productFeedImageUrl
+        type: string
+        optional: true
+        description: Image URL for product feeds
+
+  Filter2:
+    description: Second-level nested filter; child of Filter.filter array
+    fields:
+      - name: name
+        type: string
+        description: Filter name
+      - name: title
+        type: string
+        optional: true
+      - name: title1
+        type: string
+        optional: true
+      - name: bgImg
+        type: string
+        optional: true
+      - name: bgImgActive
+        type: string
+        optional: true
+      - name: bgColour
+        type: string
+        optional: true
+      - name: textColor
+        type: string
+        optional: true
+      - name: tag
+        type: string
+        optional: true
+      - name: default
+        type: "boolean | null"
+        description: Default selection flag
+      - name: price
+        type: number
+        optional: true
+      - name: discountedPrice
+        type: number
+        optional: true
+      - name: refCode
+        type: string
+        optional: true
+      - name: imageUrl
+        type: string
+        optional: true
+      - name: filter
+        type: "Filter3[]"
+        optional: true
+        description: Nested third-level filters
+      - name: ctaURL
+        type: string
+        optional: true
+      - name: themeUrl
+        type: string
+        optional: true
+      - name: imageAltText
+        type: string
+        optional: true
+
+  Filter3:
+    description: Third-level nested filter; child of Filter2.filter array
+    fields:
+      - name: name
+        type: string
+      - name: title
+        type: string
+        optional: true
+      - name: bgImg
+        type: string
+        optional: true
+      - name: bgImgActive
+        type: string
+        optional: true
+      - name: bgColour
+        type: string
+        optional: true
+      - name: textColor
+        type: string
+        optional: true
+      - name: tag
+        type: string
+        optional: true
+      - name: default
+        type: "boolean | null"
+        description: Default selection flag
+      - name: price
+        type: number
+        optional: true
+      - name: discountedPrice
+        type: number
+        optional: true
+      - name: refCode
+        type: string
+        optional: true
+      - name: imageUrl
+        type: string
+        optional: true
+      - name: filter
+        type: "Filter4[]"
+        description: Nested fourth-level (leaf) filters
+      - name: ctaURL
+        type: string
+        optional: true
+      - name: themeUrl
+        type: string
+        optional: true
+      - name: imageAltText
+        type: string
+        optional: true
+
+  Filter4:
+    description: Fourth-level (leaf) filter; no further nesting; refCode, price, and discountedPrice are required
+    fields:
+      - name: name
+        type: string
+        description: Filter name at leaf node
+      - name: title
+        type: string
+        optional: true
+      - name: bgImg
+        type: string
+        optional: true
+      - name: bgImgActive
+        type: string
+        optional: true
+      - name: bgColour
+        type: string
+        optional: true
+      - name: textColor
+        type: string
+        optional: true
+      - name: tag
+        type: string
+        optional: true
+      - name: default
+        type: boolean
+        description: Default selection flag (not nullable at leaf level)
+      - name: refCode
+        type: string
+        description: Product reference code (required at leaf)
+      - name: price
+        type: number
+        description: Base price (required at leaf)
+      - name: discountedPrice
+        type: number
+        description: Discounted price (required at leaf)
+      - name: imageUrl
+        type: string
+        optional: true
+      - name: ctaURL
+        type: string
+        optional: true
+
+  TieredPricing:
+    description: Quantity-based pricing structure tied to a specific product reference
+    fields:
+      - name: platinumProductReferenceId
+        type: string
+        description: Reference to the Platinum product configuration
+      - name: prices
+        type: "PriceTier[]"
+        description: Array of quantity-based price tiers
+
+  PriceTier:
+    description: A single pricing tier with quantity breakpoint and price data
+    fields:
+      - name: quantity
+        type: number
+        description: Quantity breakpoint for this tier
+      - name: price
+        type: number
+        description: Unit price at this tier
+      - name: discountedPrice
+        type: number
+        description: Discounted unit price
+      - name: total
+        type: number
+        description: Total price (quantity * price)
+      - name: discountedTotal
+        type: number
+        description: Total discounted price
+      - name: isDiscounted
+        type: number
+        description: Whether discount is active (0 or 1)
+      - name: totalDiscountAmount
+        type: number
+        description: Total discount amount
+      - name: bestPrice
+        type: boolean
+        description: Whether this is the best price tier
+
+  Caption2:
+    description: Caption for non-filter options (e.g., starting month)
+    fields:
+      - name: name
+        type: string
+      - name: sortOrder
+        type: number
+      - name: filterType
+        type: string
+      - name: filterOrder
+        type: any
+        description: Filter ordering (flexible type)
+
+  Option2:
+    description: Option with associated pricing tiers
+    fields:
+      - name: name
+        type: string
+        description: Option name
+      - name: tiers
+        type: "Tier[]"
+        description: Pricing tiers for this option
+
+  Tier:
+    description: A pricing tier entry with quantity, unit price, and total
+    fields:
+      - name: quantity
+        type: number
+      - name: name
+        type: string
+        description: Tier display name
+      - name: unitPrice
+        type: number
+      - name: discountedUnitPrice
+        type: number
+      - name: price
+        type: number
+        description: Total price for this tier
+      - name: discountedPrice
+        type: number
+        description: Total discounted price
+      - name: default
+        type: boolean
+
+  StartingMonth:
+    description: Calendar starting month selector with caption and options
+    fields:
+      - name: caption
+        type: Caption2
+      - name: options
+        type: "Option4[]"
+
+  Option4:
+    description: Month name/value pair used in starting month selector
+    fields:
+      - name: name
+        type: string
+        description: Display name (e.g., "January")
+      - name: value
+        type: string
+        description: Value identifier
+
+  AddOn:
+    description: Product add-on with category caption and available options
+    fields:
+      - name: caption
+        type: Caption3
+        description: Add-on category caption
+      - name: options
+        type: "Option3[]"
+        description: Available add-on options
+
+  Caption3:
+    description: Add-on caption with sort and filter metadata
+    fields:
+      - name: name
+        type: string
+      - name: sortOrder
+        type: number
+      - name: filterType
+        type: string
+      - name: filterOrder
+        type: any
+
+  Option3:
+    description: Add-on option with pricing, description, and per-product availability rules
+    fields:
+      - name: name
+        type: string
+      - name: sortOrder
+        type: number
+      - name: unitPrice
+        type: number
+      - name: description
+        type: string
+      - name: addOnItemId
+        type: string
+        description: Unique add-on item identifier
+      - name: availableFor
+        type: "AvailableFor[]"
+        description: Products this add-on is available for
+
+  AvailableFor:
+    description: Specifies which product (by refCode) an add-on is available for and whether it is default
+    fields:
+      - name: refCode
+        type: string
+        description: Product reference code
+      - name: default
+        type: boolean
+        description: Whether this add-on is default for this product
+
+  OptionStore:
+    description: Runtime state tracking the user's current product configuration selections
+    fields:
+      - name: orientationIndex
+        type: "number | undefined"
+        description: Selected orientation index
+      - name: filterIndex
+        type: "number[]"
+        description: Selected filter indices for each level
+      - name: tierOptionIndex
+        type: number
+        description: Selected tier option index
+      - name: tierIndex
+        type: number
+        description: Selected tier index
+      - name: addonIndex
+        type: "number[]"
+        description: Selected add-on indices
+      - name: optionData
+        type: "OptionData | undefined"
+        description: Current option configuration data
+      - name: productData
+        type: "ProductPageData | undefined"
+        description: Current product page data (from ~/services/product-page-service)
+      - name: price
+        type: "number | undefined"
+        description: Current calculated price
+      - name: discountedPrice
+        type: "number | undefined"
+        description: Current calculated discounted price
+      - name: noOfLevel
+        type: number
+        description: Number of filter levels
+      - name: Url
+        type: string
+        description: Current URL
+      - name: startDate
+        type: string
+        description: Selected start date
+      - name: refCode
+        type: string
+        description: Selected product reference code
+      - name: themeIndex
+        type: number
+        description: Selected theme index
+      - name: ctaURL
+        type: string
+        description: Call-to-action URL
+      - name: friendlyUrl
+        type: string
+        description: SEO-friendly URL
+      - name: firstSlideUrl
+        type: string
+        description: First slide preview URL
+      - name: selected
+        type: "string[]"
+        optional: true
+        description: Array of selected option names
+      - name: orientation
+        type: string
+        optional: true
+        description: Selected orientation name
+      - name: themeUrl
+        type: string
+        optional: true
+        description: Selected theme URL
+      - name: selectedFilter
+        type: "Filter | null"
+        optional: true
+        description: Currently selected filter object
+
+behavior:
+  - step: 1
+    action: "Export TypeScript interfaces defining the complete product option configuration schema"
+  - step: 2
+    action: "OptionData serves as the root data structure representing all configurable attributes for a product — filters (nested up to 4 levels), orientations, themes, tiered pricing, calendar starting months, and add-ons"
+  - step: 3
+    action: "Filter hierarchy (Filter → Filter2 → Filter3 → Filter4) models multi-level product attribute selection where each level narrows the product variant (e.g., Size → Material → Finish → Specific SKU)"
+  - step: 4
+    action: "TieredPricing provides quantity-based discount breakpoints tied to specific product reference IDs"
+  - step: 5
+    action: "AddOn structures define optional extras with per-product availability rules (via AvailableFor and refCode matching)"
+  - step: 6
+    action: "OptionStore tracks the runtime user selection state — selected filter indices at each level, tier, orientation, add-ons, calculated prices, and current URLs — used as the mutable store during product configuration"
+  - step: 7
+    action: "Consumed by product page components (option panels, size tables, carousels) and services (product-page-service, product-category-service, splash-service) to render product configuration UI and compute pricing"
+
+dependencies:
+  imports:
+    - source: ~/services/product-page-service
+      items:
+        - ProductPageData
+      usage: Referenced in OptionStore.productData
+    - source: ~/data/option-card
+      items:
+        - CardFilterOptions
+      usage: Referenced in OptionData.cardFilterOptions
+
+used_by:
+  - "~/services/product-page-service.ts"
+  - "~/services/product-category-service.ts"
+  - "~/services/splash-service.ts"
+  - "~/components/product-page/option-panel.tsx"
+  - "~/components/product-page/option-panel-v2.tsx"
+  - "~/components/product-page/option-panel-v3.tsx"
+  - "~/components/product-page/option-panel-v4.tsx"
+  - "~/components/product-page/option-panel-v5.tsx"
+  - "~/components/product-page/option-canvas-prints-panel.tsx"
+  - "~/components/product-page/option-canvas-prints-panel-v2.tsx"
+  - "~/components/product-page/option-canvas-prints-panel-hub.tsx"
+  - "~/components/product-page/option-ryzan-panel.tsx"
+  - "~/components/product-page/option-ryzan-panel-v2.tsx"
+  - "~/components/product-page/instant-product-option-panel.tsx"
+  - "~/components/product-page/canvas-size-table/canvas-size-table.tsx"
+  - "~/components/product-page/canvas-size-table/canvas-size-table2.tsx"
+  - "~/components/product-page/canvas-size-table/canvas-size-table3.tsx"
+  - "~/components/product-page/containers/product-page-container.tsx"
+  - "~/components/product-page/containers/instant-product-page-container.tsx"
+  - "~/components/product-page/containers/templates/product-page-base-template.tsx"
+  - "~/components/product-page/containers/templates/product-page-basic-template.tsx"
+  - "~/components/product-page/containers/templates/product-page-fixed-template.tsx"
+  - "~/components/product-page/containers/templates/product-page-hub-template.tsx"
+  - "~/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-base-template.tsx"
+  - "~/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-bundled-template.tsx"
+  - "~/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-hub-bundled-template.tsx"
+  - "~/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-new-template.tsx"
+  - "~/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-new-template-v3.tsx"
+  - "~/components/product-page/containers/photo-canvas-prints/photo-canvas-prints-template-v2.tsx"
+  - "~/components/product-page/containers/photo-calendars/photo-calendars-base-template.tsx"
+  - "~/components/product-page/containers/photo-calendars/photo-calendars-baloo-radio-template.tsx"
+  - "~/components/product-page/containers/photo-calendars/photo-calendars-daisy-template.tsx"
+  - "~/components/product-page/containers/photo-calendars/photo-calendars-jbc2024-template.tsx"
+  - "~/components/product-page/product-carousel/product-carousel.tsx"
+  - "~/components/product-page/product-carousel/product-carousel-v2.tsx"
+  - "~/components/product-page/product-carousel/product-carousel-modern.tsx"

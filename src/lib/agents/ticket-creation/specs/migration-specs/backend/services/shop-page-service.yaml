@@ -1,0 +1,609 @@
+name: ShopPageService
+source: services/shop-page-service.ts
+description: |
+  Manages shop and collection page data including products, pricing, discounts, styling,
+  labels, and video popups. Provides functions to fetch shop/collection data, add coupon
+  products to cart, and generate head metadata for SEO. Supports multi-region configuration
+  and customizable styling via color schemes.
+
+exports:
+  functions:
+    - name: getShopData
+      signature: "async function getShopData(friendUrl: string): Promise<IShopData | null>"
+      description: Fetches shop page data including collections, banners, and styling
+      params:
+        - name: friendUrl
+          type: string
+          description: Friendly URL slug for the shop page
+      returns:
+        type: IShopData | null
+        description: Returns shop data or null on error
+      side_effects:
+        - Makes GET request to /Sale/Index
+        - Uses "hard" caching strategy
+
+    - name: getCollectionData
+      signature: "async function getCollectionData(eventName: string, handle: string): Promise<ICollectionData | null>"
+      description: Fetches collection page data including products and styling
+      params:
+        - name: eventName
+          type: string
+          description: Event identifier for the sale/promotion
+        - name: handle
+          type: string
+          description: Collection handle/slug
+      returns:
+        type: ICollectionData | null
+        description: Returns collection data or null on error
+      side_effects:
+        - Makes GET request to /Sale/Products
+        - Uses "hard" caching strategy
+
+    - name: addCouponProductToCart
+      signature: "async function addCouponProductToCart(productId: string): Promise<boolean>"
+      description: Adds a coupon product to the shopping cart
+      params:
+        - name: productId
+          type: string
+          description: Product ID to add
+      returns:
+        type: boolean
+        description: Returns true on success, false on error
+      side_effects:
+        - Makes POST request to /CartService/AddCouponProductToBasket
+        - Requires machine token from cookie
+        - Uses "soft" caching strategy
+
+    - name: getCreateUrl
+      signature: "async function getCreateUrl(productId: string): Promise<{themeSelectionUrl: string} | null>"
+      description: Gets the theme selection URL for instant coupon product creation
+      params:
+        - name: productId
+          type: string
+          description: Coupon product ID
+      returns:
+        type: "{themeSelectionUrl: string} | null"
+        description: Returns theme selection URL or null on error
+      side_effects:
+        - Makes GET request to /InstantCouponProduct/Start
+        - Uses "soft" caching strategy
+
+    - name: getHeadData
+      signature: "function getHeadData(title: string, topBanner: string, url: string): HeadData"
+      description: Generates head metadata for SEO and social media sharing
+      params:
+        - name: title
+          type: string
+          description: Page title
+        - name: topBanner
+          type: string
+          description: Banner image URL for OG/Twitter cards
+        - name: url
+          type: string
+          description: Page URL path
+      returns:
+        type: HeadData
+        description: Returns object with title and meta tags array
+      side_effects:
+        - None (pure function)
+
+  types:
+    - name: IShopStyle
+      fields:
+        - color: string | null
+        - bgColor: string | null
+        - borderColor: string | null
+        - borderSizePx: number | null
+        - borderStyle: string | null
+        - rounded: boolean | null
+        - display: boolean | null
+
+    - name: IShopStyleItems
+      fields:
+        - actionButton: IShopStyle
+        - discountBadge: IShopStyle
+        - carouselButton: IShopStyle
+        - pack: IShopStyle
+        - freeShippingLabel: IShopStyle
+
+    - name: IVideo
+      fields:
+        - isYoutube: boolean
+        - videoUrl: string
+        - width: number
+        - height: number
+
+    - name: IVideoPopup
+      fields:
+        - display: boolean | null
+        - bgImg: string | null
+        - bgColor: string | null
+        - video: IVideo | null
+
+    - name: IShopCollection
+      fields:
+        - title: string
+        - price_from: number
+        - upto_percent_off: number
+        - handle: string
+        - isFreeShipping: boolean
+        - products: IProduct[]
+
+    - name: IShopModelLabelModel
+      fields:
+        - btn_see_more: string
+        - buy: string
+        - cart: string
+        - checkout: string
+        - create: string
+        - here: string
+        - off: string
+        - or: string
+        - see: string
+        - shopping: string
+        - tag_pack_of: string
+        - tag_price_each: string
+        - tag_price_from: string
+        - tag_price_now: string
+        - tag_price_was: string
+        - upto: string
+        - view: string
+        - free_shipping: string
+
+    - name: IShopData
+      fields:
+        - topBanner: string
+        - topBanner_mobile: string
+        - eventName: string
+        - collections: IShopCollection[]
+        - friendlyUrl: string
+        - shopTitle: string
+        - upto: string
+        - tag_price_from: string
+        - off: string
+        - btn_see_more: string
+        - shopColourStyle: string
+        - shopModelLabelModel: IShopModelLabelModel
+        - collectionColourStyle: string
+
+    - name: IImageSrc
+      fields:
+        - url: string
+        - altText: string
+        - sortNo: number
+
+    - name: IProduct
+      fields:
+        - title: string
+        - images_src: IImageSrc[]
+        - metafield_each_price: number
+        - variant_compare_at_price: number
+        - variant_price: number
+        - percent_off: number
+        - metafield_product_qty: number
+        - option1_value: string
+        - variant_barcode: string
+        - product_position: number
+        - body_html: string
+        - isFreeShipping: boolean
+
+    - name: ICollectionData
+      fields:
+        - title: string
+        - shopTitle: string
+        - eventName: string
+        - shop_topBanner: string
+        - shop_topBanner_mobile: string
+        - products_page_topBanner: string
+        - products_page_topBanner_mobile: string
+        - backUrl: string
+        - handle: string
+        - products: IProduct[]
+        - off: string
+        - tag_price_now: string
+        - tag_price_was: string
+        - tag_pack_of: string
+        - tag_price_each: string
+        - collectionColourStyle: string
+        - showBuyNowCreateLaterButton: boolean
+        - showBuyNowCreateNowButton: boolean
+        - shopModelLabelModel: IShopModelLabelModel
+
+  zod_schemas:
+    - name: VideoSchema
+      fields:
+        - isYoutube: boolean
+        - videoUrl: string
+        - width: number
+        - height: number
+
+    - name: VideoPopupSchema
+      fields:
+        - display: boolean (nullable)
+        - bgImg: string (nullable)
+        - bgColor: string (nullable)
+        - video: VideoSchema (nullable)
+
+  constants:
+    - name: DEFAULT_SHOP_STYLE
+      type: IShopStyleItems
+      description: Default styling for shop pages with yellow (#FFC13C) theme
+      value:
+        actionButton: "{rounded: true, color: '#000000', bgColor: '#FFC13C', borderColor: '#000000', borderSizePx: 1, borderStyle: 'solid'}"
+        discountBadge: "{bgColor: '#FFC13C', color: '#000000', rounded: true}"
+
+    - name: DEFAULT_COLLECTION_STYLE
+      type: IShopStyleItems
+      description: Default styling for collection pages with extended elements
+      value:
+        actionButton: "{rounded: true, color: '#000000', bgColor: '#FFC13C', borderColor: '#000000', borderSizePx: 1, borderStyle: 'solid'}"
+        discountBadge: "{bgColor: '#FFC13C', color: '#000000', rounded: true}"
+        carouselButton: "{bgColor: '#ffffff', borderColor: '#FFC13C', borderSizePx: 1, borderStyle: 'solid', color: '#FFC13C', rounded: true}"
+        pack: "{color: '#11DB3A'}"
+
+api_contracts:
+  - endpoint: /Sale/Index
+    method: GET
+    description: Fetches shop page data by friendly URL
+    request:
+      params:
+        friendlyUrl: string (e.g., "/valentines-sale")
+    response:
+      success: IShopData
+      error: null
+
+  - endpoint: /Sale/Products
+    method: GET
+    description: Fetches products for a specific collection
+    request:
+      params:
+        eventName: string
+        handle: string
+    response:
+      success: ICollectionData
+      error: null
+
+  - endpoint: /CartService/AddCouponProductToBasket
+    method: POST
+    description: Adds coupon product to cart
+    request:
+      body:
+        machineToken: string (from cookie)
+        productId: string
+    response:
+      success: boolean
+      error: false
+
+  - endpoint: /InstantCouponProduct/Start
+    method: GET
+    description: Gets theme selection URL for coupon product
+    request:
+      params:
+        couponProductId: string
+    response:
+      success: "{themeSelectionUrl: string}"
+      error: null
+
+behavior:
+  - name: getShopData
+    steps:
+      - Takes a friendUrl string parameter
+      - Makes GET request to "/Sale/Index?friendlyUrl=/{friendUrl}" using handleMultipleAPIRequests with "hard" caching
+      - Checks response validity with isDataReady
+      - If valid, extracts and returns response.data as IShopData
+      - If invalid or error, returns null
+  - name: getCollectionData
+    steps:
+      - Takes eventName and handle string parameters
+      - Makes GET request to "/Sale/Products?eventName={eventName}&handle={handle}" using handleMultipleAPIRequests with "hard" caching
+      - Checks response validity with isDataReady
+      - If valid, extracts and returns response.data as ICollectionData
+      - If invalid or error, returns null
+  - name: addCouponProductToCart
+    steps:
+      - Takes a productId string parameter
+      - Retrieves machineToken from getMachineToken()
+      - Makes POST request to "/CartService/AddCouponProductToBasket" with {machineToken, productId} body, using "soft" caching
+      - Checks response validity with isDataReady
+      - If valid, returns the boolean data value
+      - If invalid or error, returns false
+  - name: getCreateUrl
+    steps:
+      - Takes a productId string parameter
+      - Makes GET request to "/InstantCouponProduct/Start" with couponProductId as query param, using "soft" caching
+      - Checks response validity with isDataReady
+      - If valid, returns object with themeSelectionUrl string
+      - If invalid or error, returns null
+  - name: getHeadData
+    steps:
+      - Takes title, topBanner, and url string parameters
+      - Gets current site origin from getSiteSetting().website
+      - Constructs and returns an object with title and meta array
+      - Meta array includes OG tags (title, type, image, url, description, site_name, locale, fb:app_id)
+      - Meta array includes Twitter card tags (card, site @PrinterpixUS, title, description, image)
+      - Meta array includes SEO tags (google notranslate, theme-color, google-signin, distribution, rating, author, copyright, description, keywords, robots)
+      - Meta array includes origin-trial header for Google Tag Manager privacy sandbox
+  - name: DEFAULT_SHOP_STYLE
+    steps:
+      - Constant object defining default styling for shop pages
+      - actionButton has yellow (#FFC13C) background, black (#000000) text, rounded, 1px solid black border
+      - discountBadge has yellow (#FFC13C) background, black (#000000) text, rounded
+  - name: DEFAULT_COLLECTION_STYLE
+    steps:
+      - Constant object extending DEFAULT_SHOP_STYLE with additional elements
+      - Adds carouselButton with white background, yellow border, yellow text, rounded
+      - Adds pack with green (#11DB3A) text color
+
+dependencies:
+  internal:
+    - "~/config/http": NewAPIResponse type
+    - "./cart-services/machine-token": getMachineToken function
+    - "./server": getSiteSetting function
+    - "~/utility/http": handleMultipleAPIRequests, HTTP_METHODS
+    - "./common-service": isDataReady function
+    - "@builder.io/qwik-city": z (Zod)
+  external:
+    - zod: Schema validation library
+
+data_flow:
+  inputs:
+    - Friendly URL for shop pages
+    - Event name and handle for collections
+    - Product ID for cart operations
+  processing:
+    - Makes API requests with appropriate caching strategy
+    - Validates responses with isDataReady
+    - Extracts data from NewAPIResponse wrapper
+    - Generates SEO metadata with region-specific settings
+  outputs:
+    - Shop/collection data with products and styling
+    - Boolean success indicator for cart operations
+    - Theme selection URL for product creation
+    - Head metadata for SEO
+
+business_logic:
+  - Shop pages contain multiple collections
+  - Collections contain multiple products with images
+  - Products show original price, discounted price, and percent off
+  - Free shipping flag per product and collection
+  - Custom color styling per shop/collection (override defaults)
+  - Video popup support for promotional content
+  - Labels/text are internationalized via IShopModelLabelModel
+  - Machine token required for cart operations
+  - Coupon products can be added to cart or require theme selection first
+
+error_handling:
+  - Returns null on API errors (wrapped in try/catch)
+  - Returns false for cart operations on failure
+  - isDataReady checks response validity
+
+security:
+  - Machine token retrieved from cookie (getMachineToken)
+  - No hardcoded credentials
+  - API endpoints use site setting origin
+
+used_by:
+  - backend/services/json-service.yaml (imports VideoPopupSchema for web content validation)
+
+types:
+  IShopStyle:
+    description: Styling configuration for a single shop UI element
+    fields:
+      - name: color
+        type: "string | null"
+      - name: bgColor
+        type: "string | null"
+      - name: borderColor
+        type: "string | null"
+      - name: borderSizePx
+        type: "number | null"
+      - name: borderStyle
+        type: "string | null"
+      - name: rounded
+        type: "boolean | null"
+      - name: display
+        type: "boolean | null"
+
+  IShopStyleItems:
+    description: Complete styling map for shop/collection UI elements
+    fields:
+      - name: actionButton
+        type: IShopStyle
+      - name: discountBadge
+        type: IShopStyle
+      - name: carouselButton
+        type: IShopStyle
+      - name: pack
+        type: IShopStyle
+      - name: freeShippingLabel
+        type: IShopStyle
+
+  IVideo:
+    description: Video configuration for popup display
+    fields:
+      - name: isYoutube
+        type: boolean
+      - name: videoUrl
+        type: string
+      - name: width
+        type: number
+      - name: height
+        type: number
+
+  IVideoPopup:
+    description: Video popup configuration with optional background
+    fields:
+      - name: display
+        type: "boolean | null"
+      - name: bgImg
+        type: "string | null"
+      - name: bgColor
+        type: "string | null"
+      - name: video
+        type: "IVideo | null"
+
+  IImageSrc:
+    description: Product image with alt text and sort order
+    fields:
+      - name: url
+        type: string
+      - name: altText
+        type: string
+      - name: sortNo
+        type: number
+
+  IProduct:
+    description: A product in a shop collection with pricing and display data
+    fields:
+      - name: title
+        type: string
+      - name: images_src
+        type: "IImageSrc[]"
+      - name: metafield_each_price
+        type: number
+      - name: variant_compare_at_price
+        type: number
+      - name: variant_price
+        type: number
+      - name: percent_off
+        type: number
+      - name: metafield_product_qty
+        type: number
+      - name: option1_value
+        type: string
+      - name: variant_barcode
+        type: string
+      - name: product_position
+        type: number
+      - name: body_html
+        type: string
+      - name: isFreeShipping
+        type: boolean
+
+  IShopCollection:
+    description: A collection within a shop page
+    fields:
+      - name: title
+        type: string
+      - name: price_from
+        type: number
+      - name: upto_percent_off
+        type: number
+      - name: handle
+        type: string
+      - name: isFreeShipping
+        type: boolean
+      - name: products
+        type: "IProduct[]"
+
+  IShopModelLabelModel:
+    description: Internationalized text labels for shop/collection UI elements
+    fields:
+      - name: btn_see_more
+        type: string
+      - name: buy
+        type: string
+      - name: cart
+        type: string
+      - name: checkout
+        type: string
+      - name: create
+        type: string
+      - name: here
+        type: string
+      - name: off
+        type: string
+      - name: or
+        type: string
+      - name: see
+        type: string
+      - name: shopping
+        type: string
+      - name: tag_pack_of
+        type: string
+      - name: tag_price_each
+        type: string
+      - name: tag_price_from
+        type: string
+      - name: tag_price_now
+        type: string
+      - name: tag_price_was
+        type: string
+      - name: upto
+        type: string
+      - name: view
+        type: string
+      - name: free_shipping
+        type: string
+
+  IShopData:
+    description: Top-level shop page data from /Sale/Index
+    fields:
+      - name: topBanner
+        type: string
+      - name: topBanner_mobile
+        type: string
+      - name: eventName
+        type: string
+      - name: collections
+        type: "IShopCollection[]"
+      - name: friendlyUrl
+        type: string
+      - name: shopTitle
+        type: string
+      - name: upto
+        type: string
+      - name: tag_price_from
+        type: string
+      - name: off
+        type: string
+      - name: btn_see_more
+        type: string
+      - name: shopColourStyle
+        type: string
+      - name: shopModelLabelModel
+        type: IShopModelLabelModel
+      - name: collectionColourStyle
+        type: string
+
+  ICollectionData:
+    description: Collection page data from /Sale/Products
+    fields:
+      - name: title
+        type: string
+      - name: shopTitle
+        type: string
+      - name: eventName
+        type: string
+      - name: shop_topBanner
+        type: string
+      - name: shop_topBanner_mobile
+        type: string
+      - name: products_page_topBanner
+        type: string
+      - name: products_page_topBanner_mobile
+        type: string
+      - name: backUrl
+        type: string
+      - name: handle
+        type: string
+      - name: products
+        type: "IProduct[]"
+      - name: off
+        type: string
+      - name: tag_price_now
+        type: string
+      - name: tag_price_was
+        type: string
+      - name: tag_pack_of
+        type: string
+      - name: tag_price_each
+        type: string
+      - name: collectionColourStyle
+        type: string
+      - name: showBuyNowCreateLaterButton
+        type: boolean
+      - name: showBuyNowCreateNowButton
+        type: boolean
+      - name: shopModelLabelModel
+        type: IShopModelLabelModel

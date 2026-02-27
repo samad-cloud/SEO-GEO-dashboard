@@ -1,0 +1,245 @@
+purpose: |
+  Quick-lookup registry for all backend services.
+  For each service: name, file path, spec reference, key endpoints, SEO-relevant functions.
+
+services:
+  # === Core Services ===
+  - name: server
+    source_file: src/services/server.ts
+    spec: "../migration-specs/backend/services/server.yaml"
+    seo_relevant_functions:
+      - name: getSiteSetting
+        description: "Returns current region config (domain, locale, currency, API endpoints)"
+      - name: getHreflangLinks
+        signature: "(pathname?: string) => HreflangLink[]"
+        description: "Generates hreflang meta tags for all regions + x-default"
+        seo_impact: HIGH
+      - name: getSiteSettingByCountryCode
+        description: "Lookup region config by country code"
+    key_data: "websiteVariables — static array of all 7 region configurations"
+
+  - name: product-category-service
+    source_file: src/services/product-category-service.ts
+    spec: "../migration-specs/backend/services/product-category-service.yaml"
+    seo_relevant_functions:
+      - name: getProductOrCategoryData
+        description: "PRIMARY data-fetching function for all product/category pages"
+        endpoint: "/CategoryAndProductPage/GetByFriendlyUrlForQwikV2"
+        seo_impact: HIGH
+        notes: "Returns metaData (title, description, OG, Twitter, canonical, isIndex)"
+    key_data: "WebPageTypeEnum, PlatinumProductTypeEnum"
+
+  - name: category-service
+    source_file: src/services/category-service.ts
+    spec: "../migration-specs/backend/services/category-service.yaml"
+    seo_relevant_functions:
+      - name: getCategoryHeadData
+        signature: "(categoryData: CategoryPage, url: URL) => object"
+        description: "Generates head metadata for category pages: title, meta tags, OG, Twitter, canonical, robots, structured data scripts"
+        seo_impact: HIGH
+      - name: getCategoryItemsSchema
+        signature: "(productSections, url, categoryData) => object[]"
+        description: "Generates schema.org ItemList with product offers, shipping, return policy"
+        seo_impact: HIGH
+      - name: getCategoryPage
+        endpoint: "/CategoryPage/GetByFriendlyUrlV3"
+        description: "Fetches category page data directly"
+
+  - name: product-page-service
+    source_file: src/services/product-page-service.ts
+    spec: "../migration-specs/backend/services/product-page-service.yaml"
+    seo_relevant_functions:
+      - name: getProductHeadData
+        signature: "(productPageData: ProductPageData, url: URL) => object"
+        description: "Generates head metadata for product pages: title, meta tags, OG, Twitter, canonical, structured data"
+        seo_impact: HIGH
+      - name: getProductPageJsonSchema
+        signature: "(productPageData: ProductPageData, url: URL) => object"
+        description: "Generates schema.org ProductGroup JSON-LD with offers, reviews, variants, breadcrumbs"
+        seo_impact: HIGH
+      - name: getInstantProductHeadData
+        description: "Head metadata for instant (non-customizable) products"
+        seo_impact: HIGH
+      - name: extractProductData
+        description: "Extracts and processes product variant data, filters, pricing"
+      - name: getProductPageJson
+        endpoint: "/ProductPage/GetByFriendlyUrlForQwikV2"
+        description: "Fetches product page data directly"
+
+  - name: middle-ware-service
+    source_file: src/services/middle-ware-service.ts
+    spec: "../migration-specs/backend/services/middle-ware-service.yaml"
+    seo_relevant_functions:
+      - name: cookieAndRedirectionMiddleware
+        description: "Handles URL redirections (301/302), MACHINE_TOKEN generation, UTM tracking, affiliate cookies"
+        seo_impact: HIGH
+        notes: "Redirect rules affect which URLs return content vs redirect"
+    key_data: "Redirect rules loaded from loadWebContent(WebContentType.REDIRECTION)"
+
+  - name: common-service
+    source_file: src/services/common-service.ts
+    spec: "../migration-specs/backend/services/common-service.yaml"
+    seo_relevant_functions:
+      - name: getBanner
+        description: "Fetches strip/promo/shipping banners by URL"
+      - name: isDataReady
+        description: "Validates API response has usable data"
+    seo_impact: LOW
+
+  - name: json-service
+    source_file: src/services/json-service.ts
+    spec: "../migration-specs/backend/services/json-service.yaml"
+    seo_relevant_functions:
+      - name: loadWebContent
+        description: "Generic content loader for JSON data (redirections, delivery deadlines, shipping policy, etc.)"
+        seo_impact: MEDIUM
+    key_data: "WebContentType enum — REDIRECTION, DELIVERY_DEADLINES, SHIPPING_POLICY, CATEGORY_QUICK_LINKS, etc."
+
+  - name: static-page-service
+    source_file: src/services/static-page-service.ts
+    spec: "../migration-specs/backend/services/static-page-service.yaml"
+    seo_relevant_functions:
+      - name: getShippingPolicyContent
+        description: "Returns shipping policy page content"
+      - name: getTermsAndConditionsContent
+        description: "Returns T&C page content"
+    seo_impact: LOW
+
+  - name: marketing-page-web-content-service
+    source_file: src/services/marketing-page-web-content-service.ts
+    spec: "../migration-specs/backend/services/marketing-page-web-content-service.yaml"
+    seo_relevant_functions:
+      - name: getMarketingPageWebContent
+        description: "Fetches marketing content for info pages (payment methods, photo quality, etc.)"
+    seo_impact: LOW
+
+  - name: product-page-web-content-service
+    source_file: src/services/product-page-web-content-service.ts
+    spec: "../migration-specs/backend/services/product-page-web-content-service.yaml"
+    seo_relevant_functions:
+      - name: getProductPageWebContent
+        description: "Fetches web content for product pages (FAQs, type options, etc.)"
+    seo_impact: LOW
+
+  - name: accounts-service
+    source_file: src/services/accounts-service.ts
+    spec: "../migration-specs/backend/services/accounts-service.yaml"
+    seo_relevant_functions:
+      - name: getNewMachineToken
+        endpoint: "/Account/GetNewMachineToken"
+        description: "Generates visitor session token — required for all API calls"
+        seo_impact: MEDIUM
+        notes: "Bots/crawlers are excluded from token generation (user-agent contains 'bot')"
+
+  # === Analytics Services ===
+  - name: data-layer-mapper (GTM)
+    source_file: src/services/cart-services/gtm/data-layer-mapper.ts
+    spec: "../migration-specs/backend/services/cart-services/gtm/data-layer-mapper.yaml"
+    seo_relevant_functions:
+      - name: cookieKey
+        description: "Cookie name constants (pixId, pixIdUnixTimestamp, GCLAW, etc.)"
+    seo_impact: NONE
+
+  - name: data-layer-base (GTM)
+    source_file: src/services/cart-services/gtm/data-layer-base.ts
+    spec: "../migration-specs/backend/services/cart-services/gtm/data-layer-base.yaml"
+    seo_relevant_functions:
+      - name: extractGCLCookieData
+        description: "Extracts gclId from GCLAW cookie"
+    seo_impact: NONE
+
+  # === Other Services ===
+  - name: cart-cookie-service
+    source_file: src/services/cart-services/cookie.ts
+    spec: "../migration-specs/backend/services/cart-cookie-service.yaml"
+    seo_relevant_functions:
+      - name: getBaseDomainName
+        description: "Extracts base domain for cookie scoping"
+    seo_impact: LOW
+
+  - name: navigation-v3-service
+    source_file: src/services/navigation-v3-service.ts
+    spec: "../migration-specs/backend/services/navigation-v3-service.yaml"
+    seo_impact: LOW
+    notes: "Navigation menu data — affects crawlable internal links"
+
+  - name: delivery-rates-service
+    source_file: src/services/delivery-rates.service.ts
+    spec: "../migration-specs/backend/services/delivery-rates-service.yaml"
+    seo_impact: LOW
+    notes: "Data for /delivery-rates page"
+
+  - name: home-service
+    source_file: src/services/home-service.ts
+    spec: "../migration-specs/backend/services/home-service.yaml"
+    seo_relevant_functions:
+      - name: getHomepage
+        description: "Fetches all homepage data via POST /homepage/getv2 (pageTitle, metaDescription, metaKeywords, h1, banners, associations, FAQ data, schema data)"
+        endpoint: "/homepage/getv2"
+        seo_impact: HIGH
+    key_data: "HomepageRequest, DEFAULT_HOMEPAGE_ITEMS_ORDER"
+
+  - name: homepage-service
+    source_file: src/services/homepage-service.ts
+    spec: "../migration-specs/backend/services/homepage-service.yaml"
+    seo_relevant_functions:
+      - name: lazyLoading
+        description: "Client-side lazy loading utility for progressive section loading on homepage"
+    seo_impact: LOW
+    notes: "Legacy service — lazyLoading QRL is the only actively-used export (by homepage route)"
+
+  - name: go-quick-service
+    source_file: src/services/go-quick-service.ts
+    spec: "../migration-specs/backend/services/go-quick-service.yaml"
+    seo_impact: NONE
+    notes: "AI-powered photo cropping and event tracking for GoQuick feature — no SEO impact"
+
+  - name: shop-page-service
+    source_file: src/services/shop-page-service.ts
+    spec: "../migration-specs/backend/services/shop-page-service.yaml"
+    seo_impact: LOW
+
+  - name: shop-by-category-service
+    source_file: src/services/shop-by-category-service.ts
+    spec: "../migration-specs/backend/services/shop-by-category-service.yaml"
+    seo_impact: LOW
+
+  - name: shop-by-budget-service
+    source_file: src/services/shop-by-budget-service.ts
+    spec: "../migration-specs/backend/services/shop-by-budget-service.yaml"
+    seo_impact: LOW
+
+  - name: themes-service
+    source_file: src/services/themes-service.ts
+    spec: "../migration-specs/backend/services/themes-service.yaml"
+    seo_impact: NONE
+
+  - name: klaviyo-service
+    source_file: src/services/klaviyo-service.ts
+    spec: "../migration-specs/backend/services/klaviyo-service.yaml"
+    seo_impact: NONE
+
+  - name: add-to-cart-service
+    source_file: src/services/add-to-cart-service.ts
+    spec: "../migration-specs/backend/services/add-to-cart-service.yaml"
+    seo_impact: NONE
+
+  - name: web-component-service
+    source_file: src/services/web-component-service.ts
+    spec: "../migration-specs/backend/services/web-component-service.yaml"
+    seo_impact: NONE
+
+  - name: holiday-delivery-service
+    source_file: src/services/holiday-delivery-service.ts
+    spec: "../migration-specs/backend/services/holiday-delivery-service.yaml"
+    seo_impact: NONE
+
+  - name: markdown-service
+    source_file: src/services/markdown-service.ts
+    spec: "../migration-specs/backend/services/markdown-service.yaml"
+    seo_impact: NONE
+
+  - name: console-log-service
+    source_file: src/services/cart-services/console-log.ts
+    spec: "../migration-specs/backend/services/console-log-service.yaml"
+    seo_impact: NONE

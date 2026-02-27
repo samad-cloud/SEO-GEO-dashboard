@@ -1,0 +1,272 @@
+name: BackupJsonUtilities
+description: Region-specific backup JSON content loaders for category pages, banners, menus, shipping policies, SEO content, and product filters
+
+source:
+  path: utility/backup-json/backup-json-utilities.ts
+  lines: 1-404
+  type: utility
+
+exports:
+  - name: getBestSellersBackup
+    type: function
+    signature: "() => any"
+    description: Returns best sellers backup JSON
+    regions: [US, GB, FR]
+    fallback: US
+
+  - name: getBannersBackup
+    type: function
+    signature: "() => any"
+    description: Returns site banners backup JSON
+    regions: [US, GB, FR]
+    fallback: US
+
+  - name: getDeliveryDeadlinesBackup
+    type: function
+    signature: "() => any"
+    description: Returns delivery deadlines backup JSON
+    regions: [US, GB, FR]
+    fallback: US
+
+  - name: getMenuBackup
+    type: function
+    signature: "() => any"
+    description: Returns menu backup JSON
+    regions: [US, GB, FR]
+    fallback: US
+
+  - name: getShippingPolicyBackup
+    type: function
+    signature: "() => any"
+    description: Returns shipping policy backup JSON
+    regions: [US, GB, FR, DE]
+    fallback: US
+
+  - name: getHomePageSEOContentBackUp
+    type: function
+    signature: "() => any"
+    description: Returns homepage SEO content backup JSON
+    regions: [US, GB, FR]
+    fallback: US
+
+  - name: getDynamicPromoBannersBackUp
+    type: function
+    signature: "() => any"
+    description: Returns dynamic promo banners backup JSON
+    regions: [US, GB, FR, DE]
+    fallback: US
+
+  - name: getDynamicPromoBannerCanvasBackUp
+    type: function
+    signature: "() => any"
+    description: Returns dynamic canvas banner backup JSON (currently returns null for all regions)
+    returns: null (placeholder for future use)
+
+  - name: getPrintFilterImagesBackUp
+    type: function
+    signature: "() => any"
+    description: Returns print box filter images backup JSON
+    regions: [US only]
+    fallback: US
+
+  - name: getPrintBoxThemesDataBackUp
+    type: function
+    signature: "() => any"
+    description: Returns print box themes backup JSON
+    regions: [US only]
+    fallback: US
+
+  - name: getCategoryThemeImageFiltersBackUp
+    type: function
+    signature: "() => any"
+    description: Returns category theme image filters backup JSON
+    regions: [US only]
+    fallback: US
+
+  - name: getShopByCategory
+    type: function
+    signature: "() => any"
+    description: Returns shop by category backup JSON
+    regions: [US, GB, FR, DE]
+    fallback: US
+
+  - name: getShopByBudget
+    type: function
+    signature: "() => any"
+    description: Returns shop by budget backup JSON
+    regions: [US, GB, FR, DE]
+    fallback: US
+
+  - name: getHolidayDeliveryGuide
+    type: function
+    signature: "() => any"
+    description: Returns holiday delivery guide backup JSON
+    regions: [US, GB, FR, DE]
+    fallback: US
+
+  - name: getCategoryBackup
+    type: function
+    signature: "() => any"
+    description: Returns category components backup JSON
+    regions: [US, GB, FR, DE]
+    fallback: US
+
+  - name: getBlanketsCategoryBackup
+    type: function
+    signature: "() => any"
+    description: Returns blanket category components backup JSON
+    regions: [US, GB, FR, DE]
+    fallback: US
+
+  - name: getFramedPrintsCategoryBackup
+    type: function
+    signature: "() => any"
+    description: Returns framed prints category backup JSON
+    regions: [US, GB, FR, DE]
+    fallback: US
+
+  - name: getCanvasCategoryBackup
+    type: function
+    signature: "() => any"
+    description: Returns canvas category backup JSON
+    regions: [US, GB, FR, DE]
+    fallback: US
+
+  - name: getCalendarCategoryBackup
+    type: function
+    signature: "() => any"
+    description: Returns calendar category backup JSON
+    regions: [US, GB, FR, DE]
+    fallback: US
+
+  - name: getGlobalCategoryBannerBackup
+    type: function
+    signature: "() => any"
+    description: Returns global category banner backup JSON
+    regions: [US, GB, FR]
+    fallback: US
+
+  - name: getCategoryQuickLinksBackup
+    type: function
+    signature: "() => any"
+    description: Returns category quick links backup JSON
+    regions: [US, GB, FR]
+    fallback: US
+
+  - name: getPbLayFlatCategoryBackup
+    type: function
+    signature: "() => any"
+    description: Returns photobook layflat category backup JSON
+    regions: [US, GB, FR, DE]
+    fallback: US
+
+  - name: getVideoPopupBackup
+    type: function
+    signature: "() => any"
+    description: Returns video popup backup JSON
+    regions: [US only]
+    returns: USVideoPopup
+
+  - name: getRedirectionBackup
+    type: function
+    signature: "() => any"
+    description: Returns redirection backup (currently empty)
+    returns: { data: [] }
+
+dependencies:
+  internal:
+    - "~/config/settings": settings function
+    - "./best-sellers/US.json": USBestSellersBackupJSON
+    - "./best-sellers/UK.json": UKBestSellersBackupJSON
+    - "./best-sellers/FR.json": FRBestSellersBackupJSON
+    - "./banners/US.json": USBanners
+    - "./banners/UK.json": UKBanners
+    - "./banners/FR.json": FRBanners
+    - "./delivery-deadlines/US.json": USDeliveryDeadlines
+    - "./delivery-deadlines/UK.json": UKDeliveryDeadlines
+    - "./delivery-deadlines/FR.json": FRDeliveryDeadlines
+    - "./menu/US.json": USMenu
+    - "./menu/UK.json": UKMenu
+    - "./menu/FR.json": FRMenu
+    - "./shipping-policy/US.json": USShippingPolicy
+    - "./shipping-policy/UK.json": UKShippingPolicy
+    - "./shipping-policy/FR.json": FRShippingPolicy
+    - "./shipping-policy/DE.json": DEShippingPolicy
+    - "./homepage-seo-content/US.json": USHomePageSEOContent
+    - "./homepage-seo-content/UK.json": UKHomePageSEOContent
+    - "./homepage-seo-content/FR.json": FRHomePageSEOContent
+    - "./dynamic-promo-banners/US.json": USDynamicPromoBannersContent
+    - "./dynamic-promo-banners/UK.json": UKDynamicPromoBannersContent
+    - "./dynamic-promo-banners/FR.json": FRDynamicPromoBannersContent
+    - "./dynamic-promo-banners/DE.json": DEDynamicPromoBannersContent
+    - "./printbox-themes/US.json": USPrintBoxThemesContent
+    - "./printbox-filter-images/US.json": USPrintBoxFilterImagesContent
+    - "./category-theme-image-filters/US.json": USCategoryThemeImageFiltersContent
+    - "./shop-by-category/US.json": USShopByCategory
+    - "./shop-by-category/UK.json": UKShopByCategory
+    - "./shop-by-category/FR.json": FRShopByCategory
+    - "./shop-by-category/DE.json": DEShopByCategory
+    - "./shop-by-budget/US.json": USShopByBudget
+    - "./shop-by-budget/UK.json": UKShopByBudget
+    - "./shop-by-budget/FR.json": FRShopByBudget
+    - "./shop-by-budget/DE.json": DEShopByBudget
+    - "./holiday-delivery-guide/US.json": USHolidayDeliveryGuide
+    - "./holiday-delivery-guide/UK.json": UKHolidayDeliveryGuide
+    - "./holiday-delivery-guide/FR.json": FRHolidayDeliveryGuide
+    - "./holiday-delivery-guide/DE.json": DEHolidayDeliveryGuide
+    - "./category-components/US.json": USCategoryComponents
+    - "./category-components/UK.json": UKCategoryComponents
+    - "./category-components/FR.json": FRCategoryComponents
+    - "./category-components/DE.json": DECategoryComponents
+    - "./blanket-category-components/US.json": USBlanketCategoryComponents
+    - "./blanket-category-components/UK.json": UKBlanketCategoryComponents
+    - "./blanket-category-components/FR.json": FRBlanketCategoryComponents
+    - "./blanket-category-components/DE.json": DEBlanketCategoryComponents
+    - "./framed-prints-category-components/US.json": USFramedPrintsCategoryComponents
+    - "./framed-prints-category-components/UK.json": UKFramedPrintsCategoryComponents
+    - "./framed-prints-category-components/FR.json": FRFramedPrintsCategoryComponents
+    - "./framed-prints-category-components/DE.json": DEFramedPrintsCategoryComponents
+    - "./canvas-category-components/US.json": USCanvasCategoryComponents
+    - "./canvas-category-components/UK.json": UKCanvasCategoryComponents
+    - "./canvas-category-components/FR.json": FRCanvasCategoryComponents
+    - "./canvas-category-components/DE.json": DECanvasCategoryComponents
+    - "./calendars-category-components/US.json": USCalendarsCategoryComponents
+    - "./calendars-category-components/UK.json": UKCalendarsCategoryComponents
+    - "./calendars-category-components/FR.json": FRCalendarsCategoryComponents
+    - "./calendars-category-components/DE.json": DECalendarsCategoryComponents
+    - "./global-category-banner/US.json": USGlobalCategoryBanner
+    - "./global-category-banner/UK.json": UKGlobalCategoryBanner
+    - "./global-category-banner/FR.json": FRGlobalCategoryBanner
+    - "./category-quick-links/US.json": USCategoryQuickLinksBackup
+    - "./category-quick-links/UK.json": UKCategoryQuickLinksBackup
+    - "./category-quick-links/FR.json": FRCategoryQuickLinksBackup
+    - "./pb-layflat-category-components/US.json": USPbLayFlatCategoryBackup
+    - "./pb-layflat-category-components/UK.json": UKPbLayFlatCategoryBackup
+    - "./pb-layflat-category-components/FR.json": FRPbLayFlatCategoryBackup
+    - "./pb-layflat-category-components/DE.json": DEPbLayFlatCategoryBackup
+    - "./video-popup/US.json": USVideoPopup
+
+behavior:
+  region_coverage:
+    3_regions: [best-sellers, banners, delivery-deadlines, menu, homepage-seo, global-category-banner, category-quick-links]
+    4_regions: [shipping-policy, dynamic-promo-banners, shop-by-category, shop-by-budget, holiday-delivery-guide, category, blankets-category, framed-prints, canvas, calendar, pb-layflat]
+    us_only: [print-filter-images, printbox-themes, category-theme-image-filters, video-popup]
+
+  fallback_strategy:
+    default_region: US
+    all_functions_have_fallback: true
+
+  purpose:
+    backup: Fallback content when API fails
+    static: Pre-loaded JSON for offline/cached pages
+    category_specific: Product category pages have dedicated backups
+
+edge_cases:
+  - getDynamicPromoBannerCanvasBackUp always returns null (placeholder)
+  - getRedirectionBackup always returns empty data array
+  - US-only functions ignore region setting
+
+types:
+  notes: "No locally-defined types. All functions return any (raw JSON from regional static backup files)."
+
+used_by: []

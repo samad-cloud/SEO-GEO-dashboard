@@ -1,0 +1,549 @@
+name: GoQuickService
+source: services/go-quick-service.ts
+description: >
+  Server-side service for the GoQuick photo product feature. Provides three main functions:
+  (1) batchIntelligentCrop - server-side AI-powered image cropping via the AI Photo Placement
+  API, (2) fallbackCrop - client-side geometric center-crop fallback when AI cropping fails,
+  (3) goQuickTrackEvent - server-side analytics event tracking to the AI Photo Placement API.
+  All server functions run via Qwik's server$() mechanism (SSR-only execution).
+
+exports:
+  - name: batchIntelligentCrop
+    type: server_function
+    description: >
+      Server-side function that sends an image URL and desired aspect ratios to the
+      AI Photo Placement API for intelligent face/object-aware cropping. Returns
+      crop coordinates for each requested aspect ratio.
+
+  - name: fallbackCrop
+    type: async_function
+    description: >
+      Client-side fallback function that performs simple center-crop calculations
+      when the AI crop service is unavailable or fails. Loads the image in a browser
+      Image object to get dimensions, then calculates center-crop coordinates for
+      each requested aspect ratio.
+
+  - name: goQuickTrackEvent
+    type: server_function
+    description: >
+      Server-side function that tracks GoQuick user events (page visits, uploads,
+      add-to-cart) by posting to the AI Photo Placement API's event tracking endpoint.
+      Only active in production environment.
+
+  - name: CropResult
+    type: interface
+    description: Result of a single crop operation for one aspect ratio.
+
+  - name: ImageResult
+    type: interface
+    description: Result of processing a single image (may contain multiple crop results).
+
+  - name: BatchCropResponse
+    type: interface
+    description: Top-level response containing results for all images in the batch.
+
+props: {}
+
+component_structure: null
+  # This is a service module, not a UI component.
+
+child_components: []
+
+data_structure:
+  interfaces:
+    - name: TrackEventType
+      exported: false
+      fields:
+        - name: event
+          type: string
+          description: Event name (e.g., 'homepage_upload', 'page_visit', 'upload_image', 'add_to_cart', 'productpage_upload', 'homepage_banner_upload')
+        - name: machine_token
+          type: string | undefined
+          description: User's machine token from cookie (MACHINE_TOKEN)
+        - name: user_agent
+          type: string | undefined
+          description: User's browser user agent string
+        - name: ip
+          type: string | undefined
+          description: User's IP address extracted from request headers
+        - name: ref_code
+          type: string | undefined
+          description: Optional reference/product code
+        - name: price
+          type: number | undefined
+          description: Optional price value (used for add_to_cart events)
+        - name: region
+          type: string | undefined
+          description: Website/region identifier from settings()
+
+    - name: BatchIntelligentCropType
+      exported: false
+      fields:
+        - name: image_urls
+          type: string[]
+          description: Array of image URLs to crop (currently always single image)
+        - name: aspect_ratios
+          type: string[]
+          description: Target aspect ratios in "W:H" format (e.g., ["1:1", "3:4"])
+        - name: max_image_size
+          type: number
+          default: 10240
+          description: Maximum image size in pixels
+        - name: detection_confidence
+          type: number
+          default: 0.5
+          description: General object detection confidence threshold
+        - name: mediapipe_face_confidence
+          type: number
+          default: 0.6
+          description: MediaPipe face detection confidence threshold
+        - name: mtcnn_face_confidence
+          type: number
+          default: 0.99
+          description: MTCNN face detection confidence threshold
+        - name: object_detection_confidence
+          type: number
+          default: 0.4
+          description: Object detection confidence threshold
+        - name: max_detections
+          type: number
+          default: 10
+          description: Maximum number of detections per image
+        - name: face_detector
+          type: string
+          default: '"auto"'
+          description: Face detection algorithm selector
+
+    - name: CropResult
+      exported: true
+      fields:
+        - name: aspect_ratio
+          type: string
+          description: Requested aspect ratio (e.g., "1:1")
+        - name: aspect_ratio_achieved
+          type: string
+          description: Actual achieved aspect ratio after cropping
+        - name: crop_coordinates
+          type: "[number, number, number, number]"
+          description: Crop bounding box as [x1, y1, x2, y2] in pixels
+        - name: cropped_size
+          type: "[number, number]"
+          description: Final cropped dimensions as [width, height]
+        - name: fallback_used
+          type: boolean
+          description: Whether the AI crop failed and center-crop fallback was used
+
+    - name: ImageResult
+      exported: true
+      fields:
+        - name: image_url
+          type: string
+          description: Original image URL
+        - name: success
+          type: boolean
+          description: Whether the image was successfully processed
+        - name: original_size
+          type: "[number, number]"
+          description: Original image dimensions as [width, height]
+        - name: detections
+          type: any[]
+          description: Array of detected faces/objects (empty for fallback)
+        - name: crops
+          type: CropResult[]
+          description: Array of crop results, one per requested aspect ratio
+        - name: error
+          type: string (optional)
+          description: Error message if processing failed
+
+    - name: BatchCropResponse
+      exported: true
+      fields:
+        - name: success
+          type: boolean
+          description: Whether the overall batch operation succeeded
+        - name: total_images
+          type: number
+          description: Total number of images in the request
+        - name: successful_images
+          type: number
+          description: Number of successfully processed images
+        - name: failed_images
+          type: number
+          description: Number of failed images
+        - name: results
+          type: ImageResult[]
+          description: Array of per-image results
+        - name: global_error
+          type: string (optional)
+          description: Global error message if the entire batch failed
+
+behavior:
+  - action: batchIntelligentCrop
+    type: server_function
+    execution_context: server_only
+    inputs:
+      - name: imageUrl
+        type: string
+        description: URL of the image to crop
+      - name: aspectRatios
+        type: string[]
+        description: Array of target aspect ratios in "W:H" format
+    output:
+      type: BatchCropResponse
+    steps:
+      - Read PUBLIC_AI_PHOTO_PLACEMENT_HOST from environment variables
+      - Construct BatchIntelligentCropType request with hardcoded defaults (max_image_size=10240, detection_confidence=0.5, etc.)
+      - POST to {AI_PHOTO_PLACEMENT_HOST}/v1/intelligent/batch-intelligent-crop
+      - Return response data on success
+    error_handling: >
+      On any error, returns a failed BatchCropResponse with success=false, all counts=0,
+      empty results array. Error is silently swallowed (no logging).
+    api_endpoint:
+      method: POST
+      url: "{PUBLIC_AI_PHOTO_PLACEMENT_HOST}/v1/intelligent/batch-intelligent-crop"
+      headers:
+        Content-Type: application/json
+      body: BatchIntelligentCropType
+      response: BatchCropResponse
+
+  - action: fallbackCrop
+    type: async_function
+    execution_context: client_side
+    inputs:
+      - name: imageUrl
+        type: string
+        description: URL of the image to crop
+      - name: aspectRatios
+        type: string[]
+        description: Array of target aspect ratios in "W:H" format
+    output:
+      type: BatchCropResponse
+    steps:
+      - Create new Image() with crossOrigin="anonymous"
+      - Load the image and wait for onload
+      - Validate dimensions are non-zero (reject with error if invalid)
+      - For each aspect ratio, calculate center-crop coordinates
+      - "If image is wider than target ratio: crop width to match, center horizontally"
+      - "If image is taller than target ratio: crop height to match, center vertically"
+      - Clamp crop coordinates to image bounds
+      - Set fallback_used=true on all CropResult objects
+      - Return BatchCropResponse with success=true
+    error_handling: >
+      If image fails to load, rejects the promise with "Failed to load image for
+      fallback processing". If dimensions are zero, rejects with "Invalid image dimensions".
+      Any error during crop calculation also rejects the promise.
+    algorithm:
+      description: Center-crop algorithm
+      logic: |
+        For each aspect ratio W:H:
+          targetRatio = W / H
+          if (imageWidth / imageHeight > targetRatio):
+            # Image is wider than needed
+            cropHeight = imageHeight
+            cropWidth = imageHeight * targetRatio
+            cropX = (imageWidth - cropWidth) / 2  # Center horizontally
+            cropY = 0
+          else:
+            # Image is taller than needed
+            cropWidth = imageWidth
+            cropHeight = imageWidth / targetRatio
+            cropX = 0
+            cropY = (imageHeight - cropHeight) / 2  # Center vertically
+          Clamp all values to valid pixel ranges
+          Return [cropX, cropY, cropX + cropWidth, cropY + cropHeight]
+
+  - action: goQuickTrackEvent
+    type: server_function
+    execution_context: server_only
+    inputs:
+      - name: event
+        type: string
+        required: true
+        description: Event name to track
+        known_values:
+          - homepage_upload (from GoQuickHomepageWidget)
+          - homepage_banner_upload (from GoQuickCarouselWidget)
+          - page_visit (from go-quick page)
+          - upload_image (from GoQuickImageUploader)
+          - add_to_cart (from GoQuickAddToCart)
+          - productpage_upload (from ExpressCheckoutButton)
+      - name: refCode
+        type: string
+        required: false
+        description: Optional product reference code
+      - name: price
+        type: number
+        required: false
+        description: Optional price value for purchase events
+    output:
+      type: void
+    steps:
+      - Check if NODE_ENV is "production"; if not, return immediately (no tracking in dev/staging)
+      - Read PUBLIC_AI_PHOTO_PLACEMENT_HOST from environment
+      - Extract client IP from request headers (x-forwarded-for, cf-connecting-ip, x-real-ip, or 'unknown')
+      - Extract user agent from request headers
+      - Call getCookieDataOnServer() to get machine token from cookies
+      - Get region/website identifier from settings()
+      - Construct TrackEventType payload with all collected data
+      - POST to {AI_PHOTO_PLACEMENT_HOST}/v1/report/track-event
+    error_handling: >
+      On any error, calls logError("goQuickEnterPageMetric failed", error) via Sentry utility.
+      Error is caught silently (no user-facing impact).
+    api_endpoint:
+      method: POST
+      url: "{PUBLIC_AI_PHOTO_PLACEMENT_HOST}/v1/report/track-event"
+      headers:
+        Content-Type: application/json
+      body: TrackEventType
+
+styling: null
+  # Service module, no styling.
+
+dependencies:
+  internal:
+    - services/cart-services/cookie (getCookieDataOnServer - retrieves MACHINE_TOKEN cookie)
+    - config/settings (settings() - returns site configuration including website/region)
+    - utility/sentry (logError - error logging)
+  external:
+    - axios (HTTP client for API calls)
+  framework:
+    - "@builder.io/qwik-city" (server$ - server-side function wrapper)
+  environment_variables:
+    - name: PUBLIC_AI_PHOTO_PLACEMENT_HOST
+      description: Base URL for the AI Photo Placement API
+      example: "http://10.20.24.171:8000/go-quick"
+      used_by:
+        - batchIntelligentCrop
+        - goQuickTrackEvent
+
+used_by:
+  - file: routes/go-quick/index.tsx
+    context: >
+      Main GoQuick page uses batchIntelligentCrop for AI-powered photo cropping,
+      fallbackCrop when AI fails, and goQuickTrackEvent('page_visit') on page load.
+  - file: components/go-quick/go-quick-homepage-widget.tsx
+    context: Uses goQuickTrackEvent('homepage_upload') after file upload.
+  - file: components/go-quick/go-quick-carousel-widget.tsx
+    context: Uses goQuickTrackEvent('homepage_banner_upload') after file upload.
+  - file: components/go-quick/go-quick-image-uploader.tsx
+    context: Uses goQuickTrackEvent('upload_image') after additional image upload.
+  - file: components/go-quick/go-quick-add-to-cart.tsx
+    context: >
+      Uses goQuickTrackEvent('add_to_cart', refCode, totalPrice) when user adds
+      a GoQuick product to cart.
+  - file: components/go-quick/express-checkout-button.tsx
+    context: Uses goQuickTrackEvent('productpage_upload') for product page uploads.
+
+security:
+  - Server functions (server$) execute only on the server, protecting API host details
+  - goQuickTrackEvent collects IP address and user agent from request headers
+  - Machine token is read from server-side cookies (not exposed to client)
+  - AI Photo Placement API is on an internal network (10.20.24.171)
+  - No authentication headers sent to AI Photo Placement API (internal service)
+  - fallbackCrop uses crossOrigin="anonymous" for CORS-safe image loading
+  - Production-only tracking prevents event noise from dev/staging environments
+
+notes:
+  - batchIntelligentCrop currently always wraps a single image in an array (image_urls: [imageUrl]) despite the API supporting batches
+  - The fallbackCrop function runs on the client side (not server$) and requires browser Image API
+  - goQuickTrackEvent uses Qwik's server$ with `this` context to access request headers
+  - The AI Photo Placement API is on an internal IP (10.20.24.171:8000), not publicly accessible
+  - The API base path includes /go-quick (e.g., http://10.20.24.171:8000/go-quick/v1/...)
+  - goQuickTrackEvent silently skips tracking in non-production environments
+  - The function name in the error log ("goQuickEnterPageMetric") is a legacy name that doesn't match the function's actual name (goQuickTrackEvent)
+  - Detection confidence thresholds are hardcoded in batchIntelligentCrop and not configurable
+  - The BatchCropResponse shape is shared between AI crop and fallback crop for seamless fallback
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  TrackEventType:
+    description: Payload sent to POST {AI_HOST}/v1/report/track-event (internal — not exported)
+    fields:
+      - name: event
+        type: string
+        notes: "Known values: homepage_upload, homepage_banner_upload, page_visit, upload_image, add_to_cart, productpage_upload"
+      - name: machine_token
+        type: "string | undefined"
+        notes: MACHINE_TOKEN cookie value read server-side
+      - name: user_agent
+        type: "string | undefined"
+      - name: ip
+        type: "string | undefined"
+        notes: Extracted from x-forwarded-for, cf-connecting-ip, or x-real-ip headers
+      - name: ref_code
+        type: "string | undefined"
+      - name: price
+        type: "number | undefined"
+        notes: Only populated for add_to_cart events
+      - name: region
+        type: "string | undefined"
+        notes: settings().website value
+
+  BatchIntelligentCropType:
+    description: Request body sent to POST {AI_HOST}/v1/intelligent/batch-intelligent-crop (internal — not exported)
+    fields:
+      - name: image_urls
+        type: "string[]"
+        notes: Always a single-element array in current usage despite "batch" in name
+      - name: aspect_ratios
+        type: "string[]"
+        notes: Format "W:H" e.g. ["1:1", "3:4"]
+      - name: max_image_size
+        type: number
+        default: 10240
+      - name: detection_confidence
+        type: number
+        default: 0.5
+      - name: mediapipe_face_confidence
+        type: number
+        default: 0.6
+      - name: mtcnn_face_confidence
+        type: number
+        default: 0.99
+      - name: object_detection_confidence
+        type: number
+        default: 0.4
+      - name: max_detections
+        type: number
+        default: 10
+      - name: face_detector
+        type: string
+        default: '"auto"'
+
+  CropResult:
+    description: Crop result for a single aspect ratio — exported
+    fields:
+      - name: aspect_ratio
+        type: string
+      - name: aspect_ratio_achieved
+        type: string
+      - name: crop_coordinates
+        type: "[number, number, number, number]"
+        notes: "[x1, y1, x2, y2] in pixels"
+      - name: cropped_size
+        type: "[number, number]"
+        notes: "[width, height]"
+      - name: fallback_used
+        type: boolean
+        notes: true when center-crop fallback was used instead of AI
+
+  ImageResult:
+    description: Processing result for a single image — exported
+    fields:
+      - name: image_url
+        type: string
+      - name: success
+        type: boolean
+      - name: original_size
+        type: "[number, number]"
+      - name: detections
+        type: "any[]"
+        notes: Empty array when fallback_used is true
+      - name: crops
+        type: "CropResult[]"
+      - name: error
+        type: string
+        optional: true
+
+  BatchCropResponse:
+    description: Top-level response from both batchIntelligentCrop and fallbackCrop — exported
+    fields:
+      - name: success
+        type: boolean
+      - name: total_images
+        type: number
+      - name: successful_images
+        type: number
+      - name: failed_images
+        type: number
+      - name: results
+        type: "ImageResult[]"
+      - name: global_error
+        type: string
+        optional: true
+
+field_consumption:
+  BatchCropResponse:
+    consumed:
+      - success: Checked by callers to determine if fallback is needed
+      - results: Array iterated to extract per-image crop coordinates
+      - results[*].crops: Array of CropResult used for image positioning in GoQuick UI
+      - results[*].crops[*].crop_coordinates: x1,y1,x2,y2 used to crop/display image
+      - results[*].crops[*].fallback_used: Used to determine if AI or fallback was applied
+    ignored:
+      - total_images: Not used by callers
+      - successful_images: Not used by callers
+      - failed_images: Not used by callers
+      - global_error: Not read by callers (success=false check is used instead)
+      - results[*].detections: Not used by callers
+
+wire_format:
+  POST {PUBLIC_AI_PHOTO_PLACEMENT_HOST}/v1/intelligent/batch-intelligent-crop:
+    description: Requests AI-powered face/object-aware crop coordinates for an image
+    function: batchIntelligentCrop
+    mapping:
+      imageUrl (param): image_urls[0]
+      aspectRatios (param): aspect_ratios
+      "(hardcoded)": max_image_size=10240
+      "(hardcoded)": detection_confidence=0.5
+      "(hardcoded)": mediapipe_face_confidence=0.6
+      "(hardcoded)": mtcnn_face_confidence=0.99
+      "(hardcoded)": object_detection_confidence=0.4
+      "(hardcoded)": max_detections=10
+      "(hardcoded)": face_detector="auto"
+    content_type: application/json
+    notes:
+      - Host URL from PUBLIC_AI_PHOTO_PLACEMENT_HOST env var (internal network IP)
+      - No auth headers — internal service
+
+  POST {PUBLIC_AI_PHOTO_PLACEMENT_HOST}/v1/report/track-event:
+    description: Tracks a GoQuick user event server-side
+    function: goQuickTrackEvent
+    mapping:
+      event (param): event
+      getCookieDataOnServer().machineToken: machine_token
+      request headers user-agent: user_agent
+      request headers x-forwarded-for (or cf-connecting-ip, x-real-ip): ip
+      refCode (param): ref_code
+      price (param): price
+      settings().website: region
+    content_type: application/json
+    notes:
+      - Only executes in production (NODE_ENV === "production")
+      - Uses Qwik server$ this context to access request headers and cookies
+
+implementation_logic:
+  fallback_crop_center_algorithm:
+    rule: |
+      For each aspect ratio W:H, fallbackCrop calculates center-crop coordinates as follows:
+        targetRatio = W / H
+        if (imageWidth / imageHeight > targetRatio):
+          cropHeight = imageHeight
+          cropWidth = imageHeight * targetRatio
+          cropX = (imageWidth - cropWidth) / 2    # center horizontally
+          cropY = 0
+        else:
+          cropWidth = imageWidth
+          cropHeight = imageWidth / targetRatio
+          cropX = 0
+          cropY = (imageHeight - cropHeight) / 2  # center vertically
+        Coordinates are clamped to [0, imageDimension] range.
+        All CropResult objects have fallback_used=true.
+    critical: true
+
+  production_only_tracking_guard:
+    rule: |
+      goQuickTrackEvent checks process.env.NODE_ENV === "production" at the start.
+      If not production (dev, staging, test), it returns immediately without making
+      any API call. This prevents polluting the analytics database with non-production events.
+    critical: false
+
+  ip_header_priority:
+    rule: |
+      goQuickTrackEvent extracts client IP with this header priority:
+        1. x-forwarded-for (first value if comma-separated)
+        2. cf-connecting-ip (Cloudflare)
+        3. x-real-ip
+        4. "unknown" (fallback)
+    critical: false

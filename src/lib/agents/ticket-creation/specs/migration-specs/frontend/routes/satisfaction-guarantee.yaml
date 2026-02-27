@@ -1,0 +1,92 @@
+name: SatisfactionGuaranteeRoute
+source:
+  path: routes/satisfaction-guarantee/index.tsx
+  lines: 1-86
+  type: route
+
+description: |
+  Satisfaction guarantee policy page explaining refund/replacement process.
+  Content includes:
+  - Our Guarantee section with links to contact methods
+  - Personalized products note
+  - Errors handling
+  - Cancellation policy
+  - Important information list
+  - Important note
+
+  All content is i18n localized. Some elements conditionally shown based on region.
+
+url_pattern: /satisfaction-guarantee
+layout: default
+
+exports:
+  default: true
+  component: |
+    Renders:
+    - Title (centered, bold)
+    - Our Guarantee section with quality statement and contact links
+      - Phone link (hidden for GB, US, NL, IN, DE, IT, ES, FR)
+      - Quality description part 2 (hidden for DE)
+      - Contact us link
+      - Live chat link
+    - Personalized products statement
+    - Errors statement
+    - Cancellation section (with dangerouslySetInnerHTML)
+    - Information ordered list (3 items)
+    - Important section
+
+  head: true
+  head_behavior: |
+    Returns localized meta tags:
+    - title, description, keywords from i18n
+    - Standard meta tags (google, theme-color, distribution, rating, author, copyright, google-signin-scope, robots)
+
+dependencies:
+  - "@builder.io/qwik"
+  - "qwik-speak" (inlineTranslate)
+  - "~/config/settings"
+
+data_dependencies:
+  - settings().website for multi-region conditional rendering
+
+behavior:
+  - Phone link hidden for specific regions (GB, US, NL, IN, DE, IT, ES, FR)
+  - Quality description part 2 hidden for DE
+  - Cancellation content supports HTML (dangerouslySetInnerHTML)
+  - All text uses inlineTranslate for i18n
+  - Responsive padding (15px mobile, 0 desktop)
+
+i18n_keys:
+  - satisfaction_guarantee.title
+  - satisfaction_guarantee.Our_Guarantee_title
+  - satisfaction_guarantee.quality_of_product_1
+  - satisfaction_guarantee.quality_of_product_2
+  - satisfaction_guarantee.quality_of_product_3
+  - satisfaction_guarantee.quality_of_product_4
+  - satisfaction_guarantee.tel_link
+  - satisfaction_guarantee.tel_text
+  - satisfaction_guarantee.contact_us_link
+  - satisfaction_guarantee.contact_us_text
+  - satisfaction_guarantee.live_chat_link
+  - satisfaction_guarantee.live_chat_text
+  - satisfaction_guarantee.personalized_products
+  - satisfaction_guarantee.errors
+  - satisfaction_guarantee.Cancellation_title
+  - satisfaction_guarantee.Cancellation
+  - satisfaction_guarantee.information_title
+  - satisfaction_guarantee.information_1
+  - satisfaction_guarantee.information_2
+  - satisfaction_guarantee.information_3
+  - satisfaction_guarantee.important_title
+  - satisfaction_guarantee.important
+  - satisfaction_guarantee.meta.title
+  - satisfaction_guarantee.meta.description
+  - satisfaction_guarantee.meta.keywords
+
+rewrite_routes:
+  FR: /garantie-satisfaction
+
+used_by: []
+
+types:
+  notes: "Route component. No locally-defined interfaces. All content sourced from inlineTranslate() i18n keys and settings().website region string."

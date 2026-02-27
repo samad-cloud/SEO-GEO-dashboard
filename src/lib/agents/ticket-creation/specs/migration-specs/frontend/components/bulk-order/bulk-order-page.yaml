@@ -1,0 +1,385 @@
+name: BulkOrderPage
+source: components/bulk-order/bulk-order-page.tsx
+description: |
+  Full bulk ordering page with hero section, product showcase, and quote request
+  form. Users select product type, configure options (fabric/cover/mug type),
+  provide size/quantity/pages, and submit contact details. Form submits via
+  EmailJS. Modern design with WhatsApp chat option and trust badges.
+exports:
+  - default component (main page)
+  - HeroSection component
+  - TrustBadges component
+  - ProductsSection component
+  - BottomTrustBadges component
+
+props: {}
+
+component_structure:
+  - HeroSection: Two CTAs (WhatsApp chat, email quote), trust badges, scroll hint
+  - ProductsSection: Scrollable product gallery (10 products)
+  - BottomTrustBadges: Trust badge grid with descriptions
+  - Main form section: Product type selection, dynamic options, form fields
+  - Status modal: Shows pending/success/failure states
+
+child_components:
+  - ModalOverlay: Modal container for submission status
+  - ModalDialog: Success/failure dialog
+  - SVGIcon: Icons (spinner, arrows, badges)
+  - TextInput: Form text inputs
+  - TextArea: Form textarea
+  - Select: Form dropdowns
+  - OptionButton: Radio button grid for fabric/cover/mug types
+  - Link: CTA buttons
+
+form_fields:
+  productName:
+    type: string
+    required: conditional (only if "Other" product type selected)
+    validation: min 1 character
+    translation_key: order_runtime.bulk_ordering.product_name
+
+  size:
+    type: string (select)
+    required: conditional (not for Mugs or Other)
+    options: blanketSizeData | canvasSizeData | photoBooksSizeData
+    validation: Must match product type
+    translation_key: order_runtime.bulk_ordering.size
+
+  pages:
+    type: number
+    required: conditional (only for Photo Books)
+    validation: min 1, must be positive number
+    translation_key: order_runtime.bulk_ordering.pages
+
+  quantity:
+    type: number
+    required: true
+    validation: min 1, must be positive number
+    translation_key: order_runtime.bulk_ordering.quantity
+
+  name:
+    type: string
+    required: true
+    validation: min 1 character
+    translation_key: order_runtime.bulk_ordering.full_name
+
+  zipcode:
+    type: string
+    required: true
+    validation: min 1 character
+    translation_key: order_runtime.bulk_ordering.delivery_post_code
+
+  email:
+    type: string (email)
+    required: true
+    validation: min 1 character, valid email format
+    translation_key: order_runtime.bulk_ordering.email_address
+
+  phone:
+    type: string (tel)
+    required: true
+    validation: min 1 character
+    translation_key: order_runtime.bulk_ordering.phone
+
+  msg:
+    type: string (textarea)
+    required: false
+    validation: none
+    translation_key: order_runtime.bulk_ordering.additional_useful_notes
+
+data_structure:
+  BulkOrderingForm: (Zod schema)
+    - All fields listed above with validation rules
+
+  bulkOrderingData: (imported JSON)
+    productTypes: Array<{value: string, name: string}>
+      - [0]: Blankets
+      - [1]: Canvas
+      - [2]: Photo Books
+      - [3]: Mugs
+      - [4]: Other
+    farbicTypes: Array<{value: string, name: string}>
+      - Fleece, Sherpa options
+    coverData: Array<{value: string, name: string}>
+      - Cover types for photo books
+    mugData: Array<{value: string, name: string}>
+      - Mug types
+    blanketSizeData: Array<{value: string, name: string}>
+    canvasSizeData: Array<{value: string, name: string}>
+    photoBooksSizeData: Array<{value: string, name: string}>
+    features: Array<{icon: string, title: string, description: string}>
+      - 4 features displayed below hero
+
+  WHATSAPP_GREETINGS: Record<region, greeting>
+    - GB: "Hello Printerpix"
+    - US: "Hi Printerpix"
+    - FR: "Bonjour Printerpix"
+    - etc.
+
+  WHATSAPP_NUMBER: "447822035766"
+
+behavior:
+  product_type_selection:
+    - User clicks product type button
+    - activeProductType updates
+    - Form size field resets to first option for that product
+    - Conditional sections show/hide (fabric, cover, mug, pages)
+
+  form_submission:
+    - Validates all required fields per product type
+    - Builds requestData object with conditional fields
+    - Opens status modal (PENDING state)
+    - Sends via EmailJS with service/template IDs from env
+    - On success (200): Shows success modal, resets form
+    - On failure: Shows failure modal
+
+  whatsapp_integration:
+    - Hero section CTA links to WhatsApp with region-specific greeting
+    - URL: https://wa.me/{WHATSAPP_NUMBER}?text={greeting}
+
+  conditional_fields:
+    - Blankets: Show fabric type (Fleece/Sherpa) + size + quantity
+    - Canvas: Show size + quantity
+    - Photo Books: Show cover type + size + pages + quantity
+    - Mugs: Show mug type + quantity (no size)
+    - Other: Show product name + quantity (no size)
+
+styling:
+  hero:
+    - Dark background (#1a1a2e)
+    - Two large option cards (green for WhatsApp, white for email)
+    - Responsive card layout (flex-col on mobile, flex-row on desktop)
+
+  product_gallery:
+    - Horizontal scroll on mobile, flex wrap on desktop
+    - 160px x 160px product cards with shadows
+    - Hides scrollbar: [&::-webkit-scrollbar]:hidden
+
+  form:
+    - Max width 3xl (768px)
+    - Pink CTA color (#E40080)
+    - Product type buttons: Border changes on active (pink vs gray)
+    - Full width button on mobile, 1/2 width on desktop
+
+dependencies:
+  qwik:
+    - $, component$, useSignal from @builder.io/qwik
+    - z from @builder.io/qwik-city (Zod)
+  forms:
+    - reset, setValue, useForm, zodForm$ from @modular-forms/qwik
+    - useFormLoader from route loader
+  translation:
+    - inlineTranslate from qwik-speak
+  email:
+    - emailjs from @emailjs/browser
+  components:
+    - Select, TextArea, TextInput, OptionButton, SVGIcon, ModalOverlay, ModalDialog
+  config:
+    - settings from ~/config/settings
+  data:
+    - bulkOrderingData from ~/data/bulk-ordering-data.json
+
+environment_variables:
+  PUBLIC_EMAIL_SERVICE_ID: EmailJS service ID
+  PUBLIC_EMAIL_TEMPLATE_ID: EmailJS template ID
+  PUBLIC_EMAIL_PUBLIC_KEY: EmailJS public key
+
+used_by: []
+
+security:
+  - Form validation via Zod schema prevents invalid submissions
+  - EmailJS credentials in environment variables (not hardcoded)
+  - WhatsApp URL encodes greeting text to prevent injection
+  - All form inputs sanitized by form library
+
+notes:
+  - Modern redesign compared to bulk-order-page-old.tsx
+  - WhatsApp integration is primary CTA (green, prominent)
+  - Email quote is secondary CTA (white card)
+  - 10 product images: calendars, photo books, blankets, canvas, mugs, puzzles, slates, tiles, frames, cards
+  - Form dynamically adjusts fields based on product type selection
+  - Trust badges appear twice: below hero (desktop only) and bottom section (all devices)
+  - EmailJS used instead of backend API for simplicity
+  - No pagination for products (single scrollable row)
+  - Modal overlay darkens screen during submission
+  - Spinner animation during pending state (2s linear infinite)
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  BulkOrderingForm:
+    description: Zod-validated form schema (exported type); survey field is optional in this version
+    fields:
+      - name: productName
+        type: "string | undefined"
+        optional: true
+        description: Only required when "Other" product type is selected
+      - name: size
+        type: "string | undefined"
+        optional: true
+        description: Not applicable for Mugs or Other product types
+      - name: pages
+        type: number
+        description: Coerced from input; only used for Photo Books
+      - name: quantity
+        type: number
+        description: Always required; minimum 1
+      - name: name
+        type: string
+        description: Customer full name
+      - name: zipcode
+        type: string
+        description: Delivery postcode
+      - name: email
+        type: string
+        description: Valid email address
+      - name: phone
+        type: string
+        description: Phone number
+      - name: survey
+        type: "string | undefined"
+        optional: true
+        description: Present in schema but not rendered in the new version form
+      - name: msg
+        type: "string | undefined"
+        optional: true
+        description: Optional additional notes textarea
+
+  MailServiceStatus:
+    description: Enum for email submission state shown in the status modal
+    fields:
+      - name: PENDING
+        type: '"PENDING"'
+      - name: SUCCESS
+        type: '"SUCCESS"'
+      - name: FAILED
+        type: '"FAILED"'
+
+  ProductTypeItem:
+    description: Entry in bulkOrderingData.productTypes (and other option arrays)
+    fields:
+      - name: value
+        type: string
+        description: Internal identifier used for activeProductType signal
+      - name: name
+        type: string
+        description: i18n translation key passed to t()
+
+  FeatureItem:
+    description: Entry in bulkOrderingData.features (used in BulkOrderPageOld Banner)
+    fields:
+      - name: icon
+        type: string
+        description: Path to icon image
+      - name: title
+        type: string
+        description: i18n key for feature title
+      - name: description
+        type: string
+        description: i18n key for feature description
+
+  EmailJSRequestData:
+    description: Object sent to emailjs.send() on form submission
+    fields:
+      - name: product
+        type: "string | undefined"
+        description: Product type value or productName for "Other"
+      - name: subProduct
+        type: "string | undefined"
+        description: Fabric type, cover type, or mug type; undefined when not applicable
+      - name: pages
+        type: "number | undefined"
+        description: Number of pages; only included for Photo Books
+      - name: size
+        type: "string | undefined"
+        description: Selected size; excluded for Mugs and Other
+      - name: quantity
+        type: number
+      - name: name
+        type: string
+      - name: zipcode
+        type: string
+      - name: email
+        type: string
+      - name: phone
+        type: string
+      - name: msg
+        type: "string | undefined"
+
+field_consumption:
+  BulkOrderingForm:
+    consumed:
+      - productName: Destructured in handleSubmit; used as product value when "Other" is selected
+      - size: Destructured in handleSubmit; conditionally included in requestData
+      - pages: Destructured in handleSubmit; included in requestData only for Photo Books
+      - quantity: Spread into requestData via ...rest
+      - name: Spread into requestData via ...rest
+      - zipcode: Spread into requestData via ...rest
+      - email: Spread into requestData via ...rest
+      - phone: Spread into requestData via ...rest
+      - survey: Present in schema but field not rendered in the new version UI; spread into ...rest if present
+      - msg: Spread into requestData via ...rest
+
+  ProductTypeItem:
+    consumed:
+      - value: Used for active state comparison, switch-case for size reset, and conditional rendering of sub-sections
+      - name: Passed to t() to render the button label
+    ignored: []
+
+visibility_map:
+  trust_badges_in_hero:
+    condition: Always rendered but hidden on mobile via hidden md:flex CSS
+    default: hidden (mobile), visible (md and above)
+
+  fabric_type_section:
+    condition: activeProductType.value === bulkOrderingData.productTypes[0].value (Blankets)
+    default: hidden
+
+  cover_type_section:
+    condition: activeProductType.value === bulkOrderingData.productTypes[2].value (Photo Books)
+    default: hidden
+
+  mug_type_section:
+    condition: activeProductType.value === bulkOrderingData.productTypes[3].value (Mugs)
+    default: hidden
+
+  product_name_field:
+    condition: activeProductType.value === bulkOrderingData.productTypes[4].value (Other)
+    default: hidden
+
+  size_field_blankets:
+    condition: activeProductType.value === bulkOrderingData.productTypes[0].value
+    default: hidden
+
+  size_field_canvas:
+    condition: activeProductType.value === bulkOrderingData.productTypes[1].value
+    default: hidden
+
+  size_field_photo_books:
+    condition: activeProductType.value === bulkOrderingData.productTypes[2].value
+    default: hidden
+
+  pages_field:
+    condition: activeProductType.value === bulkOrderingData.productTypes[2].value (Photo Books)
+    default: hidden
+    notes: Rendered in DOM at all times but has hidden prop set; hides for all product types except Photo Books
+
+  status_modal:
+    condition: showStatusModal.value === true
+    default: hidden
+
+  modal_pending_state:
+    condition: mailServiceStatus.value === MailServiceStatus.PENDING
+    default: hidden
+
+  modal_success_state:
+    condition: mailServiceStatus.value === MailServiceStatus.SUCCESS
+    default: hidden
+
+  modal_failed_state:
+    condition: mailServiceStatus.value === MailServiceStatus.FAILED
+    default: hidden
+
+  popular_products_label:
+    condition: Always rendered but hidden on mobile via hidden md:block CSS
+    default: hidden (mobile), visible (md and above)

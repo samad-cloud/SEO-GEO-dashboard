@@ -1,0 +1,242 @@
+name: StaticCarousel1
+source: components/carousels/static-carousel1.tsx
+description: >
+  A horizontally scrolling carousel for customer review cards. Displays
+  review cards in a responsive grid (1 card on mobile, 2 on tablet, 4 on
+  desktop) with prev/next arrow navigation and touch swipe support. Each
+  card shows a verified badge, review title, review text (truncated to 2
+  lines), reviewer name, and a randomly generated "days ago" label. Uses
+  the clone-first-and-last technique for seamless wrapping, though the
+  navigation is bounded (prev/next buttons hide at boundaries).
+
+exports:
+  default:
+    type: component
+    description: StaticCarousel1 - customer review card carousel
+
+props:
+  suffix:
+    type: string
+    required: true
+    description: >
+      A string prefix used as the id attribute for each slide element,
+      enabling DOM queries to target slides within this specific carousel
+      instance. Allows multiple carousel instances on the same page.
+  slide:
+    type: "FiveStars[] | undefined"
+    required: true
+    description: >
+      Array of review data objects to display. Each contains name, title,
+      review text, reviewID, rating, and date.
+  verifiedText:
+    type: string
+    required: false
+    description: >
+      Text displayed next to the verified badge icon (e.g., "Verified
+      Purchase"). Passed as a prop for i18n support.
+
+component_structure:
+  layout:
+    - SVGIcon arrow button (prev) - absolutely positioned left
+    - Slider container with absolutely positioned slide cards
+    - SVGIcon arrow button (next) - absolutely positioned right
+  slide_card_content:
+    - Verified badge (green circle with checkmark icon image)
+    - Verified text label
+    - Review title (bold, single line with ellipsis overflow)
+    - Review text (2-line clamp with ellipsis)
+    - Reviewer name and "X days ago" label
+
+child_components:
+  - name: SVGIcon
+    source: components/svg-icon/svg-icon
+    usage: "Prev and next arrow buttons using 'arrow-down' icon rotated 90/-90 degrees"
+    props_passed:
+      - "fill: '#808080'"
+      - "name: 'arrow-down'"
+      - "width: '20'"
+      - "height: '20'"
+  - name: Image
+    source: "@unpic/qwik"
+    usage: "Verified customer badge icon"
+    props_passed:
+      - "src: 'https://www.printerpix.co.uk/media/2023/06/icon-verify.webp'"
+      - "alt: 'Verified customer review'"
+
+data_structure:
+  FiveStars:
+    name: "string - reviewer name"
+    title: "string - review title"
+    review: "string - review body text"
+    reviewID: "string - unique identifier"
+    rating: "number - star rating value"
+    date: "string - review date (currently unused in display)"
+  carousel_store:
+    index: "number (default 1) - current scroll position"
+    customSlides: "FiveStars[] - slides array with cloned first/last for wrapping"
+  isShowButtons_store:
+    prev: "boolean (default false) - whether prev button is visible"
+    next: "boolean (default true) - whether next button is visible"
+  countPerSlide_signal:
+    type: number
+    default: 1
+    description: "Number of visible slides per viewport width"
+
+behavior:
+  initialization:
+    - On window load, calls resize() to set countPerSlide and initCarousel() for touch events
+    - Clones last slide to beginning and first slide to end of customSlides array
+    - Sets initial CSS transform to show slides starting at index 1
+
+  responsive_slides_per_view:
+    breakpoints:
+      - "width > 1024px: 4 slides visible"
+      - "769px - 1024px: 2 slides visible"
+      - "width <= 768px: 1 slide visible"
+    trigger: "Window resize event and initial load"
+
+  navigation:
+    next:
+      - Shows prev button
+      - Translates all slides by -100% per step
+      - Stops at maxSlide (slides.length - countPerSlide - 1) and hides next button
+    prev:
+      - Shows next button
+      - Translates all slides by +100% per step
+      - Stops at index 2 and hides prev button
+    bounded: "Unlike dynamic-carousel, this does NOT infinitely loop; buttons hide at boundaries"
+
+  touch_swipe:
+    threshold: 5px
+    direction_detection: "Tracks pageX delta during touchmove"
+    swipe_right_to_left: "Calls showNext()"
+    swipe_left_to_right: "Calls showPrev()"
+    vertical_swipe: "Also triggers if vertical threshold exceeded (potential issue)"
+
+  days_ago_display:
+    method: "Generates random number 1-7 (Math.random * 7 + 1, floored)"
+    format:
+      - "1 day: '{name} 1 {day_ago}'"
+      - "2-6 days: '{name} N {days_ago}'"
+      - "7+ days: '{name} {week_ago}'"
+    i18n: "Uses getHome() utility for day_ago, days_ago, week_ago translations"
+    note: "The actual review date is NOT used; display is randomized on each render"
+
+  slide_transitions:
+    animation: "CSS transition: all 0.5s on .s-slide elements"
+    method: "Direct DOM transform via translateX percentage"
+
+styling:
+  scoped_css:
+    s_slider:
+      width: "100%"
+      height: "220px (default), 290px (<=460px), 230px (461-768px), 200px (769-1024px)"
+      overflow: hidden
+      position: relative
+    s_slide:
+      width: "25% (default), 100% (<=768px), 50% (769-1024px)"
+      position: absolute
+      transition: "all 0.5s"
+      padding: "8px"
+    s_subslide:
+      background: "bg-gray-200"
+      border_radius: "rounded-xl"
+      padding: "p-4"
+    verify_image:
+      size: "24px circle"
+      background: "#29cc80 (green)"
+      border_radius: "100%"
+    btn:
+      size: "40px circle"
+      border: "1px solid #808080"
+      opacity: "0.5"
+      active_transform: "scale(1.1)"
+  tailwind_classes:
+    wrapper: "w-full flex relative static_carousel_wrapper"
+    slide_title: "font-semibold mb-2 flex"
+    review_title: "mb-2 font-bold whitespace-nowrap overflow-hidden text-ellipsis"
+    review_text: "mb-2 line-clamp-2 text-ellipsis overflow-hidden"
+    days_ago: "text-xs"
+  css_classes_for_analytics:
+    - "button_static_carousel--prev (both prev and next buttons use this class)"
+
+dependencies:
+  external:
+    - "@unpic/qwik (Image component)"
+  internal:
+    - "data/review-data (FiveStars type)"
+    - "utility/homepage-contents (getHome function for i18n strings)"
+    - "components/svg-icon/svg-icon (SVGIcon component)"
+
+used_by:
+  - components/homepage/home-customer-reviews.tsx
+  - components/canvas-prints/canvas-customer-review.tsx
+
+security:
+  - Review data is static/server-provided, no user-generated content injection risk
+  - Verified badge icon URL is hardcoded to printerpix.co.uk CDN
+
+notes:
+  - The days ago display uses Math.random() rather than actual review dates, so it changes on every render
+  - Both prev and next buttons use the same CSS analytics class "button_static_carousel--prev" (likely a bug)
+  - The slide id attribute uses `props.suffix + 1` for all slides (always "suffix1"), which means the DOM query `[id^="suffix"]` matches all slides but they all have the same id (potential issue)
+  - Touch swipe can trigger on vertical movement too since threshold check uses OR logic
+  - The component uses direct DOM manipulation for slide positioning
+  - The verified badge icon is loaded from a hardcoded UK domain URL
+
+# ── NEW SECTIONS (added in 2026-02-24 backfill) ───────────────────────────
+
+types:
+  CarouselProps:
+    description: Component props interface (internal, not exported)
+    fields:
+      - name: suffix
+        type: string
+      - name: slide
+        type: "FiveStars[] | undefined"
+      - name: verifiedText
+        type: string
+        optional: true
+
+  FiveStars:
+    description: Individual review data entry
+    source: ~/data/review-data
+    fields:
+      - name: name
+        type: string
+      - name: title
+        type: string
+      - name: review
+        type: string
+      - name: reviewID
+        type: string
+      - name: rating
+        type: number
+      - name: date
+        type: string
+
+field_consumption:
+  CarouselProps:
+    consumed:
+      - suffix: Used as the id attribute prefix on each slide element (concatenated with "1"); used in DOM queries [id^="suffix"] for slide targeting
+      - slide: Spread into customSlides store (with cloned first/last); undefined is handled gracefully via fallback to empty array
+      - verifiedText: Rendered as text beside the verified badge icon in each card
+
+  FiveStars:
+    consumed:
+      - name: Rendered in the "days ago" footer of each card
+      - title: Rendered as bold card heading (single-line with ellipsis)
+      - review: Rendered as card body text (2-line clamp with ellipsis)
+    ignored:
+      - reviewID: Stored in customSlides but never rendered or read
+      - rating: Stored in customSlides but not used for star display in this component
+      - date: Explicitly commented out; a random days-ago value is used instead
+
+visibility_map:
+  prev_button:
+    condition: "isShowButtons.prev === true"
+    default: hidden (becomes block after user navigates forward at least once)
+
+  next_button:
+    condition: "isShowButtons.next === true"
+    default: visible (hidden when reaching last slide boundary)

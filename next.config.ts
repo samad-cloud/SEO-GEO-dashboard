@@ -1,8 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   reactCompiler: true,
+  outputFileTracingIncludes: {
+    "/api/seo/audits/[auditId]/tickets": [
+      "./src/lib/agents/ticket-creation/specs/**/*.yaml",
+    ],
+  },
 };
 
 export default nextConfig;

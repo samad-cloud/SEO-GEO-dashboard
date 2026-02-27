@@ -1,0 +1,40 @@
+page_id: track-my-order
+description: "Order tracking page with form to enter order details and view status."
+
+url:
+  pattern: "/track-my-order"
+  layout: "default"
+  i18n_rewrites:
+    NL: "/track-mijn-bestelling"
+    DE: "/meine-bestellung-verfolgen"
+    IT: "/dove-si-trova-il-mio-ordine"
+    ES: "/donde-esta-mi-orden"
+
+seo_contract:
+  title:
+    source: "Managed by TrackMyOrderContainer"
+  meta_description:
+    source: "Managed by TrackMyOrderContainer"
+  canonical:
+    pattern: "{domain}/track-my-order"
+  robots:
+    value: "Standard"
+  structured_data: "None"
+  hreflang:
+    count: 8
+    known_issues:
+      - "Hreflang incorrect for NL, DE, IT, ES rewritten URLs"
+
+file_chain:
+  route:
+    file: "src/routes/track-my-order/index.tsx"
+    spec: "../migration-specs/frontend/routes/track-my-order.yaml"
+  layout:
+    file: "src/routes/layout.tsx"
+    spec: "../migration-specs/frontend/layouts/layout-default.yaml"
+  page_component:
+    name: "TrackMyOrderContainer"
+    file: "src/components/track-my-order-page/containers/track-my-order-container.tsx"
+    spec: "../migration-specs/frontend/components/info-pages/track-my-order-container.yaml"
+  middleware:
+    ref: "_architecture.yaml → middleware_pipeline"

@@ -1,0 +1,803 @@
+name: Product Category Service
+source:
+  file_path: src/services/product-category-service.ts
+  line_count: 158
+  type: service
+  last_updated: 2026-02-17
+
+description: |
+  Service responsible for fetching product and category page data via a unified endpoint.
+  This service determines whether a friendly URL points to a product page or category page,
+  and returns the appropriate data structure. It includes enums for web page types and
+  Platinum product types (representing the various product categories in the Printerpix catalog).
+
+exports:
+  enums:
+    - name: WebPageTypeEnum
+      values:
+        - Unknown: 0
+        - ProductPage: 1
+        - CategoryPage: 2
+      description: Enum to distinguish between product pages and category pages
+
+    - name: PlatinumProductTypeEnum
+      values:
+        - Unknown: 0
+        - Photobook: 1
+        - Calendar: 2
+        - LabPrint: 3
+        - Canvas: 4
+        - Mug: 5
+        - GreetingCard: 6
+        - Poster: 7
+        - Wallpaper: 8
+        - Frame: 9
+        - AluDibond: 360
+        - Acrylic: 361
+        - WoodenBlock: 362
+        - Puzzle: 363
+        - Iphone: 364
+        - MountedPoster: 365
+        - MetalPrint: 366
+        - Coupon: 367
+        - Ornament: 368
+        - Bottle: 369
+        - Ipad: 370
+        - Samsung: 371
+        - Coaster: 372
+        - Cushion: 373
+        - MouseMat: 374
+        - KeyRing: 375
+        - Teddy: 376
+        - CompactMirror: 377
+        - PhotoTile: 380
+        - InstagramPrint: 381
+        - AmazonKindle: 382
+        - Stationery: 383
+        - Tag: 384
+        - Slate: 385
+        - Combo: 386
+        - Sony: 387
+        - Towel: 388
+        - Tshirt: 389
+        - FlipFlop: 390
+        - PillowCase: 391
+        - MasonJar: 392
+        - ShapedPuzzle: 393
+        - Huawei: 394
+        - CeramicTile: 395
+        - ArchivalPrint: 396
+        - BoxedPuzzle: 397
+        - Placemat: 398
+        - MagneticPrint: 399
+        - DoubleSideBlanket: 400
+        - ChoppingBoard: 401
+        - FaceMask: 402
+        - Letter: 403
+        - Blanket: 404
+        - PlayingCards: 405
+        - Clock: 406
+        - Bib: 407
+        - PhotoStrip: 408
+        - MiniSquare: 409
+        - PostCard: 410
+        - GiftCard: 411
+        - GiftProduct: 412
+        - PetBed: 413
+        - Bag: 414
+        - Tote: 415
+        - Pouch: 416
+        - WallTapestry: 417
+        - Curtain: 418
+        - Rug: 419
+        - LayFlatBook: 420
+        - CanvasFx: 421
+        - Rose: 422
+        - ChristmasBubble: 423
+        - ChristmasStocking: 424
+        - Jumper: 425
+        - YardSign: 426
+        - DurableBanner: 427
+        - Napkin: 428
+        - Pillow: 429
+        - WristRest: 432
+        - DeskMat: 433
+        - CanvasBundle: 1295
+      description: |
+        Enum representing all product types in the Printerpix catalog.
+        Maps numeric IDs to product names. Used for product classification,
+        analytics tracking, and conditional rendering.
+
+  functions:
+    - name: getPlatinumProductTypeKey
+      signature: "(value: number): string"
+      description: |
+        Converts a PlatinumProductTypeEnum numeric value to its string name.
+        Returns "Unknown" if the value doesn't exist in the enum.
+      params:
+        - name: value
+          type: number
+          description: Numeric product type ID
+      returns:
+        type: string
+        description: Product type name (e.g., "Canvas", "Photobook") or "Unknown"
+
+    - name: getProductOrCategoryData
+      signature: "(request: ProductOrCategoryDataRequest): Promise<NewAPIResponse<ProductPageData | CategoryPage> | DefaultError>"
+      description: |
+        Primary service function that fetches product or category page data
+        from the API. Uses the unified endpoint that determines page type server-side.
+      params:
+        - name: request
+          type: ProductOrCategoryDataRequest
+          description: Request object containing URL, preselection, tracking params
+      returns:
+        type: "Promise<NewAPIResponse<ProductPageData | CategoryPage> | DefaultError>"
+        description: |
+          Returns either ProductPageData or CategoryPage wrapped in NewAPIResponse,
+          or DefaultError if the request fails after retries
+
+  types:
+    - name: ProductOrCategoryLoadResponse
+      description: |
+        Response shape returned from the unified product/category data loader.
+        Contains the page data (either product or category), along with metadata
+        like machine token, quantity, filters, theme URLs, and tracking parameters.
+      fields:
+        - name: product
+          type: ProductPageData
+          description: Product page data (populated if webPageType is ProductPage)
+        - name: category
+          type: CategoryPage
+          description: Category page data (populated if webPageType is CategoryPage)
+        - name: quantity
+          type: number
+          description: Default quantity for the product
+        - name: machineToken
+          type: string
+          description: User's session/machine token for cart operations
+        - name: couponCode
+          type: string
+          description: Applied coupon code from query params or session
+        - name: friendlyUrl
+          type: string
+          description: SEO-friendly URL path
+        - name: preselectedRefId
+          type: string
+          description: Preselected product reference ID (for variant preselection)
+        - name: refCode
+          type: string
+          description: Product reference code
+        - name: firstSlideUrl
+          type: string
+          description: URL of the first slide for themes
+        - name: themeUrl
+          type: string
+          description: URL for the selected theme
+        - name: filterIndex
+          type: "number[]"
+          description: Array of filter indexes for preselected options
+        - name: webPageType
+          type: WebPageTypeEnum
+          description: Enum indicating if this is a product or category page
+        - name: svgThemeId
+          type: "string | undefined"
+          description: ID for SVG-based themes (optional)
+        - name: sizeOptions
+          type: "Filter[] | undefined"
+          description: Array of size filter options (optional)
+        - name: instantProductThemeData
+          type: "InstantProductThemesResponse | undefined"
+          description: Instant product theme data (optional)
+        - name: editor
+          type: string
+          description: Editor type to use (e.g., "mediaclip", "html5")
+        - name: selectedFilter
+          type: "Filter | null"
+          description: Currently selected filter option
+
+    - name: ProductOrCategoryDataRequest
+      description: |
+        Request payload for fetching product or category data.
+        Includes URL, preselection, and all marketing/tracking parameters.
+      fields:
+        - name: url
+          type: string
+          description: Friendly URL path (e.g., "/canvas-prints")
+        - name: preselectedRefId
+          type: string
+          description: Preselected product variant reference ID
+        - name: couponCode
+          type: "string | undefined"
+          description: Coupon code to apply (optional)
+        - name: vc
+          type: string
+          description: Variant code or version control parameter
+        - name: affcoupon
+          type: string
+          description: Affiliate coupon code
+        - name: themeName
+          type: string
+          description: Theme name for preselection
+        - name: themeId
+          type: string
+          description: Theme ID for preselection
+        - name: gclId
+          type: string
+          description: Google Click ID for Google Ads tracking
+        - name: pixId
+          type: string
+          description: Facebook Pixel ID for Facebook Ads tracking
+        - name: utm_id
+          type: string
+          description: UTM campaign ID
+        - name: utm_source
+          type: string
+          description: UTM source (e.g., "google", "facebook")
+        - name: utm_medium
+          type: string
+          description: UTM medium (e.g., "cpc", "email")
+        - name: utm_campaign
+          type: string
+          description: UTM campaign name
+        - name: utm_term
+          type: string
+          description: UTM term (keywords)
+        - name: utm_content
+          type: string
+          description: UTM content (ad variation)
+        - name: utm_creative_format
+          type: string
+          description: UTM creative format
+        - name: utm_marketing_tactic
+          type: string
+          description: UTM marketing tactic
+        - name: utm_source_platform
+          type: string
+          description: UTM source platform
+        - name: wbraid
+          type: string
+          description: Google Ads wbraid parameter
+        - name: gbraid
+          type: string
+          description: Google Ads gbraid parameter
+        - name: unixTimestamp
+          type: "string | undefined"
+          description: Unix timestamp for cache busting (optional)
+
+api_contracts:
+  - endpoint: /CategoryAndProductPage/GetByFriendlyUrlForQwikV2
+    method: POST
+    base_url: "{region-specific qt-api endpoint}"
+    full_url_construction: |
+      Base URLs by region:
+      - US: https://qt-api.printerpix.com
+      - UK: https://qt-api.printerpix.co.uk
+      - DE: https://qt-api.printerpix.de
+      - FR: https://qt-api.printerpix.fr
+      - IT: https://qt-api.printerpix.it
+      - ES: https://qt-api.printerpix.es
+      - NL: https://qt-api.printerpix.nl
+
+      Full URL: {baseURL}/CategoryAndProductPage/GetByFriendlyUrlForQwikV2
+    description: |
+      Unified endpoint that fetches either product or category page data
+      based on the friendly URL. Server determines page type and returns
+      appropriate data structure. This is the primary data-fetching endpoint
+      for all product and category pages.
+    authentication:
+      type: machine-token
+      mechanism: |
+        Machine token is automatically injected by baseNewAPI() axios interceptor.
+        Sent in both request body and as "machine-token" header.
+    request:
+      content_type: application/json
+      body_params:
+        - name: params
+          type: ProductOrCategoryDataRequest
+          required: true
+          description: Request object with URL and tracking parameters
+        - name: cookieData
+          type: object
+          auto_injected: true
+          description: Automatically injected by axios interceptor
+        - name: machineToken
+          type: string
+          auto_injected: true
+          description: Automatically injected by axios interceptor
+      timeout: "settings().READ_API_TIMEOUT (configured in settings.ts)"
+    response:
+      success:
+        status: 200
+        shape: "NewAPIResponse<ProductPageData | CategoryPage>"
+        structure:
+          - name: svr
+            type: string
+            description: Server identifier
+          - name: status
+            type: string
+            description: "Status code (OK or ERROR)"
+          - name: data
+            type: "ProductPageData | CategoryPage"
+            description: |
+              Page data - type determined by webPageType field.
+              If webPageType === ProductPage, data is ProductPageData.
+              If webPageType === CategoryPage, data is CategoryPage.
+          - name: errorCode
+            type: string
+            description: Error code if status is ERROR
+          - name: message
+            type: string
+            description: Error message if status is ERROR
+          - name: ExMsg
+            type: "string | null"
+            description: Extended error message
+          - name: ExId
+            type: "string | null"
+            description: Exception ID
+          - name: Ex
+            type: "string | null"
+            description: Exception details
+      error:
+        shape: DefaultError
+        structure:
+          - name: showPopup
+            type: boolean
+            description: Whether to show error popup to user
+          - name: message
+            type: string
+            description: User-facing error message
+          - name: status
+            type: string
+            description: "ERROR"
+    retry_logic:
+      enabled: true
+      max_attempts: "MAX_API_ATTEPMTS (1 by default)"
+      retry_handler: handleMultipleAPIRequests with "hard" type
+      failure_action: |
+        After max attempts:
+        1. Log error to Sentry
+        2. Dispatch "unstableApp" event (browser)
+        3. Activate cookie issue popup (server)
+        4. Return DefaultError object
+
+dependencies:
+  internal:
+    - path: "~/services/product-page-service"
+      imports:
+        - ProductPageData
+      description: Product page data structure
+    - path: "~/services/category-service"
+      imports:
+        - CategoryPage
+      description: Category page data structure
+    - path: "~/data/option-data"
+      imports:
+        - Filter
+      description: Product filter/option data structures
+    - path: "~/services/themes-service"
+      imports:
+        - InstantProductThemesResponse
+      description: Theme data for instant products
+    - path: "~/utility/http"
+      imports:
+        - handleMultipleAPIRequests
+        - HTTP_METHODS
+      description: HTTP utility for API requests with retry logic
+    - path: "~/config/settings"
+      imports:
+        - settings
+      description: Application settings (timeouts, feature flags)
+
+  external:
+    - package: "@builder.io/qwik-city"
+      usage: Type imports for Qwik routing
+    - package: axios
+      usage: HTTP client (via http utility)
+
+data_flow:
+  inputs:
+    - source: URL route params
+      description: Friendly URL path from page navigation
+    - source: Query string params
+      description: |
+        Tracking parameters (UTM, gclid, pixid), coupon codes,
+        preselected variants, theme selection
+    - source: Cookie/session
+      description: Machine token, existing cart data, customer GUID
+
+  transformations:
+    - step: 1
+      description: Extract friendly URL and query parameters from request
+    - step: 2
+      description: Build ProductOrCategoryDataRequest with all tracking params
+    - step: 3
+      description: Call API endpoint via handleMultipleAPIRequests (with retry)
+    - step: 4
+      description: |
+        Server determines if URL is product or category, returns appropriate data.
+        Server sets webPageType field to indicate data type.
+    - step: 5
+      description: |
+        Axios interceptor injects machine token and cookie data automatically.
+        Response interceptor updates cookies if modifierCookieRequest is present.
+
+  outputs:
+    - destination: Page loader
+      description: |
+        Returns ProductOrCategoryLoadResponse with either ProductPageData
+        or CategoryPage, along with metadata for rendering
+    - destination: Analytics
+      description: |
+        Tracking parameters flow through to GTM and analytics services
+    - destination: Cart
+      description: |
+        Preselected options, coupon codes, and product data feed into cart state
+
+business_logic:
+  rules:
+    - description: |
+        WebPageType determination happens server-side. Client receives the result
+        and renders appropriate component (product page vs category page).
+    - description: |
+        PlatinumProductType enum values are stable IDs used across the entire system.
+        Do not change these numeric values - they're referenced in databases,
+        analytics, and integrations.
+    - description: |
+        All UTM and tracking parameters must be preserved throughout the user journey
+        for accurate attribution and analytics.
+    - description: |
+        Machine token is required for all API calls. It's injected automatically
+        by the axios interceptor - do not manually add it to request bodies.
+
+  conditionals:
+    - condition: webPageType === WebPageTypeEnum.ProductPage
+      action: Render product page with ProductPageData
+      result: Show product options, themes, pricing, add-to-cart
+    - condition: webPageType === WebPageTypeEnum.CategoryPage
+      action: Render category page with CategoryPage
+      result: Show product grid, filters, SEO content, category banners
+    - condition: API returns error after retries
+      action: Return DefaultError object
+      result: |
+        Display error message to user. If type is "hard", trigger
+        unstableApp event and show cookie issue popup.
+
+  calculations:
+    - name: getPlatinumProductTypeKey
+      formula: "PlatinumProductTypeEnum[value] || 'Unknown'"
+      description: Reverse enum lookup to get string name from numeric ID
+
+error_handling:
+  strategy: |
+    Multi-attempt retry with exponential backoff (via handleMultipleAPIRequests).
+    Errors are logged to Sentry with context (endpoint, error code, response data).
+    Hard failures trigger user-facing error UI.
+
+  error_types:
+    - type: Network error
+      handling: |
+        Retry up to MAX_API_ATTEPMTS times.
+        Log ERR_NETWORK event to Sentry.
+        Return DefaultError with showPopup based on type ("soft" or "hard").
+    - type: API error response (status != OK)
+      handling: |
+        Retry up to MAX_API_ATTEPMTS times.
+        Log API_ERROR_RESPONSE event to Sentry with error code and message.
+        Return DefaultError with message from API.
+    - type: Timeout
+      handling: |
+        Axios timeout (READ_API_TIMEOUT) triggers timeout error.
+        Treated as network error - retry and log.
+
+  logging:
+    - event: API_ERROR_RESPONSE
+      conditions: Response status != OK after retries
+      data_logged:
+        - endpoint
+        - error_code
+        - response_data
+        - request_config
+    - event: NETWORK_ERROR
+      conditions: Network failure (ERR_NETWORK) after retries
+      data_logged:
+        - endpoint
+        - error_code
+        - axios_error_details
+
+security:
+  authentication:
+    - mechanism: Machine token (session identifier)
+      storage: Cookie (MACHINE_TOKEN)
+      transmission: |
+        Auto-injected by axios interceptor into:
+        1. Request body (machineToken field)
+        2. Request header (machine-token header)
+    - mechanism: Cookie data (cart state, session info)
+      storage: Cookie
+      transmission: Auto-injected by axios interceptor into request body
+
+  sensitive_data:
+    - field: machineToken
+      handling: Sent with every request for session continuity
+    - field: customerGuid
+      handling: Included in cookie data if user is authenticated
+    - field: couponCode
+      handling: Sent in request params, validated server-side
+
+  tracking_data:
+    - fields: utm_*, gclId, pixId, wbraid, gbraid
+      purpose: Marketing attribution and analytics
+      retention: Preserved throughout user session
+      privacy: |
+        Subject to GDPR/CCPA. User consent required for tracking.
+        Check with legal team for compliance requirements.
+
+performance:
+  caching:
+    - level: None at service level
+      rationale: |
+        Product and category data is dynamic (pricing, inventory, A/B tests).
+        Caching happens at CDN/edge level for static assets.
+
+  optimization:
+    - technique: Single unified endpoint
+      benefit: |
+        Reduces network requests - one call gets all page data
+        instead of separate calls for product vs category detection.
+    - technique: Retry with backoff
+      benefit: |
+        Handles transient network issues without failing requests.
+        MAX_API_ATTEPMTS set to 1 by default for fast failure.
+
+notes:
+  - |
+    This is the PRIMARY data-fetching service for all product and category pages.
+    Every product URL goes through this endpoint.
+  - |
+    The PlatinumProductTypeEnum is critical - these numeric IDs are used across
+    the entire system (database, analytics, integrations). Do not change values.
+  - |
+    Machine token handling is automatic via axios interceptors. Don't manually
+    add machine tokens to requests.
+  - |
+    All tracking parameters (UTM, gclid, pixid) must be preserved throughout
+    the user journey for accurate marketing attribution.
+  - |
+    The endpoint returns EITHER ProductPageData OR CategoryPage, never both.
+    Use webPageType field to determine which structure to expect.
+
+behavior:
+  - name: getPlatinumProductTypeKey
+    steps:
+      - Performs reverse enum lookup on PlatinumProductTypeEnum using the numeric value as key
+      - Returns the string name (e.g., "Canvas", "Photobook") if the value exists in the enum
+      - Returns "Unknown" if the value is not found in the enum
+
+  - name: getProductOrCategoryData
+    steps:
+      - Accepts a ProductOrCategoryDataRequest containing the friendly URL and all tracking parameters
+      - Calls handleMultipleAPIRequests with POST to /CategoryAndProductPage/GetByFriendlyUrlForQwikV2
+      - Passes the request object as params with timeout from settings().READ_API_TIMEOUT
+      - Uses "hard" error type (triggers unstableApp event and cookie popup on failure)
+      - Enables retry logic (5th parameter = true)
+      - The server determines whether the URL is a product page or category page and returns appropriate data
+      - Returns NewAPIResponse<ProductPageData | CategoryPage> on success, or DefaultError on failure
+
+types:
+  WebPageTypeEnum:
+    description: Enum distinguishing product pages from category pages
+    values:
+      - Unknown: 0
+      - ProductPage: 1
+      - CategoryPage: 2
+
+  PlatinumProductTypeEnum:
+    description: Numeric IDs for all product types in the Printerpix catalog. IDs are stable and referenced across database, analytics, and integrations — do not change values.
+    values:
+      - Unknown: 0
+      - Photobook: 1
+      - Calendar: 2
+      - LabPrint: 3
+      - Canvas: 4
+      - Mug: 5
+      - GreetingCard: 6
+      - Poster: 7
+      - Wallpaper: 8
+      - Frame: 9
+      - AluDibond: 360
+      - Acrylic: 361
+      - WoodenBlock: 362
+      - Puzzle: 363
+      - Iphone: 364
+      - MountedPoster: 365
+      - MetalPrint: 366
+      - Coupon: 367
+      - Ornament: 368
+      - Bottle: 369
+      - Ipad: 370
+      - Samsung: 371
+      - Coaster: 372
+      - Cushion: 373
+      - MouseMat: 374
+      - KeyRing: 375
+      - Teddy: 376
+      - CompactMirror: 377
+      - PhotoTile: 380
+      - InstagramPrint: 381
+      - AmazonKindle: 382
+      - Stationery: 383
+      - Tag: 384
+      - Slate: 385
+      - Combo: 386
+      - Sony: 387
+      - Towel: 388
+      - Tshirt: 389
+      - FlipFlop: 390
+      - PillowCase: 391
+      - MasonJar: 392
+      - ShapedPuzzle: 393
+      - Huawei: 394
+      - CeramicTile: 395
+      - ArchivalPrint: 396
+      - BoxedPuzzle: 397
+      - Placemat: 398
+      - MagneticPrint: 399
+      - DoubleSideBlanket: 400
+      - ChoppingBoard: 401
+      - FaceMask: 402
+      - Letter: 403
+      - Blanket: 404
+      - PlayingCards: 405
+      - Clock: 406
+      - Bib: 407
+      - PhotoStrip: 408
+      - MiniSquare: 409
+      - PostCard: 410
+      - GiftCard: 411
+      - GiftProduct: 412
+      - PetBed: 413
+      - Bag: 414
+      - Tote: 415
+      - Pouch: 416
+      - WallTapestry: 417
+      - Curtain: 418
+      - Rug: 419
+      - LayFlatBook: 420
+      - CanvasFx: 421
+      - Rose: 422
+      - ChristmasBubble: 423
+      - ChristmasStocking: 424
+      - Jumper: 425
+      - YardSign: 426
+      - DurableBanner: 427
+      - Napkin: 428
+      - Pillow: 429
+      - WristRest: 432
+      - DeskMat: 433
+      - CanvasBundle: 1295
+
+  ProductOrCategoryDataRequest:
+    description: Request payload for fetching product or category data by friendly URL
+    fields:
+      - name: url
+        type: string
+        description: Friendly URL path
+      - name: preselectedRefId
+        type: string
+        description: Preselected product variant reference ID
+      - name: couponCode
+        type: "string | undefined"
+        optional: true
+      - name: vc
+        type: string
+        description: Variant code or version control parameter
+      - name: affcoupon
+        type: string
+        description: Affiliate coupon code
+      - name: themeName
+        type: string
+      - name: themeId
+        type: string
+      - name: gclId
+        type: string
+        description: Google Click ID
+      - name: pixId
+        type: string
+        description: Facebook Pixel ID
+      - name: utm_id
+        type: string
+      - name: utm_source
+        type: string
+      - name: utm_medium
+        type: string
+      - name: utm_campaign
+        type: string
+      - name: utm_term
+        type: string
+      - name: utm_content
+        type: string
+      - name: utm_creative_format
+        type: string
+      - name: utm_marketing_tactic
+        type: string
+      - name: utm_source_platform
+        type: string
+      - name: wbraid
+        type: string
+      - name: gbraid
+        type: string
+      - name: unixTimestamp
+        type: "string | undefined"
+        optional: true
+
+  ProductOrCategoryLoadResponse:
+    description: Response shape from the unified product/category data loader used by the route
+    fields:
+      - name: product
+        type: ProductPageData
+        description: From ~/services/product-page-service
+      - name: category
+        type: CategoryPage
+        description: From ~/services/category-service
+      - name: quantity
+        type: number
+      - name: machineToken
+        type: string
+      - name: couponCode
+        type: string
+      - name: friendlyUrl
+        type: string
+      - name: preselectedRefId
+        type: string
+      - name: refCode
+        type: string
+      - name: firstSlideUrl
+        type: string
+      - name: themeUrl
+        type: string
+      - name: filterIndex
+        type: "number[]"
+      - name: webPageType
+        type: WebPageTypeEnum
+      - name: svgThemeId
+        type: "string | undefined"
+        optional: true
+      - name: sizeOptions
+        type: "Filter[] | undefined"
+        optional: true
+        description: From ~/data/option-data
+      - name: instantProductThemeData
+        type: "InstantProductThemesResponse | undefined"
+        optional: true
+        description: From ~/services/themes-service
+      - name: editor
+        type: string
+      - name: selectedFilter
+        type: "Filter | null"
+
+used_by:
+  - backend/services/product-page-service.yaml # Imports WebPageTypeEnum, PlatinumProductTypeEnum for product classification and type-based logic
+  - backend/services/json-service.yaml # Imports PlatinumProductTypeEnum (type) for ProductWebContentResponse
+  - backend/services/themes-service.yaml # Imports PlatinumProductTypeEnum for theme filtering
+  - backend/services/common-service.yaml # References product-category-service types
+  - shared/context/product-category-context.yaml # Uses WebPageTypeEnum and PlatinumProductTypeEnum in context
+  - frontend/layouts/layout-categoryproduct.yaml # Uses getProductOrCategoryData and WebPageTypeEnum
+  - frontend/routes/product-category.yaml # Uses WebPageTypeEnum for page type routing
+  - frontend/components/product-page/product-page-base-template.yaml # Uses PlatinumProductTypeEnum for product-specific rendering
+  - frontend/components/product-page/photo-canvas-prints-template-v2.yaml # Uses PlatinumProductTypeEnum
+  - frontend/components/product-page/photo-canvas-prints-new-template.yaml # Uses PlatinumProductTypeEnum
+  - frontend/components/product-page/photo-canvas-prints-new-template-v3.yaml # Uses PlatinumProductTypeEnum
+  - frontend/components/product-page/product-page-fixed-template.yaml # Uses PlatinumProductTypeEnum
+  - frontend/components/product-page/product-page-fixed-theme-template.yaml # Uses PlatinumProductTypeEnum
+  - frontend/components/product-page/product-page-hub-template.yaml # Uses PlatinumProductTypeEnum
+  - frontend/components/product-page/product-page-hub-child-template.yaml # Uses PlatinumProductTypeEnum
+  - frontend/components/product-page/photo-canvas-prints-bundled-template.yaml # Uses PlatinumProductTypeEnum
+  - frontend/components/product-page/photo-canvas-prints-hub-bundled-template.yaml # Uses PlatinumProductTypeEnum
+  - frontend/components/product-page/product-page-basic-template.yaml # Uses PlatinumProductTypeEnum
+  - frontend/components/category-page/common-category-container.yaml # Uses WebPageTypeEnum
+  - frontend/components/category-page/category-page-factory.yaml # Uses PlatinumProductTypeEnum
+  - frontend/components/uploadcare/uploadcare.yaml # Uses PlatinumProductTypeEnum for upload logic
+  - frontend/components/banner/dynamic-promo-banner-v2.yaml # Uses PlatinumProductTypeEnum
+  - backend/services/web-component-service.yaml # References PlatinumProductTypeEnum
+  - backend/services/category-service.yaml # References product-category-service types

@@ -1,0 +1,90 @@
+name: ConsoleLogService
+source:
+  path: services/cart-services/console-log.ts
+  lines: 1-11
+  type: service
+
+description: |
+  Debug logging utility that conditionally logs to console based on settings.enableDebug flag.
+  Adds "DEBUG >>>>>>" prefix to all log messages for easy filtering.
+
+exports:
+  functions:
+    - name: writeConsoleLog
+      signature: "(title: any, obj: any): void"
+      description: "Conditionally logs debug message with title and object"
+      params:
+        - name: title
+          type: any
+          description: "Label/title for the log entry"
+        - name: obj
+          type: any
+          description: "Object to log (optional, defaults to empty string)"
+      behavior:
+        - Only logs if settings().enableDebug is true
+        - Formats as: "DEBUG >>>>>> {title}: [", obj, "]"
+        - Uses console.log with comma-separated arguments (not string concatenation)
+      example: |
+        writeConsoleLog("User Data", { id: 123, name: "John" });
+        // Output (if enabled): DEBUG >>>>>> User Data: [ { id: 123, name: "John" } ]
+
+  types: []
+  interfaces: []
+  constants: []
+
+api_contracts: []
+
+types:
+  notes: "No locally-defined types. Function accepts 'any' for both parameters. No interfaces, enums, or type aliases defined in this file."
+
+dependencies:
+  external: []
+  internal:
+    - name: "~/config/settings"
+      purpose: "Imports settings() function to check enableDebug flag"
+
+data_flow:
+  inputs:
+    - title (any type, typically string)
+    - obj (any type, typically object or string)
+  processing:
+    - Check settings().enableDebug flag
+    - If true, format and log to console
+    - If false, no-op
+  outputs:
+    - Console log entry (if enabled)
+    - No return value
+
+business_logic:
+  - Centralized debug logging control via settings
+  - Defaults obj to empty string if undefined
+  - Uses array brackets in output for visual distinction
+  - Prefix "DEBUG >>>>>>" enables easy grep/filtering in logs
+
+error_handling:
+  - No explicit error handling
+  - Uses short-circuit evaluation (&& operator) to prevent logging when disabled
+  - No validation of title or obj types
+
+security:
+  - May log sensitive data if not careful (no filtering)
+  - Should never be enabled in production
+  - No PII redaction
+
+performance:
+  - Minimal overhead when disabled (single boolean check)
+  - When enabled, console.log has performance impact
+  - No throttling or log buffering
+
+behavior:
+  - name: writeConsoleLog
+    steps:
+      - Checks if obj is undefined; if so, defaults obj to empty string ""
+      - Checks settings().enableDebug flag via short-circuit evaluation (&&)
+      - If enableDebug is false, does nothing (no-op)
+      - If enableDebug is true, calls console.log with format: "DEBUG >>>>>> " + title + ": [", obj, "]"
+      - Uses comma-separated console.log args (not string concatenation for the object)
+
+used_by:
+  - backend/services/common-service.yaml - imports writeConsoleLog for error logging in logError function
+  - backend/services/cart-services/gtm/data-layer-base.yaml - imports writeConsoleLog for GTM event debugging
