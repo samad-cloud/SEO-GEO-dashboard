@@ -11,6 +11,7 @@ import { MetricsTab } from './tabs/MetricsTab';
 import { AiAnalysisTab } from './tabs/AiAnalysisTab';
 import { UrlIssuesTab } from './tabs/UrlIssuesTab';
 import { RawJsonTab } from './tabs/RawJsonTab';
+import { TicketsTab } from './tabs/TicketsTab';
 
 interface AuditDetailProps {
   run: AuditRun | null;
@@ -18,6 +19,7 @@ interface AuditDetailProps {
   gcsPath?: string | null;
   auditId?: string | null;
   actionPlanGcsPath?: string | null;
+  jiraTicketsGcsPath?: string | null;
   isLoading?: boolean;
   error?: string | null;
 }
@@ -67,7 +69,7 @@ function DetailSkeleton() {
   );
 }
 
-export function AuditDetail({ run, report, gcsPath, auditId, actionPlanGcsPath, isLoading = false, error = null }: AuditDetailProps) {
+export function AuditDetail({ run, report, gcsPath, auditId, actionPlanGcsPath, jiraTicketsGcsPath, isLoading = false, error = null }: AuditDetailProps) {
   const [activeTab, setActiveTab] = useState('summary');
 
   // Loading state
@@ -151,7 +153,7 @@ export function AuditDetail({ run, report, gcsPath, auditId, actionPlanGcsPath, 
       {/* Tabs */}
       <Tabs.Root value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
         <Tabs.List className="flex border-b border-zinc-800 px-4">
-          {['Summary', 'Issues', 'URL Issues', 'Metrics', 'AI Analysis', 'Raw JSON'].map((tab) => (
+          {['Summary', 'Issues', 'URL Issues', 'Metrics', 'AI Analysis', 'Tickets', 'Raw JSON'].map((tab) => (
             <Tabs.Trigger
               key={tab}
               value={tab.toLowerCase().replace(' ', '-')}
@@ -181,6 +183,9 @@ export function AuditDetail({ run, report, gcsPath, auditId, actionPlanGcsPath, 
           </Tabs.Content>
           <Tabs.Content value="ai-analysis" className="p-4">
             <AiAnalysisTab aiAnalysis={report.reports[0]?.ai_analysis} auditId={auditId} existingActionPlanPath={actionPlanGcsPath} />
+          </Tabs.Content>
+          <Tabs.Content value="tickets" className="p-4">
+            <TicketsTab auditId={auditId} existingTicketsGcsPath={jiraTicketsGcsPath ?? null} />
           </Tabs.Content>
           <Tabs.Content value="raw-json" className="p-4">
             <RawJsonTab
