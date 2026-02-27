@@ -1695,8 +1695,478 @@ git commit -m "fix: adjust ticket-creation agent after e2e testing"
 
 ## What was NOT implemented (intentionally)
 
-- **No dashboard UI** — backend endpoint only; UI integration is a future iteration
 - **No Jira epic/sprint assignment** — tickets land in backlog without epic linkage
 - **No partial re-run** — if 3 tickets fail, re-running the full POST creates duplicates (the idempotency guard blocks it). Partial retry requires a separate endpoint.
 - **No auth guard on the endpoint** — add middleware authentication consistent with the rest of the app if needed
 - **No streaming** — the pipeline run is synchronous. For very large audits, consider wrapping in a background job pattern similar to `geo/research/run`
+
+---
+
+## Task 11: Dashboard UI — Tickets tab
+
+Add a "Tickets" tab to the SEO audit detail view with three states: **Generate** (run pipeline), **View** (list created tickets with Jira links grouped by team), and **Failures** (retry section for any that failed).
+
+**Files:**
+- Modify: `src/components/seo/AuditDetail.tsx`
+- Create: `src/components/seo/tabs/TicketsTab.tsx`
+- Create: `src/app/api/seo/audits/[auditId]/tickets/results/route.ts` (GET — load stored tickets.json from GCS)
+- Modify: `src/types/bigquery.ts` (already done in Task 3)
+
+### Step 1: Add GET route to load stored ticket results
+
+Create `src/app/api/seo/audits/[auditId]/tickets/results/route.ts`:
+
+```typescript
+import { NextRequest, NextResponse } from 'next/server';
+import { getBigQueryClient, getTableName } from '@/lib/bigquery';
+import { getStorageClient, parseGcsUri } from '@/lib/gcs';
+
+export const dynamic = 'force-dynamic';
+
+interface RouteParams {
+  params: Promise<{ auditId: string }>;
+}
+
+export async function GET(_request: NextRequest, { params }: RouteParams) {
+  const { auditId } = await params;
+
+  if (!auditId) {
+    return NextResponse.json({ error: 'Audit ID is required' }, { status: 400 });
+  }
+
+  const bq = getBigQueryClient();
+  const tableName = getTableName();
+
+  const [rows] = await bq.query({
+    query: `SELECT jira_tickets_gcs_path FROM \`${tableName}\` WHERE audit_id = @auditId LIMIT 1`,
+    params: { auditId },
+    location: 'US',
+  });
+
+  if (!rows.length || !rows[0].jira_tickets_gcs_path) {
+    return NextResponse.json({ status: 'not_generated' });
+  }
+
+  const gcsUri = rows[0].jira_tickets_gcs_path as string;
+  const parsed = parseGcsUri(gcsUri);
+  if (!parsed) {
+    return NextResponse.json({ error: 'Invalid GCS path' }, { status: 500 });
+  }
+
+  const storage = getStorageClient();
+  const [contents] = await storage.bucket(parsed.bucket).file(parsed.path).download();
+  const ticketsData = JSON.parse(contents.toString('utf-8'));
+
+  return NextResponse.json({ status: 'complete', ...ticketsData });
+}
+```
+
+**Commit:**
+```bash
+git add src/app/api/seo/audits/[auditId]/tickets/results/route.ts
+git commit -m "feat: add GET tickets/results route to load stored ticket data from GCS"
+```
+
+### Step 2: Create the TicketsTab component
+
+Create `src/components/seo/tabs/TicketsTab.tsx`:
+
+```typescript
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { Ticket, Loader2, ExternalLink, RefreshCw, AlertCircle, CheckCircle2, Users, Wrench } from 'lucide-react';
+
+interface JiraTicketResult {
+  issueKey: string;
+  jiraUrl: string;
+  issueType: string;
+  team: 'Tech Team' | 'Data Team';
+  attachmentCreated: boolean;
+}
+
+interface TicketFailure {
+  issueType: string;
+  error: string;
+}
+
+interface TicketsData {
+  status: 'not_generated' | 'complete';
+  auditId?: string;
+  domain?: string;
+  auditDate?: string;
+  createdAt?: string;
+  ticketsCreated?: number;
+  tickets?: JiraTicketResult[];
+  failures?: TicketFailure[];
+  gcsPath?: string;
+}
+
+interface TicketsTabProps {
+  auditId?: string | null;
+  existingTicketsGcsPath?: string | null;
+}
+
+const JIRA_BASE_URL = 'https://printerpix.atlassian.net';
+
+export function TicketsTab({ auditId, existingTicketsGcsPath }: TicketsTabProps) {
+  const [generating, setGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+  const [ticketsData, setTicketsData] = useState<TicketsData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [activeTeam, setActiveTeam] = useState<'all' | 'Tech Team' | 'Data Team'>('all');
+
+  // Load existing tickets on mount if we already have a GCS path
+  const loadTickets = useCallback(async () => {
+    if (!auditId) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/seo/audits/${encodeURIComponent(auditId)}/tickets/results`);
+      const data = await res.json();
+      setTicketsData(data);
+    } catch {
+      // Silently fail — user can click Generate
+    } finally {
+      setLoading(false);
+    }
+  }, [auditId]);
+
+  useEffect(() => {
+    if (existingTicketsGcsPath || auditId) {
+      loadTickets();
+    }
+  }, [existingTicketsGcsPath, auditId, loadTickets]);
+
+  async function handleGenerate() {
+    if (!auditId) return;
+    setGenerating(true);
+    setGenerateError(null);
+    try {
+      const res = await fetch(`/api/seo/audits/${encodeURIComponent(auditId)}/tickets`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.details || data.error);
+      // Reload ticket results after generation
+      await loadTickets();
+    } catch (err) {
+      setGenerateError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  if (!auditId) {
+    return (
+      <div className="flex items-center justify-center h-40 text-zinc-500 text-sm">
+        Select an audit to manage Jira tickets.
+      </div>
+    );
+  }
+
+  const tickets = ticketsData?.tickets ?? [];
+  const failures = ticketsData?.failures ?? [];
+  const hasTickets = tickets.length > 0;
+  const hasFailures = failures.length > 0;
+  const isGenerated = ticketsData?.status === 'complete';
+
+  const filteredTickets =
+    activeTeam === 'all'
+      ? tickets
+      : tickets.filter((t) => t.team === activeTeam);
+
+  const techCount = tickets.filter((t) => t.team === 'Tech Team').length;
+  const dataCount = tickets.filter((t) => t.team === 'Data Team').length;
+
+  return (
+    <div className="space-y-6">
+      {/* ── Header ─────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-zinc-200 flex items-center gap-2">
+            <Ticket className="w-4 h-4 text-blue-400" />
+            Jira Tickets
+          </h3>
+          {isGenerated && ticketsData.createdAt && (
+            <p className="text-xs text-zinc-500 mt-0.5">
+              Generated {new Date(ticketsData.createdAt).toLocaleString()} ·{' '}
+              {ticketsData.ticketsCreated} tickets created
+            </p>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          {isGenerated && (
+            <button
+              onClick={loadTickets}
+              disabled={loading}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 text-xs text-zinc-300 transition-colors"
+            >
+              <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          )}
+
+          {!isGenerated && (
+            <button
+              onClick={handleGenerate}
+              disabled={generating}
+              className="flex items-center gap-2 px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-medium text-white transition-colors"
+            >
+              {generating ? (
+                <>
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Generating tickets… (may take 5–10 min)
+                </>
+              ) : (
+                <>
+                  <Ticket className="w-3 h-3" />
+                  Generate Jira Tickets
+                </>
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ── Generate error ──────────────────────────────────────────────── */}
+      {generateError && (
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-red-950 border border-red-800 text-xs text-red-300">
+          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium">Generation failed</p>
+            <p className="mt-1 text-red-400">{generateError}</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Loading skeleton ────────────────────────────────────────────── */}
+      {loading && !ticketsData && (
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-14 rounded-lg bg-zinc-800 animate-pulse" />
+          ))}
+        </div>
+      )}
+
+      {/* ── Not generated yet ───────────────────────────────────────────── */}
+      {!loading && !isGenerated && !generating && !generateError && (
+        <div className="flex flex-col items-center justify-center py-12 text-center space-y-3">
+          <Ticket className="w-10 h-10 text-zinc-600" />
+          <p className="text-sm text-zinc-400">No Jira tickets have been generated for this audit yet.</p>
+          <p className="text-xs text-zinc-500 max-w-md">
+            Generating tickets classifies each issue group (Frontend / API Data), drafts a structured ticket,
+            and creates it in the ENG board automatically.
+          </p>
+          <button
+            onClick={handleGenerate}
+            disabled={generating}
+            className="mt-2 flex items-center gap-2 px-4 py-2 rounded bg-blue-600 hover:bg-blue-500 text-sm font-medium text-white transition-colors"
+          >
+            <Ticket className="w-4 h-4" />
+            Generate Tickets
+          </button>
+        </div>
+      )}
+
+      {/* ── Generating in progress ──────────────────────────────────────── */}
+      {generating && (
+        <div className="flex flex-col items-center justify-center py-12 space-y-4">
+          <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
+          <p className="text-sm text-zinc-300">Classifying issues and creating Jira tickets…</p>
+          <p className="text-xs text-zinc-500">
+            Each issue group is classified using the ecommerce spec files, then pushed to the ENG board.
+            This typically takes 5–10 minutes for a full audit.
+          </p>
+        </div>
+      )}
+
+      {/* ── Ticket list ─────────────────────────────────────────────────── */}
+      {isGenerated && hasTickets && (
+        <div className="space-y-4">
+          {/* Team filter */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-zinc-500">Filter by team:</span>
+            {(
+              [
+                { value: 'all', label: `All (${tickets.length})` },
+                { value: 'Tech Team', label: `Tech Team (${techCount})`, icon: <Wrench className="w-3 h-3" /> },
+                { value: 'Data Team', label: `Data Team (${dataCount})`, icon: <Users className="w-3 h-3" /> },
+              ] as const
+            ).map(({ value, label, icon }) => (
+              <button
+                key={value}
+                onClick={() => setActiveTeam(value as typeof activeTeam)}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-medium transition-colors ${
+                  activeTeam === value
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                }`}
+              >
+                {icon}
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Ticket cards */}
+          <div className="space-y-2">
+            {filteredTickets.map((ticket) => (
+              <div
+                key={ticket.issueKey}
+                className="flex items-center justify-between p-3 rounded-lg bg-zinc-800 border border-zinc-700 group"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono font-bold text-blue-400">
+                        {ticket.issueKey}
+                      </span>
+                      <span
+                        className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                          ticket.team === 'Tech Team'
+                            ? 'bg-purple-900/60 text-purple-300'
+                            : 'bg-amber-900/60 text-amber-300'
+                        }`}
+                      >
+                        {ticket.team}
+                      </span>
+                      {ticket.attachmentCreated && (
+                        <span className="px-1.5 py-0.5 rounded text-xs bg-zinc-700 text-zinc-400">
+                          CSV attached
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-zinc-400 truncate mt-0.5">
+                      {ticket.issueType.replace(/_/g, ' ')}
+                    </p>
+                  </div>
+                </div>
+
+                <a
+                  href={ticket.jiraUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-zinc-700 hover:bg-zinc-600 text-xs text-zinc-300 transition-colors flex-shrink-0 ml-3"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  Open in Jira
+                </a>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Failures section ────────────────────────────────────────────── */}
+      {isGenerated && hasFailures && (
+        <div className="space-y-2">
+          <h4 className="text-xs font-semibold text-red-400 flex items-center gap-1.5">
+            <AlertCircle className="w-3.5 h-3.5" />
+            Failed ({failures.length})
+          </h4>
+          <div className="space-y-2">
+            {failures.map((failure, idx) => (
+              <div
+                key={idx}
+                className="p-3 rounded-lg bg-red-950/40 border border-red-900 text-xs"
+              >
+                <p className="font-medium text-red-300">
+                  {failure.issueType.replace(/_/g, ' ')}
+                </p>
+                <p className="text-red-500 mt-1 font-mono">{failure.error}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-zinc-500">
+            To retry failed tickets, fix the error above and re-run generation (note: idempotency
+            is set — you will need to clear the{' '}
+            <code className="text-zinc-400">jira_tickets_gcs_path</code> column in BigQuery first).
+          </p>
+        </div>
+      )}
+
+      {/* ── View in Jira board ──────────────────────────────────────────── */}
+      {isGenerated && (
+        <div className="pt-2 border-t border-zinc-800">
+          <a
+            href={`${JIRA_BASE_URL}/jira/software/c/projects/ENG/boards/247`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+          >
+            <ExternalLink className="w-3 h-3" />
+            Open ENG board in Jira
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+**Commit:**
+```bash
+git add src/components/seo/tabs/TicketsTab.tsx
+git commit -m "feat: add TicketsTab component with generate/view/failures sections"
+```
+
+### Step 3: Add Tickets tab to AuditDetail.tsx
+
+**Read the file first** to find the exact tab list and content sections, then:
+
+1. Add `'Tickets'` to the tab list array alongside the existing 6 tabs.
+2. Import `TicketsTab`.
+3. Pass `existingTicketsGcsPath={auditData?.jira_tickets_gcs_path}` from the audit row.
+4. Add a `<Tabs.Content value="Tickets">` block containing `<TicketsTab>`.
+
+The tab list in `AuditDetail.tsx` currently reads something like:
+
+```tsx
+{['Summary', 'Issues', 'URL Issues', 'Metrics', 'AI Analysis', 'Raw JSON'].map(...)}
+```
+
+Change it to:
+
+```tsx
+{['Summary', 'Issues', 'URL Issues', 'Metrics', 'AI Analysis', 'Tickets', 'Raw JSON'].map(...)}
+```
+
+And add the content block after the AI Analysis content section:
+
+```tsx
+<Tabs.Content value="Tickets" className="p-4">
+  <TicketsTab
+    auditId={auditId}
+    existingTicketsGcsPath={auditData?.jira_tickets_gcs_path ?? null}
+  />
+</Tabs.Content>
+```
+
+**Commit:**
+```bash
+git add src/components/seo/AuditDetail.tsx
+git commit -m "feat: add Tickets tab to SEO audit detail view"
+```
+
+### Step 4: Verify TypeScript compiles and test in browser
+
+```bash
+npx tsc --noEmit
+npm run dev
+```
+
+Open an audit in the SEO section, click the **Tickets** tab, and verify:
+- "Generate Tickets" button is visible when no tickets exist
+- Clicking it shows the spinner with the progress message
+- After generation completes, the ticket list appears grouped with team badges
+- Each ticket has an "Open in Jira" link that opens the correct Jira issue
+- The "Open ENG board in Jira" link at the bottom works
+- If any failures occurred, they appear in the red failure section
+
+**Commit any fixups:**
+```bash
+git add -p
+git commit -m "fix: adjust TicketsTab UI after browser testing"
+```
