@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { FileText, Star, Calendar, Radar, Sparkles, Loader2, ImageIcon } from 'lucide-react';
+import { FileText, Star, Calendar, Radar, Sparkles, Loader2, ImageIcon, Send, ExternalLink } from 'lucide-react';
 import { BlogPostViewer } from './BlogPostViewer';
 
 interface ContentBrief {
@@ -40,6 +40,10 @@ interface BlogPost {
   tags: string[];
   imageCount: number;
   createdAt: string;
+  // WordPress sync
+  wpPostId?: number | null;
+  wpEditUrl?: string | null;
+  wpStatus?: string;
 }
 
 interface BlogPostsSectionProps {
@@ -196,6 +200,34 @@ export function BlogPostsSection({ briefs, posts, onRefresh }: BlogPostsSectionP
 
   const isGenerating = generatingBriefId !== null;
 
+  // WordPress push state
+  const [wpPushState, setWpPushState] = useState<Record<number, 'pushing' | 'done' | 'error'>>({});
+  const [wpPushError, setWpPushError] = useState<Record<number, string>>({});
+  const [wpSyncData, setWpSyncData] = useState<Record<number, { wpPostId: number; wpEditUrl: string }>>({});
+
+  const pushToWordPress = useCallback(async (post: BlogPost) => {
+    setWpPushState(s => ({ ...s, [post.id]: 'pushing' }));
+    setWpPushError(e => { const n = { ...e }; delete n[post.id]; return n; });
+
+    try {
+      const res = await fetch(`/api/geo/blog/posts/${post.id}/push-to-wordpress`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        const msg = data?.detail?.message ?? data?.detail ?? `Error ${res.status}`;
+        throw new Error(typeof msg === 'string' ? msg : JSON.stringify(msg));
+      }
+
+      setWpSyncData(s => ({ ...s, [post.id]: { wpPostId: data.wp_post_id, wpEditUrl: data.wp_edit_url } }));
+      setWpPushState(s => ({ ...s, [post.id]: 'done' }));
+    } catch (err) {
+      setWpPushState(s => ({ ...s, [post.id]: 'error' }));
+      setWpPushError(e => ({ ...e, [post.id]: err instanceof Error ? err.message : 'Failed' }));
+    }
+  }, []);
+
   return (
     <div className="space-y-4">
       {/* Generation error banner */}
@@ -227,6 +259,7 @@ export function BlogPostsSection({ briefs, posts, onRefresh }: BlogPostsSectionP
                   <th>Words</th>
                   <th>Date</th>
                   <th>Region</th>
+                  <th>WordPress</th>
                 </tr>
               </thead>
               <tbody>
@@ -234,7 +267,7 @@ export function BlogPostsSection({ briefs, posts, onRefresh }: BlogPostsSectionP
                   <tr
                     key={post.id}
                     onClick={() => setSelectedPost(post)}
-                    className="cursor-pointer hover:bg-zinc-800/50 transition-colors"
+                    className="cursor-pointer hover:bg-zinc-800/50 transition-colors group"
                   >
                     <td>
                       <div className="flex items-center gap-2 max-w-[300px]">
@@ -253,6 +286,59 @@ export function BlogPostsSection({ briefs, posts, onRefresh }: BlogPostsSectionP
                     <td className="text-zinc-400">{post.wordCount.toLocaleString()}</td>
                     <td className="text-zinc-500 text-xs whitespace-nowrap">{formatDate(post.createdAt)}</td>
                     <td className="text-zinc-500 text-xs uppercase">{post.region}</td>
+                    <td onClick={e => e.stopPropagation()}>
+                      {(() => {
+                        const synced = wpSyncData[post.id];
+                        const editUrl = synced?.wpEditUrl ?? post.wpEditUrl;
+                        const isDraft = post.wpStatus === 'draft' || wpPushState[post.id] === 'done';
+
+                        if (isDraft && editUrl) {
+                          return (
+                            <a
+                              href={editUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors whitespace-nowrap"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              Draft in WP
+                            </a>
+                          );
+                        }
+
+                        if (wpPushState[post.id] === 'pushing') {
+                          return (
+                            <span className="flex items-center gap-1 text-xs text-zinc-400">
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              Pushing...
+                            </span>
+                          );
+                        }
+
+                        if (wpPushState[post.id] === 'error') {
+                          return (
+                            <span
+                              className="text-xs text-red-400 cursor-pointer"
+                              title={wpPushError[post.id]}
+                              onClick={() => pushToWordPress(post)}
+                            >
+                              ✕ Retry
+                            </span>
+                          );
+                        }
+
+                        return (
+                          <button
+                            onClick={() => pushToWordPress(post)}
+                            className="flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-zinc-700/50 text-zinc-400 hover:bg-zinc-600/50 hover:text-zinc-200 transition-colors opacity-0 group-hover:opacity-100 whitespace-nowrap"
+                            title="Push to WordPress as draft"
+                          >
+                            <Send className="w-3 h-3" />
+                            Send to WP
+                          </button>
+                        );
+                      })()}
+                    </td>
                   </tr>
                 ))}
               </tbody>
