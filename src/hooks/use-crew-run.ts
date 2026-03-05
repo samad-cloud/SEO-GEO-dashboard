@@ -4,6 +4,8 @@ import { useState, useCallback, useRef } from 'react';
 
 export type CrewType = 'audit' | 'blog' | 'forums' | 'wiki' | 'technical';
 
+const GEO_API_BASE = process.env.NEXT_PUBLIC_GEO_API_URL || 'http://localhost:8000';
+
 interface CrewRunState {
   isRunning: boolean;
   progress: number;
@@ -13,19 +15,19 @@ interface CrewRunState {
 }
 
 const POST_ENDPOINTS: Record<CrewType, string> = {
-  audit: '/api/geo/audit/run',
-  blog: '/api/geo/blog/generate',
-  forums: '/api/geo/forums/run',
-  wiki: '/api/geo/wiki/run',
-  technical: '/api/geo/technical/run',
+  audit: `${GEO_API_BASE}/api/geo/audit/run`,
+  blog: `${GEO_API_BASE}/api/geo/blog/generate`,
+  forums: `${GEO_API_BASE}/api/geo/forums/run`,
+  wiki: `${GEO_API_BASE}/api/geo/wiki/run`,
+  technical: `${GEO_API_BASE}/api/geo/technical/run`,
 };
 
 const STATUS_ENDPOINTS: Record<CrewType, (id: string) => string> = {
-  audit: id => `/api/geo/audit/run/${id}`,
-  blog: id => `/api/geo/audit/run/${id}`, // blog uses audit run tracker
-  forums: id => `/api/geo/forums/run/${id}`,
-  wiki: id => `/api/geo/wiki/run/${id}`,
-  technical: id => `/api/geo/technical/run/${id}`,
+  audit: id => `${GEO_API_BASE}/api/geo/audit/run/${id}`,
+  blog: id => `${GEO_API_BASE}/api/geo/audit/run/${id}`, // blog uses audit run tracker
+  forums: id => `${GEO_API_BASE}/api/geo/forums/run/${id}`,
+  wiki: id => `${GEO_API_BASE}/api/geo/wiki/run/${id}`,
+  technical: id => `${GEO_API_BASE}/api/geo/technical/run/${id}`,
 };
 
 export function useCrewRun(crewType: CrewType, region: string = 'us') {

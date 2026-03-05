@@ -10,6 +10,8 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+
+const GEO_API_BASE = process.env.NEXT_PUBLIC_GEO_API_URL || 'http://localhost:8000';
 import type { ResearchRun } from '@/types/geo';
 import type {
   RunProgress,
@@ -62,7 +64,7 @@ export function useResearchData(): UseResearchDataResult {
     setError(null);
 
     try {
-      const response = await fetch('/api/geo/research');
+      const response = await fetch(`${GEO_API_BASE}/api/geo/research`);
 
       if (!response.ok) {
         throw new Error(`Failed to fetch: ${response.statusText}`);
@@ -112,7 +114,7 @@ export function useResearchRuns(limit: number = 20): UseResearchRunsResult {
     setError(null);
 
     try {
-      const response = await fetch(`/api/geo/research/runs?limit=${limit}`);
+      const response = await fetch(`${GEO_API_BASE}/api/geo/research/runs?limit=${limit}`);
 
       if (!response.ok) {
         throw new Error(`Failed to fetch: ${response.statusText}`);
@@ -165,7 +167,7 @@ export function usePipelineRun(): UsePipelineRunResult {
 
     try {
       // Start the run
-      const response = await fetch('/api/geo/research/run', {
+      const response = await fetch(`${GEO_API_BASE}/api/geo/research/run`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config),
@@ -181,7 +183,7 @@ export function usePipelineRun(): UsePipelineRunResult {
 
       // Connect to SSE stream
       const eventSource = new EventSource(
-        `/api/geo/research/run/${startResponse.run_id}/stream`
+        `${GEO_API_BASE}/api/geo/research/run/${startResponse.run_id}/stream`
       );
       eventSourceRef.current = eventSource;
 
@@ -216,7 +218,7 @@ export function usePipelineRun(): UsePipelineRunResult {
     if (!runId) return;
 
     try {
-      await fetch(`/api/geo/research/run/${runId}/cancel`, {
+      await fetch(`${GEO_API_BASE}/api/geo/research/run/${runId}/cancel`, {
         method: 'POST',
       });
     } catch (err) {
@@ -275,11 +277,11 @@ export function useCrewData(): UseCrewDataResult {
 
     try {
       const [briefs, posts, threads, wiki, urls] = await Promise.all([
-        fetch('/api/geo/blog/briefs').then(r => r.ok ? r.json() : []),
-        fetch('/api/geo/blog/posts').then(r => r.ok ? r.json() : []),
-        fetch('/api/geo/forums/threads').then(r => r.ok ? r.json() : []),
-        fetch('/api/geo/wiki/assessments').then(r => r.ok ? r.json() : []),
-        fetch('/api/geo/technical/urls?limit=50').then(r => r.ok ? r.json() : []),
+        fetch(`${GEO_API_BASE}/api/geo/blog/briefs`).then(r => r.ok ? r.json() : []),
+        fetch(`${GEO_API_BASE}/api/geo/blog/posts`).then(r => r.ok ? r.json() : []),
+        fetch(`${GEO_API_BASE}/api/geo/forums/threads`).then(r => r.ok ? r.json() : []),
+        fetch(`${GEO_API_BASE}/api/geo/wiki/assessments`).then(r => r.ok ? r.json() : []),
+        fetch(`${GEO_API_BASE}/api/geo/technical/urls?limit=50`).then(r => r.ok ? r.json() : []),
       ]);
 
       setData({
@@ -319,7 +321,7 @@ export function useAuditReports() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/geo/audit/reports');
+      const response = await fetch(`${GEO_API_BASE}/api/geo/audit/reports`);
       if (!response.ok) throw new Error(`Failed to fetch: ${response.statusText}`);
       const json = await response.json();
       setReports(Array.isArray(json) ? json : []);
@@ -357,7 +359,7 @@ export function useAuditResults(runId: string | null) {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/geo/audit/results?run_id=${encodeURIComponent(runId)}`);
+      const response = await fetch(`${GEO_API_BASE}/api/geo/audit/results?run_id=${encodeURIComponent(runId)}`);
       if (!response.ok) throw new Error(`Failed to fetch: ${response.statusText}`);
       const json = await response.json();
       setResults(Array.isArray(json) ? json : []);
@@ -410,7 +412,7 @@ export function useAuditRun() {
     setIsRunning(true);
 
     try {
-      const res = await fetch('/api/geo/audit/run', {
+      const res = await fetch(`${GEO_API_BASE}/api/geo/audit/run`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ region }),
@@ -428,7 +430,7 @@ export function useAuditRun() {
       // Poll for progress every 3 seconds
       pollRef.current = setInterval(async () => {
         try {
-          const pollRes = await fetch(`/api/geo/audit/run/${newRunId}`);
+          const pollRes = await fetch(`${GEO_API_BASE}/api/geo/audit/run/${newRunId}`);
           if (!pollRes.ok) return;
 
           const prog = await pollRes.json();
@@ -473,7 +475,7 @@ export function useAuditRun() {
     }
     if (runId) {
       try {
-        await fetch(`/api/geo/audit/run/${runId}/cancel`, { method: 'POST' });
+        await fetch(`${GEO_API_BASE}/api/geo/audit/run/${runId}/cancel`, { method: 'POST' });
       } catch {
         // Best-effort cancel
       }
@@ -505,7 +507,7 @@ export function useBlogImages(postId: number | null) {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/geo/blog/posts/${postId}/images`);
+      const response = await fetch(`${GEO_API_BASE}/api/geo/blog/posts/${postId}/images`);
       if (!response.ok) throw new Error(`Failed to fetch: ${response.statusText}`);
       const json = await response.json();
       setImages(Array.isArray(json) ? json : []);

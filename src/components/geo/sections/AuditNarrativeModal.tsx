@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+
+const GEO_API_BASE = process.env.NEXT_PUBLIC_GEO_API_URL || 'http://localhost:8000';
 import { FileText, X, Download, Loader2 } from 'lucide-react';
 
 interface AuditNarrativeModalProps {
@@ -19,7 +21,7 @@ export function AuditNarrativeButton({ runId, region }: AuditNarrativeModalProps
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/geo/audit/reports/${runId}/narrative`);
+      const res = await fetch(`${GEO_API_BASE}/api/geo/audit/reports/${runId}/narrative`);
       if (!res.ok) throw new Error('Narrative not available');
       const data = await res.json();
       setNarrative(data.narrative);

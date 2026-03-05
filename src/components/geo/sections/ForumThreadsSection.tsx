@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+
+const GEO_API_BASE = process.env.NEXT_PUBLIC_GEO_API_URL || 'http://localhost:8000';
 import {
   MessageSquare,
   ExternalLink,
@@ -182,7 +184,7 @@ function ThreadCard({
   async function handleApproval(status: string) {
     setApprovalLoading(true);
     try {
-      const res = await fetch(`/api/geo/forums/threads/${thread.id}`, {
+      const res = await fetch(`${GEO_API_BASE}/api/geo/forums/threads/${thread.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ approval_status: status, draft_response: editedResponse }),
@@ -206,7 +208,7 @@ function ThreadCard({
     setPostStatus('posting');
     setPostError('');
     try {
-      const res = await fetch(`/api/geo/forums/threads/${thread.id}/post`, {
+      const res = await fetch(`${GEO_API_BASE}/api/geo/forums/threads/${thread.id}/post`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ draft_response: editedResponse }),

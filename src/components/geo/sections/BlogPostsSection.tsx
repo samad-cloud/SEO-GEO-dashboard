@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+
+const GEO_API_BASE = process.env.NEXT_PUBLIC_GEO_API_URL || 'http://localhost:8000';
 import { FileText, Star, Calendar, Radar, Sparkles, Loader2, ImageIcon, Send, ExternalLink } from 'lucide-react';
 import { BlogPostViewer } from './BlogPostViewer';
 
@@ -135,7 +137,7 @@ export function BlogPostsSection({ briefs, posts, onRefresh }: BlogPostsSectionP
     setGenerationStep('Starting...');
 
     try {
-      const res = await fetch('/api/geo/blog/generate', {
+      const res = await fetch(`${GEO_API_BASE}/api/geo/blog/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -157,7 +159,7 @@ export function BlogPostsSection({ briefs, posts, onRefresh }: BlogPostsSectionP
       // Start polling for progress
       pollRef.current = setInterval(async () => {
         try {
-          const pollRes = await fetch(`/api/geo/blog/generate/${runId}`);
+          const pollRes = await fetch(`${GEO_API_BASE}/api/geo/blog/generate/${runId}`);
           if (!pollRes.ok) return;
 
           const progress = await pollRes.json();
@@ -210,7 +212,7 @@ export function BlogPostsSection({ briefs, posts, onRefresh }: BlogPostsSectionP
     setWpPushError(e => { const n = { ...e }; delete n[post.id]; return n; });
 
     try {
-      const res = await fetch(`/api/geo/blog/posts/${post.id}/push-to-wordpress`, {
+      const res = await fetch(`${GEO_API_BASE}/api/geo/blog/posts/${post.id}/push-to-wordpress`, {
         method: 'POST',
       });
       const data = await res.json();
