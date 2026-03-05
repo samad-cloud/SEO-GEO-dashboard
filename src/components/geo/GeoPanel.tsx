@@ -10,31 +10,25 @@ import {
   AlertCircle,
   CheckCircle2,
   XCircle,
-  BarChart3,
-  Search,
-  FileText,
-  Target,
   ChevronDown,
   ChevronUp,
-  MessageSquare,
-  BookOpen,
-  Lightbulb,
-  PenTool,
-  Link2,
 } from 'lucide-react';
 import { useResearchData, usePipelineRun, useGeoHealth, useCrewData, useAuditReports } from '@/hooks/use-geo-research';
-import { PlatformBreakdownSection } from './sections/PlatformBreakdown';
-import { RegionalBreakdownSection } from './sections/RegionalBreakdown';
-import { DataVoidsSection } from './sections/DataVoids';
-import { CompetitorInsightsSection } from './sections/CompetitorInsights';
-import { CitationsSection } from './sections/Citations';
-import { TaskQueueSection } from './sections/TaskQueue';
-import { BlogPostsSection } from './sections/BlogPostsSection';
-import { ForumThreadsSection } from './sections/ForumThreadsSection';
-import { WikiAssessmentsSection } from './sections/WikiAssessmentsSection';
-import { StrategySummarySection } from './sections/StrategySummarySection';
-import { AuditReportsSection } from './sections/AuditReportsSection';
+import { type CrewType } from '@/hooks/use-crew-run';
+import { AuditTab } from './tabs/AuditTab';
+import { BlogTab } from './tabs/BlogTab';
+import { ForumsTab } from './tabs/ForumsTab';
+import { WikiTab } from './tabs/WikiTab';
+import { TechnicalTab } from './tabs/TechnicalTab';
 import type { RunProgress } from '@/lib/api/geo-api';
+
+const TABS: { id: CrewType; label: string }[] = [
+  { id: 'audit', label: 'Audit' },
+  { id: 'blog', label: 'Blog' },
+  { id: 'forums', label: 'Forums' },
+  { id: 'wiki', label: 'Wiki' },
+  { id: 'technical', label: 'Technical' },
+];
 
 // ---------------------------------------------------------------------------
 // Sub-components
@@ -150,6 +144,7 @@ export function GeoPanel() {
   const { progress, isRunning, error: runError, start, cancel } = usePipelineRun();
   const { data: crewData, isLoading: crewLoading, refetch: refetchCrew } = useCrewData();
   const { reports: auditReports, refetch: refetchAudit } = useAuditReports();
+  const [activeTab, setActiveTab] = useState<CrewType>('audit');
 
   const handleRunResearch = async () => {
     await start({ regions: ['us'] });
@@ -215,10 +210,6 @@ export function GeoPanel() {
     crewData.forumThreads.length > 0 ||
     crewData.wikiAssessments.length > 0;
   const hasAnyData = hasResearchData || hasCrewData;
-
-  // Strategy & crews from research data
-  const strategySummary = (data as any)?.strategySummary || '';
-  const crewsCompleted = (data as any)?.crewsCompleted || [];
 
   return (
     <div className="h-full overflow-y-auto">
@@ -299,186 +290,58 @@ export function GeoPanel() {
           </div>
         )}
 
-        {/* Audit Reports — always visible so users can run audits */}
-        <CollapsibleSection
-          title="Audit Reports"
-          icon={BarChart3}
-          count={auditReports.length}
-          defaultOpen={auditReports.length === 0}
-        >
-          <AuditReportsSection reports={auditReports} onRefresh={refetchAudit} />
-        </CollapsibleSection>
-
-        {!hasAnyData ? (
-          /* Empty state */
-          <div className="text-center py-16">
-            <div className="w-16 h-16 rounded-full bg-purple-500/10 flex items-center justify-center mx-auto mb-4">
-              <Globe className="w-8 h-8 text-purple-400" />
-            </div>
-            <h2 className="text-lg font-semibold text-zinc-200 mb-2">No Research Data Yet</h2>
-            <p className="text-sm text-zinc-500 mb-6 max-w-md mx-auto">
-              Run your first GEO research pipeline to analyze AI platform visibility,
-              discover content opportunities, and track competitor presence.
-            </p>
+        {/* Tab Bar */}
+        <div className="flex gap-1 border-b border-zinc-700/50">
+          {TABS.map(tab => (
             <button
-              onClick={handleRunResearch}
-              disabled={isHealthy === false || isRunning}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-sm transition-colors"
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-2 text-sm font-medium transition-colors rounded-t-lg ${
+                activeTab === tab.id
+                  ? 'text-purple-400 border-b-2 border-purple-400 -mb-px'
+                  : 'text-zinc-500 hover:text-zinc-300'
+              }`}
             >
-              <Play className="w-4 h-4" />
-              Run First Research
+              {tab.label}
             </button>
-          </div>
-        ) : (
-          <>
-            {/* Summary Stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <StatCard
-                label="Share of Model"
-                value={`${data?.shareOfModel ?? 0}%`}
-                icon={BarChart3}
-                color="text-purple-400"
-              />
-              <StatCard
-                label="Citations"
-                value={data?.citations ?? 0}
-                icon={FileText}
-                color="text-blue-400"
-              />
-              <StatCard
-                label="Data Voids"
-                value={data?.dataVoids ?? 0}
-                icon={Search}
-                color="text-yellow-400"
-              />
-              <StatCard
-                label="Opportunities"
-                value={data?.opportunities ?? 0}
-                icon={Target}
-                color="text-green-400"
-              />
-            </div>
+          ))}
+        </div>
 
-            {/* Crew data stats */}
-            {hasCrewData && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <StatCard
-                  label="Blog Posts"
-                  value={crewData.blogPosts.length}
-                  icon={PenTool}
-                  color="text-pink-400"
-                />
-                <StatCard
-                  label="Content Briefs"
-                  value={crewData.briefs.length}
-                  icon={FileText}
-                  color="text-cyan-400"
-                />
-                <StatCard
-                  label="Forum Threads"
-                  value={crewData.forumThreads.length}
-                  icon={MessageSquare}
-                  color="text-orange-400"
-                />
-                <StatCard
-                  label="Wiki Assessments"
-                  value={crewData.wikiAssessments.length}
-                  icon={BookOpen}
-                  color="text-emerald-400"
-                />
-              </div>
-            )}
-
-            {/* Section Panels */}
-            <div className="space-y-6">
-              {/* Strategy & Crew Status */}
-              {(crewsCompleted.length > 0 || strategySummary) && (
-                <CollapsibleSection title="Strategy & Crew Status" icon={Lightbulb}>
-                  <StrategySummarySection
-                    strategySummary={strategySummary}
-                    crewsCompleted={crewsCompleted}
-                  />
-                </CollapsibleSection>
-              )}
-
-              {/* Platform Breakdown */}
-              {(data?.platformBreakdown?.length ?? 0) > 0 && (
-                <CollapsibleSection title="Platform Breakdown" icon={BarChart3} count={data!.platformBreakdown.length}>
-                  <PlatformBreakdownSection platforms={data!.platformBreakdown} />
-                </CollapsibleSection>
-              )}
-
-              {/* Regional Breakdown */}
-              {(data?.regionalBreakdown?.length ?? 0) > 0 && (
-                <CollapsibleSection title="Regional Breakdown" icon={Globe} count={data!.regionalBreakdown.length}>
-                  <RegionalBreakdownSection regions={data!.regionalBreakdown} />
-                </CollapsibleSection>
-              )}
-
-              {/* Blog Posts & Briefs */}
-              {(crewData.blogPosts.length > 0 || crewData.briefs.length > 0) && (
-                <CollapsibleSection
-                  title="Blog Content"
-                  icon={PenTool}
-                  count={crewData.blogPosts.length + crewData.briefs.length}
-                >
-                  <BlogPostsSection briefs={crewData.briefs} posts={crewData.blogPosts} />
-                </CollapsibleSection>
-              )}
-
-              {/* Forum Threads */}
-              {crewData.forumThreads.length > 0 && (
-                <CollapsibleSection
-                  title="Forum Threads"
-                  icon={MessageSquare}
-                  count={crewData.forumThreads.length}
-                  defaultOpen={false}
-                >
-                  <ForumThreadsSection threads={crewData.forumThreads} />
-                </CollapsibleSection>
-              )}
-
-              {/* Wiki Assessments */}
-              {crewData.wikiAssessments.length > 0 && (
-                <CollapsibleSection
-                  title="Wiki Assessments"
-                  icon={BookOpen}
-                  count={crewData.wikiAssessments.length}
-                  defaultOpen={false}
-                >
-                  <WikiAssessmentsSection assessments={crewData.wikiAssessments} />
-                </CollapsibleSection>
-              )}
-
-              {/* Data Voids */}
-              {(data?.dataVoidsList?.length ?? 0) > 0 && (
-                <CollapsibleSection title="Data Voids" icon={Search} defaultOpen={false} count={data!.dataVoidsList?.length}>
-                  <DataVoidsSection voids={data!.dataVoidsList} />
-                </CollapsibleSection>
-              )}
-
-              {/* Competitor Insights */}
-              {(data?.competitorInsights?.length ?? 0) > 0 && (
-                <CollapsibleSection title="Competitor Insights" icon={Target} defaultOpen={false} count={data!.competitorInsights.length}>
-                  <CompetitorInsightsSection competitors={data!.competitorInsights} />
-                </CollapsibleSection>
-              )}
-
-              {/* Citations */}
-              {(data?.citationsWithContext?.length ?? 0) > 0 && (
-                <CollapsibleSection title="Citations" icon={FileText} defaultOpen={false} count={data!.citationsWithContext.length}>
-                  <CitationsSection citations={data!.citationsWithContext} />
-                </CollapsibleSection>
-              )}
-
-              {/* Task Queue */}
-              {(data?.tasks?.length ?? 0) > 0 && (
-                <CollapsibleSection title="Task Queue" icon={Target} defaultOpen={false} count={data!.tasks.length}>
-                  <TaskQueueSection tasks={data!.tasks} />
-                </CollapsibleSection>
-              )}
-            </div>
-          </>
+        {/* Tab Content */}
+        {activeTab === 'audit' && (
+          <AuditTab
+            data={data}
+            auditReports={auditReports}
+            region="us"
+            onRefresh={handleRefresh}
+          />
+        )}
+        {activeTab === 'blog' && (
+          <BlogTab
+            crewData={crewData}
+            region="us"
+            onRefresh={handleRefresh}
+          />
+        )}
+        {activeTab === 'forums' && (
+          <ForumsTab
+            crewData={crewData}
+            region="us"
+            onRefresh={handleRefresh}
+          />
+        )}
+        {activeTab === 'wiki' && (
+          <WikiTab
+            crewData={crewData}
+            region="us"
+            onRefresh={handleRefresh}
+          />
+        )}
+        {activeTab === 'technical' && (
+          <TechnicalTab
+            region="us"
+            onRefresh={handleRefresh}
+          />
         )}
       </div>
     </div>

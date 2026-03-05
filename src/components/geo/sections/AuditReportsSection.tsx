@@ -13,6 +13,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { AuditResultsModal } from './AuditResultsModal';
+import { AuditNarrativeButton } from './AuditNarrativeModal';
 import { useAuditRun } from '@/hooks/use-geo-research';
 
 interface AuditReport {
@@ -214,6 +215,9 @@ function ReportCard({ report }: { report: AuditReport }) {
               <Eye className="w-3 h-3" />
               View Results
             </button>
+            <div onClick={(e) => e.stopPropagation()}>
+              <AuditNarrativeButton runId={report.runId} region={report.region} />
+            </div>
             {expanded ? (
               <ChevronUp className="w-4 h-4 text-zinc-500" />
             ) : (
