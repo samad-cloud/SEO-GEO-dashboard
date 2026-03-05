@@ -3,6 +3,7 @@ import { getBigQueryClient, getTableName } from '@/lib/bigquery';
 import { getStorageClient, parseGcsUri } from '@/lib/gcs';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 interface RouteParams {
   params: Promise<{ auditId: string }>;

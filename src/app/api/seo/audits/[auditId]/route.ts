@@ -6,6 +6,7 @@ import type { BigQuerySeoAuditRow } from '@/types/bigquery';
 import type { AuditReport, DomainReport, AiAnalysis, AllIssuesSummary } from '@/types/seo';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 interface RouteParams {
   params: Promise<{ auditId: string }>;
