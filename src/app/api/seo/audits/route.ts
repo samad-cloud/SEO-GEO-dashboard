@@ -4,7 +4,7 @@ import { mapRowsToAuditRuns } from '@/lib/mappers/seo-mapper';
 import type { BigQuerySeoAuditRow } from '@/types/bigquery';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,8 +16,23 @@ export async function GET(request: NextRequest) {
     const client = getBigQueryClient();
     const tableName = getTableName();
 
-    // Query only columns that exist in the table
-    let query = `
+    const params: Record<string, string | number> = {};
+    const domainFilter = domain ? 'WHERE domain = @domain' : '';
+    if (domain) params.domain = domain;
+
+    // Get total count of distinct audit_ids
+    const countQuery = `
+      SELECT COUNT(DISTINCT audit_id) AS total
+      FROM \`${tableName}\`
+      ${domainFilter}
+    `;
+
+    // Fetch only rows for the requested page of audit_ids, limited at SQL level
+    const rowsPerAudit = 10; // max domains per audit
+    const sqlLimit = (offset + limit) * rowsPerAudit;
+    params.sqlLimit = sqlLimit;
+
+    const dataQuery = `
       SELECT
         audit_id,
         domain,
@@ -29,24 +44,26 @@ export async function GET(request: NextRequest) {
         medium_count,
         low_count
       FROM \`${tableName}\`
+      WHERE audit_id IN (
+        SELECT audit_id FROM (
+          SELECT audit_id, MAX(CAST(audit_date AS STRING)) AS latest_date
+          FROM \`${tableName}\`
+          ${domainFilter}
+          GROUP BY audit_id
+          ORDER BY latest_date DESC
+          LIMIT @sqlLimit
+        )
+      )
+      ORDER BY audit_date DESC
     `;
 
-    const params: Record<string, string> = {};
+    const [[countRows], [dataRows]] = await Promise.all([
+      client.query({ query: countQuery, params: domain ? { domain } : {}, location: 'US' }),
+      client.query({ query: dataQuery, params, location: 'US' }),
+    ]);
 
-    if (domain) {
-      query += ` WHERE domain = @domain`;
-      params.domain = domain;
-    }
-
-    query += ` ORDER BY audit_date DESC`;
-
-    const [rows] = await client.query({
-      query,
-      params,
-      location: 'US',
-    });
-
-    const typedRows = rows as BigQuerySeoAuditRow[];
+    const total = Number((countRows[0] as { total: { value: string } | number })?.total?.valueOf?.() ?? (countRows[0] as { total: number })?.total ?? 0);
+    const typedRows = dataRows as BigQuerySeoAuditRow[];
 
     // Map to AuditRun format (groups by audit_id)
     const allRuns = mapRowsToAuditRuns(typedRows);
@@ -59,8 +76,8 @@ export async function GET(request: NextRequest) {
       pagination: {
         limit,
         offset,
-        total: allRuns.length,
-        hasMore: offset + limit < allRuns.length,
+        total,
+        hasMore: offset + limit < total,
       },
     });
   } catch (error) {
