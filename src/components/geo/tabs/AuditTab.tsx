@@ -1,6 +1,7 @@
 'use client';
 
 import { Play, Loader2 } from 'lucide-react';
+import { useEffect } from 'react';
 import { useCrewRun } from '@/hooks/use-crew-run';
 import { AuditReportsSection } from '@/components/geo/sections/AuditReportsSection';
 import { PlatformBreakdownSection } from '@/components/geo/sections/PlatformBreakdown';
@@ -17,14 +18,15 @@ interface AuditTabProps {
 }
 
 export function AuditTab({ data, auditReports, region, onRefresh }: AuditTabProps) {
-  const { isRunning, lastStatus, error, start } = useCrewRun('audit', region);
+  const { isRunning, lastStatus, error, progress, currentStep, start } = useCrewRun('audit', region);
+  useEffect(() => { if (lastStatus === 'complete') onRefresh(); }, [lastStatus]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-medium text-zinc-400 uppercase tracking-wider">Audit Intelligence</h2>
         <button
-          onClick={async () => { const ok = await start(); if (ok) onRefresh(); }}
+          onClick={start}
           disabled={isRunning}
           className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-sm transition-colors"
         >
@@ -35,9 +37,20 @@ export function AuditTab({ data, auditReports, region, onRefresh }: AuditTabProp
           )}
         </button>
       </div>
+      {isRunning && (
+        <div className="space-y-1">
+          <div className="flex justify-between text-xs text-zinc-400">
+            <span>{currentStep || 'Running...'}</span>
+            <span>{progress}%</span>
+          </div>
+          <div className="w-full h-1 bg-zinc-700 rounded-full overflow-hidden">
+            <div className="h-full bg-purple-500 rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+          </div>
+        </div>
+      )}
       {error && <p className="text-xs text-red-400">{error}</p>}
       {lastStatus === 'complete' && (
-        <p className="text-xs text-green-400">Audit complete. Refresh to see results.</p>
+        <p className="text-xs text-green-400">Audit complete. Data refreshed.</p>
       )}
       {data?.macroSomByEngine && Object.keys(data.macroSomByEngine).length > 0 && (
         <SERANKINGLeaderboard
