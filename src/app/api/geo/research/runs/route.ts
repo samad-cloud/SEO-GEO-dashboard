@@ -6,6 +6,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
+export const maxDuration = 60;
+
 const GEO_API_BASE_URL = process.env.GEO_API_URL || 'http://localhost:8000';
 
 export async function GET(request: NextRequest) {

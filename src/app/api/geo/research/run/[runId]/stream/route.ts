@@ -12,6 +12,7 @@ const GEO_API_BASE_URL = process.env.GEO_API_URL || 'http://localhost:8000';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 export async function GET(
   request: NextRequest,
