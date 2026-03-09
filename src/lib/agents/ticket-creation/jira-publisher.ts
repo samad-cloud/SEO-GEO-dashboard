@@ -24,7 +24,7 @@ type AdfNode =
   | { type: 'doc'; version: 1; content: AdfNode[] }
   | { type: 'heading'; attrs: { level: number }; content: AdfNode[] }
   | { type: 'paragraph'; content: AdfNode[] }
-  | { type: 'text'; text: string; marks?: Array<{ type: string }> }
+  | { type: 'text'; text: string; marks?: Array<{ type: string; attrs?: Record<string, string> }> }
   | { type: 'rule' }
   | { type: 'bulletList'; content: AdfNode[] }
   | { type: 'listItem'; content: AdfNode[] };
@@ -47,6 +47,19 @@ function adfRule(): AdfNode {
   return { type: 'rule' };
 }
 
+function adfLink(text: string, href: string): AdfNode {
+  return {
+    type: 'paragraph',
+    content: [
+      {
+        type: 'text',
+        text,
+        marks: [{ type: 'link', attrs: { href } }],
+      },
+    ],
+  };
+}
+
 /**
  * Convert a ticket's text fields into Atlassian Document Format (ADF).
  * ADF is the JSON format Jira's REST API v3 requires for rich text fields.
@@ -61,10 +74,42 @@ function buildAdfDescription(
     adfParagraph(ticket.objective),
     adfHeading(2, 'Summary'),
     adfParagraph(ticket.summary),
+    adfHeading(2, 'Why Are We Doing This'),
+    adfParagraph(ticket.whyWeAreDoing),
     adfHeading(2, 'Proposed Solution'),
     adfParagraph(ticket.proposedSolution),
+    adfHeading(2, 'Where to Change'),
+    adfParagraph(ticket.codeLocation),
+    adfHeading(2, 'Risk & Implications'),
+    adfParagraph(ticket.riskAndImplications || 'No risk assessment available.'),
     adfRule(),
   ];
+
+  // ── Duplicate notice (only when this issue_type appeared in a previous run) ──
+  if (ticket.duplicateOf) {
+    const { issueKey, jiraUrl, runDate } = ticket.duplicateOf;
+    content.push(
+      adfHeading(3, '⚠ Previously Reported Issue'),
+      adfParagraph(
+        `This issue type was also reported in a previous audit run (${runDate}). ` +
+          `A new ticket has been created because new URLs are affected. ` +
+          `See the original ticket for historical context:`
+      ),
+      {
+        type: 'paragraph',
+        content: [
+          adfText('Ticket ID: '),
+          adfText(issueKey, true),
+          adfText('  '),
+          {
+            type: 'text',
+            text: 'View original ticket →',
+            marks: [{ type: 'link', attrs: { href: jiraUrl } }],
+          },
+        ],
+      }
+    );
+  }
 
   // Affected URLs section
   if (urlCount <= 5) {

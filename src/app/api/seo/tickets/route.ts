@@ -3,7 +3,7 @@ import { getBigQueryClient, BIGQUERY_PROJECT_ID, BIGQUERY_DATASET, BIGQUERY_TABL
 import { getStorageClient, parseGcsUri, fetchJsonFromGcs } from '@/lib/gcs';
 import { groupIssuesAcrossDomains } from '@/lib/agents/ticket-creation/cross-domain-grouper';
 import { runTicketCreationPipeline } from '@/lib/agents/ticket-creation/pipeline';
-import type { RawAuditJson } from '@/lib/agents/ticket-creation/types';
+import type { RawAuditJson, HistoricalTicket } from '@/lib/agents/ticket-creation/types';
 
 export const dynamic = 'force-dynamic';
 // Cross-domain pipeline can take several minutes (multiple domains × issue groups × 3 parallel)
@@ -23,6 +23,68 @@ interface CombinedRunRow {
   run_date: string;
   gcs_path: string | null;
   created_at: { value: string } | string | null;
+}
+
+interface StoredTicketsJson {
+  tickets?: Array<{ issueKey: string; jiraUrl: string; issueType: string }>;
+}
+
+/**
+ * Load ticket records from the last N combined runs (excluding currentRunDate).
+ * Used to provide historical context for the reviewer agent's deduplication step.
+ */
+async function loadHistoricalTickets(
+  bq: ReturnType<typeof import('@/lib/bigquery').getBigQueryClient>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  storage: any,
+  excludeDate: string,
+  limit = 5
+): Promise<HistoricalTicket[]> {
+  try {
+    const [rows] = await bq.query({
+      query: `
+        SELECT run_date, gcs_path
+        FROM ${COMBINED_RUNS_TABLE}
+        WHERE run_date != @excludeDate
+          AND gcs_path IS NOT NULL
+        ORDER BY run_date DESC
+        LIMIT @limit
+      `,
+      params: { excludeDate, limit },
+      location: 'US',
+    });
+
+    const historical: HistoricalTicket[] = [];
+
+    // Download in parallel (at most `limit` files — small overhead)
+    await Promise.allSettled(
+      (rows as CombinedRunRow[]).map(async (row) => {
+        if (!row.gcs_path) return;
+        try {
+          const parsed = parseGcsUri(row.gcs_path);
+          if (!parsed) return;
+          const [contents] = await storage.bucket(parsed.bucket).file(parsed.path).download();
+          const json = JSON.parse(contents.toString('utf-8')) as StoredTicketsJson;
+          const runDate = row.run_date;
+          for (const t of json.tickets ?? []) {
+            historical.push({
+              issueKey: t.issueKey,
+              jiraUrl: t.jiraUrl,
+              issueType: t.issueType,
+              runDate,
+            });
+          }
+        } catch {
+          // Non-fatal: skip this historical run if its GCS file can't be read
+        }
+      })
+    );
+
+    return historical;
+  } catch {
+    // Non-fatal: if historical load fails, deduplication is simply skipped
+    return [];
+  }
 }
 
 function resolveDate(val: { value: string } | string | null | undefined): string {
@@ -203,8 +265,12 @@ export async function POST() {
       `[combined-tickets] Grouped ${issueGroups.length} cross-domain issue types from ${auditInputs.length} domains`
     );
 
+    // 5b. Load historical tickets for deduplication (non-blocking on failure)
+    const historicalTickets = await loadHistoricalTickets(bq, storage, latestDate);
+    console.log(`[combined-tickets] Loaded ${historicalTickets.length} historical tickets for dedup`);
+
     // 6. Run the pipeline
-    const result = await runTicketCreationPipeline(latestDate, issueGroups, bucket);
+    const result = await runTicketCreationPipeline(latestDate, issueGroups, bucket, historicalTickets);
 
     // 7. Insert into seo_combined_ticket_runs
     await bq.query({

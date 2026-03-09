@@ -62,8 +62,25 @@ export interface DraftedTicket {
   priority: JiraPriority;
   objective: string;        // one-sentence summary → becomes Jira issue Summary field
   summary: string;          // 2-3 sentence explanation → Description ## Summary
+  whyWeAreDoing: string;    // business rationale / SEO impact → Description ## Why Are We Doing This
   proposedSolution: string; // full proposed solution text → Description ## Proposed Solution
+  codeLocation: string;     // exact file(s) + function(s) to change → Description ## Where to Change
+  // ── Added by reviewer agent ──────────────────────────────────────────────
+  riskAndImplications: string; // risk assessment + positive outcome → Description ## Risk & Implications
+  duplicateOf?: {              // set when this issue_type appeared in a previous run
+    issueKey: string;
+    jiraUrl: string;
+    runDate: string;
+  };
   relatedTo?: string[];     // issue_types this ticket relates to (for split tickets)
+}
+
+// A ticket record extracted from a past combined run — used for deduplication
+export interface HistoricalTicket {
+  issueKey: string;
+  jiraUrl: string;
+  issueType: string;
+  runDate: string;
 }
 
 // Output from the Jira publisher

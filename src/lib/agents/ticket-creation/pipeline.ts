@@ -1,25 +1,29 @@
 import { getStorageClient } from '@/lib/gcs';
 import { runClassifierAgent } from './classifier-agent';
+import { runReviewerAgent } from './reviewer-agent';
 import { publishTicketsToJira } from './jira-publisher';
 import type {
   IssueGroupForTicket,
   DraftedTicket,
+  HistoricalTicket,
   TicketCreationResult,
 } from './types';
 
 const CLASSIFIER_BATCH_SIZE = 3; // max concurrent classifier agents
 
 /**
- * Run the full 3-stage ticket-creation pipeline.
+ * Run the full ticket-creation pipeline.
  *
- * @param runId       - Identifier for this run (date string for combined runs, auditId for per-domain)
- * @param issueGroups - Pre-grouped issues (cross-domain or single-domain)
- * @param bucket      - GCS bucket name
+ * @param runId            - Identifier for this run (date string for combined runs)
+ * @param issueGroups      - Pre-grouped issues (cross-domain)
+ * @param bucket           - GCS bucket name
+ * @param historicalTickets - Tickets from past runs used for deduplication
  */
 export async function runTicketCreationPipeline(
   runId: string,
   issueGroups: IssueGroupForTicket[],
-  bucket: string
+  bucket: string,
+  historicalTickets: HistoricalTicket[] = []
 ): Promise<TicketCreationResult> {
   console.log(
     `[ticket-pipeline] Starting pipeline for run "${runId}" with ${issueGroups.length} issue groups`
@@ -66,8 +70,18 @@ export async function runTicketCreationPipeline(
       `${classifierFailures.length} classifier failures.`
   );
 
-  // ── Stage 2: Jira Publisher (sequential) ────────────────────────────────
-  const publishResults = await publishTicketsToJira(draftedTickets);
+  // ── Stage 2: Reviewer Agent (risk assessment + deduplication) ────────────
+  console.log(
+    `[ticket-pipeline] Running reviewer agent (${historicalTickets.length} historical tickets for dedup)`
+  );
+  const reviewedTickets = await runReviewerAgent(draftedTickets, historicalTickets);
+  const duplicateCount = reviewedTickets.filter((t) => t.duplicateOf).length;
+  if (duplicateCount > 0) {
+    console.log(`[ticket-pipeline] ${duplicateCount} duplicate issue type(s) detected — new tickets will reference previous ones.`);
+  }
+
+  // ── Stage 3: Jira Publisher (sequential) ────────────────────────────────
+  const publishResults = await publishTicketsToJira(reviewedTickets);
 
   const successfulTickets = publishResults
     .filter((r) => r.success && r.ticket)
@@ -76,7 +90,7 @@ export async function runTicketCreationPipeline(
   const publishFailures = publishResults
     .filter((r) => !r.success)
     .map((r, idx) => ({
-      issueType: draftedTickets[idx]?.issueGroup.issue_type ?? 'unknown',
+      issueType: reviewedTickets[idx]?.issueGroup.issue_type ?? 'unknown',
       error: r.error ?? 'Unknown publish error',
     }));
 

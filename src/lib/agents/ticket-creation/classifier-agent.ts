@@ -103,10 +103,25 @@ objective: A specific, actionable Jira ticket title derived from your investigat
 
 summary: 2-3 sentences — what is wrong, how it was discovered, and the SEO/business impact.
 
+whyWeAreDoing: 1-2 sentences — the business or SEO rationale for fixing this now.
+  Examples:
+    "Missing meta descriptions reduce click-through rates in search results and leave Google to auto-generate snippets, which often misrepresent the page content."
+    "Incorrect canonical tags cause duplicate-content signals that split PageRank across domains, suppressing rankings for all affected regions."
+
 proposedSolution: Full text including:
   Classification: [one of the four classifications]
   Team: [Tech Team or Data Team]
   [Team-appropriate instructions]
+
+codeLocation: The exact file path(s) and function name(s) where the developer or data team member needs to make the change.
+  For Tech Team tickets: name the file (relative path from repo root) and the function/component.
+    Example: "src/app/[locale]/category/[slug]/page.tsx — generateMetadata()"
+  IMPORTANT rules for file paths:
+    - Use paths EXACTLY as they appear in the file_chain of the spec (e.g. src/app/..., src/components/..., src/lib/...).
+    - Do NOT include git branch names (e.g. NOT "main/src/..." or "feature/xyz/src/...").
+    - Do NOT include container or host prefixes (e.g. NOT "/app/src/..." or "/home/user/...").
+    - If the spec lists multiple files, list them all on separate lines.
+  For Data Team tickets: write "N/A — backoffice change" and name the backoffice section instead.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 FINAL STEP — REQUIRED
@@ -147,10 +162,20 @@ const ticketOutputSchema = z.object({
     .describe(
       '2-3 sentences: what is wrong, how discovered, SEO/business impact'
     ),
+  whyWeAreDoing: z
+    .string()
+    .describe(
+      '1-2 sentences: the business/SEO rationale for fixing this — why it matters to rankings, crawlability, or user experience'
+    ),
   proposedSolution: z
     .string()
     .describe(
       'Full proposed solution text including Classification and Team lines'
+    ),
+  codeLocation: z
+    .string()
+    .describe(
+      'Exact file path(s) from repo root and function name(s) where the fix must be made (e.g. "src/app/[locale]/page.tsx — generateMetadata()"). No git branch names, no container paths. For Data Team tickets write "N/A — backoffice change".'
     ),
 });
 
@@ -240,6 +265,9 @@ Follow the classification process in your instructions. After investigating, cal
     priority,
     objective: output.objective ?? `Issue with ${issueGroup.issue_type}`,
     summary: output.summary ?? '',
+    whyWeAreDoing: output.whyWeAreDoing ?? '',
     proposedSolution: output.proposedSolution ?? '',
+    codeLocation: output.codeLocation ?? '',
+    riskAndImplications: '', // filled in by the reviewer agent
   };
 }
