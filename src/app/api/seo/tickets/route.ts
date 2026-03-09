@@ -163,102 +163,102 @@ export async function GET() {
  * Runs the combined cross-domain ticket creation pipeline for the latest audit date.
  */
 export async function POST() {
-  const bq = getBigQueryClient();
-
-  // Ensure the combined runs table exists
-  await bq.query({
-    query: `
-      CREATE TABLE IF NOT EXISTS ${COMBINED_RUNS_TABLE} (
-        run_date STRING NOT NULL,
-        gcs_path STRING,
-        created_at TIMESTAMP
-      )
-    `,
-    location: 'US',
-  });
-
-  // 1. Find the most recent audit_date across all domains
-  const [dateRows] = await bq.query({
-    query: `
-      SELECT MAX(CAST(audit_date AS STRING)) AS latest_date
-      FROM ${AUDIT_TABLE}
-    `,
-    location: 'US',
-  });
-
-  const latestDate = (dateRows[0] as { latest_date: string | null })?.latest_date;
-  if (!latestDate) {
-    return NextResponse.json({ error: 'No audits found in BigQuery' }, { status: 404 });
-  }
-
-  // 2. Idempotency: check if we already ran for this date
-  const [existingRows] = await bq.query({
-    query: `
-      SELECT run_date, gcs_path
-      FROM ${COMBINED_RUNS_TABLE}
-      WHERE run_date = @runDate
-      LIMIT 1
-    `,
-    params: { runDate: latestDate },
-    location: 'US',
-  });
-
-  if (existingRows.length) {
-    const existing = existingRows[0] as { run_date: string; gcs_path: string };
-    return NextResponse.json({
-      status: 'exists',
-      runId: existing.run_date,
-      gcsPath: existing.gcs_path,
-    });
-  }
-
-  // 3. Fetch all audit rows for the latest date
-  const [auditRows] = await bq.query({
-    query: `
-      SELECT audit_id, domain, report_gcs_path, audit_date
-      FROM ${AUDIT_TABLE}
-      WHERE CAST(audit_date AS STRING) = @latestDate
-        AND report_gcs_path IS NOT NULL
-    `,
-    params: { latestDate },
-    location: 'US',
-  });
-
-  if (!auditRows.length) {
-    return NextResponse.json(
-      { error: `No audit rows with GCS reports found for date ${latestDate}` },
-      { status: 404 }
-    );
-  }
-
-  // 4. Download each audit's raw JSON from GCS
-  const storage = getStorageClient();
-  let bucket = '';
-
-  const auditInputs = await Promise.all(
-    (auditRows as AuditRow[]).map(async (row) => {
-      const gcsUri = row.report_gcs_path!;
-      const parsed = parseGcsUri(gcsUri);
-      if (!parsed) throw new Error(`Invalid GCS URI: ${gcsUri}`);
-
-      if (!bucket) bucket = parsed.bucket;
-
-      const [contents] = await storage.bucket(parsed.bucket).file(parsed.path).download();
-      const rawJson = JSON.parse(contents.toString('utf-8')) as RawAuditJson;
-
-      return {
-        auditId: row.audit_id,
-        domain: row.domain,
-        rawJson,
-      };
-    })
-  );
-
-  if (!bucket) {
-    return NextResponse.json({ error: 'Could not determine GCS bucket' }, { status: 500 });
-  }
-
   try {
+    const bq = getBigQueryClient();
+    const storage = getStorageClient();
+
+    // Ensure the combined runs table exists
+    await bq.query({
+      query: `
+        CREATE TABLE IF NOT EXISTS ${COMBINED_RUNS_TABLE} (
+          run_date STRING NOT NULL,
+          gcs_path STRING,
+          created_at TIMESTAMP
+        )
+      `,
+      location: 'US',
+    });
+
+    // 1. Find the most recent audit_date across all domains
+    const [dateRows] = await bq.query({
+      query: `
+        SELECT MAX(CAST(audit_date AS STRING)) AS latest_date
+        FROM ${AUDIT_TABLE}
+      `,
+      location: 'US',
+    });
+
+    const latestDate = (dateRows[0] as { latest_date: string | null })?.latest_date;
+    if (!latestDate) {
+      return NextResponse.json({ error: 'No audits found in BigQuery' }, { status: 404 });
+    }
+
+    // 2. Idempotency: check if we already ran for this date
+    const [existingRows] = await bq.query({
+      query: `
+        SELECT run_date, gcs_path
+        FROM ${COMBINED_RUNS_TABLE}
+        WHERE run_date = @runDate
+        LIMIT 1
+      `,
+      params: { runDate: latestDate },
+      location: 'US',
+    });
+
+    if (existingRows.length) {
+      const existing = existingRows[0] as { run_date: string; gcs_path: string };
+      return NextResponse.json({
+        status: 'exists',
+        runId: existing.run_date,
+        gcsPath: existing.gcs_path,
+      });
+    }
+
+    // 3. Fetch all audit rows for the latest date
+    const [auditRows] = await bq.query({
+      query: `
+        SELECT audit_id, domain, report_gcs_path, audit_date
+        FROM ${AUDIT_TABLE}
+        WHERE CAST(audit_date AS STRING) = @latestDate
+          AND report_gcs_path IS NOT NULL
+      `,
+      params: { latestDate },
+      location: 'US',
+    });
+
+    if (!auditRows.length) {
+      return NextResponse.json(
+        { error: `No audit rows with GCS reports found for date ${latestDate}` },
+        { status: 404 }
+      );
+    }
+
+    // 4. Download each audit's raw JSON from GCS
+    let bucket = '';
+
+    const auditInputs = await Promise.all(
+      (auditRows as AuditRow[]).map(async (row) => {
+        const gcsUri = row.report_gcs_path!;
+        const parsed = parseGcsUri(gcsUri);
+        if (!parsed) throw new Error(`Invalid GCS URI: ${gcsUri}`);
+
+        if (!bucket) bucket = parsed.bucket;
+
+        const [contents] = await storage.bucket(parsed.bucket).file(parsed.path).download();
+        const rawJson = JSON.parse(contents.toString('utf-8')) as RawAuditJson;
+
+        return {
+          auditId: row.audit_id,
+          domain: row.domain,
+          rawJson,
+        };
+      })
+    );
+
+    if (!bucket) {
+      return NextResponse.json({ error: 'Could not determine GCS bucket' }, { status: 500 });
+    }
+
     // 5. Group issues across all domains
     const issueGroups = groupIssuesAcrossDomains(auditInputs);
     console.log(
@@ -284,10 +284,10 @@ export async function POST() {
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error('[combined-tickets POST] Pipeline failed:', error);
+    console.error('[combined-tickets POST] Failed:', error);
     return NextResponse.json(
       {
-        error: 'Combined ticket creation pipeline failed',
+        error: 'Ticket generation failed',
         details: error instanceof Error ? error.message : String(error),
       },
       { status: 500 }

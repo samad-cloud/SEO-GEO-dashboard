@@ -72,11 +72,24 @@ export function TicketGenerationTab() {
     setGenerateError(null);
     try {
       const res = await fetch('/api/seo/tickets', { method: 'POST' });
-      const json = (await res.json()) as TicketsApiResponse;
-      if (!res.ok) {
-        const err = json as unknown as { error?: string; details?: string };
-        throw new Error(err.details || err.error || 'Unknown error');
+      const text = await res.text();
+
+      // Parse safely — non-JSON responses (e.g. Vercel timeout pages) should not crash the UI
+      let json: TicketsApiResponse & { error?: string; details?: string };
+      try {
+        json = JSON.parse(text) as typeof json;
+      } catch {
+        throw new Error(
+          res.ok
+            ? 'Unexpected server response (not JSON)'
+            : `Server error ${res.status}: ${text.slice(0, 200)}`
+        );
       }
+
+      if (!res.ok) {
+        throw new Error(json.details || json.error || `Server error ${res.status}`);
+      }
+
       // If tickets already exist for this date, reload from GET to get full data
       if (json.status === 'exists') {
         await loadStatus();
