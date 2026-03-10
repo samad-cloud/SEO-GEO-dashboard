@@ -9,7 +9,7 @@ import type {
   TicketCreationResult,
 } from './types';
 
-const CLASSIFIER_BATCH_SIZE = 3; // max concurrent classifier agents
+const CLASSIFIER_BATCH_SIZE = 6; // max concurrent classifier agents
 
 /**
  * Run the full ticket-creation pipeline.

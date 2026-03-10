@@ -267,40 +267,47 @@ export interface PublishResult {
  * Sequential (not parallel) to respect Jira's rate limits.
  * Returns results for both successes and failures.
  */
+const JIRA_PUBLISH_BATCH_SIZE = 3; // max concurrent Jira API calls to avoid rate limits
+
 export async function publishTicketsToJira(
   draftedTickets: DraftedTicket[]
 ): Promise<PublishResult[]> {
   const config = getJiraConfig();
-  const results: PublishResult[] = [];
+  const results: PublishResult[] = new Array(draftedTickets.length);
 
-  for (const ticket of draftedTickets) {
-    try {
-      // Create the Jira issue
-      const { key: issueKey } = await createJiraIssue(ticket, config);
-      const jiraUrl = `${config.baseUrl}/browse/${issueKey}`;
+  for (let i = 0; i < draftedTickets.length; i += JIRA_PUBLISH_BATCH_SIZE) {
+    const batch = draftedTickets.slice(i, i + JIRA_PUBLISH_BATCH_SIZE);
 
-      // Attach CSV if more than 5 URLs affected
-      let attachmentCreated = false;
-      if (ticket.issueGroup.allUrls.length > 5) {
-        await attachCsvToJiraIssue(issueKey, ticket.issueGroup, config);
-        attachmentCreated = true;
-      }
+    const batchResults = await Promise.allSettled(
+      batch.map(async (ticket): Promise<PublishResult> => {
+        const { key: issueKey } = await createJiraIssue(ticket, config);
+        const jiraUrl = `${config.baseUrl}/browse/${issueKey}`;
 
-      results.push({
-        success: true,
-        ticket: {
-          issueKey,
-          jiraUrl,
-          issueType: ticket.issueGroup.issue_type,
-          team: ticket.team,
-          attachmentCreated,
-        },
-      });
-    } catch (error) {
-      results.push({
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-      });
+        let attachmentCreated = false;
+        if (ticket.issueGroup.allUrls.length > 5) {
+          await attachCsvToJiraIssue(issueKey, ticket.issueGroup, config);
+          attachmentCreated = true;
+        }
+
+        return {
+          success: true,
+          ticket: {
+            issueKey,
+            jiraUrl,
+            issueType: ticket.issueGroup.issue_type,
+            team: ticket.team,
+            attachmentCreated,
+          },
+        };
+      })
+    );
+
+    for (let j = 0; j < batchResults.length; j++) {
+      const r = batchResults[j];
+      results[i + j] =
+        r.status === 'fulfilled'
+          ? r.value
+          : { success: false, error: r.reason instanceof Error ? r.reason.message : String(r.reason) };
     }
   }
 
