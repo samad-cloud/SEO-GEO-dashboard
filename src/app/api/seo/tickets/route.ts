@@ -8,6 +8,7 @@
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300; // Vercel Pro/Enterprise max — pipeline can take 5+ min
 
 const GEO_API_BASE = process.env.GEO_API_URL || 'http://localhost:8000';
 const UPSTREAM = `${GEO_API_BASE}/api/seo/tickets`;
