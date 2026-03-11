@@ -1,30 +1,23 @@
-import Link from "next/link";
-import { login } from "./actions";
+import { updatePassword } from "./actions";
 
-export default async function LoginPage({
+export default async function ResetPasswordPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; message?: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
-  const { error, message } = await searchParams;
+  const { error } = await searchParams;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[var(--background)]">
       <div className="w-full max-w-sm space-y-6 p-8 rounded-xl border border-[var(--border)] bg-[var(--card)]">
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-bold text-[var(--foreground)]">
-            Command Center
+            Set new password
           </h1>
           <p className="text-sm text-[var(--muted-foreground)]">
-            Sign in to continue
+            Choose a strong password for your account.
           </p>
         </div>
-
-        {message && (
-          <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-400">
-            {message}
-          </div>
-        )}
 
         {error && (
           <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
@@ -35,54 +28,47 @@ export default async function LoginPage({
         <form className="space-y-4">
           <div className="space-y-2">
             <label
-              htmlFor="email"
-              className="text-sm font-medium text-[var(--muted-foreground)]"
-            >
-              Email
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              required
-              autoComplete="email"
-              className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
-              placeholder="you@example.com"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label
               htmlFor="password"
               className="text-sm font-medium text-[var(--muted-foreground)]"
             >
-              Password
+              New password
             </label>
             <input
               id="password"
               name="password"
               type="password"
               required
-              autoComplete="current-password"
+              minLength={8}
+              autoComplete="new-password"
               className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
-              placeholder="Your password"
+              placeholder="Min. 8 characters"
             />
           </div>
 
-          <div className="flex items-center justify-end">
-            <Link
-              href="/forgot-password"
-              className="text-xs text-[var(--accent)] hover:underline"
+          <div className="space-y-2">
+            <label
+              htmlFor="confirmPassword"
+              className="text-sm font-medium text-[var(--muted-foreground)]"
             >
-              Forgot password?
-            </Link>
+              Confirm password
+            </label>
+            <input
+              id="confirmPassword"
+              name="confirmPassword"
+              type="password"
+              required
+              minLength={8}
+              autoComplete="new-password"
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
+              placeholder="Repeat your password"
+            />
           </div>
 
           <button
-            formAction={login}
+            formAction={updatePassword}
             className="w-full rounded-lg bg-[var(--accent)] px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--card)] transition-colors"
           >
-            Sign in
+            Update password
           </button>
         </form>
       </div>
