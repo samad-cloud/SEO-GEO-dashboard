@@ -1,296 +1,55 @@
+/**
+ * /api/seo/tickets — thin proxy to the GEO backend.
+ *
+ * The ticket generation pipeline (classifier agents, reviewer, Jira publisher)
+ * runs in the GEO FastAPI service which has no serverless timeout constraints.
+ * This route simply forwards the request and streams the response back.
+ */
 import { NextResponse } from 'next/server';
-import { getBigQueryClient, BIGQUERY_PROJECT_ID, BIGQUERY_DATASET, BIGQUERY_TABLE } from '@/lib/bigquery';
-import { getStorageClient, parseGcsUri, fetchJsonFromGcs } from '@/lib/gcs';
-import { groupIssuesAcrossDomains } from '@/lib/agents/ticket-creation/cross-domain-grouper';
-import { runTicketCreationPipeline } from '@/lib/agents/ticket-creation/pipeline';
-import type { RawAuditJson, HistoricalTicket } from '@/lib/agents/ticket-creation/types';
 
 export const dynamic = 'force-dynamic';
-// Cross-domain pipeline can take several minutes (multiple domains × issue groups × 3 parallel)
-export const maxDuration = 300;
 
-const COMBINED_RUNS_TABLE = `\`${BIGQUERY_PROJECT_ID}.${BIGQUERY_DATASET}.seo_combined_ticket_runs\``;
-const AUDIT_TABLE = `\`${BIGQUERY_PROJECT_ID}.${BIGQUERY_DATASET}.${BIGQUERY_TABLE}\``;
+const GEO_API_BASE = process.env.GEO_API_URL || 'http://localhost:8000';
+const UPSTREAM = `${GEO_API_BASE}/api/seo/tickets`;
 
-interface AuditRow {
-  audit_id: string;
-  domain: string;
-  report_gcs_path: string | null;
-  audit_date: { value: string } | string;
-}
-
-interface CombinedRunRow {
-  run_date: string;
-  gcs_path: string | null;
-  created_at: { value: string } | string | null;
-}
-
-interface StoredTicketsJson {
-  tickets?: Array<{ issueKey: string; jiraUrl: string; issueType: string }>;
-}
-
-/**
- * Load ticket records from the last N combined runs (excluding currentRunDate).
- * Used to provide historical context for the reviewer agent's deduplication step.
- */
-async function loadHistoricalTickets(
-  bq: ReturnType<typeof import('@/lib/bigquery').getBigQueryClient>,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  storage: any,
-  excludeDate: string,
-  limit = 5
-): Promise<HistoricalTicket[]> {
+async function proxy(method: 'GET' | 'POST'): Promise<NextResponse> {
   try {
-    const [rows] = await bq.query({
-      query: `
-        SELECT run_date, gcs_path
-        FROM ${COMBINED_RUNS_TABLE}
-        WHERE run_date != @excludeDate
-          AND gcs_path IS NOT NULL
-        ORDER BY run_date DESC
-        LIMIT @limit
-      `,
-      params: { excludeDate, limit },
-      location: 'US',
+    const upstream = await fetch(UPSTREAM, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      // No timeout — the GEO backend manages its own execution time
     });
 
-    const historical: HistoricalTicket[] = [];
+    const body = await upstream.text();
 
-    // Download in parallel (at most `limit` files — small overhead)
-    await Promise.allSettled(
-      (rows as CombinedRunRow[]).map(async (row) => {
-        if (!row.gcs_path) return;
-        try {
-          const parsed = parseGcsUri(row.gcs_path);
-          if (!parsed) return;
-          const [contents] = await storage.bucket(parsed.bucket).file(parsed.path).download();
-          const json = JSON.parse(contents.toString('utf-8')) as StoredTicketsJson;
-          const runDate = row.run_date;
-          for (const t of json.tickets ?? []) {
-            historical.push({
-              issueKey: t.issueKey,
-              jiraUrl: t.jiraUrl,
-              issueType: t.issueType,
-              runDate,
-            });
-          }
-        } catch {
-          // Non-fatal: skip this historical run if its GCS file can't be read
-        }
-      })
-    );
-
-    return historical;
-  } catch {
-    // Non-fatal: if historical load fails, deduplication is simply skipped
-    return [];
-  }
-}
-
-function resolveDate(val: { value: string } | string | null | undefined): string {
-  if (!val) return '';
-  if (typeof val === 'object' && 'value' in val) return val.value;
-  return val;
-}
-
-/**
- * GET /api/seo/tickets
- * Returns results for the most recent combined ticket run, or a not_generated status.
- */
-export async function GET() {
-  const bq = getBigQueryClient();
-
-  // Ensure the combined runs table exists
-  await bq.query({
-    query: `
-      CREATE TABLE IF NOT EXISTS ${COMBINED_RUNS_TABLE} (
-        run_date STRING NOT NULL,
-        gcs_path STRING,
-        created_at TIMESTAMP
-      )
-    `,
-    location: 'US',
-  });
-
-  // Find most recent combined run
-  const [runRows] = await bq.query({
-    query: `
-      SELECT run_date, gcs_path, created_at
-      FROM ${COMBINED_RUNS_TABLE}
-      ORDER BY run_date DESC
-      LIMIT 1
-    `,
-    location: 'US',
-  });
-
-  // Also get the latest audit date for display
-  const [dateRows] = await bq.query({
-    query: `
-      SELECT MAX(CAST(audit_date AS STRING)) AS latest_date
-      FROM ${AUDIT_TABLE}
-    `,
-    location: 'US',
-  });
-  const latestDate = (dateRows[0] as { latest_date: string | null })?.latest_date ?? null;
-
-  if (!runRows.length) {
-    return NextResponse.json({ status: 'not_generated', latestDate });
-  }
-
-  const runRow = runRows[0] as CombinedRunRow;
-  const gcsPath = runRow.gcs_path;
-
-  if (!gcsPath) {
-    return NextResponse.json({ status: 'not_generated', latestDate });
-  }
-
-  try {
-    const ticketsData = await fetchJsonFromGcs<Record<string, unknown>>(gcsPath);
-    return NextResponse.json({
-      status: 'complete',
-      runDate: runRow.run_date,
-      gcsPath,
-      ...ticketsData,
-    });
-  } catch (error) {
-    console.error('[tickets GET] Failed to load GCS data:', error);
-    return NextResponse.json({ status: 'not_generated', latestDate });
-  }
-}
-
-/**
- * POST /api/seo/tickets
- * Runs the combined cross-domain ticket creation pipeline for the latest audit date.
- */
-export async function POST() {
-  try {
-    const bq = getBigQueryClient();
-    const storage = getStorageClient();
-
-    // Ensure the combined runs table exists
-    await bq.query({
-      query: `
-        CREATE TABLE IF NOT EXISTS ${COMBINED_RUNS_TABLE} (
-          run_date STRING NOT NULL,
-          gcs_path STRING,
-          created_at TIMESTAMP
-        )
-      `,
-      location: 'US',
-    });
-
-    // 1. Find the most recent audit_date across all domains
-    const [dateRows] = await bq.query({
-      query: `
-        SELECT MAX(CAST(audit_date AS STRING)) AS latest_date
-        FROM ${AUDIT_TABLE}
-      `,
-      location: 'US',
-    });
-
-    const latestDate = (dateRows[0] as { latest_date: string | null })?.latest_date;
-    if (!latestDate) {
-      return NextResponse.json({ error: 'No audits found in BigQuery' }, { status: 404 });
-    }
-
-    // 2. Idempotency: check if we already ran for this date
-    const [existingRows] = await bq.query({
-      query: `
-        SELECT run_date, gcs_path
-        FROM ${COMBINED_RUNS_TABLE}
-        WHERE run_date = @runDate
-        LIMIT 1
-      `,
-      params: { runDate: latestDate },
-      location: 'US',
-    });
-
-    if (existingRows.length) {
-      const existing = existingRows[0] as { run_date: string; gcs_path: string };
-      return NextResponse.json({
-        status: 'exists',
-        runId: existing.run_date,
-        gcsPath: existing.gcs_path,
-      });
-    }
-
-    // 3. Fetch all audit rows for the latest date
-    const [auditRows] = await bq.query({
-      query: `
-        SELECT audit_id, domain, report_gcs_path, audit_date
-        FROM ${AUDIT_TABLE}
-        WHERE CAST(audit_date AS STRING) = @latestDate
-          AND report_gcs_path IS NOT NULL
-      `,
-      params: { latestDate },
-      location: 'US',
-    });
-
-    if (!auditRows.length) {
+    // Try to parse as JSON; fall back to raw text on parse error
+    let json: unknown;
+    try {
+      json = JSON.parse(body);
+    } catch {
       return NextResponse.json(
-        { error: `No audit rows with GCS reports found for date ${latestDate}` },
-        { status: 404 }
+        { error: 'Invalid response from backend', raw: body.slice(0, 500) },
+        { status: 502 }
       );
     }
 
-    // 4. Download each audit's raw JSON from GCS
-    let bucket = '';
-
-    const auditInputs = await Promise.all(
-      (auditRows as AuditRow[]).map(async (row) => {
-        const gcsUri = row.report_gcs_path!;
-        const parsed = parseGcsUri(gcsUri);
-        if (!parsed) throw new Error(`Invalid GCS URI: ${gcsUri}`);
-
-        if (!bucket) bucket = parsed.bucket;
-
-        const [contents] = await storage.bucket(parsed.bucket).file(parsed.path).download();
-        const rawJson = JSON.parse(contents.toString('utf-8')) as RawAuditJson;
-
-        return {
-          auditId: row.audit_id,
-          domain: row.domain,
-          rawJson,
-        };
-      })
-    );
-
-    if (!bucket) {
-      return NextResponse.json({ error: 'Could not determine GCS bucket' }, { status: 500 });
-    }
-
-    // 5. Group issues across all domains
-    const issueGroups = groupIssuesAcrossDomains(auditInputs);
-    console.log(
-      `[combined-tickets] Grouped ${issueGroups.length} cross-domain issue types from ${auditInputs.length} domains`
-    );
-
-    // 5b. Load historical tickets for deduplication (non-blocking on failure)
-    const historicalTickets = await loadHistoricalTickets(bq, storage, latestDate);
-    console.log(`[combined-tickets] Loaded ${historicalTickets.length} historical tickets for dedup`);
-
-    // 6. Run the pipeline
-    const result = await runTicketCreationPipeline(latestDate, issueGroups, bucket, historicalTickets);
-
-    // 7. Insert into seo_combined_ticket_runs
-    await bq.query({
-      query: `
-        INSERT INTO ${COMBINED_RUNS_TABLE} (run_date, gcs_path, created_at)
-        VALUES (@runDate, @gcsPath, CURRENT_TIMESTAMP())
-      `,
-      params: { runDate: latestDate, gcsPath: result.gcsPath },
-      location: 'US',
-    });
-
-    return NextResponse.json(result);
+    return NextResponse.json(json, { status: upstream.status });
   } catch (error) {
-    console.error('[combined-tickets POST] Failed:', error);
+    console.error(`[seo/tickets proxy] ${method} failed:`, error);
     return NextResponse.json(
       {
-        error: 'Ticket generation failed',
+        error: 'Failed to reach ticket generation service',
         details: error instanceof Error ? error.message : String(error),
       },
-      { status: 500 }
+      { status: 502 }
     );
   }
+}
+
+export async function GET() {
+  return proxy('GET');
+}
+
+export async function POST() {
+  return proxy('POST');
 }

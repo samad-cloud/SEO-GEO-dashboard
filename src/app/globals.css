@@ -1,7 +1,39 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* ── Light mode (default) ───────────────────────────────────────────────── */
 :root {
+  --background: #ffffff;
+  --foreground: #09090b;
+  --card: #f4f4f5;
+  --card-hover: #e4e4e7;
+  --border: #e4e4e7;
+  --muted: #71717a;
+  --muted-foreground: #52525b;
+  --accent: #3b82f6;
+  --accent-foreground: #ffffff;
+  --success: #16a34a;
+  --warning: #d97706;
+  --error: #dc2626;
+  --info: #7c3aed;
+
+  /* Tailwind v4 zinc override — reverse the scale so light mode uses
+     light backgrounds and dark text via the same zinc-* utility classes */
+  --color-zinc-50:  oklch(0.141 0.005 285.823);
+  --color-zinc-100: oklch(0.21  0.006 285.885);
+  --color-zinc-200: oklch(0.274 0.006 286.033);
+  --color-zinc-300: oklch(0.37  0.013 285.805);
+  --color-zinc-400: oklch(0.442 0.017 285.786);
+  --color-zinc-500: oklch(0.552 0.016 285.938);
+  --color-zinc-600: oklch(0.705 0.015 286.067);
+  --color-zinc-700: oklch(0.871 0.006 286.286);
+  --color-zinc-800: oklch(0.92  0.004 286.32);
+  --color-zinc-900: oklch(0.967 0.001 286.375);
+  --color-zinc-950: oklch(0.985 0.002 247.839);
+}
+
+/* ── Dark mode ──────────────────────────────────────────────────────────── */
+.dark {
   --background: #0a0a0a;
   --foreground: #fafafa;
   --card: #141414;
@@ -15,6 +47,19 @@
   --warning: #f59e0b;
   --error: #ef4444;
   --info: #8b5cf6;
+
+  /* Restore Tailwind v4 zinc defaults */
+  --color-zinc-50:  oklch(0.985 0.002 247.839);
+  --color-zinc-100: oklch(0.967 0.001 286.375);
+  --color-zinc-200: oklch(0.92  0.004 286.32);
+  --color-zinc-300: oklch(0.871 0.006 286.286);
+  --color-zinc-400: oklch(0.705 0.015 286.067);
+  --color-zinc-500: oklch(0.552 0.016 285.938);
+  --color-zinc-600: oklch(0.442 0.017 285.786);
+  --color-zinc-700: oklch(0.37  0.013 285.805);
+  --color-zinc-800: oklch(0.274 0.006 286.033);
+  --color-zinc-900: oklch(0.21  0.006 285.885);
+  --color-zinc-950: oklch(0.141 0.005 285.823);
 }
 
 @theme inline {
@@ -34,9 +79,10 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* ── Scrollbars ─────────────────────────────────────────────────────────── */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #27272a #0a0a0a;
+  scrollbar-color: var(--border) var(--background);
 }
 
 *::-webkit-scrollbar {
@@ -45,25 +91,27 @@
 }
 
 *::-webkit-scrollbar-track {
-  background: #0a0a0a;
+  background: var(--background);
 }
 
 *::-webkit-scrollbar-thumb {
-  background-color: #27272a;
+  background-color: var(--border);
   border-radius: 4px;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background-color: #3f3f46;
+  background-color: var(--muted);
 }
 
+/* ── Base ───────────────────────────────────────────────────────────────── */
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-/* Custom component styles */
+/* ── Custom component styles ────────────────────────────────────────────── */
 .health-score-ring {
   stroke-dasharray: 283;
   stroke-dashoffset: 283;
@@ -95,7 +143,7 @@ body {
 
 .card-hover:hover {
   background-color: var(--card-hover);
-  border-color: #3f3f46;
+  border-color: var(--muted);
 }
 
 /* Status indicators */

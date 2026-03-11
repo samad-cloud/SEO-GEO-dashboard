@@ -1,7 +1,8 @@
 'use client';
 
-import { Settings, Bell, ChevronDown, LogOut } from 'lucide-react';
+import { Settings, Bell, ChevronDown, LogOut, Sun, Moon } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
+import { useTheme } from '@/context/ThemeContext';
 
 interface HeaderProps {
   selectedDomain: string;
@@ -24,6 +25,7 @@ const domains = [
 export function Header({ selectedDomain, onDomainChange }: HeaderProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const { theme, toggleTheme } = useTheme();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -82,6 +84,19 @@ export function Header({ selectedDomain, onDomainChange }: HeaderProps) {
             </div>
           )}
         </div>
+
+        {/* Theme toggle */}
+        <button
+          onClick={toggleTheme}
+          className="p-2 rounded-lg hover:bg-zinc-800 transition-colors"
+          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {theme === 'dark' ? (
+            <Sun className="w-5 h-5 text-zinc-400" />
+          ) : (
+            <Moon className="w-5 h-5 text-zinc-400" />
+          )}
+        </button>
 
         {/* Settings */}
         <button className="p-2 rounded-lg hover:bg-zinc-800 transition-colors">
