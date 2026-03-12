@@ -3,19 +3,21 @@ import { updatePassword } from "./actions";
 export default async function ResetPasswordPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; invited?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, invited } = await searchParams;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[var(--background)]">
       <div className="w-full max-w-sm space-y-6 p-8 rounded-xl border border-[var(--border)] bg-[var(--card)]">
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-bold text-[var(--foreground)]">
-            Set new password
+            {invited ? "Set your password" : "Reset password"}
           </h1>
           <p className="text-sm text-[var(--muted-foreground)]">
-            Choose a strong password for your account.
+            {invited
+              ? "Welcome! Please set a password to complete your account setup."
+              : "Enter and confirm your new password."}
           </p>
         </div>
 
