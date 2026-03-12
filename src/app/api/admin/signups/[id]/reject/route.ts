@@ -17,6 +17,20 @@ export async function POST(
 
   const admin = createAdminClient();
 
+  const { data: signupRequest, error: fetchError } = await admin
+    .from("signup_requests")
+    .select("status")
+    .eq("id", id)
+    .single();
+
+  if (fetchError || !signupRequest) {
+    return NextResponse.json({ error: "Signup request not found" }, { status: 404 });
+  }
+
+  if (signupRequest.status !== "pending") {
+    return NextResponse.json({ error: "Request is not pending" }, { status: 409 });
+  }
+
   const { error } = await admin
     .from("signup_requests")
     .update({
@@ -24,8 +38,7 @@ export async function POST(
       reviewed_at: new Date().toISOString(),
       reviewed_by: user.email,
     })
-    .eq("id", id)
-    .eq("status", "pending"); // Only reject pending requests
+    .eq("id", id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
