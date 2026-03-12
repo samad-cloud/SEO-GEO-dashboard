@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { DashboardShell } from "@/components/ui/DashboardShell";
+import { isAdminUser } from "@/lib/auth/is-admin";
 
 export default async function DashboardLayout({
   children,
@@ -11,7 +12,7 @@ export default async function DashboardLayout({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isAdmin = user?.email === "admin@printerpix.com";
+  const isAdmin = isAdminUser(user?.email);
 
   return <DashboardShell isAdmin={isAdmin}>{children}</DashboardShell>;
 }
