@@ -18,6 +18,7 @@ export function NotificationsPanel({ isAdmin }: NotificationsPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [requests, setRequests] = useState<SignupRequest[]>([]);
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const fetchRequests = useCallback(async () => {
@@ -49,8 +50,13 @@ export function NotificationsPanel({ isAdmin }: NotificationsPanelProps) {
 
   async function handleAction(id: string, action: "approve" | "reject") {
     setLoadingId(id);
+    setActionError(null);
     try {
-      await fetch(`/api/admin/signups/${id}/${action}`, { method: "POST" });
+      const res = await fetch(`/api/admin/signups/${id}/${action}`, { method: "POST" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setActionError(data.error ?? `Failed to ${action} request.`);
+      }
       await fetchRequests();
     } finally {
       setLoadingId(null);
@@ -88,6 +94,12 @@ export function NotificationsPanel({ isAdmin }: NotificationsPanelProps) {
               Access Requests
             </h3>
           </div>
+
+          {actionError && (
+            <p className="px-4 py-2 text-xs text-red-400 border-b border-zinc-700">
+              {actionError}
+            </p>
+          )}
 
           {requests.length === 0 ? (
             <p className="px-4 py-6 text-sm text-center text-zinc-500">
