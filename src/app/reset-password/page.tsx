@@ -3,9 +3,9 @@ import { updatePassword } from "./actions";
 export default async function ResetPasswordPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; invited?: string }>;
+  searchParams: Promise<{ error?: string; invited?: string; next?: string }>;
 }) {
-  const { error, invited } = await searchParams;
+  const { error, invited, next } = await searchParams;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[var(--background)]">
@@ -28,6 +28,7 @@ export default async function ResetPasswordPage({
         )}
 
         <form className="space-y-4">
+          <input type="hidden" name="next" value={next ?? "/seo"} />
           <div className="space-y-2">
             <label
               htmlFor="password"

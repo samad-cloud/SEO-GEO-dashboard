@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 export async function updatePassword(formData: FormData) {
   const password = formData.get("password") as string;
   const confirm = formData.get("confirmPassword") as string;
+  const next = (formData.get("next") as string) || "/seo";
 
   if (!password || password.length < 8) {
     redirect(
@@ -29,5 +30,5 @@ export async function updatePassword(formData: FormData) {
     );
   }
 
-  redirect("/login?message=" + encodeURIComponent("Password updated. Please sign in."));
+  redirect(next);
 }
