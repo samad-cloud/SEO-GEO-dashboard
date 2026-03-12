@@ -24,9 +24,18 @@ export async function GET(request: NextRequest) {
 
   // Handle token_hash exchange (invite emails)
   if (tokenHash && type) {
+    const validTypes = ["invite", "email", "recovery", "magiclink"] as const;
+    type ValidOtpType = typeof validTypes[number];
+
+    if (!validTypes.includes(type as ValidOtpType)) {
+      return NextResponse.redirect(
+        `${origin}/login?error=` + encodeURIComponent("Invalid verification link.")
+      );
+    }
+
     const { error } = await supabase.auth.verifyOtp({
       token_hash: tokenHash,
-      type: type as "invite" | "email" | "recovery" | "magiclink",
+      type: type as ValidOtpType,
     });
     if (!error) {
       // Redirect to password setup so user can set their password
