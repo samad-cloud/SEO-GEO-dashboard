@@ -1,32 +1,42 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-/**
- * GET /auth/callback
- *
- * Exchanges the Supabase auth code (from email links) for a session,
- * then redirects the user to `next` (default: /seo).
- *
- * Used by:
- *  - Password reset emails  → ?next=/reset-password
- *  - Magic link emails      → ?next=/seo (or wherever)
- */
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
+  const tokenHash = searchParams.get("token_hash");
+  const type = searchParams.get("type");
   const next = searchParams.get("next") ?? "/seo";
 
-  if (code) {
-    const supabase = await createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+  const supabase = await createClient();
 
+  // Handle PKCE code exchange (password reset, magic link)
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
       return NextResponse.redirect(`${origin}${next}`);
     }
-
     return NextResponse.redirect(
       `${origin}/login?error=` +
-        encodeURIComponent("Reset link is invalid or has expired. Please request a new one.")
+        encodeURIComponent("Link is invalid or has expired.")
+    );
+  }
+
+  // Handle token_hash exchange (invite emails)
+  if (tokenHash && type) {
+    const { error } = await supabase.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: type as "invite" | "email" | "recovery" | "magiclink",
+    });
+    if (!error) {
+      // Redirect to password setup so user can set their password
+      return NextResponse.redirect(
+        `${origin}/reset-password?invited=true&next=${encodeURIComponent(next)}`
+      );
+    }
+    return NextResponse.redirect(
+      `${origin}/login?error=` +
+        encodeURIComponent("Invite link is invalid or has expired.")
     );
   }
 
