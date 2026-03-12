@@ -37,7 +37,7 @@ export async function POST(
     .update({
       status: "rejected",
       reviewed_at: new Date().toISOString(),
-      reviewed_by: user.email,
+      reviewed_by: user.id,
     })
     .eq("id", id);
 

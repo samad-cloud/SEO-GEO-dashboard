@@ -33,7 +33,21 @@ export async function POST(
     return NextResponse.json({ error: "Request is not pending" }, { status: 409 });
   }
 
-  // Send invite email via Supabase
+  // 1. Mark as approved first
+  const { error: updateError } = await admin
+    .from("signup_requests")
+    .update({
+      status: "approved",
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: user.id,
+    })
+    .eq("id", id);
+
+  if (updateError) {
+    return NextResponse.json({ error: updateError.message }, { status: 500 });
+  }
+
+  // 2. Send invite email
   const { error: inviteError } = await admin.auth.admin.inviteUserByEmail(
     signupRequest.email,
     {
@@ -43,20 +57,6 @@ export async function POST(
 
   if (inviteError) {
     return NextResponse.json({ error: inviteError.message }, { status: 500 });
-  }
-
-  // Mark as approved
-  const { error: updateError } = await admin
-    .from("signup_requests")
-    .update({
-      status: "approved",
-      reviewed_at: new Date().toISOString(),
-      reviewed_by: user.email,
-    })
-    .eq("id", id);
-
-  if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });
