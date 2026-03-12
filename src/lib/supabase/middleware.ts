@@ -37,6 +37,9 @@ export async function updateSession(request: NextRequest) {
   // Allow public routes
   const isPublicRoute =
     request.nextUrl.pathname === "/login" ||
+    request.nextUrl.pathname === "/signup" ||
+    request.nextUrl.pathname === "/forgot-password" ||
+    request.nextUrl.pathname === "/reset-password" ||
     request.nextUrl.pathname.startsWith("/auth/");
 
   if (!user && !isPublicRoute) {

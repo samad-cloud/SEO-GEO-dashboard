@@ -84,6 +84,13 @@ export default async function LoginPage({
           >
             Sign in
           </button>
+
+          <p className="text-center text-sm text-[var(--muted-foreground)]">
+            Don&apos;t have access?{" "}
+            <Link href="/signup" className="text-[var(--accent)] hover:underline">
+              Request access
+            </Link>
+          </p>
         </form>
       </div>
     </div>
