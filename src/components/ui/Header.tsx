@@ -1,12 +1,14 @@
 'use client';
 
-import { Settings, Bell, ChevronDown, LogOut, Sun, Moon } from 'lucide-react';
+import { Settings, ChevronDown, LogOut, Sun, Moon } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useTheme } from '@/context/ThemeContext';
+import { NotificationsPanel } from "@/components/ui/NotificationsPanel";
 
 interface HeaderProps {
   selectedDomain: string;
   onDomainChange: (domain: string) => void;
+  isAdmin: boolean;
 }
 
 const domains = [
@@ -22,7 +24,7 @@ const domains = [
   'printerpix.ae',
 ];
 
-export function Header({ selectedDomain, onDomainChange }: HeaderProps) {
+export function Header({ selectedDomain, onDomainChange, isAdmin }: HeaderProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { theme, toggleTheme } = useTheme();
@@ -104,12 +106,7 @@ export function Header({ selectedDomain, onDomainChange }: HeaderProps) {
         </button>
 
         {/* Notifications */}
-        <button className="relative p-2 rounded-lg hover:bg-zinc-800 transition-colors">
-          <Bell className="w-5 h-5 text-zinc-400" />
-          <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
-            3
-          </span>
-        </button>
+        <NotificationsPanel isAdmin={isAdmin} />
 
         {/* Sign Out */}
         <form action="/auth/signout" method="POST">
