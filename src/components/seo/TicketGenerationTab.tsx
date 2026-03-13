@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Ticket,
   Loader2,
@@ -28,7 +28,7 @@ interface TicketFailure {
 }
 
 interface TicketsApiResponse {
-  status: 'not_generated' | 'complete' | 'exists';
+  status: 'not_generated' | 'complete' | 'exists' | 'running';
   latestDate?: string;
   runDate?: string;
   runId?: string;
@@ -49,6 +49,34 @@ export function TicketGenerationTab() {
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [activeTeam, setActiveTeam] = useState<TeamFilter>('all');
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopPolling = useCallback(() => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+  }, []);
+
+  const startPolling = useCallback(() => {
+    if (pollingRef.current) return;
+    pollingRef.current = setInterval(async () => {
+      try {
+        const res = await fetch('/api/seo/tickets');
+        const json = (await res.json()) as TicketsApiResponse;
+        if (json.status === 'complete' || json.status === 'exists') {
+          stopPolling();
+          setData(json);
+          setGenerating(false);
+        }
+      } catch {
+        // keep polling
+      }
+    }, 6000);
+  }, [stopPolling]);
+
+  // Clean up interval on unmount
+  useEffect(() => () => stopPolling(), [stopPolling]);
 
   const loadStatus = useCallback(async () => {
     setLoading(true);
@@ -56,12 +84,16 @@ export function TicketGenerationTab() {
       const res = await fetch('/api/seo/tickets');
       const json = (await res.json()) as TicketsApiResponse;
       setData(json);
+      if (json.status === 'running') {
+        setGenerating(true);
+        startPolling();
+      }
     } catch {
       // Silently fail
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [startPolling]);
 
   useEffect(() => {
     loadStatus();
@@ -90,15 +122,19 @@ export function TicketGenerationTab() {
         throw new Error(json.details || json.error || `Server error ${res.status}`);
       }
 
-      // If tickets already exist for this date, reload from GET to get full data
+      if (json.status === 'running') {
+        // Pipeline started in background — poll GET until complete
+        startPolling();
+        return; // keep generating=true
+      }
       if (json.status === 'exists') {
         await loadStatus();
       } else {
         setData(json);
       }
+      setGenerating(false);
     } catch (err) {
       setGenerateError(err instanceof Error ? err.message : String(err));
-    } finally {
       setGenerating(false);
     }
   }
