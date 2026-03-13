@@ -58,13 +58,14 @@ export function TicketGenerationTab() {
     }
   }, []);
 
-  const startPolling = useCallback(() => {
+  const startPolling = useCallback((expectedRunId?: string) => {
     if (pollingRef.current) return;
     pollingRef.current = setInterval(async () => {
       try {
         const res = await fetch('/api/seo/tickets');
         const json = (await res.json()) as TicketsApiResponse;
-        if (json.status === 'complete' || json.status === 'exists') {
+        const isExpectedRun = !expectedRunId || json.runId === expectedRunId || json.runDate === expectedRunId;
+        if ((json.status === 'complete' || json.status === 'exists') && isExpectedRun) {
           stopPolling();
           setData(json);
           setGenerating(false);
@@ -123,8 +124,8 @@ export function TicketGenerationTab() {
       }
 
       if (json.status === 'running') {
-        // Pipeline started in background — poll GET until complete
-        startPolling();
+        // Pipeline started in background — poll GET until the specific run completes
+        startPolling(json.runId);
         return; // keep generating=true
       }
       if (json.status === 'exists') {
