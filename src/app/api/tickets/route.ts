@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getTicketsByAuditId, getTicketsByRunId } from '@/lib/supabase/tickets';
+import { getAllTickets, getTicketsByAuditId, getTicketsByRunId } from '@/lib/supabase/tickets';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,17 +8,12 @@ export async function GET(request: NextRequest) {
   const auditId = searchParams.get('auditId');
   const runId = searchParams.get('runId');
 
-  if (!auditId && !runId) {
-    return NextResponse.json(
-      { error: 'Provide auditId or runId query param' },
-      { status: 400 }
-    );
-  }
-
   try {
     const tickets = auditId
       ? await getTicketsByAuditId(auditId)
-      : await getTicketsByRunId(runId!);
+      : runId
+      ? await getTicketsByRunId(runId)
+      : await getAllTickets();
 
     return NextResponse.json({ tickets });
   } catch (error) {

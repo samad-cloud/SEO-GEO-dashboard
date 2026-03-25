@@ -105,6 +105,17 @@ export async function saveTicketsToSupabase(
   return (data ?? []) as TicketRow[];
 }
 
+export async function getAllTickets(): Promise<TicketRow[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from('tickets')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) throw new Error(`Failed to fetch tickets: ${error.message}`);
+  return (data ?? []) as TicketRow[];
+}
+
 export async function getTicketsByAuditId(auditId: string): Promise<TicketRow[]> {
   const supabase = createAdminClient();
   const { data, error } = await supabase

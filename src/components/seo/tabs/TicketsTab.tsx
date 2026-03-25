@@ -26,10 +26,12 @@ export function TicketsTab({ auditId, existingTicketsGcsPath: _existingTicketsGc
   const [activeTeam, setActiveTeam] = useState<TeamFilter>('all');
 
   const loadTickets = useCallback(async () => {
-    if (!auditId) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/tickets?auditId=${encodeURIComponent(auditId)}`);
+      const url = auditId
+        ? `/api/tickets?auditId=${encodeURIComponent(auditId)}`
+        : '/api/tickets';
+      const res = await fetch(url);
       const data = await res.json();
       setTickets(data.tickets ?? []);
     } catch {
@@ -40,8 +42,8 @@ export function TicketsTab({ auditId, existingTicketsGcsPath: _existingTicketsGc
   }, [auditId]);
 
   useEffect(() => {
-    if (auditId) loadTickets();
-  }, [auditId, loadTickets]);
+    loadTickets();
+  }, [loadTickets]);
 
   async function handleGenerate() {
     if (!auditId) return;
@@ -94,14 +96,6 @@ export function TicketsTab({ auditId, existingTicketsGcsPath: _existingTicketsGc
       await handlePublishOne(ticket.id);
     }
     setPublishAllLoading(false);
-  }
-
-  if (!auditId) {
-    return (
-      <div className="flex items-center justify-center h-40 text-zinc-500 text-sm">
-        Select an audit to manage tickets.
-      </div>
-    );
   }
 
   const draftTickets = tickets.filter((t) => t.status === 'draft');
