@@ -84,8 +84,15 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
     // 4. Group issues for this single domain
     const issueGroups = groupIssuesForTickets(rawJson);
 
-    // 5. Run the pipeline with auditId as the runId
-    const result = await runTicketCreationPipeline(auditId, issueGroups, parsed.bucket);
+    // 5. Run the pipeline — domain + auditDate passed for Supabase storage
+    const auditDateStr =
+      typeof row.audit_date === 'string' ? row.audit_date : (row.audit_date as { value: string })?.value ?? null;
+
+    const result = await runTicketCreationPipeline(auditId, issueGroups, parsed.bucket, [], {
+      auditId,
+      domain: row.domain,
+      auditDate: auditDateStr,
+    });
 
     // 6. Store GCS path back in BigQuery for idempotency
     await bq.query({

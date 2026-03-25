@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getBigQueryClient, getTableName } from '@/lib/bigquery';
-import { getStorageClient, parseGcsUri } from '@/lib/gcs';
+import { getTicketsByAuditId } from '@/lib/supabase/tickets';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 120;
+export const maxDuration = 30;
 
 interface RouteParams {
   params: Promise<{ auditId: string }>;
@@ -16,28 +15,30 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: 'Audit ID is required' }, { status: 400 });
   }
 
-  const bq = getBigQueryClient();
-  const tableName = getTableName();
+  try {
+    const tickets = await getTicketsByAuditId(auditId);
 
-  const [rows] = await bq.query({
-    query: `SELECT jira_tickets_gcs_path FROM \`${tableName}\` WHERE audit_id = @auditId LIMIT 1`,
-    params: { auditId },
-    location: 'US',
-  });
+    if (tickets.length === 0) {
+      return NextResponse.json({ status: 'not_generated' });
+    }
 
-  if (!rows.length || !rows[0].jira_tickets_gcs_path) {
-    return NextResponse.json({ status: 'not_generated' });
+    const published = tickets.filter((t) => t.status === 'published');
+    const drafts = tickets.filter((t) => t.status === 'draft');
+
+    return NextResponse.json({
+      status: 'complete',
+      auditId,
+      ticketsDrafted: tickets.length,
+      ticketsPublished: published.length,
+      ticketsDraft: drafts.length,
+      createdAt: tickets[0].created_at,
+      tickets,
+    });
+  } catch (error) {
+    console.error('[tickets/results]', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch tickets', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
   }
-
-  const gcsUri = rows[0].jira_tickets_gcs_path as string;
-  const parsed = parseGcsUri(gcsUri);
-  if (!parsed) {
-    return NextResponse.json({ error: 'Invalid GCS path' }, { status: 500 });
-  }
-
-  const storage = getStorageClient();
-  const [contents] = await storage.bucket(parsed.bucket).file(parsed.path).download();
-  const ticketsData = JSON.parse(contents.toString('utf-8'));
-
-  return NextResponse.json({ status: 'complete', ...ticketsData });
 }

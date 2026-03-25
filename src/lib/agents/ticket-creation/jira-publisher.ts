@@ -256,6 +256,31 @@ async function attachCsvToJiraIssue(
 
 // ── Public API ──────────────────────────────────────────────────────────────
 
+export interface SinglePublishResult {
+  issueKey: string;
+  jiraUrl: string;
+  attachmentCreated: boolean;
+}
+
+/**
+ * Publish a single drafted ticket to Jira (used by the manual "Publish to Jira" button).
+ */
+export async function publishSingleTicketToJira(
+  ticket: DraftedTicket
+): Promise<SinglePublishResult> {
+  const config = getJiraConfig();
+  const { key: issueKey } = await createJiraIssue(ticket, config);
+  const jiraUrl = `${config.baseUrl}/browse/${issueKey}`;
+
+  let attachmentCreated = false;
+  if (ticket.issueGroup.allUrls.length > 5) {
+    await attachCsvToJiraIssue(issueKey, ticket.issueGroup, config);
+    attachmentCreated = true;
+  }
+
+  return { issueKey, jiraUrl, attachmentCreated };
+}
+
 export interface PublishResult {
   success: boolean;
   ticket?: JiraTicketResult;

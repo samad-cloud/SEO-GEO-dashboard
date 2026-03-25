@@ -1,7 +1,7 @@
 import { getStorageClient } from '@/lib/gcs';
 import { runClassifierAgent } from './classifier-agent';
 import { runReviewerAgent } from './reviewer-agent';
-import { publishTicketsToJira } from './jira-publisher';
+import { saveTicketsToSupabase } from '@/lib/supabase/tickets';
 import type {
   IssueGroupForTicket,
   DraftedTicket,
@@ -9,21 +9,24 @@ import type {
   TicketCreationResult,
 } from './types';
 
-const CLASSIFIER_BATCH_SIZE = 6; // max concurrent classifier agents
+const CLASSIFIER_BATCH_SIZE = 6;
+
+interface PipelineContext {
+  auditId?: string;
+  domain?: string;
+  auditDate?: string;
+}
 
 /**
- * Run the full ticket-creation pipeline.
- *
- * @param runId            - Identifier for this run (date string for combined runs)
- * @param issueGroups      - Pre-grouped issues (cross-domain)
- * @param bucket           - GCS bucket name
- * @param historicalTickets - Tickets from past runs used for deduplication
+ * Run the ticket-creation pipeline (Stages 1 + 2 only).
+ * Stage 3 (Jira publish) is now a manual action via the "Publish to Jira" button.
  */
 export async function runTicketCreationPipeline(
   runId: string,
   issueGroups: IssueGroupForTicket[],
   bucket: string,
-  historicalTickets: HistoricalTicket[] = []
+  historicalTickets: HistoricalTicket[] = [],
+  context: PipelineContext = {}
 ): Promise<TicketCreationResult> {
   console.log(
     `[ticket-pipeline] Starting pipeline for run "${runId}" with ${issueGroups.length} issue groups`
@@ -54,12 +57,8 @@ export async function runTicketCreationPipeline(
       } else {
         const issueType = batch[j].issue_type;
         const errorMsg =
-          result.reason instanceof Error
-            ? result.reason.message
-            : String(result.reason);
-        console.error(
-          `[ticket-pipeline] Classifier failed for "${issueType}": ${errorMsg}`
-        );
+          result.reason instanceof Error ? result.reason.message : String(result.reason);
+        console.error(`[ticket-pipeline] Classifier failed for "${issueType}": ${errorMsg}`);
         classifierFailures.push({ issueType, error: errorMsg });
       }
     }
@@ -72,36 +71,42 @@ export async function runTicketCreationPipeline(
 
   // ── Stage 2: Reviewer Agent (risk assessment + deduplication) ────────────
   console.log(
-    `[ticket-pipeline] Running reviewer agent (${historicalTickets.length} historical tickets for dedup)`
+    `[ticket-pipeline] Running reviewer agent (${historicalTickets.length} historical tickets)`
   );
   const reviewedTickets = await runReviewerAgent(draftedTickets, historicalTickets);
   const duplicateCount = reviewedTickets.filter((t) => t.duplicateOf).length;
   if (duplicateCount > 0) {
-    console.log(`[ticket-pipeline] ${duplicateCount} duplicate issue type(s) detected — new tickets will reference previous ones.`);
+    console.log(`[ticket-pipeline] ${duplicateCount} duplicate(s) detected.`);
   }
 
-  // ── Stage 3: Jira Publisher (sequential) ────────────────────────────────
-  const publishResults = await publishTicketsToJira(reviewedTickets);
+  // ── Stage 3: Save to Supabase (replaces auto-publish to Jira) ────────────
+  const domain =
+    context.domain ??
+    (issueGroups[0]?.affectedDomains[0] ?? 'unknown');
+  const auditDate = context.auditDate ?? null;
+  const auditId = context.auditId ?? null;
 
-  const successfulTickets = publishResults
-    .filter((r) => r.success && r.ticket)
-    .map((r) => r.ticket!);
+  let savedTicketIds: string[] = [];
+  try {
+    const saved = await saveTicketsToSupabase(
+      reviewedTickets,
+      runId,
+      auditId,
+      domain,
+      auditDate
+    );
+    savedTicketIds = saved.map((r) => r.id);
+    console.log(`[ticket-pipeline] Saved ${saved.length} tickets to Supabase.`);
+  } catch (err) {
+    console.error('[ticket-pipeline] Failed to save to Supabase:', err);
+    // Non-fatal: still store in GCS and return failures
+    classifierFailures.push({
+      issueType: '__supabase_save__',
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 
-  const publishFailures = publishResults
-    .filter((r) => !r.success)
-    .map((r, idx) => ({
-      issueType: reviewedTickets[idx]?.issueGroup.issue_type ?? 'unknown',
-      error: r.error ?? 'Unknown publish error',
-    }));
-
-  const allFailures = [...classifierFailures, ...publishFailures];
-
-  console.log(
-    `[ticket-pipeline] Created ${successfulTickets.length} Jira tickets. ` +
-      `${publishFailures.length} publish failures.`
-  );
-
-  // ── Store results in GCS ────────────────────────────────────────────────
+  // ── GCS: store a summary for backward-compat / audit trail ────────────────
   const gcsObjectPath = `tickets/combined/${runId}/tickets.json`;
   const storage = getStorageClient();
 
@@ -109,9 +114,9 @@ export async function runTicketCreationPipeline(
     {
       runId,
       createdAt: new Date().toISOString(),
-      ticketsCreated: successfulTickets.length,
-      tickets: successfulTickets,
-      failures: allFailures,
+      ticketsDrafted: reviewedTickets.length,
+      supabaseIds: savedTicketIds,
+      failures: classifierFailures,
     },
     null,
     2
@@ -122,14 +127,14 @@ export async function runTicketCreationPipeline(
   });
 
   const gcsPath = `gs://${bucket}/${gcsObjectPath}`;
-  console.log(`[ticket-pipeline] Results stored at ${gcsPath}`);
+  console.log(`[ticket-pipeline] Summary stored at ${gcsPath}`);
 
   return {
     status: 'complete',
     runId,
-    ticketsCreated: successfulTickets.length,
-    tickets: successfulTickets,
-    failures: allFailures,
+    ticketsCreated: reviewedTickets.length,
+    tickets: [],          // Jira results — empty until manually published
+    failures: classifierFailures,
     gcsPath,
   };
 }
