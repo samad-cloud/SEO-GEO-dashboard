@@ -1,6 +1,6 @@
 'use client';
 
-import { Search, RefreshCw, AlertCircle, Loader2 } from 'lucide-react';
+import { Search, RefreshCw, AlertCircle, Loader2, Play } from 'lucide-react';
 import { AuditRun } from '@/types/seo';
 import { formatDate, formatTime, formatDuration, formatNumber, getStatusDot } from '@/lib/utils';
 import { useState } from 'react';
@@ -14,6 +14,8 @@ interface AuditRunListProps {
   hasMore?: boolean;
   onLoadMore?: () => void;
   onRefresh?: () => void;
+  onRunAudit?: () => void;
+  hasRunningJob?: boolean;
 }
 
 function SkeletonCard() {
@@ -47,6 +49,8 @@ export function AuditRunList({
   hasMore = false,
   onLoadMore,
   onRefresh,
+  onRunAudit,
+  hasRunningJob = false,
 }: AuditRunListProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -69,16 +73,33 @@ export function AuditRunList({
       <div className="p-4 border-b border-zinc-800">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold text-zinc-300">SEO Technical Audits</h2>
-          {onRefresh && (
-            <button
-              onClick={onRefresh}
-              disabled={isLoading}
-              className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors disabled:opacity-50"
-              title="Refresh"
-            >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-            </button>
-          )}
+          <div className="flex items-center gap-1">
+            {onRunAudit && (
+              <button
+                onClick={onRunAudit}
+                className="relative p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
+                title="Run New Audit"
+              >
+                <Play className="w-4 h-4" />
+                {hasRunningJob && (
+                  <span className="absolute top-0.5 right-0.5 flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+                  </span>
+                )}
+              </button>
+            )}
+            {onRefresh && (
+              <button
+                onClick={onRefresh}
+                disabled={isLoading}
+                className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors disabled:opacity-50"
+                title="Refresh"
+              >
+                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Search */}

@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { AuditRunList } from '@/components/seo/AuditRunList';
 import { AuditDetail } from '@/components/seo/AuditDetail';
 import { TicketGenerationTab } from '@/components/seo/TicketGenerationTab';
+import { RunAuditModal } from '@/components/seo/RunAuditModal';
+import { JobStatusBanner } from '@/components/seo/JobStatusBanner';
 import { useSeoAudits, useAuditReport } from '@/hooks/useSeoAudits';
 import { useDomain } from '@/context/DomainContext';
 
@@ -11,6 +13,8 @@ export default function SeoPage() {
   const { selectedDomain } = useDomain();
   const [selectedAuditId, setSelectedAuditId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'audits' | 'tickets'>('audits');
+  const [isRunModalOpen, setIsRunModalOpen] = useState(false);
+  const [hasRunningJob, setHasRunningJob] = useState(false);
 
   // Reset selection when domain changes
   useEffect(() => {
@@ -59,6 +63,9 @@ export default function SeoPage() {
         ))}
       </div>
 
+      {/* Job status banner */}
+      <JobStatusBanner onAuditComplete={refreshList} onHasRunningChange={setHasRunningJob} />
+
       {/* Tab content */}
       {activeTab === 'audits' ? (
         <div className="flex flex-1 overflow-hidden">
@@ -73,6 +80,8 @@ export default function SeoPage() {
               hasMore={pagination?.hasMore ?? false}
               onLoadMore={loadMore}
               onRefresh={refreshList}
+              onRunAudit={() => setIsRunModalOpen(true)}
+              hasRunningJob={hasRunningJob}
             />
           </div>
 
@@ -92,6 +101,16 @@ export default function SeoPage() {
           <TicketGenerationTab />
         </div>
       )}
+
+      {/* Run Audit Modal */}
+      <RunAuditModal
+        isOpen={isRunModalOpen}
+        onClose={() => setIsRunModalOpen(false)}
+        onTriggered={() => {
+          setIsRunModalOpen(false);
+          refreshList();
+        }}
+      />
     </div>
   );
 }

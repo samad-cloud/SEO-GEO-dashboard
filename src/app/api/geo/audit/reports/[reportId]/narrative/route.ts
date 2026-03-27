@@ -4,11 +4,11 @@ export const maxDuration = 60;
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: Promise<{ runId: string }> }
+  { params }: { params: Promise<{ reportId: string }> }
 ) {
-  const { runId } = await params;
+  const { reportId } = await params;
   const apiUrl = process.env.GEO_API_URL ?? 'http://localhost:8000';
-  const res = await fetch(`${apiUrl}/api/geo/audit/reports/${runId}/narrative`);
+  const res = await fetch(`${apiUrl}/api/geo/audit/reports/${reportId}/narrative`);
   if (!res.ok) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   const data = await res.json();
   return NextResponse.json(data);
